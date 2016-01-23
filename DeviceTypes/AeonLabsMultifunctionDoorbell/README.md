@@ -1,4 +1,4 @@
-# SmartThings
+# Aeon Labs Multifunction Doorbell
 
 This is a device handler for the Aeon Labs Doorbell.  It allows you to use the device as a doorbell, siren, and to play music tracks.  If you just want to use the device as a siren or a way to play mp3 files you can use the doorbell button for something else.
 
