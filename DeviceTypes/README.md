@@ -1,1 +1,1 @@
-This folder contains all of my Smart Things device types.
+This folder contains all of my SmartThings Device Handlers.
