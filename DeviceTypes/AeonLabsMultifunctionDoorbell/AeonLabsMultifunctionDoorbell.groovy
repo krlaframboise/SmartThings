@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell 
+ *  Aeon Labs Multifunction Doorbell v1.0
  *
  *  Capabilities: Switch, Alarm, Music Player, Tone, Button, Battery
  *
