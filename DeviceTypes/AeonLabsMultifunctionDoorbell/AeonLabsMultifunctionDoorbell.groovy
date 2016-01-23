@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v1.0
+ *  Aeon Labs Multifunction Doorbell v 1.1
  *
  *  Capabilities: Switch, Alarm, Music Player, Tone, Button, Battery
  *
@@ -12,6 +12,7 @@
  *
  *	Changelog:
  *
+ *	1.1 - Fixed bug that caused the mobile app to stop playing after a specific sequence of events. (01/22/2016)
  *	1.0 - Initial Release (01/21/2016)
  * 
  *
@@ -115,12 +116,11 @@ def pushButton() {
 	}
 }
 
-def off() {
+def off() {	
 	secureDelayBetween([ 
 		zwave.basicV1.basicSet(value: 0x00)
-	])	
+	])		
 }
-
 
 def on() {
 	both()
@@ -207,15 +207,40 @@ def playTrack(track, status, desc) {
 }
 
 def canPlay() {
-	def result 
+	def result = false
 	
-	if (!state.isPlaying && !state.pushingButton) {
-		state.isPlaying = true
+	if (!isDuplicateCall(state.lastPlay, 2)) {
+		state.lastPlay = new Date().time
+	
+		if (!state.isPlaying && !state.pushingButton) {
+			state.isPlaying = true
+			result = true
+		
+		} else if (isStuckPlaying()) {
+			writeToDebugLog("Clearing isPlaying flag because it appears to be stuck")
+			state.isPlaying = false
+			state.pushingButton = false
+			state.playSkipCount = 0
+		
+		} else {
+			writeToDebugLog("Skipped Play because already playing")
+		}	
+	
+	} else {
+		writeToDebugLog("Duplicate Play Call")
+	}
+	result
+}
+
+def isStuckPlaying() {
+	def result = false
+	if (state.playSkipCount == null) {
+		state.playSkipCount = 1
+	} else if (state.playSkipCount >= 2) {
 		result = true
 	} else {
-		writeToDebugLog("Skipped Play because already playing")
-		result = false
-	}
+		state.playSkipCount = (state.playSkipCount + 1)
+	}	
 	result
 }
 
@@ -228,9 +253,10 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	def result = []	
 	
 	if (cmd.value == 0) {
+		state.playSkipCount = 0
 		state.isPlaying = false
 		state.pushingButton = false
-		writeToDebugLog("BasicReport OFF")
+		//writeToDebugLog("BasicReport OFF")
 		
 		result << createEvent(name:"status", value: "off")
 		
@@ -240,7 +266,7 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	
 	} 
 	else if (cmd.value == 255) {
-		writeToDebugLog("BasicReport ON")
+		//writeToDebugLog("BasicReport ON")
 		
 		if (state.isPlaying) {
 			//writeToDebugLog("Something is playing")			
