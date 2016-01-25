@@ -1,19 +1,30 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.1
+ *  Aeon Labs Multifunction Doorbell v 1.2
  *
- *  Capabilities: Switch, Alarm, Music Player, Tone, Button, Battery
+ *  Capabilities:
+ *					Switch, Alarm, Music Player, Tone,
+ *					Button, Battery, Beacon, Polling, Refresh
  *
- *
- *	Author: Kevin LaFramboise (krlaframboise)
- *					
- *					* Based off of the "Aeon Doorbell" device type
- *					which was originally written by robertvandervoort
- *					and then forked by jamesdawson3
+ *	Author: 
+ *					Kevin LaFramboise (krlaframboise)
+ *					(Based off of the "Aeon Doorbell" device type)
  *
  *	Changelog:
  *
- *	1.1 - Fixed bug that caused the mobile app to stop playing after a specific sequence of events. (01/22/2016)
- *	1.0 - Initial Release (01/21/2016)
+ *	1.2 (01/25/2016)
+ *		-	Added the Beacon, Polling and Refresh capabilities
+ *			which can be used to determine if your internet is down
+ *			or you've lost power.
+ *		-	Added catch so if the UI does get stuck it will
+ *			automatically unstick after 25 seconds instead of 
+ *			requiring the user to attempt the buttons 3 times.
+ *
+ *	1.1 (01/22/2016)
+ *		-	Fixed bug that caused the mobile app to stop playing
+ *			after a specific sequence of events.
+ *
+ *	1.0 (01/21/2016)
+ *		-	Initial Release
  * 
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -35,7 +46,10 @@ metadata {
 		capability "Music Player"
 		capability "Tone"		
 		capability "Battery"
-		capability "Button"		
+		capability "Button"
+		capability "Polling"
+		capability "Beacon"
+		capability "Refresh"
 		
 		command "pushButton"
 		
@@ -97,11 +111,19 @@ metadata {
 		valueTile("next", "device.musicPlayer", label: 'Next Track', width: 2, height: 2) {
 			state "default", label:'>>', action:"nextTrack", backgroundColor: "#694489"
 		}
+		standardTile("refresh", "device.refresh", label: 'Refresh', width: 2, height: 2) {
+			state "default", label:'', action: "refresh", icon:"st.secondary.refresh"
+		}
 		valueTile("battery", "device.battery",  width: 2, height: 2) {
 			state "battery", label:'BATTERY\n${currentValue}%', unit:"", backgroundColor: "#000000"
 		}
+		valueTile("presence", "device.presence",  width: 2, height: 2) {
+			state "present", label: 'Online', unit: "", backgroundColor: "#00FF00"
+			state "not present", label: 'Offline', unit: "", backgroundColor: "#FF0000"
+			state "default", label: 'Unknown', unit: "", defaultState: true
+		}
 		main "status"
-		details(["status", "playBell", "playTone", "playAlarm", "previous", "trackDescription", "next", "battery"])
+		details(["status", "playBell", "playTone", "playAlarm", "previous", "trackDescription", "next", "refresh", "battery", "presence"])
 	}
 }
 
@@ -133,19 +155,9 @@ def strobe() {
 def siren() {
 	both()
 }
-def both() {
-	def result = []	
-	
-	if (canPlay()) {
-		writeToDebugLog("Alarm command received")
-
-		result << sendEvent(name: "alarm", value: "both")
-		result << sendEvent(name: "switch", value: "on", displayed: false)
-		result << sendEvent(name:"status", value: "alarm", descriptionText: "$device.displayName alarm is on", isStateChange: true)					
-				
-		result += response(secureDelayBetween(playTrackCommands(state.alarmTrack)))
-	}
-	return result
+def both() {	
+	writeToDebugLog("Alarm command received")
+	return playTrack(state.alarmTrack, "alarm", "$device.displayName alarm is on")	
 }
 
 // Tone Commands.beep
@@ -199,9 +211,14 @@ def playTrack(track, status, desc) {
 	if (canPlay()) {
 		writeToDebugLog("Playing Track $track ($status: $desc)")
 		
-		result << sendEvent(name: "status", value: status, descriptionText: desc, isStateChange: true)			
-				
-		result += response(secureDelayBetween(playTrackCommands(track)))		
+		if (status == "alarm") {
+			sendEvent(name: "alarm", value: "both")
+			sendEvent(name: "switch", value: "on", displayed: false)
+		}
+		
+		sendEvent(name: "status", value: status, descriptionText: desc, isStateChange: true)
+						
+		result << secureCommand(playTrackCommand(track))
 	}	
 	return result
 }
@@ -209,37 +226,40 @@ def playTrack(track, status, desc) {
 def canPlay() {
 	def result = false
 	
-	if (!isDuplicateCall(state.lastPlay, 2)) {
-		state.lastPlay = new Date().time
-	
-		if (!state.isPlaying && !state.pushingButton) {
+	if (!isDuplicateCall(state.lastPlay, 1)) {
+		
+		if ((!state.isPlaying && !state.pushingButton) || isStuckPlaying()) {
+			state.lastPlay = new Date().time
 			state.isPlaying = true
 			result = true
-		
-		} else if (isStuckPlaying()) {
-			writeToDebugLog("Clearing isPlaying flag because it appears to be stuck")
-			state.isPlaying = false
-			state.pushingButton = false
-			state.playSkipCount = 0
 		
 		} else {
 			writeToDebugLog("Skipped Play because already playing")
 		}	
 	
 	} else {
-		writeToDebugLog("Duplicate Play Call")
+		def current = new Date().time
+		writeToDebugLog("Duplicate Play Call ${state.lastPlay} - $current")
 	}
 	result
 }
 
+// if the last play was more than 25 seconds ago
+// or it has skipped 3 times in a row, it's most likely stuck.
 def isStuckPlaying() {
 	def result = false
-	if (state.playSkipCount == null) {
-		state.playSkipCount = 1
-	} else if (state.playSkipCount >= 2) {
+	def currentTime = new Date().time
+	
+	if (state.lastPlay == null || (state.lastPlay + (25 * 1000)) < currentTime) {		
 		result = true
-	} else {
-		state.playSkipCount = (state.playSkipCount + 1)
+	} else if (state.playSkipCount == null) {
+		state.playSkipCount = 1
+	} 
+	else {		
+		state.playSkipCount = (state.playSkipCount + 1)		
+		if (state.playSkipCount >= 3) {			
+			result = true
+		} 		
 	}	
 	result
 }
@@ -249,13 +269,39 @@ def setLevel(level) {
 	secureDelayBetween(soundLevelCommands(level))
 }
 
+def refresh() {
+	sendPresenceEvent("", false)	
+	
+	def result = []	
+	result += off()
+	result += poll()
+	return result	
+}
+
+def poll() {
+	runIn(10, pollFailed)
+	
+	return [secureCommand(pollCommand())]
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
+	unschedule("pollFailed")	
+	sendPresenceEvent("present", false)
+}
+
+def pollFailed() {
+	sendPresenceEvent("not present", true)
+}
+
+def sendPresenceEvent(presenceVal, displayedVal) {
+	sendEvent(name: "presence", value: presenceVal, displayed: displayedVal)
+}
+
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {		
 	def result = []	
 	
 	if (cmd.value == 0) {
-		state.playSkipCount = 0
-		state.isPlaying = false
-		state.pushingButton = false
+		clearPlayingStatus()
 		//writeToDebugLog("BasicReport OFF")
 		
 		result << createEvent(name:"status", value: "off")
@@ -273,8 +319,11 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 		} 
 		else {
 			state.isPlaying = true
-			writeToDebugLog("Doorbell button was pushed.")		
-
+			writeToDebugLog("Doorbell button was pushed.")					
+			
+			// Force poll on device power on.
+			result << response(pollCommand())			
+			
 			result << createEvent(name: "button", value: "pushed", data: [buttonNumber: 1], descriptionText: "$device.displayName doorbell button was pushed", isStateChange: true)
 		
 			if (!state.silentButton) {				
@@ -282,26 +331,34 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 			} 
 			else {
 				writeToDebugLog("Silent Button Enabled (If it's still making sound then you need to verify that the doorbell track doesn't have a corresponding file. I recommend using track 100)")
-			}								
+			}			
 		}
-	}
-	
+	}	
 	return result
+}
+
+def clearPlayingStatus() {
+	state.playSkipCount = 0
+	state.isPlaying = false
+	state.pushingButton = false
+	state.lastPlay = null
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
 	writeToDebugLog("WakeUpNotification: $cmd")
 	
-	def result = [createEvent(descriptionText: "${device.displayName} woke up", isStateChange: false)]
+	def result = []
+	
+	result << createEvent(descriptionText: "${device.displayName} woke up", isStateChange: false)
 
 	// Only ask for battery if we haven't had a BatteryReport in 8 hours.
 	if (!state.lastBatteryReport || (new Date().time) - state.lastBatteryReport > 8*60*60*1000) {		
-		request += batteryHealthCommands()
+		result << response(batteryHealthCommand())
 		result << response("delay 1200")
 	}
 	result << response(zwave.wakeUpV1.wakeUpNoMoreInformation())
 	
-	result
+	return result
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {	 
@@ -331,14 +388,10 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 def batteryHealthReport(cmd) {
 	state.lastBatteryReport = new Date().time
 	
-	def map = [ name: "battery", unit: "%" ]	
-	map.isStateChange = true		
-	map.value = (cmd.configurationValue == [0]) ? 100 : 1
-	
-	def batteryLevel = (map.value == 100) ? "normal" : "low"
-	map.descriptionText = "${device.displayName}'s battery is $batteryLevel."	
-
-	sendEvent(map)
+	def batteryValue = (cmd.configurationValue == [0]) ? 100 : 1
+	def batteryLevel = (batteryValue == 100) ? "normal" : "low"
+		
+	sendEvent(name: "battery", value: batteryValue, unit: "%", descriptionText: "${device.displayName}'s battery is $batteryLevel.", isStateChange: true)	
 }
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
@@ -391,9 +444,8 @@ def updated() {
 			request += soundLevelCommands(state.soundLevel)	
 			request += defaultTrackCommands(state.bellTrack)
 			
-			if (!state.lastBatteryReport) {
-				writeToDebugLog("Requesting battery health")
-				request += batteryHealthCommands()
+			if (!state.lastBatteryReport) {				
+				request << batteryHealthCommand()
 			}
 			response(secureDelayBetween(request))
 		
@@ -416,7 +468,6 @@ def configure() {
 		zwave.associationV1.associationGet(groupingIdentifier:1),		
 		zwave.associationV1.associationGet(groupingIdentifier:2),
 		
-		zwave.versionV1.versionGet(),		
 		zwave.firmwareUpdateMdV2.firmwareMdGet(),
 
 		// Enable to send notifications to associated devices (Group 1) (0=nothing, 1=hail CC, 2=basic CC report)
@@ -430,7 +481,8 @@ def configure() {
 		zwave.configurationV1.configurationGet(parameterNumber: 81)		
 	]
 	
-	request += batteryHealthCommands()	
+	request << versionCommand()
+	request << batteryHealthCommand()	
 	request += defaultTrackCommands(state.bellTrack)
 	request += soundRepeatCommands(state.soundRepeat)
 	request += soundLevelCommands(state.soundLevel)
@@ -440,16 +492,20 @@ def configure() {
 	secureDelayBetween(request)
 }
 
-def batteryHealthCommands() {
-	return [
-		zwave.configurationV1.configurationGet(parameterNumber: 42)
-	]
+def pollCommand() {
+	return versionCommand()
 }
 
-def playTrackCommands(track) {
-	return [
-		zwave.configurationV1.configurationSet(parameterNumber: 6, size: 1, scaledConfigurationValue: validateTrackNumber(track))
-	]
+def versionCommand() {
+	return zwave.versionV1.versionGet()	
+}
+
+def batteryHealthCommand() {
+	return zwave.configurationV1.configurationGet(parameterNumber: 42)
+}
+
+def playTrackCommand(track) {
+	return zwave.configurationV1.configurationSet(parameterNumber: 6, size: 1, scaledConfigurationValue: validateTrackNumber(track))
 }
 
 def soundRepeatCommands(newSoundRepeat) {	
@@ -477,6 +533,7 @@ def soundLevelCommands(newSoundLevel) {
 }
 
 private initializePreferences() {	
+	clearPlayingStatus()
 	state.bellTrack = validateTrackNumber(bellTrack)
 	state.alarmTrack = validateTrackNumber(alarmTrack)
 	state.toneTrack = validateTrackNumber(toneTrack)
