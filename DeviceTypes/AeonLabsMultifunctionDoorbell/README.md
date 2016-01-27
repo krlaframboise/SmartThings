@@ -50,7 +50,7 @@ This is a device handler for the Aeon Labs Doorbell.  It allows you to use the d
     - Sets the device volume to specified number (1-10)
     
 * poll
-	- Sends a command to the device and waits up to 15 seconds for a response.  If it receives a response, it sets the presence attribute to "present", otherwise it sets it to "not present".  The presence attribute is from the Beacon capability, NOT the Presence Sensor.
+	- Sends a command to the device and waits up to 15 seconds for a response.  If it receives a response, it sets the presence attribute to "present", otherwise it sets it to "not present".
 	
 * refresh
 	- Clears current status.
