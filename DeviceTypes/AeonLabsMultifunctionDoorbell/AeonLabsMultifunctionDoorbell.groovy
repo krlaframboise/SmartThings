@@ -1,9 +1,9 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.2
+ *  Aeon Labs Multifunction Doorbell v 1.3
  *
  *  Capabilities:
  *					Switch, Alarm, Music Player, Tone,
- *					Button, Battery, Beacon, Polling, Refresh
+ *					Button, Battery, Presence Sensor, Polling, Refresh
  *
  *	Author: 
  *					Kevin LaFramboise (krlaframboise)
@@ -11,10 +11,16 @@
  *
  *	Changelog:
  *
+ *	1.3 (01/27/2016)
+ *		-	Replaced the Beacon Capability with Presence Sensor
+ *			because I haven't found any SmartApps that support
+ *			Beacon and the Android Mobile app occasionally
+ *			generated Presence errors.
+ *
  *	1.2 (01/25/2016)
  *		-	Added the Beacon, Polling and Refresh capabilities
- *			which can be used to determine if your internet is down
- *			or you've lost power.
+ *			which can be used to determine if your internet is
+ *			down or you've lost power.
  *		-	Added catch so if the UI does get stuck it will
  *			automatically unstick after 25 seconds instead of 
  *			requiring the user to attempt the buttons 3 times.
@@ -48,7 +54,7 @@ metadata {
 		capability "Battery"
 		capability "Button"
 		capability "Polling"
-		capability "Beacon"
+		capability "Presence Sensor"
 		capability "Refresh"
 		
 		command "pushButton"
