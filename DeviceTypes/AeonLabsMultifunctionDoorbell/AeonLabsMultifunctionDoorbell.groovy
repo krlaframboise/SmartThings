@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.3
+ *  Aeon Labs Multifunction Doorbell v 1.4
  *
  *  Capabilities:
  *					Switch, Alarm, Music Player, Tone,
@@ -10,6 +10,10 @@
  *					(Based off of the "Aeon Doorbell" device type)
  *
  *	Changelog:
+ *
+ *	1.4 (02/04/2016)
+ *		-	Modified polling functionality so that it doesn't
+ *			use unschedule which should eliminate the false offlines.
  *
  *	1.3 (01/27/2016)
  *		-	Replaced the Beacon Capability with Presence Sensor
@@ -285,18 +289,21 @@ def refresh() {
 }
 
 def poll() {
+	state.polling = true
 	runIn(10, pollFailed)
 	
 	return [secureCommand(pollCommand())]
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
-	unschedule("pollFailed")	
+	state.polling = false
 	sendPresenceEvent("present", false)
 }
 
 def pollFailed() {
-	sendPresenceEvent("not present", true)
+	if (state.polling) {
+		sendPresenceEvent("not present", true)
+	}
 }
 
 def sendPresenceEvent(presenceVal, displayedVal) {
