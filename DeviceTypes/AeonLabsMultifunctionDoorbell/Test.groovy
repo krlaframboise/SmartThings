@@ -15,6 +15,8 @@
  *		-	Fixed fingerprint
  *		- Removed extra association lines.
  *		- Added firmware report.
+ *		- Defaulted the Debug Output preference to True.
+ *		- Defaulted the Force Configuration preference to True.
  *
  *	1.4 (02/04/2016)
  *		-	Modified polling functionality so that it doesn't
@@ -91,11 +93,11 @@ metadata {
 		
 		input "soundRepeat", "number", title: "Sound Repeat: (1-100)", defaultValue: 1, displayDuringSetup: true, required: false		
 				
-		input "debugOutput", "boolean", title: "Enable debug logging?", defaultValue: false, displayDuringSetup: true, required: false
+		input "debugOutput", "bool", title: "Enable debug logging?", defaultValue: true, displayDuringSetup: true, required: false
 		
-		input "silentButton", "boolean", title: "Enable Silent Button?\n(If you want to use the button for something other than a doorbell, you need to also set the Doorbell Track to a track that doesn't have a corresponding sound file.)", defaultValue: false, required: false
+		input "silentButton", "bool", title: "Enable Silent Button?\n(If you want to use the button for something other than a doorbell, you need to also set the Doorbell Track to a track that doesn't have a corresponding sound file.)", defaultValue: false, required: false
 		
-		input "forceConfigure", "boolean", title: "Force Configuration Refresh? (Leave this disabled unless your experiencing problems with your settings not getting applied)", defaultValue: false, required: false
+		input "forceConfigure", "bool", title: "Force Configuration Refresh? (This only needs to be enabled if your experiencing problems with your settings not getting applied)", defaultValue: true, required: false
 	}	
 	
 	tiles(scale: 2) {
@@ -478,7 +480,7 @@ def zwaveEvent(physicalgraph.zwave.commands.firmwareupdatemdv2.FirmwareMdReport 
 }   
 
 def zwaveEvent(physicalgraph.zwave.commands.associationv2.AssociationReport cmd) {
-    cmd.nodeId.each({log.debug "AssociationReport: '${cmd}', hub: '$zwaveHubNodeId' reports nodeId: '$it' is associated in group: '${cmd.groupingIdentifier}'"})
+    cmd.nodeId.each({writeToDebugLog("AssociationReport: '${cmd}', hub: '$zwaveHubNodeId' reports nodeId: '$it' is associated in group: '${cmd.groupingIdentifier}'")})
 }
 
 //Configuration.configure
@@ -565,6 +567,7 @@ private initializePreferences() {
 	state.soundRepeat = validateSoundRepeat(soundRepeat)	
 	state.forceConfigure = validateBooleanPref(forceConfigure)
 	state.silentButton = validateBooleanPref(silentButton)
+	state.debugOutput = validateBooleanPref(debugOutput)
 }
 
 int validateSoundRepeat(soundRepeat) {
@@ -604,7 +607,7 @@ int maxTrack() {
 }
 
 def validateBooleanPref(pref) {
-	return (pref == "true")	
+	return (pref == true || pref == "true")	
 }
 
 
@@ -629,7 +632,7 @@ private isDuplicateCall(lastRun, allowedEverySeconds) {
 }
 
 private writeToDebugLog(msg) {	
-	if (debugOutput == "true") {
+	if (state.debugOutput) {
 		log.debug msg
 	}
 }
