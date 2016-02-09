@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.4
+ *  Aeon Labs Multifunction Doorbell v 1.5
  *
  *  Capabilities:
  *					Switch, Alarm, Music Player, Tone,
@@ -10,6 +10,11 @@
  *					(Based off of the "Aeon Doorbell" device type)
  *
  *	Changelog:
+ *
+ *	1.5 (02/08/2016)
+ *		-	Fixed fingerprint
+ *		- Removed extra association lines.
+ *		- Added firmware report.
  *
  *	1.4 (02/04/2016)
  *		-	Modified polling functionality so that it doesn't
@@ -63,16 +68,16 @@ metadata {
 		
 		command "pushButton"
 		
-		fingerprint deviceId: "0x1005", noneClusters: "0x26 0x2B 0x2C 0x27 0x73 0x70 0x86 0x72"
+		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98"
 	}
 
 	simulator {
 		status "basic report on": zwave.basicV1.basicReport(value:0xFF).incomingMessage()		
 		status "basic report off": zwave.basicV1.basicReport(value:0x00).incomingMessage()		
 		
-    reply "9881002001FF,9881002002": "command: 9881, payload: 002003FF"
-    reply "988100200100,9881002002": "command: 9881, payload: 00200300"
-		reply "9881002001FF,delay 3000,988100200100,9881002002": "command: 9881, payload: 00200300"		
+		reply "9881002001FF,9881002002": "command: 9881, payload: 002003FF"
+		reply "988100200100,9881002002": "command: 9881, payload: 00200300"
+		reply "9881002001FF,delay 3000,988100200100,9881002002": "command: 9881, payload: 00200300"	
 	}
 
 	preferences {
@@ -468,6 +473,14 @@ def updated() {
 	}
 }
 
+def zwaveEvent(physicalgraph.zwave.commands.firmwareupdatemdv2.FirmwareMdReport cmd) {
+	writeToDebugLog("---FIRMWARE MD REPORT V2--- ${device.displayName} has Checksum of ${cmd.checksum} firmwareId: ${cmd.firmwareId}, manufacturerId: ${cmd.firmwareId}")
+}   
+
+def zwaveEvent(physicalgraph.zwave.commands.associationv2.AssociationReport cmd) {
+    cmd.nodeId.each({writeToDebugLog("AssociationReport: '${cmd}', hub: '$zwaveHubNodeId' reports nodeId: '$it' is associated in group: '${cmd.groupingIdentifier}'")})
+}
+
 //Configuration.configure
 def configure() {
 	writeToDebugLog("Configuration being sent to ${device.displayName}")
@@ -475,9 +488,7 @@ def configure() {
 	initializePreferences()
 
 	def request = [
-		//associate with group 1 and remove any group 2 association
-		zwave.associationV1.associationRemove(groupingIdentifier:2, nodeId:zwaveHubNodeId),		
-		zwave.associationV1.associationSet(groupingIdentifier:1, nodeId:zwaveHubNodeId),		
+		//associate with group 1 and remove any group 2 association		
 		zwave.associationV1.associationGet(groupingIdentifier:1),		
 		zwave.associationV1.associationGet(groupingIdentifier:2),
 		
