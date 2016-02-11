@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.5
+ *  Aeon Labs Multifunction Doorbell v 1.6
  *
  *  Capabilities:
  *					Switch, Alarm, Music Player, Tone,
@@ -10,6 +10,24 @@
  *					(Based off of the "Aeon Doorbell" device type)
  *
  *	Changelog:
+ *
+ *	1.6 (02/11/2016)
+ *		- Added association set command which has already
+ *			solved the secure pairing issue for a couple of users.
+ *		-	Made secure pairing optional by adding the 
+ *			"Use Secure Commands" preference so it should work
+ *			for people that are unable to get it pair securely.
+ *		- Added "Log Configuration on Refresh" preference
+ *			that when enabled, displays all the configuration
+ *			settings in the info log when the Refresh button
+ *			is pressed. 
+ *		- Split reporting from configuration so that it doesn't
+ *			take so long for the settings to save.
+ *		- Made it always send the configuration on settings save
+ *			and removed the "Force Configuration" preference because
+ *			it's no longer needed.
+ *		- Added all missing commands from supported 
+ *			capabilities.
  *
  *	1.5 (02/08/2016)
  *		-	Fixed fingerprint
@@ -92,12 +110,14 @@ metadata {
 		input "soundLevel", "number", title: "Sound Level (1-10)", defaultValue: 10, displayDuringSetup: true,  required: false
 		
 		input "soundRepeat", "number", title: "Sound Repeat: (1-100)", defaultValue: 1, displayDuringSetup: true, required: false		
-				
+
+		input "useSecureCommands", "bool", title: "Use Secure Commands?\n(If you're unable to connect the device securely the buttons in the mobile app won't do anything, but turning off this setting should fix that.", defaultValue: true, displayDuringSetup: true, required: false
+		
 		input "debugOutput", "bool", title: "Enable debug logging?", defaultValue: true, displayDuringSetup: true, required: false
 		
 		input "silentButton", "bool", title: "Enable Silent Button?\n(If you want to use the button for something other than a doorbell, you need to also set the Doorbell Track to a track that doesn't have a corresponding sound file.)", defaultValue: false, required: false
 		
-		input "forceConfigure", "bool", title: "Force Configuration Refresh? (This only needs to be enabled if your experiencing problems with your settings not getting applied)", defaultValue: true, required: false
+		input "logConfiguration", "bool", title: "Log Configuration on Refresh?\n(If this setting is on, the configuration settings will be displayed in the IDE Live Logging when the Refresh button is pressed.)", defaultValue: false, required: false
 	}	
 	
 	tiles(scale: 2) {
@@ -148,7 +168,7 @@ metadata {
 def pushButton() {	
 	if (!state.isPlaying) {
 		state.pushingButton = true
-		writeToDebugLog("Turning on doorbell")
+		writeToDebugLog("Pushing doorbell button")
 		secureDelayBetween([
 			zwave.basicV1.basicSet(value: 0xFF)
 		])
@@ -172,19 +192,23 @@ def strobe() {
 def siren() {
 	both()
 }
-def both() {	
-	writeToDebugLog("Alarm command received")
+def both() {		
 	return playTrack(state.alarmTrack, "alarm", "$device.displayName alarm is on")	
 }
 
 // Tone Commands.beep
-def beep() {
-	writeToDebugLog("Beep Command received")
+def beep() {	
 	playTrack(state.toneTrack, "beep", "Beeping!")
 }
 
 
 // Music Player Commands
+def playText(text) { handleUnsupportedCommand("playText") }
+def mute() { handleUnsupportedCommand("mute") }
+def unmute() { handleUnsupportedCommand("unmute") }
+def resumeTrack(map) { handleUnsupportedCommand("resumeTrack") }
+def restoreTrack(map) { handleUnsupportedCommand("restoreTrack") }
+
 def previousTrack() {	
 	def newTrack = (validateTrackNumber(state.currentTrack) - 1)
 	if (newTrack < minTrack()) {
@@ -208,6 +232,10 @@ def setTrack(track) {
 	writeToDebugLog("currentTrack set to ${state.currentTrack}")
 	
 	sendEvent(name:"trackDescription", value: track, descriptionText:"Track $track", isStateChange: true, displayed: false)
+}
+
+def pause() {
+	stop()
 }
 
 def stop() {
@@ -240,7 +268,7 @@ def playTrack(track, status, desc) {
 	return result
 }
 
-def canPlay() {
+private canPlay() {
 	def result = false
 	
 	if (!isDuplicateCall(state.lastPlay, 1)) {
@@ -263,7 +291,7 @@ def canPlay() {
 
 // if the last play was more than 25 seconds ago
 // or it has skipped 3 times in a row, it's most likely stuck.
-def isStuckPlaying() {
+private isStuckPlaying() {
 	def result = false
 	def currentTime = new Date().time
 	
@@ -283,28 +311,32 @@ def isStuckPlaying() {
 
 def setLevel(level) {
 	writeToDebugLog("Setting soundLevel to $level")
-	secureDelayBetween(soundLevelCommands(level))
+	return [secureCommand(soundLevelSetCommand(level))]	
 }
 
 def refresh() {
-	sendPresenceEvent("", false)	
-	
-	def result = []	
-	result += off()
-	result += poll()
+	def result = []			
+	if (state.logConfiguration) {	
+		writeToInfoLog("Current Track: ${state.currentTrack}")
+		writeToInfoLog("Alarm Track: ${state.alarmTrack}")
+		writeToInfoLog("Beep Track: ${state.toneTrack}")
+		writeToInfoLog("Silent Button Enabled: ${state.silentButton}")
+		writeToInfoLog("Debug Logging Enabled: ${state.debugOutput}")
+		writeToInfoLog("Use Secure Commands: ${state.useSecureCommands}")				
+		result += secureDelayBetween(reportCommands())
+	}
+	else {
+		sendPresenceEvent("", false)	
+		result += off()
+		result += poll()	
+	}	
 	return result	
 }
 
 def poll() {
 	state.polling = true
-	runIn(10, pollFailed)
-	
+	runIn(10, pollFailed)	
 	return [secureCommand(pollCommand())]
-}
-
-def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
-	state.polling = false
-	sendPresenceEvent("present", false)
 }
 
 def pollFailed() {
@@ -313,7 +345,7 @@ def pollFailed() {
 	}
 }
 
-def sendPresenceEvent(presenceVal, displayedVal) {
+private sendPresenceEvent(presenceVal, displayedVal) {
 	sendEvent(name: "presence", value: presenceVal, displayed: displayedVal)
 }
 
@@ -324,11 +356,11 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 		clearPlayingStatus()
 		//writeToDebugLog("BasicReport OFF")
 		
-		result << createEvent(name:"status", value: "off")
+		result << createEvent(name:"status", value: "off", displayed: false)
 		
 		result << createEvent(name:"alarm", value: "off", descriptionText: "$device.displayName alarm is off")
 		
-		result << createEvent(name:"switch", value: "off", descriptionText: "$device.displayName switch is off")		
+		result << createEvent(name:"switch", value: "off", descriptionText: "$device.displayName switch is off", displayed: false)		
 	
 	} 
 	else if (cmd.value == 255) {
@@ -342,7 +374,7 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 			writeToDebugLog("Doorbell button was pushed.")					
 			
 			// Force poll on device power on.
-			result << response(pollCommand())			
+			//result << response(pollCommand())			
 			
 			result << createEvent(name: "button", value: "pushed", data: [buttonNumber: 1], descriptionText: "$device.displayName doorbell button was pushed", isStateChange: true)
 		
@@ -357,7 +389,7 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	return result
 }
 
-def clearPlayingStatus() {
+private clearPlayingStatus() {
 	state.playSkipCount = 0
 	state.isPlaying = false
 	state.pushingButton = false
@@ -371,14 +403,31 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
 	
 	result << createEvent(descriptionText: "${device.displayName} woke up", isStateChange: false)
 
-	// Only ask for battery if we haven't had a BatteryReport in 8 hours.
-	if (!state.lastBatteryReport || (new Date().time) - state.lastBatteryReport > 8*60*60*1000) {		
-		result << response(batteryHealthCommand())
+	// Only ask for battery if we haven't had a BatteryReport in 24 hours.
+	if (!state.lastBatteryReport || (new Date().time) - state.lastBatteryReport > 24*60*60*1000) {		
+		result << response(reportBatteryHealthCommand())
 		result << response("delay 1200")
 	}
 	result << response(zwave.wakeUpV1.wakeUpNoMoreInformation())
 	
 	return result
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.firmwareupdatemdv2.FirmwareMdReport cmd) {
+	writeToInfoLog("Firmware: $cmd")
+}   
+
+def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
+	if (state.polling) {
+		state.polling = false
+		sendPresenceEvent("present", false)
+	} else {
+		writeToInfoLog("Version: $cmd")
+	}
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.associationv2.AssociationReport cmd) {
+	writeToInfoLog("Association: $cmd")
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {	 
@@ -388,10 +437,16 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 			parameterName = "Sound Level"
 			break
 		case 5:
-			parameterName = "Default Doorbell Track"
+			parameterName = "Doorbell Track"
 			break
 		case 2:
 			parameterName = "Sound Repeat Times"
+			break
+		case 80:
+			parameterName = "Device Notification Type"
+			break
+		case 81:
+			parameterName = "Send Low Battery Notifications"
 			break
 		case 42:
 			parameterName = null
@@ -401,17 +456,19 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 			parameterName = "Parameter #${cmd.parameterNumber}"
 	}		
 	if (parameterName) {
-		writeToDebugLog("${parameterName} changed to ${cmd.configurationValue}.")
-	}
+		writeToInfoLog("${parameterName}: ${cmd.configurationValue}")
+	} 
 }
 
-def batteryHealthReport(cmd) {
+private batteryHealthReport(cmd) {
 	state.lastBatteryReport = new Date().time
 	
 	def batteryValue = (cmd.configurationValue == [0]) ? 100 : 1
 	def batteryLevel = (batteryValue == 100) ? "normal" : "low"
 		
 	sendEvent(name: "battery", value: batteryValue, unit: "%", descriptionText: "${device.displayName}'s battery is $batteryLevel.", isStateChange: true)	
+	
+	writeToInfoLog("Battery: $batteryValue")
 }
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
@@ -422,11 +479,13 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
 	response(configure())
 }
-def parse(String description) {
+
+def parse(String description) {	
 	def result = null
 	if (description.startsWith("Err 106")) {
-		state.sec = 0
-		result = createEvent( name: "secureInclusion", value: "failed", isStateChange: true, descriptionText: "This sensor failed to complete the network security key exchange. If you are unable to control it via SmartThings, you must remove it from your network and add it again.")
+		def msg = "This sensor failed to complete the network security key exchange. If you are unable to control it via SmartThings, you must remove it from your network and add it again."
+		log.warn "$msg"
+		result = createEvent( name: "secureInclusion", value: "failed", isStateChange: true, descriptionText: "$msg")		
 	}
 	else if (description != "updated") {	
 		def cmd = zwave.parse(description, [0x25: 1, 0x26: 1, 0x27: 1, 0x32: 3, 0x33: 3, 0x59: 1, 0x70: 1, 0x72: 2, 0x73: 1, 0x7A: 2, 0x82: 1, 0x85: 2, 0x86: 1])
@@ -434,13 +493,15 @@ def parse(String description) {
 			result = zwaveEvent(cmd)
 		}
 	}
+	else {
+		writeToDebugLog("Did Not Parse: $description")
+	}
 	return result
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
 	def encapsulatedCommand = cmd.encapsulatedCommand([0x25: 1, 0x26: 1, 0x27: 1, 0x32: 3, 0x33: 3, 0x59: 1, 0x70: 1, 0x72: 2, 0x73: 1, 0x7A: 2, 0x82: 1, 0x85: 2, 0x86: 1])
 
-	state.sec = 1
 	if (encapsulatedCommand) {
 		zwaveEvent(encapsulatedCommand)
 	
@@ -450,37 +511,11 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 	}
 }
 
-
 def updated() {
-	if (!isDuplicateCall(state.lastUpdated, 2)) {
-		state.lastUpdated = new Date().time
-		
-		initializePreferences()
-		
-		if (state.isConfigured && !state.forceConfigure) {
-			writeToDebugLog("Updating preferences")						
-			
-			def request = soundRepeatCommands(state.soundRepeat)
-			request += soundLevelCommands(state.soundLevel)	
-			request += defaultTrackCommands(state.bellTrack)
-			
-			if (!state.lastBatteryReport) {				
-				request << batteryHealthCommand()
-			}
-			response(secureDelayBetween(request))
-		
-		} else {
-			response(configure())			
-		}		
+	if (!isDuplicateCall(state.lastUpdated, 1)) {
+		state.lastUpdated = new Date().time		
+		return response(configure())
 	}
-}
-
-def zwaveEvent(physicalgraph.zwave.commands.firmwareupdatemdv2.FirmwareMdReport cmd) {
-	writeToDebugLog("---FIRMWARE MD REPORT V2--- ${device.displayName} has Checksum of ${cmd.checksum} firmwareId: ${cmd.firmwareId}, manufacturerId: ${cmd.firmwareId}")
-}   
-
-def zwaveEvent(physicalgraph.zwave.commands.associationv2.AssociationReport cmd) {
-    cmd.nodeId.each({writeToDebugLog("AssociationReport: '${cmd}', hub: '$zwaveHubNodeId' reports nodeId: '$it' is associated in group: '${cmd.groupingIdentifier}'")})
 }
 
 //Configuration.configure
@@ -489,73 +524,98 @@ def configure() {
 	
 	initializePreferences()
 
-	def request = [
-		//associate with group 1 and remove any group 2 association		
+	def request = []
+	request << associationSetCommand()
+	request << deviceNotificationTypeSetCommand()
+	request << sendLowBatteryNotificationsSetCommand()	
+	request << defaultTrackSetCommand(state.bellTrack)
+	request << soundRepeatSetCommand(state.soundRepeat)
+	request << soundLevelSetCommand(state.soundLevel)		
+	return secureDelayBetween(request)
+}
+
+private reportCommands() {	
+	def result = []		
+	result << reportDeviceNotificationTypeCommand()
+	result += reportAssociationCommands()
+	result << reportSoundRepeatCommand()
+	result << reportFirmwareCommand()
+	result << reportDefaultTrackCommand()
+	result << reportVersionCommand()
+	result << reportSoundLevelCommand()	
+	result << reportBatteryHealthCommand()		
+	result << reportSendLowBatteryNotificationsCommand()		
+	return result
+}
+
+private associationSetCommand() {
+	return zwave.associationV1.associationSet(groupingIdentifier:1, nodeId:zwaveHubNodeId)
+}
+private reportAssociationCommands() {
+	return [
 		zwave.associationV1.associationGet(groupingIdentifier:1),		
-		zwave.associationV1.associationGet(groupingIdentifier:2),
-		
-		zwave.firmwareUpdateMdV2.firmwareMdGet(),
-
-		// Enable to send notifications to associated devices (Group 1) (0=nothing, 1=hail CC, 2=basic CC report)
-		zwave.configurationV1.configurationSet(parameterNumber: 80, size: 1, scaledConfigurationValue: 2),
-		
-		zwave.configurationV1.configurationGet(parameterNumber: 80),
-
-		// send low battery notifications
-		zwave.configurationV1.configurationSet(parameterNumber: 81, size: 1, scaledConfigurationValue: 1),
-		
-		zwave.configurationV1.configurationGet(parameterNumber: 81)		
+		zwave.associationV1.associationGet(groupingIdentifier:2)
 	]
-	
-	request << versionCommand()
-	request << batteryHealthCommand()	
-	request += defaultTrackCommands(state.bellTrack)
-	request += soundRepeatCommands(state.soundRepeat)
-	request += soundLevelCommands(state.soundLevel)
-	
-	state.isConfigured = true
-	
-	secureDelayBetween(request)
 }
 
-def pollCommand() {
-	return versionCommand()
+private reportFirmwareCommand() {
+	return zwave.firmwareUpdateMdV2.firmwareMdGet()
 }
 
-def versionCommand() {
+private pollCommand() {
+	return reportVersionCommand()
+}
+
+private reportVersionCommand() {
 	return zwave.versionV1.versionGet()	
 }
 
-def batteryHealthCommand() {
+private reportBatteryHealthCommand() {
 	return zwave.configurationV1.configurationGet(parameterNumber: 42)
 }
 
-def playTrackCommand(track) {
-	return zwave.configurationV1.configurationSet(parameterNumber: 6, size: 1, scaledConfigurationValue: validateTrackNumber(track))
+private deviceNotificationTypeSetCommand() {
+	// Enable to send notifications to associated devices (Group 1) (0=nothing, 1=hail CC, 2=basic CC report)
+	return zwave.configurationV1.configurationSet(parameterNumber: 80, size: 1, scaledConfigurationValue: 2)
+}
+private reportDeviceNotificationTypeCommand() {
+	return zwave.configurationV1.configurationGet(parameterNumber: 80)
 }
 
-def soundRepeatCommands(newSoundRepeat) {	
-	return [		
-		zwave.configurationV1.configurationSet(parameterNumber: 2, size: 1, scaledConfigurationValue: validateSoundRepeat(newSoundRepeat)),
-	
-		zwave.configurationV1.configurationGet(parameterNumber: 2)	
-	]
+private sendLowBatteryNotificationsSetCommand() {
+	return zwave.configurationV1.configurationSet(parameterNumber: 81, size: 1, scaledConfigurationValue: 1)
+}
+private reportSendLowBatteryNotificationsCommand() {
+	return zwave.configurationV1.configurationGet(parameterNumber: 81)
 }
 
-def defaultTrackCommands(newDefaultTrack) {
-	return [
-		zwave.configurationV1.configurationSet(parameterNumber: 5, size: 1, scaledConfigurationValue: validateTrackNumber(newDefaultTrack)),
-		
-	 zwave.configurationV1.configurationGet(parameterNumber: 5)
-	]
+private soundRepeatSetCommand(newSoundRepeat) {	
+	newSoundRepeat = validateSoundRepeat(newSoundRepeat)
+	return zwave.configurationV1.configurationSet(parameterNumber: 2, size: 1, scaledConfigurationValue: newSoundRepeat)
+}
+private reportSoundRepeatCommand() {
+	return zwave.configurationV1.configurationGet(parameterNumber: 2)	
 }
 
-def soundLevelCommands(newSoundLevel) {	
-	return [
-		zwave.configurationV1.configurationSet(parameterNumber: 8, size: 1, scaledConfigurationValue: validateSoundLevel(newSoundLevel)),
-	
-		zwave.configurationV1.configurationGet(parameterNumber: 8)
-	]
+private defaultTrackSetCommand(newDefaultTrack) {
+	newDefaultTrack = validateTrackNumber(newDefaultTrack)
+	return zwave.configurationV1.configurationSet(parameterNumber: 5, size: 1, scaledConfigurationValue: newDefaultTrack)
+}
+private reportDefaultTrackCommand() {
+	return zwave.configurationV1.configurationGet(parameterNumber: 5)
+}
+
+private soundLevelSetCommand(newSoundLevel) {	
+	newSoundLevel = validateSoundLevel(newSoundLevel)
+	return zwave.configurationV1.configurationSet(parameterNumber: 8, size: 1, scaledConfigurationValue: newSoundLevel)	
+}
+private reportSoundLevelCommand() {
+	return zwave.configurationV1.configurationGet(parameterNumber: 8)
+}
+
+private playTrackCommand(track) {
+	track = validateTrackNumber(track)
+	return zwave.configurationV1.configurationSet(parameterNumber: 6, size: 1, scaledConfigurationValue: track)
 }
 
 private initializePreferences() {	
@@ -565,9 +625,10 @@ private initializePreferences() {
 	state.toneTrack = validateTrackNumber(toneTrack)
 	state.soundLevel = validateSoundLevel(soundLevel)
 	state.soundRepeat = validateSoundRepeat(soundRepeat)	
-	state.forceConfigure = validateBooleanPref(forceConfigure)
+	state.logConfiguration = validateBooleanPref(logConfiguration)
 	state.silentButton = validateBooleanPref(silentButton)
 	state.debugOutput = validateBooleanPref(debugOutput)
+	state.useSecureCommands = validateBooleanPref(useSecureCommands)
 }
 
 int validateSoundRepeat(soundRepeat) {
@@ -606,19 +667,19 @@ int maxTrack() {
 	return 100
 }
 
-def validateBooleanPref(pref) {
+private validateBooleanPref(pref) {
 	return (pref == true || pref == "true")	
 }
 
 
-private secureDelayBetween(commands, delay=100) {
+private secureDelayBetween(commands, delay=500) {
 	delayBetween(commands.collect{ secureCommand(it) }, delay)
 }
 
 private secureCommand(physicalgraph.zwave.Command cmd) {
-	if (state.sec) {
+	if (state.useSecureCommands) {		
 		zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
-	} else {
+	} else {		
 		cmd.format()
 	}
 }
@@ -635,4 +696,12 @@ private writeToDebugLog(msg) {
 	if (state.debugOutput) {
 		log.debug msg
 	}
+}
+
+private handleUnsupportedCommand(cmd) {
+	writeToInfoLog("Command $cmd is not supported")
+}
+ 
+private writeToInfoLog(msg) {
+	log.info "${device.displayName} $msg"
 }
