@@ -62,7 +62,6 @@
 	  randomly ringing without the button being pushed,
 	  but using a couple of seconds of silence as the
 	  first track appears to eliminate that problem.
-	  Example of empty sound file: <a href="https://github.com/krlaframboise/SmartThings/blob/master/DeviceTypes/AeotecDoorbell/01-Silence.mp3?raw=true" target="_blank">1-Silent.mp3</a>
 	  
 	* The doorbell button doesn't work if you're holding
 	  it, but it works most of the time if you have it on
@@ -70,7 +69,6 @@
 	  
 	* The track numbers get assigned to the files based on
 	  the order that the files are copied onto the drive.
-	  <a href="https://community.smartthings.com/t/aeon-doorbell-type-beta/28889/262?u=krlaframboise">More Information (different DH, but it still applies)</a>
 	  
 	* If the ends of your sound files are getting cut off,
 	  add about 1/2 second of silence to the end of them.	  
