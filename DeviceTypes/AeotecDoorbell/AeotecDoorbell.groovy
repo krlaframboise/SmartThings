@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell v 1.0
+ *  Aeotec Doorbell v 1.1
  *
  *  Capabilities:
  *					Switch, Alarm, Tone, Battery, Configuration
@@ -8,6 +8,9 @@
  *					Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *	1.1 (02/15/2016)
+ *		-	Consolidated code.
  *
  *	1.0 (02/14/2016)
  *		-	Initial Release
@@ -26,26 +29,26 @@
 metadata {
 	definition (name: "Aeotec Doorbell", namespace: "krlaframboise", author: "Kevin LaFramboise") {
 		capability "Actuator"
-		capability "Configuration"			
+		capability "Configuration"
 		capability "Switch"
-		capability "Alarm"	
-		capability "Tone"		
-		capability "Battery"		
-				
+		capability "Alarm"
+		capability "Tone"
+		capability "Battery"
+
 		attribute "alarmTrack", "number"
 		attribute "beepTrack", "number"
 		attribute "doorbellTrack", "number"
-		attribute "repeat", "number"		
+		attribute "repeat", "number"
 		attribute "status", "enum", ["off", "doorbell", "beep", "alarm", "play"]
 		attribute "volume", "number"
-		
+
 		command "playTrack", ["number"]
 		command "setAlarmTrack", ["number"]
 		command "setBeepTrack", ["number"]
-		command "setDoorbellTrack", ["number"]		
-		command "setRepeat", ["number"]	
+		command "setDoorbellTrack", ["number"]
+		command "setRepeat", ["number"]
 		command "setVolume", ["number"]
-		
+
 		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98"
 	}
 
@@ -57,15 +60,15 @@ metadata {
 			title: "Use Secure Commands?\n(Leave On unless you're unable to get Include Secure to work.",
 			defaultValue: true, 
 			displayDuringSetup: false, 
-			required: false		
+			required: false
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
 			displayDuringSetup: false, 
-			required: false				
-	}	
-	
-	tiles(scale: 2) {		
+			required: false
+	}
+
+	tiles(scale: 2) {
 		standardTile("status", "device.status", label: '', width: 2, height: 2) {
 			state "off", 
 				label:'Off', 
@@ -92,7 +95,7 @@ metadata {
 				action: "off", 
 				icon:"st.Entertainment.entertainment2", 
 				backgroundColor:"#694489"
-		}		
+		}
 		valueTile("volume", "device.volume", decoration: "flat", height:1, width:2) {
 			state "volume", label: 'Volume ${currentValue}'
 		}
@@ -104,7 +107,7 @@ metadata {
 		}
 		controlTile("repeatSlider", "device.repeat", "slider", height: 1, width: 2, range: "(1..25)") {
 			state "repeat", action:"setRepeat"
-		}		
+		}
 		standardTile("playDoorbell", "device.switch", label: 'Doorbell', width: 2, height: 2) {
 			state "default", 
 			label:'Doorbell', 
@@ -115,9 +118,9 @@ metadata {
 		valueTile("doorbellTrack", "device.doorbellTrack", decoration: "flat", width:4, height: 1) {
 			state "doorbellTrack", label: 'Doorbell Track: ${currentValue}'
 		}
-		controlTile("doorbellTrackSlider", "device.doorbellTrack", "slider", width: 4, height: 1, range: "(1..100)") {
+		controlTile("doorbellSlider", "device.doorbellTrack", "slider", width: 4, height: 1, range: "(1..100)") {
 			state "doorbellTrack", action:"setDoorbellTrack"
-		}			
+		}
 		standardTile("playBeep", "device.tone", label: 'Beep', width: 2, height: 2) {
 			state "default", 
 			label:'Beep', 
@@ -128,102 +131,103 @@ metadata {
 		valueTile("beepTrack", "device.beepTrack", decoration: "flat", height:1, width:4) {
 			state "beepTrack", label: 'Beep Track: ${currentValue}'
 		}
-		controlTile("beepTrackSlider", "device.beepTrack", "slider", width: 4, height: 1, range: "(1..100)") {
+		controlTile("beepSlider", "device.beepTrack", "slider", width: 4, height: 1, range: "(1..100)") {
 			state "beepTrack", action:"setBeepTrack"
-		}		
+		}
 		standardTile("playAlarm", "device.alarm", label: 'Alarm', width: 2, height: 2) {
 			state "default", 
 			label:'Alarm', 
 			action: "both", 
 			icon:"st.alarm.alarm.alarm", 
 			backgroundColor: "#ff9999"
-		}		
+		}
 		valueTile("alarmTrack", "device.alarmTrack", decoration: "flat", height:1, width:4) {
 			state "alarmTrack", label: 'Alarm Track: ${currentValue}'
 		}
-		controlTile("alarmTrackSlider", "device.alarmTrack", "slider", width: 4, height: 1, range: "(1..100)") {
+		controlTile("alarmSlider", "device.alarmTrack", "slider", width: 4, height: 1, range: "(1..100)") {
 			state "alarmTrack", action:"setAlarmTrack"
-		}		
+		}
 		valueTile("battery", "device.battery", decoration: "flat", height:2, width:2) {
 			state "default", label: 'Battery\n${currentValue}%'
-		}	
+		}
 		main "status"
-		details(["status", "volume", "volumeSlider", "repeat", "repeatSlider", "playDoorbell", "doorbellTrack","doorbellTrackSlider",  "playBeep", "beepTrack", "beepTrackSlider", "playAlarm", "alarmTrack", "alarmTrackSlider", "battery"])
+		details(["status", "volume", "volumeSlider", "repeat", "repeatSlider", "playDoorbell", "doorbellTrack","doorbellSlider",  "playBeep", "beepTrack", "beepSlider", "playAlarm", "alarmTrack", "alarmSlider", "battery"])
 	}
 }
 
-// Stops the track that's playing and raises the events switch.off, alarm.off, status.off.
-def off() {		
-	return secureDelayBetween([
-		deviceNotificationTypeSetCommand(true),
+// Stops playing track and raises events switch.off, alarm.off, status.off
+def off() {
+	secureDelayBetween([
+		deviceNotifyTypeSetCmd(true),
 		zwave.basicV1.basicSet(value: 0x00)])
 }
 
-// Plays the doorbell track and raises the switch.on event.
+// Plays doorbellTrack and raises switch.on event
 def on() {
+	//[secureCommand(zwave.basicV1.basicSet(value: 0xFF))]
 	sendDoorbellEvents()
-	return secureDelayBetween([
-		deviceNotificationTypeSetCommand(false),
+	secureDelayBetween([
+		deviceNotifyTypeSetCmd(false),
 		zwave.basicV1.basicSet(value: 0xFF),
-		deviceNotificationTypeSetCommand(true)])		
+		deviceNotifyTypeSetCmd(true)])
 }
 
-// Plays the track specified in the Alarm Track Preference and raises the events alarm.both and status.alarm.
+// Plays alarmTrack and raises alarm.both and status.alarm events
 def strobe() {
 	both()
 }
 
-// Plays the track specified in the Alarm Track Preference and raises the events alarm.both and status.alarm.
+// Plays alarmTrack and raises alarm.both and status.alarm events
 def siren() {
 	both()
 }
 
-// Plays the track specified in the Alarm Track Preference and raises the events alarm.both and status.alarm.
-def both() {		
-	return playTrack(device.currentValue("alarmTrack"), "alarm", "Alarm Sounding!")	
+// Plays alarmTrack and raises alarm.both and status.alarm events
+def both() {
+	playTrack(getAttr("alarmTrack"), "alarm", "Alarm Sounding!")
 }
 
-// Plays the track specified in the Beep Track preference and raises the status.beep event.
-def beep() {	
-	playTrack(device.currentValue("beepTrack"), "beep", "Beeping!")
+// Plays beepTrack and raises status.beep event
+def beep() {
+	playTrack(getAttr("beepTrack"), "beep", "Beeping!")
 }
 
-// Plays the specified track and raises the event status.play.
+// Plays specified track and raises status.play event
 def playTrack(track) {
-	playTrack(track, "play", "Playing Track $track!")	
+	playTrack(track, "play", "Playing Track $track!")
 }
 
-// Plays the specified track and raises the specified status event with the specified description.
+// Plays specified track and raises specified status event
 def playTrack(track, status, desc) {
-	writeToDebugLog("$desc")
+	logDebug("$desc")
 	def descText = "${device.displayName} $desc"
-	
+
 	if (status == "alarm") {
-		sendEvent(name: "alarm", value: "both", descriptionText: descText)	
+		sendEvent(name: "alarm", value: "both", descriptionText: descText)
 	}
-	
+
 	sendEvent(name: "status", value: status, descriptionText: descText, isStateChange: true)
-					
-	track = validateTrackNumber(track)
-	return secureDelayBetween([
-		deviceNotificationTypeSetCommand(false),
-		playTrackCommand(track),
-		deviceNotificationTypeSetCommand(true)])	
+
+	track = validateTrack(track)
+	secureDelayBetween([
+		deviceNotifyTypeSetCmd(false),
+		configSetCmd(6, track),
+		deviceNotifyTypeSetCmd(true)])
 }
 
-// Handles the device reporting on and off.
-def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {			
-	if (cmd.value == 0) {		
-		return handleDeviceTurningOff()
+// Handles device reporting on and off
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
+	if (cmd.value == 0) {
+		handleDeviceTurningOff()
 	} 
-	else if (cmd.value == 255) {				
+	else if (cmd.value == 255) {
 		sendDoorbellEvents()
-	}	
+	}
 }
 
-// Raises events switch.off, alarm.off, and status.off.  
-def handleDeviceTurningOff() {		
-	return [	
+// Raises events switch.off, alarm.off, and status.off
+def handleDeviceTurningOff() {
+	[
 		createEvent(name:"status", value: "off", isStateChange: true),
 		createEvent(name:"alarm", value: "off", descriptionText: "$device.displayName alarm is off", isStateChange: true, displayed: false),
 		createEvent(name:"switch", value: "off", descriptionText: "$device.displayName switch is off", isStateChange: true, displayed: false)
@@ -231,270 +235,262 @@ def handleDeviceTurningOff() {
 }
 
 private sendDoorbellEvents() {
-	def desc = "Doorbell Ringing!"	
-	writeToDebugLog("$desc")	
-	sendEvent(name: "status", value: "doorbell", descriptionText: "${device.displayName} $desc", isStateChange: true)	
-	sendEvent(name: "switch", value: "on", displayed: false, isStateChange: true)	
+	def desc = "Doorbell Ringing!"
+	logDebug("$desc")
+	sendEvent(name: "status", value: "doorbell", descriptionText: "${device.displayName} $desc", isStateChange: true)
+	sendEvent(name: "switch", value: "on", displayed: false, isStateChange: true)
 }
 
-// Checks the battery level if it hasn't been checked recently.
+// Checks battery level if hasn't been checked recently
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
-	writeToDebugLog("WakeUpNotification: $cmd")
-	
+	logDebug("WakeUpNotification: $cmd")
+
 	def result = []
-	
 	result << createEvent(descriptionText: "${device.displayName} woke up", isStateChange: false)
 
-	// Only ask for battery if we haven't had a BatteryReport in 24 hours.
-	if (!state.lastBatteryReport || (new Date().time) - state.lastBatteryReport > 24*60*60*1000) {		
-		result << response(reportBatteryHealthCommand())
+	// Request every 24 hours
+	if (!state.lastBatteryReport || (new Date().time) - state.lastBatteryReport > 24*60*60*1000) {
+		result << response(batteryHealthGetCmd())
 		result << response("delay 1200")
 	}
-	result << response(zwave.wakeUpV1.wakeUpNoMoreInformation())	
-	return result
+	result << response(zwave.wakeUpV1.wakeUpNoMoreInformation())
+	result
 }
 
-// Raises the battery event with its level and writes it to the Info log.
+// Raises battery event and writes level to Info Log
 private batteryHealthReport(cmd) {
 	state.lastBatteryReport = new Date().time
-	
 	def batteryValue = (cmd.configurationValue == [0]) ? 100 : 1
 	def batteryLevel = (batteryValue == 100) ? "normal" : "low"
-			
-	sendEvent(name: "battery", value: batteryValue, unit: "%", descriptionText: "$batteryLevel", isStateChange: true)	
-	
-	writeToInfoLog("Battery: $batteryValue")
+
+	sendEvent(name: "battery", value: batteryValue, unit: "%", descriptionText: "$batteryLevel", isStateChange: true)
+	logInfo("Battery: $batteryValue")
 }
 
-// Writes configuration settings for a particular parameter to the Info log.
+// Writes parameter settings to Info Log
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {	 
-	def parameterName
+	def name
 	switch (cmd.parameterNumber) {
 		case 8:
-			parameterName = "Volume"
+			name = "Volume"
 			break
 		case 5:
-			parameterName = "Doorbell Track"
+			name = "Doorbell Track"
 			break
 		case 2:
-			parameterName = "Repeat Times"
+			name = "Repeat Times"
 			break
 		case 80:
-			parameterName = "Device Notification Type"
+			name = "Device Notification Type"
 			break
 		case 81:
-			parameterName = "Send Low Battery Notifications"
+			name = "Send Low Battery Notifications"
 			break
 		case 42:
-			parameterName = null
-			batteryHealthReport(cmd)			
+			name = null
+			batteryHealthReport(cmd)
 			break
-		default:	
-			parameterName = "Parameter #${cmd.parameterNumber}"
-	}		
-	if (parameterName) {
-		writeToInfoLog("${parameterName}: ${cmd.configurationValue}")
+		default:
+			name = "Parameter #${cmd.parameterNumber}"
+	}
+	if (name) {
+		logInfo("${name}: ${cmd.configurationValue}")
 	} 
 }
 
-// Writes any unexpected commands to the debug log.
+// Writes unexpected commands to debug log
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
-	writeToDebugLog("Unhandled: $cmd")
+	logDebug("Unhandled: $cmd")
 	createEvent(descriptionText: cmd.toString(), isStateChange: false)
 }
 
-// Parses the incoming message into commands and raises secureInclusion.failed event if the device did not pair securely.  
-def parse(String description) {	
+// Parses incoming message warns if not paired securely
+def parse(String description) {
 	def result = null
 	if (description.startsWith("Err 106")) {
-		def msg = "This sensor failed to complete the network security key exchange. If you are unable to control it via SmartThings, you must remove it from your network and add it again."
+		def msg = "This sensor failed to complete the network security key exchange. You may need to remove and re-add the device or disable Use Secure Commands in the settings"
 		log.warn "$msg"
-		result = createEvent( name: "secureInclusion", value: "failed", isStateChange: true, descriptionText: "$msg")		
+		result = createEvent( name: "secureInclusion", value: "failed", isStateChange: true, descriptionText: "$msg")
 	}
-	else if (description != "updated") {	
+	else if (description != "updated") {
 		def cmd = zwave.parse(description, [0x25: 1, 0x26: 1, 0x27: 1, 0x32: 3, 0x33: 3, 0x59: 1, 0x70: 1, 0x72: 2, 0x73: 1, 0x7A: 2, 0x82: 1, 0x85: 2, 0x86: 1])
-		if (cmd) {		
+		if (cmd) {
 			result = zwaveEvent(cmd)
 		} 
 		else {
-			writeToDebugLog("No Command: $cmd")
+			logDebug("No Command: $cmd")
 		}
 	}
 	else {
-		writeToDebugLog("Did Not Parse: $description")
+		logDebug("Did Not Parse: $description")
 	}
-	return result
+	result
 }
 
 // Unencapsulates the secure command.
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
-	def encapsulatedCommand = cmd.encapsulatedCommand([0x25: 1, 0x26: 1, 0x27: 1, 0x32: 3, 0x33: 3, 0x59: 1, 0x70: 1, 0x72: 2, 0x73: 1, 0x7A: 2, 0x82: 1, 0x85: 2, 0x86: 1])
-	if (encapsulatedCommand) {
-		zwaveEvent(encapsulatedCommand)
-	
+	def encapCmd = cmd.encapsulatedCommand([0x25: 1, 0x26: 1, 0x27: 1, 0x32: 3, 0x33: 3, 0x59: 1, 0x70: 1, 0x72: 2, 0x73: 1, 0x7A: 2, 0x82: 1, 0x85: 2, 0x86: 1])
+	if (encapCmd) {
+		zwaveEvent(encapCmd)
+
 	} else {
 		log.warn "Unable to extract encapsulated cmd from $cmd"
 		createEvent(descriptionText: cmd.toString())
 	}
 }
 
-// Initializes all state variables and sends the settings to the device.
-def updated() {	
-	return response(configure())
+// Sends configuration to device
+def updated() {
+	response(configure())
 }
 
-// Sends secure configuration to device.
+// Sends secure configuration to device
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
-	return response(configure())
+	 response(configure())
 }
 
-// Initializes all state variables and sends the settings to the device.
+// Initializes variables and sends settings to device
 def configure() {
-	log.debug "Configuration being sent to ${device.displayName}"
-	
-	state.debugOutput = validateBooleanPref(debugOutput)
-	state.useSecureCommands = validateBooleanPref(useSecureCommands)
-	
-	setDoorbellTrack(device.currentValue("doorbellTrack"))
-	setAlarmTrack(device.currentValue("alarmTrack"))
-	setBeepTrack(device.currentValue("beepTrack"))
-	setVolume(device.currentValue("volume"))
-	setRepeat(device.currentValue("repeat"))		
-			
-	def result = [
-		associationSetCommand(),
-		deviceNotificationTypeSetCommand(true),
-		sendLowBatteryNotificationsSetCommand(),	
-		reportDoorbellTrackCommand(),
-		reportRepeatCommand(),
-		reportVolumeCommand(),
-		reportBatteryHealthCommand()
-	]	
-	return secureDelayBetween(result)
+	log.debug "Sending configuration to ${device.displayName}"
+
+	state.debugOutput = validateBool(debugOutput)
+	state.useSecureCommands = validateBool(useSecureCommands)
+
+	setDoorbellTrack(getAttr("doorbellTrack"))
+	setAlarmTrack(getAttr("alarmTrack"))
+	setBeepTrack(getAttr("beepTrack"))
+	setVolume(getAttr("volume"))
+	setRepeat(getAttr("repeat"))
+
+	secureDelayBetween([
+		assocSetCmd(),
+		deviceNotifyTypeSetCmd(true),
+		sendLowBatterySetCmd(),
+		doorbellGetCmd(),
+		repeatGetCmd(),
+		volumeGetCmd(),
+		batteryHealthGetCmd()
+	])
 }
 
-// Sets the device's volume setting and attribute.
-def setVolume(volume) {	
-	volume = validateNumberRange(volume, 5, 1, 10)
-	sendEvent(name: "volume", value: "$volume", descriptionText: "${device.displayName} Volume is $volume", isStateChange: true)	
-	return [secureCommand(volumeSetCommand(volume))]	
+// Sets volume attribute and device setting
+def setVolume(volume) {
+	volume = validateRange(volume, 5, 1, 10)
+	sendAttrChangeEvent("volume", volume)
+	[secureCommand(configSetCmd(8, volume))]
 }
 
-// Sets the device's repeat setting and attribute.
+// Sets repeat attribute and device setting
 def setRepeat(repeat) {
-	repeat = validateNumberRange(repeat, 1, 1, 100)
-	sendEvent(name: "repeat", value: "$repeat", descriptionText: "${device.displayName} Repeat is $repeat", isStateChange: true)	
-	return [secureCommand(repeatSetCommand(repeat))]	
+	repeat = validateRange(repeat, 1, 1, 100)
+	sendAttrChangeEvent("repeat", repeat)
+	[secureCommand(configSetCmd(2, repeat))]
 }
 
-// Sets the device's doorbell track setting and attribute.
+// Sets doorbellTrack attribute and setting
 def setDoorbellTrack(track) {
-	track = validateTrackNumber(track)
-	sendEvent(name: "doorbellTrack", value: "$track", descriptionText: "${device.displayName} Doorbell Track is $track", displayed: false)	
-	return [secureCommand(doorbellTrackSetCommand(track))]	
+	track = validateTrack(track)
+	sendAttrChangeEvent("doorbellTrack", track)
+	[secureCommand(configSetCmd(5, track))]
 }
 
-// Sets the device's beep track attribute.
+// Sets beepTrack attribute
 def setBeepTrack(track) {
-	track = validateTrackNumber(track)
-	sendEvent(name: "beepTrack", value: "$track", descriptionText: "${device.displayName} Beep Track is $track", displayed: false)	
+	sendAttrChangeEvent("beepTrack", validateTrack(track))
 }
 
-// Sets the device's alarm track attribute.
+// Sets alarmTrack attribute
 def setAlarmTrack(track) {
-	track = validateTrackNumber(track)
-	sendEvent(name: "alarmTrack", value: "$track", descriptionText: "${device.displayName} Alarm Track is $track", displayed: false)	
+	sendAttrChangeEvent("alarmTrack", validateTrack(track))
 }
 
-int validateTrackNumber(track) {
-	validateNumberRange(track, 1, 1, 100)
+private sendAttrChangeEvent(attrName, attrVal) {
+	sendEvent(name: attrName, value: attrVal, descriptionText: "${device.displayName} $attrName set to $attrVal", displayed: false)
 }
 
-int validateNumberRange(value, defaultValue, minValue, maxValue) {
-	def result = value
-	if (!value) {
-		result = defaultValue
-	} else if (value > maxValue) {
-		result = maxValue
-	} else if (value < minValue) {
-		result = minValue
+int validateTrack(track) {
+	validateRange(track, 1, 1, 100)
+}
+
+int validateRange(val, defaultval, minVal, maxVal) {
+	def result = val
+	if (!val) {
+		result = defaultVal
+	} else if (val > maxVal) {
+		result = maxVal
+	} else if (val < minVal) {
+		result = minVal
 	} 
-	
-	if (result != value) {
-		writeToDebugLog("$value is invalid, defaulting to $result.")
+
+	if (result != val) {
+		logDebug("$val is invalid, defaulting to $result.")
 	}
 	result
 }
 
-private validateBooleanPref(pref) {
-	return (pref == true || pref == "true")	
+private validateBool(pref) {
+	(pref == true || pref == "true")
 }
 
-private reportBatteryHealthCommand() {
-	return zwave.configurationV1.configurationGet(parameterNumber: 42)
+private assocSetCmd() {
+	zwave.associationV1.associationSet(groupingIdentifier:1, nodeId:zwaveHubNodeId)
 }
 
-private associationSetCommand() {
-	return zwave.associationV1.associationSet(groupingIdentifier:1, nodeId:zwaveHubNodeId)
+private batteryHealthGetCmd() {
+	configGetCmd(42)
 }
 
-private deviceNotificationTypeSetCommand(reportNotifications) {
-	// Enable to send notifications to associated devices (Group 1) (0=nothing, 1=hail CC, 2=basic CC report)
-	def value = reportNotifications ? 2 : 0	
-	return zwave.configurationV1.configurationSet(parameterNumber: 80, size: 1, scaledConfigurationValue: value)
+private deviceNotifyTypeSetCmd(notify) {
+	// 0=nothing, 1=hail, 2=basic
+	configSetCmd(80, (notify ? 2 : 0))
 }
 
-private sendLowBatteryNotificationsSetCommand() {	
-	return zwave.configurationV1.configurationSet(parameterNumber: 81, size: 1, scaledConfigurationValue: 1)
+private sendLowBatterySetCmd() {
+	configSetCmd(81, 1)
 }
 
-private repeatSetCommand(repeat) {		
-	return zwave.configurationV1.configurationSet(parameterNumber: 2, size: 1, scaledConfigurationValue: repeat)
+private repeatGetCmd() {
+	configGetCmd(2)
 }
 
-private reportRepeatCommand() {
-	return zwave.configurationV1.configurationGet(parameterNumber: 2)	
+private doorbellGetCmd() {
+	configGetCmd(5)
 }
 
-private doorbellTrackSetCommand(track) {
-	return zwave.configurationV1.configurationSet(parameterNumber: 5, size: 1, scaledConfigurationValue: track)
+private volumeGetCmd() {
+	configGetCmd(8)
 }
 
-private reportDoorbellTrackCommand() {
-	return zwave.configurationV1.configurationGet(parameterNumber: 5)
+private configGetCmd(int paramNum) {
+	zwave.configurationV1.configurationGet(parameterNumber: paramNum)
+}
+private configSetCmd(int paramNum, int val) {
+	zwave.configurationV1.configurationSet(parameterNumber: paramNum, size: 1, scaledConfigurationValue: val)
 }
 
-private volumeSetCommand(volume) {	
-	return zwave.configurationV1.configurationSet(parameterNumber: 8, size: 1, scaledConfigurationValue: volume)	
+private getAttr(attrName) {
+	device.currentValue(attrName)
 }
 
-private reportVolumeCommand() {
-	return zwave.configurationV1.configurationGet(parameterNumber: 8)
-}
-
-private playTrackCommand(track) {	
-	return zwave.configurationV1.configurationSet(parameterNumber: 6, size: 1, scaledConfigurationValue: track)
-}
-
-private secureDelayBetween(commands, delay=100) {	
+private secureDelayBetween(commands, delay=100) {
 	delayBetween(commands.collect{ secureCommand(it) }, delay)
 }
 
-private secureCommand(physicalgraph.zwave.Command cmd) {		
-	if (state.useSecureCommands) {		
+private secureCommand(physicalgraph.zwave.Command cmd) {
+	if (state.useSecureCommands) {
 		zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
 	}
-	else {		
+	else {
 		cmd.format()
 	}
 }
 
-private writeToDebugLog(msg) {
+private logDebug(msg) {
 	if (state.debugOutput) {
 		log.debug "$msg"
-	}	
+	}
 }
 
-private writeToInfoLog(msg) {
+private logInfo(msg) {
 	log.info "${device.displayName} $msg"
 }
