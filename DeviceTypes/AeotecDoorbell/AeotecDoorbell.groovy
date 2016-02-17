@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell v 1.1
+ *  Aeotec Doorbell v 1.2
  *
  *  Capabilities:
  *					Switch, Alarm, Tone, Battery, Configuration
@@ -8,6 +8,9 @@
  *					Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *	1.2 (02/17/2016)
+ *		-	Fixed bug causing error on install.
  *
  *	1.1 (02/15/2016)
  *		-	Consolidated code.
@@ -412,7 +415,7 @@ int validateTrack(track) {
 	validateRange(track, 1, 1, 100)
 }
 
-int validateRange(val, defaultval, minVal, maxVal) {
+int validateRange(val, defaultVal, minVal, maxVal) {
 	def result = val
 	if (!val) {
 		result = defaultVal
