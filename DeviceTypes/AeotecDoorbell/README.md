@@ -1,4 +1,4 @@
-**Aeotec Doorbell v1.0**
+**Aeotec Doorbell v1.3**
 
 	* Pressing the Physical Doorbell Button executes the
 	  "on()" command, but due to the way the hardware functions,
