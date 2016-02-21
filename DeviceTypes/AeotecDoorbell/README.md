@@ -44,14 +44,16 @@
 	- Enable debug logging?
 	  (Enables the output in the live logging)
  
-	- Use Secure Commands?
-	  (This feature is untested, but it should allow
-	  you to still use the device if you were unable
-	  to connect using secure inclusion.)
- 
 -------------------------------------------------------
 
 **IMPORTANT INFORMATION**
+
+	* You may need to press the action button on the 
+	  device multiple times while pairing in order for
+	  it to pair securely.
+
+	* If the button isn't working, try pressing the volume
+	  up and down buttons at the same time.
 
 	* There is sometimes a 2-3 second delay before the
 	  track starts to play.  I'm still researching this
