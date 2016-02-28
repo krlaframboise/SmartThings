@@ -13,7 +13,7 @@ You can choose the sound and volume that the default Alarm should use and an opt
 
 If the specified Duration is greater than 0, the alarm will automatically turn off after that number of seconds.<br />
 <img width="200" src="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/DeviceTypes/AeonLabsMultifunctionSiren/AlarmSettings.png" />
-
+ 
 **Beep Settings**
 
 You can completely customize the default Beep sound and repetition, but it's limited to a maximum play time of 20 seconds.<br />
