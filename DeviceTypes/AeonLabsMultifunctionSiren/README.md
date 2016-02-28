@@ -32,5 +32,8 @@ The beep command is designed for short sounds that play or repeat for up to 20 s
 
 * customBeep\[1-6\]() - A command for each of the 6 custom beep buttons shown in the app.
 
-* customBeep(sound, volume, repeat, repeatDelay, beepLength) - Plays beep using specified settings.
-(repeat, repeatDelay, and beepLength are optional)
+* customBeep(sound, volume, repeat, repeatDelayMilliseconds, beepLengthMilliseconds) - Plays beep using specified settings.
+(repeat, repeatDelayMilliseconds, and beepLengthMilliseconds are optional)
+
+* startCustomBeep(beepEverySeconds, stopAfterSeconds, sound, volume, repeat, repeatDelayMilliseconds, beepLengthMilliseconds) - Uses specified schedule settings to play specified beep.
+(repeat, repeatDelayMilliseconds, and beepLengthMilliseconds are optional)
