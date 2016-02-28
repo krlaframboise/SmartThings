@@ -26,7 +26,13 @@ The beep command is designed for short sounds that play or repeat for up to 20 s
 
 **Rule Machine - Custom Commands**
 
+* off() - Turn off alarm or stop beep from repeating.
+
+* siren(), strobe(), both(), on() - Turn on default Alarm.
+
 * customAlarm(sound, volume, duration) - Plays specified sound at specified volume for specified duration.  (duration is optional)
+
+* beep() - Play default Beep.
 
 * startBeep() - Uses the schedule settings to repeatedly play the default beep.
 
