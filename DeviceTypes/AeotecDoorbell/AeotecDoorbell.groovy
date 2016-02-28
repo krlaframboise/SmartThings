@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell v 1.3
+ *  Aeotec Doorbell v 1.4
  *
  *  Capabilities:
  *					Switch, Alarm, Tone, Battery, Configuration, Refresh
@@ -9,13 +9,12 @@
  *
  *	Changelog:
  *
+ *	1.4 (02/28/2016)
+ *		- UI Enhancements and fixed fingerprint so that it doesn't conflict
+ *			with the Aeon Labs Multifunction Siren.
+ *
  *	1.3 (02/21/2016)
- *		-	Added left and right buttons next to sliders
- *			to make it easier to select specific track.
- *		- Added Refresh capability that send config to device
- *			and reloads attributes based on device config.
- *		- Removed Use Commands preference and made it automatic.
- *		- Minor UI bug fixes.
+ *		-	UI Enhancements/Fixes, added Refresh capability.
  *
  *	1.2 (02/17/2016)
  *		-	Fixed bug causing error on install.
@@ -67,7 +66,7 @@ metadata {
 		command "setRepeat", ["number"]
 		command "setVolume", ["number"]
 
-		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98"
+		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98,0x25,0x70,0x72,0x59,0x85,0x73,0x7A,0x5A", outClusters: "0x82"
 	}
 
 	simulator {
@@ -82,51 +81,17 @@ metadata {
 	}
 
 	tiles(scale: 2) {
-		standardTile("status", "device.status", label: '', width: 2, height: 2) {
-			state "off", 
-				label:'Off', 
-				action: "on", 
-				icon:"st.alarm.alarm.alarm", 
-				backgroundColor:"#ffffff"
-			state "doorbell", 
-				label:'Doorbell!', 
-				action: "off", 
-				icon:"st.Home.home30", 
-				backgroundColor:"#99c2ff"
-			state "alarm", 
-				label:'Alarm!', 
-				action: "off", 
-				icon:"st.alarm.alarm.alarm", 
-				backgroundColor:"#ff9999"
-			state "beep", 
-				label:'Beeping!', 
-				action: "off", 
-				icon:"st.Entertainment.entertainment2", 
-				backgroundColor:"#99FF99"
-			state "play", 
-				label:'Playing!', 
-				action: "off", 
-				icon:"st.Entertainment.entertainment2", 
-				backgroundColor:"#694489"
-		}
-		valueTile("volume", "device.volume", decoration: "flat", height:1, width:2) {
-			state "volume", label: 'Volume ${currentValue}'
-		}
-		controlTile("volumeSlider", "device.volume", "slider", height: 1, width: 2, range: "(1..10)") {
-			state "volume", action:"setVolume"
-		}
-		valueTile("repeat", "device.repeat", decoration: "flat", height:1, width:2) {
-			state "repeat", label: 'Repeat ${currentValue}'
-		}
-		controlTile("repeatSlider", "device.repeat", "slider", height: 1, width: 2, range: "(1..25)") {
-			state "repeat", action:"setRepeat"
-		}
-		standardTile("playDoorbell", "device.switch", label: 'Doorbell', width: 2, height: 2) {
+		standardTile("playDoorbell", "device.status", label: 'Doorbell', width: 2, height: 2) {
 			state "default", 
-			label:'Doorbell', 
-			action:"on", 
-			icon:"st.Home.home30", 
-			backgroundColor: "#99c2ff"
+				label:'Doorbell', 
+				action:"on", 
+				icon:"st.Home.home30", 
+				backgroundColor: "#99c2ff"
+			state "doorbell",
+				label:'Ringing',
+				action:"off",
+				icon:"",
+				background: "#ffffff"				
 		}
 		valueTile("doorbellTrack", "device.doorbellTrack", decoration: "flat", width:4, height: 1) {
 			state "doorbellTrack", label: 'Doorbell Track: ${currentValue}'
@@ -145,12 +110,17 @@ metadata {
 			action:"doorbellUp",
 			icon: ""
 		}
-		standardTile("playBeep", "device.tone", label: 'Beep', width: 2, height: 2) {
+		standardTile("playBeep", "device.status", label: 'Beep', width: 2, height: 2) {
 			state "default", 
-			label:'Beep', 
-			action:"beep", 
-			icon:"st.Entertainment.entertainment2", 
-			backgroundColor: "#99FF99"
+				label:'Beep', 
+				action:"beep", 
+				icon:"st.Entertainment.entertainment2", 
+				backgroundColor: "#99FF99"
+			state "beep", 
+				label:'Beeping', 
+				action:"off", 
+				icon:"", 
+				backgroundColor: "#ffffff"
 		}		
 		valueTile("beepTrack", "device.beepTrack", decoration: "flat", height:1, width:4) {
 			state "beepTrack", label: 'Beep Track: ${currentValue}'
@@ -171,10 +141,15 @@ metadata {
 		}
 		standardTile("playAlarm", "device.alarm", label: 'Alarm', width: 2, height: 2) {
 			state "default", 
-			label:'Alarm', 
-			action: "both", 
-			icon:"st.alarm.alarm.alarm", 
-			backgroundColor: "#ff9999"
+				label:'Alarm', 
+				action: "both", 
+				icon:"st.alarm.alarm.alarm", 
+				backgroundColor: "#ff9999"
+			state "both", 
+				label:'Sounding', 
+				action: "off", 
+				icon:"", 
+				backgroundColor: "#ffffff"
 		}
 		valueTile("alarmTrack", "device.alarmTrack", decoration: "flat", height:1, width:4) {
 			state "alarmTrack", label: 'Alarm Track: ${currentValue}'
@@ -193,14 +168,26 @@ metadata {
 			action:"alarmUp",
 			icon: ""
 		}
+		valueTile("volume", "device.volume", decoration: "flat", height:1, width:2) {
+			state "volume", label: 'Volume ${currentValue}'
+		}
+		controlTile("volumeSlider", "device.volume", "slider", height: 1, width: 4, range: "(1..10)") {
+			state "volume", action:"setVolume"
+		}
+		valueTile("repeat", "device.repeat", decoration: "flat", height:1, width:2) {
+			state "repeat", label: 'Repeat ${currentValue}'
+		}
+		controlTile("repeatSlider", "device.repeat", "slider", height: 1, width: 4, range: "(1..25)") {
+			state "repeat", action:"setRepeat"
+		}
 		valueTile("battery", "device.battery", decoration: "flat", height:2, width:2) {
 			state "default", label: 'Battery\n${currentValue}%'
 		}
 		standardTile("refresh", "device.refresh", label: 'Refresh', width: 2, height: 2) {
 			state "default", label:'', action: "refresh", icon:"st.secondary.refresh"
-		}
-		main "status"
-		details(["status", "volume", "volumeSlider", "repeat", "repeatSlider", "playDoorbell", "doorbellTrack","doorbellTrackDown", "doorbellSlider",  "doorbellTrackUp", "playBeep", "beepTrack", "beepTrackDown", "beepSlider", "beepTrackUp", "playAlarm", "alarmTrack", "alarmTrackDown", "alarmSlider", "alarmTrackUp", "battery", "refresh"])
+		}		
+		main "playDoorbell"
+		details(["playDoorbell", "doorbellTrack","doorbellTrackDown", "doorbellSlider",  "doorbellTrackUp", "playBeep", "beepTrack", "beepTrackDown", "beepSlider", "beepTrackUp", "playAlarm", "alarmTrack", "alarmTrackDown", "alarmSlider", "alarmTrackUp", "volume", "volumeSlider", "repeat", "repeatSlider", "battery", "refresh"])
 	}
 }
 
