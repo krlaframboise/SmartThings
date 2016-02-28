@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.6
+ *  Aeon Labs Multifunction Doorbell v 1.7
  *
  *  Capabilities:
  *					Switch, Alarm, Music Player, Tone,
@@ -10,6 +10,10 @@
  *					(Based off of the "Aeon Doorbell" device type)
  *
  *	Changelog:
+ *
+ *	1.7 (02/28/2016)
+ *		- Fixed fingerprint so that it doesn't conflict
+ *			with the Aeon Labs Multifunction Siren.
  *
  *	1.6 (02/11/2016)
  *		- Added association set command which has already
@@ -88,7 +92,7 @@ metadata {
 		
 		command "pushButton"
 		
-		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98"
+		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98,0x25,0x70,0x72,0x59,0x85,0x73,0x7A,0x5A", outClusters: "0x82"
 	}
 
 	simulator {
