@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.8
+ *  Aeon Labs Multifunction Doorbell v 1.8.1
  *
  *  Capabilities:
  *					Switch, Alarm, Music Player, Tone,
@@ -11,10 +11,11 @@
  *
  *	Changelog:
  *
- *	1.8 (02/29/2016)
+ *	1.8.1 (02/29/2016)
  *		- Added track number support for SHM - Audio Notifications, 
  *			Speaker Notify with Sound - Custom Message, and
  *			Rule Machine - Speak Message on Music Device.
+ *		- Made TTS functionality accept track numbers and commands.
  *
  *	1.7 (02/28/2016)
  *		- Fixed fingerprint so that it doesn't conflict
@@ -217,10 +218,6 @@ def beep() {
 	playTrack(state.toneTrack, "beep", "Beeping!")
 }
 
-def speak(text) {
-	playTrack(text)
-}
-
 // Music Player Commands
 def mute() { handleUnsupportedCommand("mute") }
 def unmute() { handleUnsupportedCommand("unmute") }
@@ -228,23 +225,60 @@ def resumeTrack(map) { handleUnsupportedCommand("resumeTrack") }
 def restoreTrack(map) { handleUnsupportedCommand("restoreTrack") }
 
 // Commands necessary for SHM, Notify w/ Sound, and Rule Machine TTS functionality.
-def playSoundAndTrack(trackNumber, other, other2, other3) {
-	playTrackAndResume(trackNumber, other, other2)
+def playSoundAndTrack(track, other, other2, other3) {
+	playTrackAndResume(track, other, other2)
 }
-def playTrackAndRestore(trackNumber, other, other2) {
-	playTrackAndResume(trackNumber, other, other2)
+
+def playTrackAndRestore(track, other, other2) {
+	playTrackAndResume(track, other, other2)
 }
-def playTrackAndResume(trackNumber, other, other2) {
-	playTrack(validateTextToSpeachTrackNumber(trackNumber))
+
+def playTrackAndResume(track, other, other2) {
+	def text = getTextFromTTSUrl(track)
+	playText(!text ? track : text)	
 }
+
+def getTextFromTTSUrl(ttsUrl) {
+	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
+	if (ttsUrl?.toString()?.toLowerCase()?.contains(urlPrefix)) {
+		return ttsUrl.replace(urlPrefix,"").replace(".mp3","")
+	}
+	return null
+}
+
 def playTextAndResume(trackNumber, other) {
 	playText(trackNumber)
 }
 def playTextAndRestore(trackNumber, other) {
 	playText(trackNumber)
 }
-def playText(text) { 
-	playTrack(text)
+def playText(text) {
+	def cmds = []
+	if (isNumeric(text)) {
+		cmds += playTrack(text)
+	}
+	else {
+		switch (text?.toLowerCase()) {
+			case "beep":
+				cmds += beep()
+				break
+			case "pushbutton":
+				cmds += pushButton()
+				break
+			case ["siren", "strobe", "both", "on"]:
+				cmds += both()
+				break
+			case ["stop", "off"]:
+				cmds += off()
+				break
+			case "play":
+				cmds += play()
+				break
+			default:
+				writeToDebugLog "'$text' is not a valid command or track number."
+		}
+	}
+	return cmds
 }
 
 def previousTrack() {	
@@ -551,6 +585,7 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 
 def updated() {
 	if (!isDuplicateCall(state.lastUpdated, 1)) {
+		
 		state.lastUpdated = new Date().time		
 		return response(configure())
 	}
@@ -664,7 +699,7 @@ private initializePreferences() {
 	state.soundLevel = validateSoundLevel(soundLevel)
 	state.soundRepeat = validateSoundRepeat(soundRepeat)	
 	state.logConfiguration = validateBooleanPref(logConfiguration)
-	state.silentButton = validateBooleanPref(silentButton)
+	state.silentButton = validateBooleanPref(silentButton, false)
 	state.debugOutput = validateBooleanPref(debugOutput)
 	state.useSecureCommands = validateBooleanPref(useSecureCommands)
 }
@@ -675,14 +710,6 @@ int validateSoundRepeat(soundRepeat) {
 
 int validateSoundLevel(soundLevel) {
 	validateNumberRange(soundLevel, 5, 0, 10)
-}
-
-int validateTextToSpeachTrackNumber(track) {
-	def ttsUrl = "https://s3.amazonaws.com/smartapp-media/tts/"
-	if (track?.toString()?.contains(ttsUrl)) {
-		track = track.replace(ttsUrl,"").replace(".mp3","")
-	} 	
-	return validateTrackNumber(track)
 }
 
 int validateTrackNumber(track) {
@@ -716,8 +743,13 @@ int maxTrack() {
 	return 100
 }
 
-private validateBooleanPref(pref) {
-	return (pref == true || pref == "true")	
+private validateBooleanPref(pref, defaultVal=true) {
+	if (pref == null) {
+		return defaultVal
+	}
+	else {
+		return (pref == true || pref == "true")
+	}
 }
 
 
