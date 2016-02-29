@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.7
+ *  Aeon Labs Multifunction Doorbell v 1.8
  *
  *  Capabilities:
  *					Switch, Alarm, Music Player, Tone,
@@ -10,6 +10,11 @@
  *					(Based off of the "Aeon Doorbell" device type)
  *
  *	Changelog:
+ *
+ *	1.8 (02/29/2016)
+ *		- Added track number support for SHM - Audio Notifications, 
+ *			Speaker Notify with Sound - Custom Message, and
+ *			Rule Machine - Speak Message on Music Device.
  *
  *	1.7 (02/28/2016)
  *		- Fixed fingerprint so that it doesn't conflict
@@ -92,6 +97,13 @@ metadata {
 		
 		command "pushButton"
 		
+		// Music and Sonos Related Commands
+		command "playSoundAndTrack"
+		command "playTrackAndRestore"
+		command "playTrackAndResume"
+		command "playTextAndResume"
+		command "playTextAndRestore"
+				
 		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98,0x25,0x70,0x72,0x59,0x85,0x73,0x7A,0x5A", outClusters: "0x82"
 	}
 
@@ -205,13 +217,35 @@ def beep() {
 	playTrack(state.toneTrack, "beep", "Beeping!")
 }
 
+def speak(text) {
+	playTrack(text)
+}
 
 // Music Player Commands
-def playText(text) { handleUnsupportedCommand("playText") }
 def mute() { handleUnsupportedCommand("mute") }
 def unmute() { handleUnsupportedCommand("unmute") }
 def resumeTrack(map) { handleUnsupportedCommand("resumeTrack") }
 def restoreTrack(map) { handleUnsupportedCommand("restoreTrack") }
+
+// Commands necessary for SHM, Notify w/ Sound, and Rule Machine TTS functionality.
+def playSoundAndTrack(trackNumber, other, other2, other3) {
+	playTrackAndResume(trackNumber, other, other2)
+}
+def playTrackAndRestore(trackNumber, other, other2) {
+	playTrackAndResume(trackNumber, other, other2)
+}
+def playTrackAndResume(trackNumber, other, other2) {
+	playTrack(validateTextToSpeachTrackNumber(trackNumber))
+}
+def playTextAndResume(trackNumber, other) {
+	playText(trackNumber)
+}
+def playTextAndRestore(trackNumber, other) {
+	playText(trackNumber)
+}
+def playText(text) { 
+	playTrack(text)
+}
 
 def previousTrack() {	
 	def newTrack = (validateTrackNumber(state.currentTrack) - 1)
@@ -643,24 +677,35 @@ int validateSoundLevel(soundLevel) {
 	validateNumberRange(soundLevel, 5, 0, 10)
 }
 
+int validateTextToSpeachTrackNumber(track) {
+	def ttsUrl = "https://s3.amazonaws.com/smartapp-media/tts/"
+	if (track?.toString()?.contains(ttsUrl)) {
+		track = track.replace(ttsUrl,"").replace(".mp3","")
+	} 	
+	return validateTrackNumber(track)
+}
+
 int validateTrackNumber(track) {
 	validateNumberRange(track, 2, minTrack(), maxTrack())
 }
 
-int validateNumberRange(value, defaultValue, minValue, maxValue) {
-	def result = value
-	if (!value) {
-		result = defaultValue
-	} else if (value > maxValue) {
+int validateNumberRange(value, defaultValue, minValue, maxValue) {	
+	def intValue = isNumeric(value) ? value.toInteger() : defaultValue
+	def result = intValue
+	if (intValue > maxValue) {
 		result = maxValue
-	} else if (value < minValue) {
+	} else if (intValue < minValue) {
 		result = minValue
 	} 
 	
-	if (result != value) {
+	if (result != intValue) {
 		writeToDebugLog("$value is invalid, defaulting to $result.")
 	}
 	result
+}
+
+private isNumeric(val) {
+	return val?.toString()?.isNumber()
 }
 
 int minTrack() {
