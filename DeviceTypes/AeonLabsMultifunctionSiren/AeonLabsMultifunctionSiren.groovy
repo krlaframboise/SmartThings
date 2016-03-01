@@ -1,5 +1,5 @@
 /**
- *  Aeoc Labs Multifunction Siren v 1.2
+ *  Aeoc Labs Multifunction Siren v 1.2.1
  *
  *  Capabilities:
  *					Switch, Alarm, Tone, Music Player
@@ -14,6 +14,7 @@
  *		-	Added Music Player capability.
  *		-	Added TTS command support so that it can be used
  *			with SHM, Notify with Sound, and Rule Machine
+ *		- Added alarm delay feature.
  *
  *	1.1 (02/28/2016)
  *		-	Logging Enhancements.
@@ -39,9 +40,10 @@ metadata {
 	capability "Configuration"
 	capability "Music Player"
 
-	attribute "status", "enum", ["off", "alarm", "customAlarm", "beep", "beepSchedule", "customBeep", "customBeepSchedule"]
+	attribute "status", "enum", ["off", "alarm", "customAlarm", "delayedAlarm", "beep", "beepSchedule", "customBeep", "customBeepSchedule"]
 
 	command "customAlarm", ["number", "number", "number"]
+	command "delayedAlarm", ["number", "number", "number", "number"]
 	command "customBeep", ["number", "number", "number", "number", "number"]
 	command "startBeep"
 	command "startCustomBeep", ["number", "number", "number", "number", "number", "number", "number"]
@@ -137,6 +139,7 @@ metadata {
 				attributeState "off", label:'off', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
 				attributeState "alarm", label:'Alarm Sounding!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
 				attributeState "customAlarm", label:'Custom Alarm Sounding!', action: "off", icon:"", backgroundColor:"#ff9999"
+				attributeState "delayedAlarm", label:'Delayed Alarm Active!', action: "off", icon:"", backgroundColor:"#ff9999"
 				attributeState "beep", label:'Beeping!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#99FF99"
 				attributeState "beepSchedule", label:'Scheduled\nBeeping!', action: "off", icon:"", backgroundColor:"#99FF99"
 				attributeState "customBeep", label:'Custom Beeping!', action: "off", icon:"", backgroundColor:"#694489"
@@ -256,7 +259,7 @@ def playText(text) {
 			}
 	}
 	if (!cmds) {
-		writeToDebugLog "'$text' is not a valid command."
+		logDebug "'$text' is not a valid command."
 	}
 	else {
 		return cmds
@@ -264,9 +267,9 @@ def playText(text) {
 }
 
 def handleComplexCommand(text) {	
-	if (text.startsWith("customalarm")) {
-		text = text.replace("customalarm_", "").replace("customalarm", "")		
-	}	
+	text = removeCmdPrefix(text, "customalarm")
+	text = removeCmdPrefix(text, "delayedalarm")
+	
 	def args = text.tokenize("_")
 	def cmds = []
 	switch (args.size()) {
@@ -275,6 +278,13 @@ def handleComplexCommand(text) {
 				args[0],
 				args[1],
 				args[2])
+			break
+		case 4:
+			cmds += delayedAlarm(
+				args[0],
+				args[1],
+				args[2],
+				args[3])
 			break
 		case 5:
 			cmds += customBeep(
@@ -296,6 +306,15 @@ def handleComplexCommand(text) {
 			break
 	}	
 	return cmds
+}
+
+private removeCmdPrefix(text, prefix) {
+	if (text.startsWith(prefix)) {
+		return text.replace("$prefix_", "").replace(prefix, "")
+	}
+	else {
+		return text
+	}
 }
 
 // Turns on siren and strobe
@@ -354,6 +373,24 @@ def customAlarm(sound, volume, duration) {
 	}
 
 	return cmds
+}
+
+def delayedAlarm(sound, volume, duration, delay) {
+	state.currentStatus = "delayedAlarm"
+	sendCurrentStatusEvent()
+	
+	state.scheduledAlarm = [
+		"sound": sound,
+		"volume": volume,
+		"duration": duration
+	]
+	delay = validateRange(delay, 3, 1, Integer.MAX_VALUE, "delay")
+	
+	logDebug "Delayed Alarm Active [sound: $sound, volume: $volume, duration: $duration, delay: $delay]"
+	[
+		"delay ${delay * 1000}",
+		secureCmd(zwave.basicV1.basicGet())
+	]
 }
 
 // Plays the default beep.
@@ -416,7 +453,7 @@ def startBeep() {
 }
 
 // Repeatedly plays specified beep at specified in specified intervals.
-def startCustomBeep(beepEverySeconds, stopAfterSeconds, sound, volume, repeat=1, repeatDelayMS=1000, beepLengthMS=100) {
+def startCustomBeep(beepEverySeconds, stopAfterSeconds, sound, volume, repeat=1, repeatDelayMS=1000, beepLengthMS=100) {	
 	state.beepSchedule = [
 		"startTime": (new Date().time),
 		"beepEvery": validateBeepEvery(beepEverySeconds),
@@ -616,7 +653,7 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 		if (isBeepScheduleStatus(state.currentStatus)) {
 			handleScheduleStop()
 		}
-		
+				
 		def alarmActive = (state.currentStatus == "alarm")
 		state.currentStatus = "off"
 		[
@@ -647,6 +684,17 @@ private createOffEvent(eventName, displayEvent) {
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	if (isBeepScheduleStatus(state.currentStatus)) {
 		return [response(scheduledCustomBeep())]
+	}
+	else if (state.currentStatus == "delayedAlarm") {
+		def sound = state.scheduledAlarm?.sound
+		def volume = state.scheduledAlarm?.volume
+		def duration = state.scheduledAlarm?.duration
+		state.scheduledAlarm = null
+		return [response(customAlarm(sound, volume, duration))]
+	}
+	else if (state.scheduledAlarm) {
+		state.scheduledAlarm = null
+		logDebug "Delayed Alarm Cancelled"
 	}
 }
 
