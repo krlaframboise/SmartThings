@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 **Aeon Labs Multifunction Siren**
 
 This is a new device handler for the Aeon Labs Siren that provides a lot of new functionality.  I've included some screenshots below, but the full specifications will be posted separately.
@@ -67,3 +68,6 @@ The **customBeep** command can be used by entering the 5 parameters without any 
     
 The **startCustomBeep** command can be used by entering the 7 parameters without any text.  The command below performs the customBeep mentioned above at 10 second intervals for 1 minute.<br />
     **10, 60, 3, 2, 5, 1000, 50**
+=======
+
+>>>>>>> origin/master
