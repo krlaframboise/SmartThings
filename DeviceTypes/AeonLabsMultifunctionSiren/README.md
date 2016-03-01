@@ -1,4 +1,4 @@
-**Aeon Labs Multifunction Siren v 1.0**
+**Aeon Labs Multifunction Siren**
 
 This is a new device handler for the Aeon Labs Siren that provides a lot of new functionality.  I've included some screenshots below, but the full specifications will be posted separately.
 
@@ -23,23 +23,47 @@ You can completely customize the default Beep sound and repetition, but it's lim
 
 The beep command is designed for short sounds that play or repeat for up to 20 seconds, but the Beep Schedule settings allow you to play the beep at set intervals for a specific amount of time.<br />
 <img width="200" src="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/DeviceTypes/AeonLabsMultifunctionSiren/BeepScheduleSettings.png" />
+<hr />
+This DH supports the Music Player capability which allows you to use custom sirens and beeps with the SmartApps **Smart Home Monitor** and **Notify with Sound**.  
 
-**Rule Machine - Custom Commands**
+Rule Machine is no longer required to utilize all the functionality of this Device Handler, but if you're using Rule Machine, you can now use all the commands without setting them up as Custom Commands.
 
-* off() - Turn off alarm or stop beep from repeating.
+Here's an overview of how you can use these features in the 3 SmartApps mentioned.
 
-* siren(), strobe(), both(), on() - Turn on default Alarm.
+**Smart Home Monitor**
+The Custom Monitoring section of SHM supports Audio Notifications and if you choose "Custom Message" for the Notification, you can specify the command to execute in the "Play this message" field.
 
-* customAlarm(sound, volume, duration) - Plays specified sound at specified volume for specified duration.  (duration is optional)
+**Speaker Notify with Sound**
+You can setup a Custom Message action and specify the command to execute in the "Play this message" field.
 
-* beep() - Play default Beep.
+**Rule Machine**
+You can use the "Send or speak a message" action to execute the command.  You do this by entering the command in the "Custom message to send" field, enabling the "Speak this message?" option, and choosing the siren for the "On this music device" field.
 
-* startBeep() - Uses the schedule settings to repeatedly play the default beep.
+**Supported Commands**
 
-* customBeep\[1-6\]() - A command for each of the 6 custom beep buttons shown in the app.
+You can execute any of these commands by entering them exactly as shown into one of the fields described above:
 
-* customBeep(sound, volume, repeat, repeatDelayMilliseconds, beepLengthMilliseconds) - Plays beep using specified settings.
-(repeat, repeatDelayMilliseconds, and beepLengthMilliseconds are optional)
+off
+stop
+on
+play
+siren
+strobe
+both
+beep
+startBeep
+customBeep1
+customBeep2
+customBeep3
+customBeep4
+customBeep5
+customBeep6
 
-* startCustomBeep(beepEverySeconds, stopAfterSeconds, sound, volume, repeat, repeatDelayMilliseconds, beepLengthMilliseconds) - Uses specified schedule settings to play specified beep.
-(repeat, repeatDelayMilliseconds, and beepLengthMilliseconds are optional)
+The **customAlarm** command can be used by entering "customAlarm sound, volume, duration".  The command below will play sound 5 at volume 1 for 60 seconds.
+    **customAlarm 5, 1, 60**
+
+The **customBeep** command can be used by entering the 5 parameters without any text.  The command below will play a 50 millisecond beep using sound 3 at volume 2 and it will do this 5 times with a 1 second pause between each beep.
+    **3, 2, 5, 1000, 50**
+    
+The **startCustomBeep** command can be used by entering the 7 parameters without any text.  The command below performs the customBeep mentioned above at 10 second intervals for 1 minute.
+    **10, 60, 3, 2, 5, 1000, 50**
