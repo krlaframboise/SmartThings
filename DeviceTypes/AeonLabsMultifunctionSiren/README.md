@@ -43,27 +43,27 @@ You can use the "Send or speak a message" action to execute the command.  You do
 
 You can execute any of these commands by entering them exactly as shown into one of the fields described above:
 
-off
-stop
-on
-play
-siren
-strobe
-both
-beep
-startBeep
-customBeep1
-customBeep2
-customBeep3
-customBeep4
-customBeep5
+off<br />
+stop<br />
+on<br />
+play<br />
+siren<br />
+strobe<br />
+both<br />
+beep<br />
+startBeep<br />
+customBeep1<br />
+customBeep2<br />
+customBeep3<br />
+customBeep4<br />
+customBeep5<br />
 customBeep6
 
-The **customAlarm** command can be used by entering "customAlarm sound, volume, duration".  The command below will play sound 5 at volume 1 for 60 seconds.
+The **customAlarm** command can be used by entering "customAlarm sound, volume, duration".  The command below will play sound 5 at volume 1 for 60 seconds.<br />
     **customAlarm 5, 1, 60**
 
-The **customBeep** command can be used by entering the 5 parameters without any text.  The command below will play a 50 millisecond beep using sound 3 at volume 2 and it will do this 5 times with a 1 second pause between each beep.
+The **customBeep** command can be used by entering the 5 parameters without any text.  The command below will play a 50 millisecond beep using sound 3 at volume 2 and it will do this 5 times with a 1 second pause between each beep.<br />
     **3, 2, 5, 1000, 50**
     
-The **startCustomBeep** command can be used by entering the 7 parameters without any text.  The command below performs the customBeep mentioned above at 10 second intervals for 1 minute.
+The **startCustomBeep** command can be used by entering the 7 parameters without any text.  The command below performs the customBeep mentioned above at 10 second intervals for 1 minute.<br />
     **10, 60, 3, 2, 5, 1000, 50**
