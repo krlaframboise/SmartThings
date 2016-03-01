@@ -1,13 +1,19 @@
 /**
- *  Aeoc Labs Multifunction Siren v 1.1
+ *  Aeoc Labs Multifunction Siren v 1.2
  *
  *  Capabilities:
- *					Switch, Alarm, Tone
+ *					Switch, Alarm, Tone, Music Player
  *
  *	Author: 
  *					Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *	1.2 (02/29/2016)
+ *		-	Fixed IOS UI issue with beep buttons.
+ *		-	Added Music Player capability.
+ *		-	Added TTS command support so that it can be used
+ *			with SHM, Notify with Sound, and Rule Machine
  *
  *	1.1 (02/28/2016)
  *		-	Logging Enhancements.
@@ -31,6 +37,7 @@ metadata {
 	capability "Alarm"
 	capability "Tone"
 	capability "Configuration"
+	capability "Music Player"
 
 	attribute "status", "enum", ["off", "alarm", "customAlarm", "beep", "beepSchedule", "customBeep", "customBeepSchedule"]
 
@@ -45,6 +52,13 @@ metadata {
 	command "customBeep4"
 	command "customBeep5"
 	command "customBeep6"
+	
+	// Music and Sonos Related Commands
+	command "playSoundAndTrack"
+	command "playTrackAndRestore"
+	command "playTrackAndResume"
+	command "playTextAndResume"
+	command "playTextAndRestore"
 
 	fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98,0x25,0x70,0x85,0x59,0x72,0x2B,0x2C,0x86,0x7A,0x73", outClusters: "0x5A,0x82"
  }
@@ -137,30 +151,151 @@ metadata {
 			state "default", label:'Beep', action:"beep", icon:"st.Entertainment.entertainment2", backgroundColor: "#99FF99"
 		}
 		valueTile("playBeepSchedule", "device.status", label: 'Scheduled Beep', width: 2, height: 2) {
-			state "default", label:'Scheduled\nBeep', action:"startBeep",backgroundColor: "#99FF99"
-			state "beepSchedule", label:'Stop Schedule', action:"off", icon: "", backgroundColor: "#ffffff"
+			state "default", label:'Start\nBeep', action:"startBeep",backgroundColor: "#99FF99"
+			state "beepSchedule", label:'Stop\nBeep', action:"off", icon: "", backgroundColor: "#ffffff"
 		}
 		valueTile("playCustomBeep1", "device.status", label: 'Custom Beep 1', width: 2, height: 2, wordWrap: true) {
-			state "default", label:'Custom\nBeep 1', action:"customBeep1",backgroundColor: "#694489"
+			state "default", label:'Beep\n1', action:"customBeep1",backgroundColor: "#694489"
 		}
 		valueTile("playCustomBeep2", "device.status", label: 'Custom Beep 2', width: 2, height: 2, wordWrap: true) {
-			state "default", label:'Custom\nBeep 2', action:"customBeep2",backgroundColor: "#694489"
+			state "default", label:'Beep\n2', action:"customBeep2",backgroundColor: "#694489"
 		}
 		valueTile("playCustomBeep3", "device.status", label: 'Custom Beep 3', width: 2, height: 2, wordWrap: true) {
-			state "default", label:'Custom\nBeep 3', action:"customBeep3",backgroundColor: "#694489"
+			state "default", label:'Beep\n3', action:"customBeep3",backgroundColor: "#694489"
 		}
 		valueTile("playCustomBeep4", "device.status", label: 'Custom Beep 4', width: 2, height: 2, wordWrap: true) {
-			state "default", label:'Custom\nBeep 4', action:"customBeep4",backgroundColor: "#694489"
+			state "default", label:'Beep\n4', action:"customBeep4",backgroundColor: "#694489"
 		}
 		valueTile("playCustomBeep5", "device.status", label: 'Custom Beep 5', width: 2, height: 2, wordWrap: true) {
-			state "default", label:'Custom\nBeep 5', action:"customBeep5",backgroundColor: "#694489"
+			state "default", label:'Beep\n5', action:"customBeep5",backgroundColor: "#694489"
 		}
 		valueTile("playCustomBeep6", "device.status", label: 'Custom Beep 6', width: 2, height: 2, wordWrap: true) {
-			state "default", label:'Custom\nBeep 6', action:"customBeep6",backgroundColor: "#694489"
+			state "default", label:'Beep\n6', action:"customBeep6",backgroundColor: "#694489"
 		}
 		main "status"
 		details(["status", "playAlarm", "playBeep", "playBeepSchedule", "playCustomBeep1", "playCustomBeep2", "playCustomBeep3", "playCustomBeep4", "playCustomBeep5", "playCustomBeep6"])
 	}
+}
+
+// Unsuported Music Player commands
+def unmute() { handleUnsupportedCommand("unmute") }
+def resumeTrack(map) { handleUnsupportedCommand("resumeTrack") }
+def restoreTrack(map) { handleUnsupportedCommand("restoreTrack") }
+def nextTrack() { handleUnsupportedCommand("nextTrack") }
+def setLevel(number) { handleUnsupportedCommand("setLevel") }
+def previousTrack() { handleUnsupportedCommand("previousTrack") }
+def setTrack(string) { handleUnsupportedCommand("setTrack") }
+
+// Turns siren off
+def pause() { off() }
+def stop() { off() }
+def mute() { off() }
+
+// Turns siren on
+def play() { both() }
+
+// Commands necessary for SHM, Notify w/ Sound, and Rule Machine TTS functionality.
+def playSoundAndTrack(text, other, other2, other3) {
+	playTrackAndResume(text, other, other2) 
+}
+def playTrackAndRestore(text, other, other2) {
+	playTrackAndResume(text, other, other2) 
+}
+def playTrackAndResume(text, other, other2) {
+	playText(getTextFromTTSUrl(text))
+}
+def getTextFromTTSUrl(ttsUrl) {
+	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
+	if (ttsUrl?.toString()?.toLowerCase()?.contains(urlPrefix)) {
+		return ttsUrl.replace(urlPrefix,"").replace(".mp3","")
+	}
+	return ttsUrl
+}
+
+def playTextAndResume(text, other) { playText(text) }
+def playTextAndRestore(text, other) { playText(text) }
+def playTrack(text) { playText(text) }
+
+def playText(text) {
+	text = text?.toLowerCase()?.replace(",", "_")?.replace(" ", "")
+	def cmds
+	switch (text) {
+		case ["siren", "strobe", "both", "on", "play"]:
+			cmds = both()
+			break
+		case ["stop", "off", "pause", "mute"]:
+			cmds = off()
+			break
+		case "beep":
+			cmds = beep()
+			break
+		case "startbeep":
+			cmds = startBeep()
+			break			
+		case "custombeep1":
+			cmds = customBeep1()
+			break
+		case "custombeep2":
+			cmds = customBeep2()
+			break
+		case "custombeep3":
+			cmds = customBeep3()
+			break
+		case "custombeep4":
+			cmds = customBeep4()
+			break
+		case "custombeep5":
+			cmds = customBeep5()
+			break
+		case "custombeep6":
+			cmds = customBeep6()
+			break			
+		default:
+			if (text) {
+				cmds = handleComplexCommand(text)
+			}
+	}
+	if (!cmds) {
+		writeToDebugLog "'$text' is not a valid command."
+	}
+	else {
+		return cmds
+	}
+}
+
+def handleComplexCommand(text) {	
+	if (text.startsWith("customalarm")) {
+		text = text.replace("customalarm_", "").replace("customalarm", "")		
+	}	
+	def args = text.tokenize("_")
+	def cmds = []
+	switch (args.size()) {
+		case 3:
+			cmds += customAlarm(
+				args[0],
+				args[1],
+				args[2])
+			break
+		case 5:
+			cmds += customBeep(
+				args[0],
+				args[1],
+				args[2],
+				args[3],
+				args[4])
+			break
+		case 7:
+			cmds += startCustomBeep(
+				args[0],
+				args[1],
+				args[2],
+				args[3],
+				args[4],
+				args[5],
+				args[6])
+			break
+	}	
+	return cmds
 }
 
 // Turns on siren and strobe
@@ -562,19 +697,22 @@ private int validateBeepStopAfter(seconds) {
 }
 
 private int validateRange(val, defaultVal, minVal, maxVal, desc) {
-	def result = val
-	if (!val) {
-		result = defaultVal
-	} else if (val > maxVal) {
+	def intVal = isNumeric(val) ? val.toInteger() : defaultVal
+	def result = intVal
+	if (intVal > maxVal) {
 		result = maxVal
-	} else if (val < minVal) {
+	} else if (intVal < minVal) {
 		result = minVal
 	} 
 
-	if (result != val) {
+	if (result != intVal) {
 		logDebug("$desc: $val is invalid, defaulting to $result.")
 	}
 	result
+}
+
+private isNumeric(val) {
+	return val?.toString()?.isNumber()
 }
 
 private validateBool(val, defaulVal) {
@@ -584,6 +722,10 @@ private validateBool(val, defaulVal) {
 	else {
 		(val == true || val == "true")
 	}
+}
+
+private handleUnsupportedCmd(cmd) {
+	logDebug "Command $cmd not supported"
 }
 
 private logDebug(msg) {
