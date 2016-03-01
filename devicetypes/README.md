@@ -1,1 +1,0 @@
-# SmartThings - Device Types
