@@ -23,7 +23,7 @@ metadata {
 		capability "Energy Meter"
 		capability "Button"
 		capability "Refresh"
-		
+		 
 		command "pushButtonIn", ["number", "number"]
 	}
 
