@@ -1,5 +1,5 @@
 /**
- *  Aeoc Labs Multifunction Siren v 1.2.1 
+ *  Aeoc Labs Multifunction Siren v 1.3
  *
  *  Capabilities:
  *					Switch, Alarm, Tone, Music Player
@@ -8,6 +8,10 @@
  *					Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *	1.3 (03/01/2016)
+ *		-	Added startBeepDelayedAlarm command.
+ *		- Fixed validation logging bug.
  *
  *	1.2 (02/29/2016)
  *		-	Fixed IOS UI issue with beep buttons.
@@ -40,12 +44,13 @@ metadata {
 	capability "Configuration"
 	capability "Music Player"
 
-	attribute "status", "enum", ["off", "alarm", "customAlarm", "delayedAlarm", "beep", "beepSchedule", "customBeep", "customBeepSchedule"]
+	attribute "status", "enum", ["off", "alarm", "customAlarm", "delayedAlarm", "beepDelayedAlarm", "beep", "beepSchedule", "customBeep", "customBeepSchedule"]
 
 	command "customAlarm", ["number", "number", "number"]
 	command "delayedAlarm", ["number", "number", "number", "number"]
 	command "customBeep", ["number", "number", "number", "number", "number"]
 	command "startBeep"
+	command "startBeepDelayedAlarm"
 	command "startCustomBeep", ["number", "number", "number", "number", "number", "number", "number"]
 
 	command "customBeep1"
@@ -126,11 +131,16 @@ metadata {
 			defaultValue: 60,
 			displayDuringSetup: false,
 			required: false
+		input "useBeepDelayedAlarm", "bool",
+			title: "Play Beep Schedule Before Sounding Alarm?",
+			defaultValue: false,
+			displayDuringSetup: false,
+			required: false
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
 			displayDuringSetup: false, 
-			required: false
+			required: false		
 	}
 
 	tiles(scale: 2) {
@@ -140,10 +150,11 @@ metadata {
 				attributeState "alarm", label:'Alarm Sounding!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
 				attributeState "customAlarm", label:'Custom Alarm Sounding!', action: "off", icon:"", backgroundColor:"#ff9999"
 				attributeState "delayedAlarm", label:'Delayed Alarm Active!', action: "off", icon:"", backgroundColor:"#ff9999"
+				attributeState "beepDelayedAlarm", label:'Beep Delayed Alarm Active!', action: "off", icon:"", backgroundColor:"#ff9999"
 				attributeState "beep", label:'Beeping!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#99FF99"
 				attributeState "beepSchedule", label:'Scheduled\nBeeping!', action: "off", icon:"", backgroundColor:"#99FF99"
 				attributeState "customBeep", label:'Custom Beeping!', action: "off", icon:"", backgroundColor:"#694489"
-				attributeState "customBeepSchedule", label:'Scheduled Custom Beeping!', action: "off", icon:"", backgroundColor:"#694489"
+				attributeState "customBeepSchedule", label:'Scheduled Custom Beeping!', action: "off", icon:"", backgroundColor:"#694489"				
 			}
 		}
 		standardTile("playAlarm", "device.alarm", label: 'Alarm', width: 2, height: 2) {
@@ -220,7 +231,7 @@ def playTextAndRestore(text, other) { playText(text) }
 def playTrack(text) { playText(text) }
 
 def playText(text) {
-	text = text?.toLowerCase()?.replace(",", "_")?.replace(" ", "")
+	text = cleanTextCmd(text)
 	def cmds
 	switch (text) {
 		case ["siren", "strobe", "both", "on", "play"]:
@@ -234,7 +245,10 @@ def playText(text) {
 			break
 		case "startbeep":
 			cmds = startBeep()
-			break			
+			break
+		case "startbeepdelayedalarm":
+			cmds = startBeepDelayedAlarm()
+			break
 		case "custombeep1":
 			cmds = customBeep1()
 			break
@@ -255,7 +269,7 @@ def playText(text) {
 			break			
 		default:
 			if (text) {
-				cmds = handleComplexCommand(text)
+				cmds = parseComplexCommand(text)
 			}
 	}
 	if (!cmds) {
@@ -266,13 +280,19 @@ def playText(text) {
 	}
 }
 
-def handleComplexCommand(text) {	
-	text = removeCmdPrefix(text, "customalarm")
-	text = removeCmdPrefix(text, "delayedalarm")
-	
-	def args = text.tokenize("_")
+def cleanTextCmd(text) {
+	return text?.
+		toLowerCase()?.
+		replace(",", "_")?.
+		replace(" ", "")?.
+		replace("(", "")?.
+		replace(")", "")
+}
+
+def parseComplexCommand(text) {	
 	def cmds = []
-	switch (args.size()) {
+	def args = getComplexCmdArgs(text)
+	switch (args?.size()) {
 		case 3:
 			cmds += customAlarm(
 				args[0],
@@ -306,6 +326,24 @@ def handleComplexCommand(text) {
 			break
 	}	
 	return cmds
+}
+
+private getComplexCmdArgs(text) {
+	logDebug "before: $text"
+	for (prefix in ["customalarm", "delayedalarm","startcustombeep","custombeep"]) {
+		text = removeCmdPrefix(text, prefix)
+	}
+	
+	logDebug "after: $text"	
+	def args = text.tokenize("_")
+	if (args.every { node -> isNumeric(node) }) {
+		logDebug "All numeric"
+		return args
+	}
+	else {
+		logDebug "not all numeric"
+		return null
+	}	
 }
 
 private removeCmdPrefix(text, prefix) {
@@ -342,12 +380,17 @@ def siren() {
 
 // Turns on siren and strobe
 def both() {
-	state.currentStatus = "alarm"
-	sendCurrentStatusEvent(false)
-	sendEvent(name:"alarm", value: "both", isStateChange: true)
-	sendEvent(name:"switch", value: "on", isStateChange: true, displayed: false)
+	if (settings.useBeepDelayedAlarm && state.currentStatus != "beepDelayedAlarm") {
+		startBeepDelayedAlarm()
+	}
+	else {
+		state.currentStatus = "alarm"
+		sendCurrentStatusEvent(false)
+		sendEvent(name:"alarm", value: "both", isStateChange: true)
+		sendEvent(name:"switch", value: "on", isStateChange: true, displayed: false)
 
-	customAlarm(settings.sirenSound, settings.sirenVolume, settings.alarmDuration)
+		customAlarm(settings.sirenSound, settings.sirenVolume, settings.alarmDuration)
+	}
 }
 
 // Plays sound at volume for duration.
@@ -437,9 +480,18 @@ def customBeep6() {
 	customBeep(3, 1, 3, 500, 250)
 }
 
+// Repeatedly plays the default beep based on the beepEvery and beepStopAfter settings and then turns on alarm.
+def startBeepDelayedAlarm() {
+	logDebug "Starting Beep Delayed Alarm"
+	state.currentStatus = "beepDelayedAlarm"	
+	startBeep()	
+}
+
 // Repeatedly plays the default beep based on the beepEvery and beepStopAfter settings.
 def startBeep() {
-	state.currentStatus = "beepSchedule"
+	if (state.currentStatus != "beepDelayedAlarm") {
+		state.currentStatus = "beepSchedule"
+	}
 
 	startCustomBeep(
 		settings.beepEvery,
@@ -466,7 +518,7 @@ def startCustomBeep(beepEverySeconds, stopAfterSeconds, sound, volume, repeat=1,
 	]
 
 	logDebug "Starting Beep Schedule [beepEverySeconds: $beepEverySeconds, stopAfterSeconds: $stopAfterSeconds]"
-	if (state.currentStatus != "beepSchedule") {
+	if (!(state.currentStatus in ["beepSchedule", "beepDelayedAlarm"])) {
 		state.currentStatus = "customBeepSchedule"
 	}
 	sendCurrentStatusEvent()
@@ -493,7 +545,12 @@ private scheduledCustomBeep() {
 		cmds << secureCmd(zwave.basicV1.basicGet())
 	}
 	else {		
-		cmds += off()
+		if (state.currentStatus == "beepDelayedAlarm") {
+			cmds += both()
+		}
+		else {
+			cmds += off()
+		}	
 	}
 	return cmds
 }
@@ -545,7 +602,7 @@ private sendCurrentStatusEvent(display=true) {
 }
 
 private isBeepScheduleStatus(status) {
-	return (status in ["beepSchedule", "customBeepSchedule"])
+	return (status in ["beepSchedule", "customBeepSchedule", "beepDelayedAlarm"])
 }
 
 // Checks if the device supports security commands.
@@ -668,7 +725,12 @@ private handleScheduleStop() {
 	def sched = state.beepSchedule	
 	if (sched) {
 		if (nextScheduleStillActive(sched.startTime, sched.stopAfter, sched.beepEvery)) {
-			logDebug "Beep Schedule Cancelled"
+			if (state.currentStatus == "beepDelayedAlarm") {
+				logDebug "Beep Delayed Alarm Cancelled"
+			}
+			else {
+				logDebug "Beep Schedule Cancelled"
+			}
 		}
 		else {
 			logDebug "Beep Schedule Completed"
@@ -737,24 +799,34 @@ private int validateRepeat(repeat, int beepLengthMS, int repeatDelayMS, int maxM
 }
 
 private int validateBeepEvery(seconds) {
-	validateRange(seconds, 10, 3, Integer.MAX_VALUE, "Beep Every")
+	validateRange(seconds, 10, 1, Integer.MAX_VALUE, "Beep Every")
 }
 
 private int validateBeepStopAfter(seconds) {
-	validateRange(seconds, 60, 10, Integer.MAX_VALUE, "Beep Stop After")
+	validateRange(seconds, 60, 3, Integer.MAX_VALUE, "Beep Stop After")
 }
 
 private int validateRange(val, defaultVal, minVal, maxVal, desc) {
-	def intVal = isNumeric(val) ? val.toInteger() : defaultVal
-	def result = intVal
-	if (intVal > maxVal) {
+	def result
+	def errorType = null
+	if (isNumeric(val)) {
+		result = val.toInteger()
+	}
+	else {
+		errorType = "invalid"
+		result = defaultVal
+	}
+	
+	if (result > maxVal) {
+		errorType = "too high"
 		result = maxVal
-	} else if (intVal < minVal) {
+	} else if (result < minVal) {
+		errorType = "too low"
 		result = minVal
 	} 
 
-	if (result != intVal) {
-		logDebug("$desc: $val is invalid, defaulting to $result.")
+	if (errorType) {
+		logDebug("$desc: $val is $errorType, using $result instead.")
 	}
 	result
 }
