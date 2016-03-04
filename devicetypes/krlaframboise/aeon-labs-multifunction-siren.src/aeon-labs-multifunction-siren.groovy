@@ -9,7 +9,7 @@
  *
  *	Changelog:
  *
- *	1.3 (03/01/2016)
+ *	1.3 (03/03/2016)
  *		-	Added startBeepDelayedAlarm command.
  *		- Fixed validation logging bug.
  *
