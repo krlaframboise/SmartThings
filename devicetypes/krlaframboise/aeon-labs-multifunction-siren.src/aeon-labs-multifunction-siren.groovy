@@ -1,5 +1,5 @@
 /**
- *  Aeoc Labs Multifunction Siren v 1.3
+ *  Aeoc Labs Multifunction Siren v 1.4
  *
  *  Capabilities:
  *					Switch, Alarm, Tone, Music Player
@@ -8,6 +8,10 @@
  *					Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *	1.4 (03/05/2016)
+ *		-	Enhanced Logging
+ *		- Fixed bug with beep schedule cancellation.
  *
  *	1.3 (03/03/2016)
  *		-	Added startBeepDelayedAlarm command.
@@ -329,19 +333,15 @@ def parseComplexCommand(text) {
 }
 
 private getComplexCmdArgs(text) {
-	logDebug "before: $text"
 	for (prefix in ["customalarm", "delayedalarm","startcustombeep","custombeep"]) {
 		text = removeCmdPrefix(text, prefix)
 	}
 	
-	logDebug "after: $text"	
 	def args = text.tokenize("_")
 	if (args.every { node -> isNumeric(node) }) {
-		logDebug "All numeric"
 		return args
 	}
 	else {
-		logDebug "not all numeric"
 		return null
 	}	
 }
@@ -362,9 +362,15 @@ def on() {
 
 // Turns off siren and strobe
 def off() {
+	logDebug "Executing off() command"
+	changeStatus("off")
+	turnOff()
+}
+
+private turnOff() {	
 	secureDelayBetween([
-		offSetCmd(),
-		offGetCmd()
+		switchOffSetCmd(),
+		switchGetCmd()
 	])
 }
 
@@ -380,56 +386,86 @@ def siren() {
 
 // Turns on siren and strobe
 def both() {
-	if (settings.useBeepDelayedAlarm && state.currentStatus != "beepDelayedAlarm") {
+	logDebug "Executing both() command"
+	
+	if (settings.useBeepDelayedAlarm) {
 		startBeepDelayedAlarm()
 	}
 	else {
-		state.currentStatus = "alarm"
-		sendCurrentStatusEvent(false)
-		sendEvent(name:"alarm", value: "both", isStateChange: true)
-		sendEvent(name:"switch", value: "on", isStateChange: true, displayed: false)
-
-		customAlarm(settings.sirenSound, settings.sirenVolume, settings.alarmDuration)
+		changeStatus("alarm")
+		playDefaultAlarm()
 	}
+}
+
+// Repeatedly plays the default beep based on the beepEvery and beepStopAfter settings and then turns on alarm.
+def startBeepDelayedAlarm() {
+	changeStatus("beepDelayedAlarm")
+	startDefaultBeepSchedule()	
+}
+
+private playPendingAlarm() {
+	state.alarmPending = false
+	if (state.scheduledAlarm) {
+		def sound = state.scheduledAlarm?.sound
+		def volume = state.scheduledAlarm?.volume
+		def duration = state.scheduledAlarm?.duration
+		state.scheduledAlarm = null
+		customAlarm(sound, volume, duration)
+	}
+	else {
+		playDefaultAlarm()
+	}		
+}
+
+private playDefaultAlarm() {
+	playAlarm(settings.sirenSound, settings.sirenVolume, settings.alarmDuration)
 }
 
 // Plays sound at volume for duration.
 def customAlarm(sound, volume, duration) {
+	changeStatus("customAlarm")
+	playAlarm(sound, volume, duration)
+}
+
+private playAlarm(sound, volume, duration) {
 	def durationMsg = (duration && duration > 0) ? ", duration: $duration" : ""
 	logDebug "Sounding Alarm: [sound: $sound, volume: $volume$durationMsg]"
 	
-	if (state.currentStatus != "alarm") {
-		state.currentStatus = "customAlarm"
-		sendCurrentStatusEvent()
-	}
-
 	sound = validateSound(sound)
 	volume = validateVolume(volume)
 	duration = validateRange(duration, 0, 0, Integer.MAX_VALUE, "Alarm Duration")
 
+	if (currentStatus() in ["alarm", "delayedAlarm", "beepDelayedAlarm"]) {
+		sendEvent(name:"alarm", value: "both", isStateChange: true)
+		sendEvent(name:"switch", value: "on", isStateChange: true, displayed: false)
+	}
+	
 	def cmds = []
 	cmds << secureCmd(sirenSoundVolumeSetCmd(sound, volume))
 
 	if (duration > 0) {
 		cmds << "delay ${duration * 1000}"
-		cmds += off()
+		cmds += turnOff()
 	}
 
-	return cmds
+	return cmds	
 }
 
 def delayedAlarm(sound, volume, duration, delay) {
-	state.currentStatus = "delayedAlarm"
-	sendCurrentStatusEvent()
-	
+	changeStatus("delayedAlarm")
+	startDelayedAlarm(sound, volume, duration, delay)	
+}
+
+private startDelayedAlarm(sound, volume, duration, delay) {
 	state.scheduledAlarm = [
 		"sound": sound,
 		"volume": volume,
 		"duration": duration
 	]
+	
 	delay = validateRange(delay, 3, 1, Integer.MAX_VALUE, "delay")
 	
-	logDebug "Delayed Alarm Active [sound: $sound, volume: $volume, duration: $duration, delay: $delay]"
+	logDebug "Starting ${currentStatus()} [sound: $sound, volume: $volume, duration: $duration, delay: $delay]"
 	[
 		"delay ${delay * 1000}",
 		secureCmd(zwave.basicV1.basicGet())
@@ -438,10 +474,12 @@ def delayedAlarm(sound, volume, duration, delay) {
 
 // Plays the default beep.
 def beep() {
-	state.currentStatus = "beep"
-	sendCurrentStatusEvent()
+	changeStatus("beep")
+	playDefaultBeep()	
+}
 
-	customBeep(
+private playDefaultBeep() {
+	playBeep(
 		settings.beepSound,
 		settings.beepVolume,
 		settings.beepRepeat,
@@ -452,48 +490,42 @@ def beep() {
 
 // Plays short beep.
 def customBeep1() {
-	customBeep(3, 1, 1, 1, 100)
+	customBeep(3, 1, 1, 0, 50)
 }
 
 // Plays medium beep
 def customBeep2() {
-	customBeep(3, 1, 1, 1, 250)
+	customBeep(3, 1, 1, 0, 100)
 }
 
 // Plays long beep
 def customBeep3() {
-	customBeep(3, 1, 1, 1, 500)
+	customBeep(3, 1, 1, 0, 250)
 }
 
 // Plays 3 short beeps
 def customBeep4() {
-	customBeep(3, 1, 3, 100, 100)
+	customBeep(3, 1, 3, 0, 50)
 }
 
 // Plays 3 medium beeps
 def customBeep5() {
-	customBeep(3, 1, 3, 250 , 500)
+	customBeep(3, 1, 3, 100 , 100)
 }
 
 // Plays 3 long beeps
 def customBeep6() {
-	customBeep(3, 1, 3, 500, 250)
-}
-
-// Repeatedly plays the default beep based on the beepEvery and beepStopAfter settings and then turns on alarm.
-def startBeepDelayedAlarm() {
-	logDebug "Starting Beep Delayed Alarm"
-	state.currentStatus = "beepDelayedAlarm"	
-	startBeep()	
+	customBeep(3, 1, 3, 150, 200)
 }
 
 // Repeatedly plays the default beep based on the beepEvery and beepStopAfter settings.
 def startBeep() {
-	if (state.currentStatus != "beepDelayedAlarm") {
-		state.currentStatus = "beepSchedule"
-	}
+	changeStatus("beepSchedule")
+	startDefaultBeepSchedule()	
+}
 
-	startCustomBeep(
+private startDefaultBeepSchedule() {
+	startBeepSchedule(
 		settings.beepEvery,
 		settings.beepStopAfter,
 		settings.beepSound,
@@ -506,6 +538,14 @@ def startBeep() {
 
 // Repeatedly plays specified beep at specified in specified intervals.
 def startCustomBeep(beepEverySeconds, stopAfterSeconds, sound, volume, repeat=1, repeatDelayMS=1000, beepLengthMS=100) {	
+	changeStatus("customBeepSchedule")
+	
+	startBeepSchedule(beepEverySeconds, stopAfterSeconds, sound, volume, repeat, repeatDelayMS, beepLengthMS)	
+}
+
+private startBeepSchedule(beepEverySeconds, stopAfterSeconds, sound, volume, repeat, repeatDelayMS, beepLengthMS) {
+	logDebug "Starting ${currentStatus()} [beepEverySeconds: $beepEverySeconds, stopAfterSeconds: $stopAfterSeconds]"
+	
 	state.beepSchedule = [
 		"startTime": (new Date().time),
 		"beepEvery": validateBeepEvery(beepEverySeconds),
@@ -517,21 +557,15 @@ def startCustomBeep(beepEverySeconds, stopAfterSeconds, sound, volume, repeat=1,
 		"beepLength": beepLengthMS
 	]
 
-	logDebug "Starting Beep Schedule [beepEverySeconds: $beepEverySeconds, stopAfterSeconds: $stopAfterSeconds]"
-	if (!(state.currentStatus in ["beepSchedule", "beepDelayedAlarm"])) {
-		state.currentStatus = "customBeepSchedule"
-	}
-	sendCurrentStatusEvent()
-
-	return scheduledCustomBeep()
+	return playScheduledBeep()
 }
 
-private scheduledCustomBeep() {
+private playScheduledBeep() {
 	def beepSchedule = state.beepSchedule
 
 	def cmds = []
-	if (scheduleStillActive(beepSchedule.startTime, beepSchedule.stopAfter)) {
-		cmds += customBeep(
+	if (beepScheduleStillActive(beepSchedule?.startTime, beepSchedule?.stopAfter)) {
+		cmds += playBeep(
 			beepSchedule.sound,
 			beepSchedule.volume,
 			beepSchedule.repeat,
@@ -540,69 +574,124 @@ private scheduledCustomBeep() {
 		)
 	}
 
-	if (nextScheduleStillActive(beepSchedule.startTime, beepSchedule.stopAfter, beepSchedule.beepEvery)) {
-		cmds << "delay ${beepSchedule.beepEvery * 1000}"
+	if (nextScheduledBeepStillActive()) {		
+		if (beepSchedule.beepEvery > 0) {
+			cmds << "delay ${beepSchedule.beepEvery * 1000}"
+		}		
 		cmds << secureCmd(zwave.basicV1.basicGet())
 	}
 	else {		
-		if (state.currentStatus == "beepDelayedAlarm") {
-			cmds += both()
+		state.beepSchedule = null
+		state.beepScheduleRunning = false
+		
+		if (state.alarmPending) {		
+			cmds += playPendingAlarm()
 		}
 		else {
-			cmds += off()
-		}	
+			cmds += turnOff()
+		}
 	}
 	return cmds
 }
 
-private nextScheduleStillActive(startTime, stopAfter, runEvery) {
-	def adjustedStartTime = (startTime - (runEvery * 1000))
-	return scheduleStillActive(adjustedStartTime, stopAfter)
+private nextScheduledBeepStillActive() {	
+	def sched = state.beepSchedule
+	
+	if (sched?.beepEvery != null) {	
+		def adjustedStartTime = (sched.startTime - (sched.beepEvery * 1000))
+		return beepScheduleStillActive(adjustedStartTime, sched.stopAfter)
+	} 
+	else {		
+		return false
+	}
 }
 
-private scheduleStillActive(startTime, stopAfter) {
-	def endTimeMS = startTime + (stopAfter * 1000)
-	return (new Date().time < endTimeMS) 
+private beepScheduleStillActive(startTime, stopAfter) {
+	if (startTime && stopAfter) {		
+		def endTimeMS = startTime + (stopAfter * 1000)
+		return (new Date().time < endTimeMS) && state.beepScheduleRunning
+	}
+	else {		
+		return false
+	}
 }
 
 // Plays specified beep.
 def customBeep(sound, volume, repeat=1, repeatDelayMS=1000, beepLengthMS=100) {
-	logDebug "Beeping [sound: $sound, volume: $volume, repeat: $repeat, repeatDelayMS: $repeatDelayMS, beepLengthMS: $beepLengthMS]"
+	changeStatus("customBeep")
+	playBeep(sound, volume, repeat, repeatDelayMS, beepLengthMS)
+}
 
-	if (state.currentStatus == "off") {
-		state.currentStatus = "customBeep"
-		sendCurrentStatusEvent()
-	}
+private playBeep(sound, volume, repeat, repeatDelayMS, beepLengthMS) {
+	logDebug "${currentStatus()} [sound: $sound, volume: $volume, repeat: $repeat, repeatDelayMS: $repeatDelayMS, beepLengthMS: $beepLengthMS]"
 
 	int maxMS = 18000
 	sound = validateSound(sound, 3)
 	volume = validateVolume(volume)
-	beepLengthMS = validateRange(beepLengthMS, 100, 1, maxMS, "Beep Length")
+	beepLengthMS = validateRange(beepLengthMS, 100, 0, maxMS, "Beep Length")
 	repeatDelayMS = validateRepeatDelay(repeatDelayMS, beepLengthMS, maxMS)
 	repeat = validateRepeat(repeat, beepLengthMS, repeatDelayMS, maxMS)
 
 	def cmds = []
 	for (int repeatIndex = 1; repeatIndex <= repeat; repeatIndex++) {
 		cmds << secureCmd(sirenSoundVolumeSetCmd(sound, volume))
-		cmds << "delay $beepLengthMS"
-		cmds << secureCmd(offSetCmd())
-		if (repeat != 1) {
+		
+		if (beepLengthMS > 0) {
+			cmds << "delay $beepLengthMS"
+		}
+		
+		cmds << secureCmd(switchOffSetCmd())
+		
+		if (repeat > 1 && repeatDelayMS > 0) {
 			cmds << "delay $repeatDelayMS"
 		}
 	}
 
-	if (!isBeepScheduleStatus(state.currentStatus)) {
-		cmds += off()
-	}
+	if (!state.beepScheduleRunning && !state.alarmPending && currentStatus() != "off") {
+		cmds << turnOff()
+	}	
 	return cmds
 }
 
-private sendCurrentStatusEvent(display=true) {
-	sendEvent(name:"status", value: state.currentStatus, isStateChange: true, displayed: display)
+private changeStatus(newStatus) {
+	def oldStatus = currentStatus()
+
+	finalizeOldStatus(oldStatus, newStatus)
+	
+	if (newStatus in ["delayedAlarm", "beepDelayedAlarm"]) {
+		state.alarmPending = true
+	}
+	
+	if (newStatus in ["beepDelayedAlarm", "beepSchedule", "customBeepSchedule"]) {
+		state.beepScheduleRunning = true
+	}
+	
+	def displayStatus = (
+		oldStatus != newStatus && 
+		newStatus != "alarm" && 
+		!(oldStatus in ["alarm", "delayedAlarm", "beepDelayedAlarm"]))
+	
+	sendEvent(name:"status", value: newStatus, isStateChange: true, displayed: displayStatus)
 }
 
-private isBeepScheduleStatus(status) {
-	return (status in ["beepSchedule", "customBeepSchedule", "beepDelayedAlarm"])
+private finalizeOldStatus(oldStatus, newStatus) {
+	if (state.alarmPending && 
+	oldStatus in ["delayedAlarm", "beepDelayedAlarm"] &&
+	!(newStatus in ["alarm", "customAlarm"])) {
+		logDebug "Delayed Alarm Cancelled"			
+	}
+	else if (state.beepScheduleRunning) {
+		if (nextScheduledBeepStillActive()) {
+			logDebug "Beep Schedule Cancelled"
+		}
+		else {
+			logDebug "Beep Schedule Completed"
+		}
+	}	
+	state.alarmPending = false
+	state.beepScheduleRunning = false		
+	state.scheduledAlarm = null
+	state.beepSchedule = null
 }
 
 // Checks if the device supports security commands.
@@ -633,7 +722,7 @@ def updated() {
 			cmds << secureCmd(supportedSecurityGetCmd())
 		}
 		cmds << secureCmd(zwave.firmwareUpdateMdV2.firmwareMdGet())
-		cmds += off()
+		cmds += turnOff()
 		response(cmds)
 	}
 }
@@ -650,11 +739,11 @@ private sendNotificationsSetCmd() {
 	zwave.configurationV1.configurationSet(parameterNumber: 80, size: 1, scaledConfigurationValue: 0)
 }
 
-private offSetCmd() {
+private switchOffSetCmd() {
 	zwave.switchBinaryV1.switchBinarySet(switchValue: 0)
 }
 
-private offGetCmd() {
+private switchGetCmd() {
 	zwave.switchBinaryV1.switchBinaryGet()
 }
 
@@ -703,66 +792,34 @@ def zwaveEvent(physicalgraph.zwave.commands.firmwareupdatemdv2.FirmwareMdReport 
 	logInfo "Firmware: $cmd"
 }   
 
-// Handles device reporting off
+// Handles device reporting off and alarm turning on.
 def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
 	if (cmd.value == 0) {
 		
-		if (isBeepScheduleStatus(state.currentStatus)) {
-			handleScheduleStop()
-		}
+		changeStatus("off")
 				
-		def alarmActive = (state.currentStatus == "alarm")
-		state.currentStatus = "off"
+		def alarmDisplayed = (device.currentValue("alarm") == "both")	
+		if (alarmDisplayed) {
+			logDebug "Alarm is off"
+		}
+		
 		[
-			createOffEvent("alarm", alarmActive),
-			createOffEvent("status", !alarmActive),
-			createOffEvent("switch", false)
+			createEvent(name:"alarm", value: "off", isStateChange: true, displayed: alarmDisplayed),
+			createEvent(name:"switch", value: "off", isStateChange: true, displayed: false)
 		]
 	}
 }
 
-private handleScheduleStop() {
-	def sched = state.beepSchedule	
-	if (sched) {
-		if (nextScheduleStillActive(sched.startTime, sched.stopAfter, sched.beepEvery)) {
-			if (state.currentStatus == "beepDelayedAlarm") {
-				logDebug "Beep Delayed Alarm Cancelled"
-			}
-			else {
-				logDebug "Beep Schedule Cancelled"
-			}
-		}
-		else {
-			logDebug "Beep Schedule Completed"
-		}
-	}
-}
-
-private createOffEvent(eventName, displayEvent) {
-	createEvent(name: eventName, value: "off", isStateChange: true, displayed: displayEvent)
-}
-
 // Handles the scheduling of beeps.
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
-	if (isBeepScheduleStatus(state.currentStatus)) {
-		return [response(scheduledCustomBeep())]
-	}
-	else if (state.currentStatus == "delayedAlarm") {
-		def sound = state.scheduledAlarm?.sound
-		def volume = state.scheduledAlarm?.volume
-		def duration = state.scheduledAlarm?.duration
-		state.scheduledAlarm = null
-		return [response(customAlarm(sound, volume, duration))]
-	}
-	else if (state.scheduledAlarm) {
-		state.scheduledAlarm = null
-		logDebug "Delayed Alarm Cancelled"
-	}
+	[
+		response(playScheduledBeep())
+	]	
 }
 
 // Writes unexpected commands to debug log
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
-	logDebug("Unhandled: $cmd")
+	logDebug("$cmd")
 	createEvent(descriptionText: cmd.toString(), isStateChange: false)
 }
 
@@ -788,22 +845,22 @@ private int validateVolume(volume, int defaultVolume=1) {
 }
 
 private int validateRepeatDelay(repeatDelayMS, int beepLengthMS, int maxMS) {
-	int repeatDelayMaxMS = (beepLengthMS == maxMS) ? 1 : (maxMS - beepLengthMS)
-	return validateRange(repeatDelayMS, 1000, 1, repeatDelayMaxMS, "Repeat Delay")
+	int repeatDelayMaxMS = (beepLengthMS == maxMS) ? 0 : (maxMS - beepLengthMS)
+	return validateRange(repeatDelayMS, 1000, 0, repeatDelayMaxMS, "Repeat Delay")
 }
 
 private int validateRepeat(repeat, int beepLengthMS, int repeatDelayMS, int maxMS) {
 	int combinedMS = (beepLengthMS + repeatDelayMS)
-	int maxRepeat = (combinedMS >= maxMS) ? 1 : (maxMS / combinedMS).toInteger()
-	return validateRange(repeat, 1, 1, maxRepeat, "Repeat")
+	int maxRepeat = (combinedMS >= maxMS) ? 0 : (maxMS / combinedMS).toInteger()
+	return validateRange(repeat, 1, 0, maxRepeat, "Repeat")
 }
 
 private int validateBeepEvery(seconds) {
-	validateRange(seconds, 10, 1, Integer.MAX_VALUE, "Beep Every")
+	validateRange(seconds, 10, 0, Integer.MAX_VALUE, "Beep Every")
 }
 
 private int validateBeepStopAfter(seconds) {
-	validateRange(seconds, 60, 3, Integer.MAX_VALUE, "Beep Stop After")
+	validateRange(seconds, 60, 2, Integer.MAX_VALUE, "Beep Stop After")
 }
 
 private int validateRange(val, defaultVal, minVal, maxVal, desc) {
@@ -842,6 +899,10 @@ private validateBool(val, defaulVal) {
 	else {
 		(val == true || val == "true")
 	}
+}
+
+private currentStatus() {
+	return device.currentValue("status") ? device.currentValue("status") : ""
 }
 
 private handleUnsupportedCmd(cmd) {
