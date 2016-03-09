@@ -1,5 +1,5 @@
 /**
- *  ThingShield Timer 1.2
+ *  ThingShield Timer 1.3
  *
  *  Copyright 2016 Kevin LaFramboise
  *
@@ -23,8 +23,16 @@ metadata {
 		capability "Energy Meter"
 		capability "Button"
 		capability "Refresh"
-		 
-		command "pushButtonIn", ["number", "number"]
+		capability "Music Player"
+		
+		command "pushButtonIn"
+
+		// Music and Sonos Related Commands
+		command "playSoundAndTrack"
+		command "playTrackAndRestore"
+		command "playTrackAndResume"
+		command "playTextAndResume"
+		command "playTextAndRestore"
 	}
 
 	// simulator metadata
@@ -122,7 +130,7 @@ def off() {
 def push() {
 	sendEvent(name: "switch", value: "on", isStateChange: true, displayed: false)
 	sendEvent(name: "switch", value: "off", isStateChange: true, displayed: false)
-	sendEvent(name: "momentary", value: "pushed", isStateChange: true)
+	sendEvent(name: "momentary", value: "pushed", isStateChange: true, displayed:false)
 }
 
 def reportCurrentTimeAsEnergy() {
@@ -191,42 +199,46 @@ def formatTwoDigit(num) {
 
 
 def pushButtonIn(btn, seconds) {
+writeToDebugLog("pushButtonIn($btn, $seconds)")
 	setButtonPushTime(btn, addToCurrentTime(seconds))
 }
 
 def addToCurrentTime(seconds) {
-	return (new Date().time) + (seconds * 1000)
+	return (new Date().time) + (validatePushTime(seconds) * 1000)
 }
 
 def setButtonPushTime(btn, time) {
-	writeToDebugLog("scheduledButtons: ${state.scheduledButtons}")
-	writeToDebugLog("btn: $btn - time: $time")
-	def updated = false
-	for (map in state.scheduledButtons) {
-		if (map.buttonNumber == btn) {
-			map.pushTime = time
-			updated = true
-		}
+	def item = state.scheduledButtons.find{k -> k.buttonNumber == btn}
+	time = validatePushTime(time)
+	if (!item) {
+		state.scheduledButtons << [buttonNumber: btn, pushTime: time]		
 	}
-	if (!updated) {
-		state.scheduledButtons += [buttonNumber: btn, pushTime: time]
+	else {
+		item.pushTime = time	
 	}
-	//def item = state.scheduledButtons.find{k -> k.buttonNumber == btn}
-	//if (!item) {
-	//	state.scheduledButtons << [buttonNumber: btn, pushTime: time]		
-	//}
-	//else {
-	//	item.pushTime = time	
-	//}
 }
 
-def pushScheduledButtons() {
-	for (item in state.scheduledButtons) {
-			if (item.pushTime != null && timeElapsed(item.pushTime)) {
-				item.pushTime = null
-				pushButton(item.buttonNumber)
-			}
-	}	
+def pushScheduledButtons() {	
+	def scheduledButtons = []
+	for (item in state.scheduledButtons) {			
+		if (timeElapsed(validatePushTime(item.pushTime))) {
+			pushButton(item.buttonNumber)
+		}	
+		else {
+			scheduledButtons << item
+		}		
+	}
+	state.scheduledButtons = scheduledButtons
+}
+
+long validatePushTime(pushTime) {
+	try {
+		return !pushTime ? 0 : pushTime.toLong() 
+	}
+	catch(e) {
+		writeToDebugLog "$pushTime is not valid, defaulting to 0"
+		return 0
+	}
 }
 
 def timeElapsed(time) {
@@ -234,6 +246,7 @@ def timeElapsed(time) {
 }
 
 def pushButton(buttonNum) {
+	writeToDebugLog "Pushing Button $buttonNum"
 	sendEvent(name: "button", value: "pushed", data: [buttonNumber: buttonNum], descriptionText: "$device.displayName button $buttonNum was pushed", isStateChange: true)
 }
 
@@ -244,6 +257,58 @@ def refresh() {
 			writeToDebugLog("Push button ${item.buttonNumber} in ${scheduleTime} Seconds")
 		}
 	}
+}
+
+
+// Commands necessary for SHM, Notify w/ Sound, and Rule Machine TTS functionality.
+def playSoundAndTrack(text, other, other2, other3) {
+	playTrackAndResume(text, other, other2) 
+}
+def playTrackAndRestore(text, other, other2) {
+	playTrackAndResume(text, other, other2) 
+}
+def playTrackAndResume(text, other, other2) {
+	playText(getTextFromTTSUrl(text))
+}
+def getTextFromTTSUrl(ttsUrl) {
+	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
+	if (ttsUrl?.toString()?.toLowerCase()?.contains(urlPrefix)) {
+		return ttsUrl.replace(urlPrefix,"").replace(".mp3","")
+	}
+	return ttsUrl
+}
+
+def playTextAndResume(text, other) { playText(text) }
+def playTextAndRestore(text, other) { playText(text) }
+def playTrack(text) { playText(text) }
+
+def playText(text) {
+	text = cleanTextCmd(text)
+	
+	if (text.startsWith("pushbuttonin")) {	
+		text = text.replace("pushbuttonin", "")
+		
+		def args = text.tokenize("_")
+		if (args?.size() == 2 && args?.every { node -> isNumeric(node) }) {
+			pushButtonIn(args[0], args[1])
+		}
+	}
+	else {
+		writeToDebugLog "Unknown command: $text"
+	}	
+}
+
+def cleanTextCmd(text) {
+	return text?.
+		toLowerCase()?.
+		replace(",", "_")?.
+		replace(" ", "")?.
+		replace("(", "")?.
+		replace(")", "")
+}
+
+private isNumeric(val) {
+	!val ? false : val.toString().isNumber()	
 }
 
 def writeToDebugLog(msg) {
