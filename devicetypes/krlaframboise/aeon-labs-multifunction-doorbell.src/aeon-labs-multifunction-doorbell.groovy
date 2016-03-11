@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.8.1
+ *  Aeon Labs Multifunction Doorbell v 1.8.2
  *
  *  Capabilities:
  *					Switch, Alarm, Music Player, Tone,
@@ -11,10 +11,16 @@
  *
  *	Changelog:
  *
- *	1.8 (02/29/2016)
+ *	1.8.2 (03/11/2016)
+ *		- Add catch to prevent speak commands from executing
+ *			more than once per second to eliminate duplicate
+ *			tracks being played when using Rule Machine Triggers.			
+ *
+ *	1.8.1 (02/29/2016)
  *		- Added track number support for SHM - Audio Notifications, 
  *			Speaker Notify with Sound - Custom Message, and
  *			Rule Machine - Speak Message on Music Device.
+ *		- Made TTS functionality accept track numbers and commands.
  *
  *	1.7 (02/28/2016)
  *		- Fixed fingerprint so that it doesn't conflict
@@ -252,32 +258,36 @@ def playTextAndRestore(trackNumber, other) {
 	playText(trackNumber)
 }
 def playText(text) {
-	def cmds = []
-	if (isNumeric(text)) {
-		cmds += playTrack(text)
-	}
-	else {
-		switch (text?.toLowerCase()) {
-			case "beep":
-				cmds += beep()
-				break
-			case "pushbutton":
-				cmds += pushButton()
-				break
-			case ["siren", "strobe", "both", "on"]:
-				cmds += both()
-				break
-			case ["stop", "off"]:
-				cmds += off()
-				break
-			case "play":
-				cmds += play()
-				break
-			default:
-				writeToDebugLog "'$text' is not a valid command or track number."
+	if (!isDuplicateCall(state.lastPlayText, 1)) {		
+		state.lastPlayText = new Date().time
+		
+		def cmds = []
+		if (isNumeric(text)) {
+			cmds += playTrack(text)
 		}
+		else {
+			switch (text?.toLowerCase()) {
+				case "beep":
+					cmds += beep()
+					break
+				case "pushbutton":
+					cmds += pushButton()
+					break
+				case ["siren", "strobe", "both", "on"]:
+					cmds += both()
+					break
+				case ["stop", "off"]:
+					cmds += off()
+					break
+				case "play":
+					cmds += play()
+					break
+				default:
+					writeToDebugLog "'$text' is not a valid command or track number."
+			}
+		}
+		return cmds
 	}
-	return cmds
 }
 
 def previousTrack() {	
