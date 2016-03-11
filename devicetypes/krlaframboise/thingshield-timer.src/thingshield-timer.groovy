@@ -1,5 +1,5 @@
 /**
- *  ThingShield Timer 1.3
+ *  ThingShield Timer 1.4
  *
  *  Copyright 2016 Kevin LaFramboise
  *
@@ -25,7 +25,7 @@ metadata {
 		capability "Refresh"
 		capability "Music Player"
 		
-		command "pushButtonIn"
+		command "pushButtonIn", ["number", "number"]
 
 		// Music and Sonos Related Commands
 		command "playSoundAndTrack"
@@ -199,23 +199,29 @@ def formatTwoDigit(num) {
 
 
 def pushButtonIn(btn, seconds) {
-writeToDebugLog("pushButtonIn($btn, $seconds)")
-	setButtonPushTime(btn, addToCurrentTime(seconds))
+	if (isNumeric(btn) && isNumeric(seconds)) {		
+		setButtonPushTime(btn, addToCurrentTime(seconds))
+		writeToDebugLog("pushButtonIn($btn, $seconds)")
+	}
+	else {
+		writeToDebugLog("$btn or $seconds is not a valid number")
+	}
 }
 
 def addToCurrentTime(seconds) {
 	return (new Date().time) + (validatePushTime(seconds) * 1000)
 }
 
-def setButtonPushTime(btn, time) {
+private setButtonPushTime(btn, time) {
+	btn = validateButtonNumber(btn)
+	time = validatePushTime(time)	
 	def item = state.scheduledButtons.find{k -> k.buttonNumber == btn}
-	time = validatePushTime(time)
 	if (!item) {
 		state.scheduledButtons << [buttonNumber: btn, pushTime: time]		
 	}
 	else {
 		item.pushTime = time	
-	}
+	}	
 }
 
 def pushScheduledButtons() {	
@@ -229,6 +235,16 @@ def pushScheduledButtons() {
 		}		
 	}
 	state.scheduledButtons = scheduledButtons
+}
+
+int validateButtonNumber(btn) {
+	try {
+		return !btn ? 0 : btn.toInteger()
+	}
+	catch(e) {
+		writeToDebugLog "$btn is not valid, defaulting to 1"
+		return 0
+	}
 }
 
 long validatePushTime(pushTime) {
