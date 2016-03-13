@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.8.2
+ *  Aeon Labs Multifunction Doorbell v 1.8.3
  *
  *  Capabilities:
  *					Switch, Alarm, Music Player, Tone,
@@ -10,6 +10,9 @@
  *					(Based off of the "Aeon Doorbell" device type)
  *
  *	Changelog:
+ *
+ *	1.8.3 (03/13/2016)
+ *		- Fixed UI Presence Tile bug caused by Android 2.1.0 Update.
  *
  *	1.8.2 (03/11/2016)
  *		- Add catch to prevent speak commands from executing
@@ -176,13 +179,13 @@ metadata {
 		valueTile("battery", "device.battery",  width: 2, height: 2) {
 			state "battery", label:'BATTERY\n${currentValue}%', unit:"", backgroundColor: "#000000"
 		}
-		valueTile("presence", "device.presence",  width: 2, height: 2) {
+		valueTile("onlineStatus", "device.presence",  width: 2, height: 2) {
 			state "present", label: 'Online', unit: "", backgroundColor: "#00FF00"
 			state "not present", label: 'Offline', unit: "", backgroundColor: "#FF0000"
 			state "default", label: 'Unknown', unit: "", defaultState: true
 		}
 		main "status"
-		details(["status", "playBell", "playTone", "playAlarm", "previous", "trackDescription", "next", "refresh", "battery", "presence"])
+		details(["status", "playBell", "playTone", "playAlarm", "previous", "trackDescription", "next", "refresh", "battery", "onlineStatus"])
 	}
 }
 
