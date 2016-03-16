@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.0
+ *  Simple Device Viewer v 1.0.2
  *
  *  Copyright 2016 Kevin LaFramboise
  *
@@ -26,15 +26,18 @@ definition(
  preferences {
 	page(name:"mainPage", uninstall:true, install:true)
   page(name:"capabilityPage")
-	page(name:"setupPage", uninstall:true)
+	page(name:"setupPage")
 }
 
 def mainPage() {
+	if (!state.capabilitySettings) {
+		storeCapabilitySettings()
+	}
 	dynamicPage(name:"mainPage") {				
-		section() {			
-			def knownCaps = getKnownCapabilities()	
-			getAllDeviceCapabilities().each {
-				if (it in knownCaps) {
+		section() {	
+			getCapabilityPageLink(null)			
+			state.capabilitySettings.each {
+				if (devicesHaveCapability(it.name)) {
 					getCapabilityPageLink(it)
 				}
 			}
@@ -60,7 +63,14 @@ def setupPage() {
 			input "sensors", "capability.sensor",
 				title: "Which Sensors?",
 				multiple: true,
-				required: false
+				required: false			
+			state.capabilitySettings.each {
+				input "${getPrefName(it)}Devices",
+					"capability.${getPrefName(it)}",
+					title: "Which ${getPluralName(it)}?",
+					multiple: true,
+					required: false
+			}			
 		}
 	}
 }
@@ -68,79 +78,80 @@ def setupPage() {
 def capabilityPage(params) {
 	dynamicPage(name:"capabilityPage") {
 		section() {
-			def titles = getDevicesByCapability(params.capabilityName)?.collect {
-				getDeviceCapabilityTitle(it, params.capabilityName) 
+			def titles
+			if (params.capabilitySetting) {
+				titles = getDeviceCapabilityTitle(params.capabilitySetting)
+			}
+			else {
+				titles = getAllDevices().collect {
+					getDeviceAllCapabilitiesTitle(it)
+				}
 			}
 			titles.unique().each { paragraph "$it" }
 		}
 	}
 }
 
-def getCapabilityPageLink(cap) {	
-	def linkName = cap.toString().replace(" ", "")	
+def getCapabilityPageLink(cap) {		
 	return href(
-		name: "${linkName}Link", 
-		title: getCapabilityLinkTitle(cap),
+		name: cap ? "${getPrefName(cap)}Link" : "allDevicesLink", 
+		title: cap ? "${getPluralName(cap)}" : "All Devices",
 		description: "",
 		page: "capabilityPage", 
-		params: [capabilityName: cap]
+		params: [capabilitySetting: cap]
 	)	
 }
 
-def getCapabilityLinkTitle(cap) {
-	def pluralCap 
-	switch (cap) {
-		case "Switch":
-			pluralCap = "Switches"
-			break
-		case "Battery":
-			pluralCap = "Batteries"
-			break
-		default:
-			pluralCap = "${cap}s"
-	}
-	return "View $pluralCap"
+def devicesHaveCapability(name) {
+	return getAllDevices().find { it.hasCapability(name) } ? true : false
 }
 
-def getDevicesByCapability(cap) {	
+def getDevicesByCapability(name) {	
 	return getAllDevices()
-		.findAll { it.hasCapability(cap) }
+		.findAll { it.hasCapability(name) }
 		.sort() { it.displayName.toLowerCase() }		
 }
 
-def getDeviceCapabilityTitle(device, cap) {
-	def status = ""
-	
-	switch (cap) {
-		case "Battery":
-			status = addPadding("${device.currentBattery}%", 4, "")
-			break
-		case "Contact Sensor":
-			status = addPadding(device.currentContact, 6, "open")
-			break
-		case "Motion Sensor":
-			status = addPadding(device.currentMotion, 9, "motion")			
-			break
-		case "Switch":
-			status = addPadding(device.currentSwitch, 3, "on")
-			break
-		case "Presence Sensor":
-			status = addPadding(device.currentPresence, 11, "present")
-			break
-		case "Water Sensor":
-			status = addPadding(device.currentWater, 3, "wet")
-			break
-		default:
-			status = "???"
+def getDeviceAllCapabilitiesTitle(device) {
+	def allStatuses = null
+	state.capabilitySettings.each {
+		if (device.hasCapability(it.name)) {
+			allStatuses = (allStatuses ? "$allStatuses, " : "")
+				.concat(getDeviceCapabilityStatus(device, it))			
+		}
 	}
+	return getDeviceStatusTitle(device, allStatuses)
+}
+
+def getDeviceCapabilityTitle(cap) {
+	getDevicesByCapability(cap.name)?.collect {
+		def status = getDeviceCapabilityStatus(it, cap)
+		getDeviceStatusTitle(it, status)
+	}
+}
+
+def getDeviceStatusTitle(device, status) {
 	return "| ${status?.toUpperCase()} | - ${device.displayName}"
 }
 
-private addPadding(text, length, activeText) {
-	if (!text || text.contains("null")) {
-		text = ""
+def getDeviceCapabilityStatus(device, cap) {
+	def status = device.currentValue(getAttribute(cap)).toString()
+	def activeState = cap.activeState ? cap.activeState : cap.name.toLowerCase()		
+	
+	if (status == activeState) {
+		status = "*$status"
 	}
-	(text == activeText ? "*" : "").concat(text)
+	
+	switch (cap.name) {
+		case "Battery":
+			status = "$status%"
+			break
+		case "Temperature Measurement":
+			status = "$status°${location.temperatureScale}"
+			break
+	}
+
+	return status
 }
 
 def installed() {
@@ -154,6 +165,84 @@ def updated() {
 
 def initialize() {
 	log.debug "$settings"	
+	storeCapabilitySettings()
+}
+
+def storeCapabilitySettings() {
+	state.capabilitySettings = []
+	
+	state.capabilitySettings << [
+		name: "Switch",
+		pluralName: "Switches",		
+		activeState: "on"
+	]
+	state.capabilitySettings << [
+		name: "Motion Sensor", 
+		prefName: "motionSensor",
+		attributeName: "motion",
+		activeState: "active"
+	]
+	state.capabilitySettings << [
+		name: "Contact Sensor",
+		prefName: "contactSensor",
+		attributeName: "contact",
+		activeState: "open"
+	]
+	state.capabilitySettings << [
+		name: "Presence Sensor",
+		prefName: "presenceSensor",
+		attributeName: "presence",
+		activeState: "present"
+	]
+	state.capabilitySettings << [
+		name: "Battery",
+		pluralName: "Batteries"
+	]
+	state.capabilitySettings << [
+		name: "Water Sensor",
+		prefName: "waterSensor",
+		attributeName: "water",
+		activeState: "wet"
+	]
+	state.capabilitySettings << [
+		name: "Alarm",
+		activeState: "off"
+	]
+	state.capabilitySettings << [
+		name: "Lock",
+		activeState: "locked"
+	]
+	state.capabilitySettings << [
+		name: "Temperature Measurement",
+		pluralName: "Temperature Sensors",
+		prefName: "temperatureMeasurement",
+		attributeName: "temperature"
+	]
+	state.capabilitySettings << [
+		name: "Smoke Detector",
+		prefName: "smokeDetector",
+		attributeName: "smoke",
+		activeState: "detected"
+	]
+	state.capabilitySettings << [
+		name: "Carbon Monoxide Detector",
+		prefName: "carbonMonoxideDetector",
+		attributeName: "carbonMonoxide",
+		activeState: "detected"
+	]	
+	state.capabilitySettings.sort { it.name }
+}
+
+def getAttribute(capabilitySetting) {
+	capabilitySetting.attributeName ? capabilitySetting.attributeName : capabilitySetting.name.toLowerCase()
+}
+
+def getPrefName(capabilitySetting) {
+	capabilitySetting.prefName ? capabilitySetting.prefName : capabilitySetting.name.toLowerCase()
+}
+
+def getPluralName(capabilitySetting) {
+	capabilitySetting.pluralName ? capabilitySetting.pluralName : "${capabilitySetting.name}s"
 }
 
 def getAllDeviceCapabilities() {
@@ -163,15 +252,4 @@ def getAllDeviceCapabilities() {
 
 def getAllDevices() {
 	return settings.collect {k, device -> device}.flatten().unique()
-}
-
-def getKnownCapabilities() {
-	return [
-		"Battery",
-		"Switch", 
-		"Presence Sensor", 
-		"Motion Sensor",
-		"Contact Sensor",
-		"Water Sensor"
-	]
 }
