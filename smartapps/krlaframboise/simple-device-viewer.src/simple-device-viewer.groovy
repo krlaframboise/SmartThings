@@ -1,7 +1,13 @@
 /**
- *  Simple Device Viewer v 1.0.2
+ *  Simple Device Viewer v 1.1
  *
- *  Copyright 2016 Kevin LaFramboise
+ *	Author: 
+ *					Kevin LaFramboise (krlaframboise)
+ *
+ *	Changelog:
+ *
+ *	1.1 (03/17/2016)
+ *		- Initial Release
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -17,7 +23,7 @@ definition(
     name: "Simple Device Viewer",
     namespace: "krlaframboise",
     author: "Kevin LaFramboise",
-    description: "Provides information about the state of the specified devices",
+    description: "Provides information about the state of the specified devices.",
     category: "My Apps",
     iconUrl: "http://cdn.device-icons.smartthings.com/Home/home5-icn.png",
     iconX2Url: "http://cdn.device-icons.smartthings.com/Home/home5-icn@2x.png",
@@ -26,6 +32,7 @@ definition(
  preferences {
 	page(name:"mainPage", uninstall:true, install:true)
   page(name:"capabilityPage")
+	page(name:"lastEventPage")
 	page(name:"setupPage")
 }
 
@@ -35,8 +42,17 @@ def mainPage() {
 	}
 	dynamicPage(name:"mainPage") {				
 		section() {	
-			getCapabilityPageLink(null)			
-			state.capabilitySettings.each {
+			if (getAllDevices().size() != 0) {
+				href(
+					name: "lastEventLink", 
+					title: "All Devices - Last Event",
+					description: "",
+					page: "lastEventPage", 
+					params: []
+				)
+				getCapabilityPageLink(null)			
+			}
+			getSelectedCapabilitySettings().each {
 				if (devicesHaveCapability(it.name)) {
 					getCapabilityPageLink(it)
 				}
@@ -72,6 +88,21 @@ def setupPage() {
 					required: false
 			}			
 		}
+		section ("Options") {
+			input "selectedCapabilities", "enum",
+				title: "Display Which Capabilities?",
+				multiple: true,
+				options: getCapabilityNames(),
+				required: false
+		}
+	}
+}
+
+def lastEventPage() {
+	dynamicPage(name:"lastEventPage") {		
+		section ("Time Since Last Event") {
+			getAllDeviceLastEventTitles().each { paragraph "$it" }
+		}		
 	}
 }
 
@@ -95,31 +126,31 @@ def capabilityPage(params) {
 def getCapabilityPageLink(cap) {		
 	return href(
 		name: cap ? "${getPrefName(cap)}Link" : "allDevicesLink", 
-		title: cap ? "${getPluralName(cap)}" : "All Devices",
+		title: cap ? "${getPluralName(cap)}" : "All Devices - States",
 		description: "",
 		page: "capabilityPage", 
 		params: [capabilitySetting: cap]
 	)	
 }
 
-def devicesHaveCapability(name) {
+def devicesHaveCapability(name) {	
 	return getAllDevices().find { it.hasCapability(name) } ? true : false
 }
 
-def getDevicesByCapability(name) {	
+def getDevicesByCapability(name) {
 	return getAllDevices()
-		.findAll { it.hasCapability(name) }
+		.findAll { it.hasCapability(name.toString()) }
 		.sort() { it.displayName.toLowerCase() }		
 }
 
 def getDeviceAllCapabilitiesTitle(device) {
-	def allStatuses = null
-	state.capabilitySettings.each {
+	def allStatuses = null	
+	getSelectedCapabilitySettings().each {
 		if (device.hasCapability(it.name)) {
 			allStatuses = (allStatuses ? "$allStatuses, " : "")
 				.concat(getDeviceCapabilityStatus(device, it))			
 		}
-	}
+	}	
 	return getDeviceStatusTitle(device, allStatuses)
 }
 
@@ -130,25 +161,73 @@ def getDeviceCapabilityTitle(cap) {
 	}
 }
 
+def getAllDeviceLastEventTitles() {
+	getAllDevices().collect {
+		def now = new Date().time
+		def lastEvent = it.events(max: 1)?.date?.time
+		if (lastEvent) {
+			getDeviceStatusTitle(it, "${getTimeSinceLastEvent(now - lastEvent)}")			
+		}
+		else {
+			getDeviceStatusTitle(it, "No Events")
+		}
+	}
+}
+
+def getTimeSinceLastEvent(ms) {
+	def sec = 1000
+	def min = sec * 60
+	def hr = min * 60
+	def day = hr * 24
+	def timeType
+	
+	if (ms < sec) {
+		return "$ms Milliseconds"
+	}
+	else if (ms < min) {
+		return "${getTimeSince(ms, sec)} Seconds"
+	}
+	else if (ms < hr) {
+		return "${getTimeSince(ms, min)} Minutes"
+	}
+	else if (ms < day) {
+		return "${getTimeSince(ms, hr)} Hours"
+	}
+	else {
+		return "${getTimeSince(ms, day)} Days"
+	}		
+}
+
+def getTimeSince(ms, divisor) {
+	return "${((float)(ms / divisor)).round()}"
+}
+
 def getDeviceStatusTitle(device, status) {
+	if (!status || status == "null") {
+		status = "N/A"
+	}
 	return "| ${status?.toUpperCase()} | - ${device.displayName}"
 }
 
 def getDeviceCapabilityStatus(device, cap) {
 	def status = device.currentValue(getAttribute(cap)).toString()
-	def activeState = cap.activeState ? cap.activeState : cap.name.toLowerCase()		
+	if ("$status" != "null") {
 	
-	if (status == activeState) {
-		status = "*$status"
+		if (status == getActiveState(cap)) {
+			status = "*$status"
+		}
+		
+		switch (cap.name) {
+			case "Battery":			
+				status = "$status%"
+				break
+			case "Temperature Measurement":
+				status = "$status°${location.temperatureScale}"
+				break
+		}
 	}
-	
-	switch (cap.name) {
-		case "Battery":
-			status = "$status%"
-			break
-		case "Temperature Measurement":
-			status = "$status°${location.temperatureScale}"
-			break
+	else {
+		status = "N/A"
 	}
 
 	return status
@@ -233,8 +312,25 @@ def storeCapabilitySettings() {
 	state.capabilitySettings.sort { it.name }
 }
 
+def getSelectedCapabilitySettings() {
+	if (!selectedCapabilities || selectedCapabilities.size() == 0) {
+		return state.capabilitySettings
+	}
+	else {
+		return state.capabilitySettings.findAll { it.name in selectedCapabilities }		
+	}
+}
+
+def getCapabilityNames() {
+	state.capabilitySettings.collect { it.name }
+}
+
 def getAttribute(capabilitySetting) {
 	capabilitySetting.attributeName ? capabilitySetting.attributeName : capabilitySetting.name.toLowerCase()
+}
+
+def getActiveState(capabilitySetting) {
+	capabilitySetting.activeState ? capabilitySetting.activeState : capabilitySetting.name.toLowerCase()
 }
 
 def getPrefName(capabilitySetting) {
@@ -251,5 +347,15 @@ def getAllDeviceCapabilities() {
 }
 
 def getAllDevices() {
-	return settings.collect {k, device -> device}.flatten().unique()
+	def values = settings.collect {k, device -> device}
+	return values.findAll { isDevice(it) }.flatten().unique()
+}
+
+def isDevice(obj) {
+	try {
+		return obj?.id ? true : false
+	}
+	catch (e) {
+		return false
+	}
 }
