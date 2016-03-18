@@ -1,22 +1,31 @@
 /**
- *  Simple Device Viewer v 1.1
+ *  Simple Device Viewer v 1.2
  *
- *	Author: 
- *					Kevin LaFramboise (krlaframboise)
+ *  Author: 
+ *    Kevin LaFramboise (krlaframboise)
  *
- *	Changelog:
+ *  Changelog:
  *
- *	1.1 (03/17/2016)
- *		- Initial Release
+ *    1.2 (03/17/2016)
+ *      - Added page headings
+ *      - Added ability to toggle switches from Switches screen.
+ *      - Added "Turn Off All Switches" link to Switches page.
  *
- *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- *  in compliance with the License. You may obtain a copy of the License at:
+ *    1.1 (03/17/2016)
+ *      - Initial Release
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  Licensed under the Apache License, Version 2.0 (the
+ *  "License"); you may not use this file except in
+ *  compliance with the License. You may obtain a copy of
+ *  the License at:
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
- *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
- *  for the specific language governing permissions and limitations under the License.
+ *  Unless required by applicable law or agreed to in
+ *  writing, software distributed under the License is
+ *  distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
+ *  OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing
+ *  permissions and limitations under the License.
  *
  */
 definition(
@@ -33,6 +42,7 @@ definition(
 	page(name:"mainPage", uninstall:true, install:true)
   page(name:"capabilityPage")
 	page(name:"lastEventPage")
+	page(name:"toggleSwitchPage")
 	page(name:"setupPage")
 }
 
@@ -43,6 +53,7 @@ def mainPage() {
 	dynamicPage(name:"mainPage") {				
 		section() {	
 			if (getAllDevices().size() != 0) {
+				state.lastCapabilitySetting = null
 				href(
 					name: "lastEventLink", 
 					title: "All Devices - Last Event",
@@ -71,7 +82,8 @@ def mainPage() {
 
 def setupPage() {
 	dynamicPage(name:"setupPage") {		
-		section ("Devices") {
+		section ("Choose Devices") {
+			paragraph "Select all the devices that you want to be able to view in this application.\n\nYou can use any of the fields below to select a device, but you only need to select each device once.  Duplicates are automatically removed so selecting a device more than once won't hurt anything."
 			input "actuators", "capability.actuator",
 				title: "Which Actuators?",
 				multiple: true,
@@ -88,7 +100,8 @@ def setupPage() {
 					required: false
 			}			
 		}
-		section ("Options") {
+		section ("Display Options") {
+			paragraph "All the capabilities supported by the selected devices are shown on the main screen by default, but this field allows you to limit the list to specific capabilities." 
 			input "selectedCapabilities", "enum",
 				title: "Display Which Capabilities?",
 				multiple: true,
@@ -106,21 +119,64 @@ def lastEventPage() {
 	}
 }
 
-def capabilityPage(params) {
-	dynamicPage(name:"capabilityPage") {
-		section() {
-			def titles
-			if (params.capabilitySetting) {
-				titles = getDeviceCapabilityTitle(params.capabilitySetting)
+def toggleSwitchPage(params) {
+	dynamicPage(name:"toggleSwitchPage") {		
+		section () {
+			if (params.deviceId) {
+				def device = params.deviceId ? getAllDevices().find { it.id == params.deviceId } : null
+				toggleSwitch(device, device?.currentSwitch == "off" ? "on" : "off")
 			}
 			else {
-				titles = getAllDevices().collect {
-					getDeviceAllCapabilitiesTitle(it)
+				getDevicesByCapability("Switch").each {
+					toggleSwitch(it, "off")
+				}
+			}			
+		}		
+	}
+}
+
+def toggleSwitch(device, newState) {
+	if (device) {	
+		if (newState == "on") {
+			device.on()
+		}
+		else {
+			device.off()
+		}
+		paragraph "Turned ${device.displayName} ${newState.toUpperCase()}"
+	}
+}
+
+def capabilityPage(params) {
+	dynamicPage(name:"capabilityPage") {	
+		def capSetting = params.capabilitySetting ? params.capabilitySetting : state.lastCapabilitySetting
+		if (capSetting) {
+			state.lastCapabilitySetting = capSetting
+			section("${getPluralName(capSetting)}") {
+				if (capSetting.name == "Switch") {
+					href(
+						name: "allOffSwitchLink", 
+						title: "Turn Off All Switches",
+						description: "",
+						page: "toggleSwitchPage"
+					)			
+					getSwitchToggleLinks()
+				}
+				else {
+					getParagraphs(getDeviceCapabilityTitle(capSetting))
 				}
 			}
-			titles.unique().each { paragraph "$it" }
 		}
+		else {
+			section("All Selected Capabilities") {
+				getParagraphs(getAllDevices().collect { getDeviceAllCapabilitiesTitle(it) })
+			}
+		}			
 	}
+}
+
+def getParagraphs(titles) {
+	return titles.unique().each { paragraph "$it" }
 }
 
 def getCapabilityPageLink(cap) {		
@@ -158,6 +214,19 @@ def getDeviceCapabilityTitle(cap) {
 	getDevicesByCapability(cap.name)?.collect {
 		def status = getDeviceCapabilityStatus(it, cap)
 		getDeviceStatusTitle(it, status)
+	}
+}
+
+def getSwitchToggleLinks() {
+	def cap = state.capabilitySettings.find { it.name == "Switch" }
+	getDevicesByCapability("Switch")?.collect {
+		href(
+			name: "switchLink${it.id}", 
+			title: "${getDeviceStatusTitle(it, getDeviceCapabilityStatus(it, cap))}",
+			description: "",
+			page: "toggleSwitchPage", 
+			params: [deviceId: it.id]
+		)			
 	}
 }
 
