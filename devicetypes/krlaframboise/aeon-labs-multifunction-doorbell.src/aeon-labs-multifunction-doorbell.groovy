@@ -1,5 +1,6 @@
 /**
  *  Aeon Labs Multifunction Doorbell v 1.8.3
+ *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-multifunction-doorbell/36586?u=krlaframboise)
  *
  *  Capabilities:
  *					Switch, Alarm, Music Player, Tone,

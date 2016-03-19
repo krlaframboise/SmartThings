@@ -1,5 +1,6 @@
 /**
  *  Aeotec Doorbell v 1.4
+ *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
  *
  *  Capabilities:
  *					Switch, Alarm, Tone, Battery, Configuration, Refresh

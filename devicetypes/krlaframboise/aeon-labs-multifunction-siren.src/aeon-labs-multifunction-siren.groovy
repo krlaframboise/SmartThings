@@ -1,5 +1,6 @@
 /**
  *  Aeoc Labs Multifunction Siren v 1.4
+ *  (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
  *
  *  Capabilities:
  *					Switch, Alarm, Tone, Music Player
