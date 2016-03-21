@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.4
+ *  Simple Device Viewer v 1.4.1
  *  (https://community.smartthings.com/t/release-simple-device-viewer/42481/15?u=krlaframboise)
  *
  *  Author: 
@@ -7,9 +7,11 @@
  *
  *  Changelog:
  *
- *    1.4 (03/20/2016) 
+ *    1.4 (03/20/2016)
  *      - Added Temp, Battery, and Last Event notifications.
  *      - Added Condensed View option.
+ *      - Created Custom Icon
+ *      - 1.4.1 - Changed title formatting of capability screens.
  *
  *    1.3 (03/19/2016)
  *      - Added "Setup Thresholds" section that allows you
@@ -491,7 +493,7 @@ String getDeviceStatusTitle(device, status) {
 	if (!status || status == "null") {
 		status = "N/A"
 	}
-	return "| ${status?.toUpperCase()} | - ${device.displayName}"
+	return "${status?.toUpperCase()} -- ${device.displayName}"
 }
 
 def getDeviceCapabilityStatusItem(device, cap) {
