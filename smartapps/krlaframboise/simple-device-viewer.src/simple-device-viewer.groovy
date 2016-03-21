@@ -7,7 +7,7 @@
  *
  *  Changelog:
  *
- *    1.4 (03/20/2016)
+ *    1.4 (03/20/2016) 
  *      - Added Temp, Battery, and Last Event notifications.
  *      - Added Condensed View option.
  *
