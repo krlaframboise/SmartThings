@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.4.1
+ *  Simple Device Viewer v 1.4.2
  *  (https://community.smartthings.com/t/release-simple-device-viewer/42481/15?u=krlaframboise)
  *
  *  Author: 
@@ -12,6 +12,7 @@
  *      - Added Condensed View option.
  *      - Created Custom Icon
  *      - 1.4.1 - Changed title formatting of capability screens.
+ *      - 1.4.2 - Turned off unnecessary logging
  *
  *    1.3 (03/19/2016)
  *      - Added "Setup Thresholds" section that allows you
@@ -849,8 +850,6 @@ def handleDeviceNotification(device, message, notificationType, notificationRepe
 }
 
 boolean canSendNotification(lastSent, repeatMS) {	
-	logDebug "canSendNotification($lastSent, $repeatMS)"
-	
 	def sendLimitExceeded = state.currentCheckSent >= (maxNotifications ? maxNotifications : 1000)
 	
 	if (!lastSent && !sendLimitExceeded) {
@@ -896,7 +895,7 @@ boolean timeElapsed(timeValue) {
 }
 
 def logDebug(msg) {
-	log.debug msg
+	//log.debug msg
 }
 
 def logInfo(msg) {
