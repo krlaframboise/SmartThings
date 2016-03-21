@@ -1,11 +1,15 @@
 /**
- *  Simple Device Viewer v 1.3
+ *  Simple Device Viewer v 1.4
  *  (https://community.smartthings.com/t/release-simple-device-viewer/42481/15?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.4 (03/20/2016)
+ *      - Added Temp, Battery, and Last Event notifications.
+ *      - Added Condensed View option.
  *
  *    1.3 (03/19/2016)
  *      - Added "Setup Thresholds" section that allows you
@@ -44,9 +48,9 @@ definition(
     author: "Kevin LaFramboise",
     description: "Provides information about the state of the specified devices.",
     category: "My Apps",
-    iconUrl: "http://cdn.device-icons.smartthings.com/Home/home5-icn.png",
-    iconX2Url: "http://cdn.device-icons.smartthings.com/Home/home5-icn@2x.png",
-    iconX3Url: "http://cdn.device-icons.smartthings.com/Home/home5-icn@3x.png")
+    iconUrl: "https://raw.githubusercontent.com/krlaframboise/Resources/master/smiple-device-viewer-icon.png",
+    iconX2Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/smiple-device-viewer-icon-2x.png",
+    iconX3Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/smiple-device-viewer-icon-3x.png")
 
  preferences {
 	page(name:"mainPage", uninstall:true, install:true)
@@ -55,7 +59,7 @@ definition(
 	page(name:"toggleSwitchPage")
 	page(name:"devicesPage")
 	page(name:"thresholdsPage")
-	//page(name:"notificationsPage")
+	page(name:"notificationsPage")
 	page(name:"otherSettingsPage")
 }
 
@@ -92,18 +96,18 @@ def mainPage() {
 			)
 			href(
 				name: "thresholdsLink", 
-				title: "Setup Thresholds",
+				title: "Threshold Settings",
 				description: "",
 				page: "thresholdsPage", 
 				params: []
 			)
-			//href(
-			//	name: "notificationsLink", 
-			//	title: "Setup Notifications",
-			//	description: "",
-			//	page: "notificationsPage", 
-			//	params: []
-			//)
+			href(
+				name: "notificationsLink", 
+				title: "Notification Settings",
+				description: "",
+				page: "notificationsPage", 
+				params: []
+			)
 			href(
 				name: "otherSettingsLink", 
 				title: "Other Settings",
@@ -178,29 +182,59 @@ def thresholdsPage() {
 				title: "Choose unit of time:",
 				required: false,
 				defaultValue: "days",
-				options: ["minutes", "seconds", "hours", "days"]			
+				options: ["seconds", "minutes", "hours", "days"]			
 		}
 	}
 }
 
 def notificationsPage() {
 	dynamicPage(name:"notificationsPage") {
-		section ("Setup Notifications") {
-		
+		section ("Notification Settings") {
+			paragraph "When notifications are enabled, notifications will be sent when the device value goes above or below the threshold specified in the Threshold Settings."				
+			
+			input "sendPush", "bool",
+				title: "Send Push Notifications?", 
+				required: false
+			input("recipients", "contact", title: "Send notifications to") {
+				input "phone", "phone", 
+					title: "Send text message to",
+					description: "Phone Number", 
+					required: false
+      }
+			mode title: "Only send Notifications for specific mode(s)",
+				required: false
+			input "maxNotifications", "number",
+				title: "Enter maximum number of notifications to receive within 5 minutes:",
+				required: false
 		}
-		section ("Notification Types") {
-			paragraph "When enabled, notifications will be sent when the device value goes above or below the threshold specified on the Set Thresholds screen."
+		section ("Battery Notifications") {			
 			input "batteryNotificationsEnabled", "bool",
-				title: "Send Battery Notifications?",
+				title: "Send battery notifications?",
 				defaultValue: false,
 				required: false
+			input "batteryNotificationsRepeat", "number",
+				title: "Send repeat notifications every: (hours)",
+				defaultValue: 0,
+				required: false
+		}
+		section ("Temperature Notifications") {
 			input "temperatureNotificationsEnabled", "bool",
 				title: "Send Temperature Notifications?",
 				defaultValue: false,
 				required: false
+			input "temperatureNotificationsRepeat", "number",
+				title: "Send repeat notifications every: (hours)",
+				defaultValue: 0,
+				required: false
+		}
+		section ("Last Event Notifications") {
 			input "lastEventNotificationsEnabled", "bool",
 				title: "Send Last Event notification?",
 				defaultValue: false,
+				required: false
+			input "lastEventNotificationsRepeat", "number",
+				title: "Send repeat notifications every: (hours)",
+				defaultValue: 0,
 				required: false
 		}
 	}
@@ -216,6 +250,10 @@ def otherSettingsPage() {
 				title: "Display Device State Icons?",
 				defaultValue: true,
 				required: false
+			input "condensedViewEnabled", "bool",
+				title: "Condensed View Enabled?",
+				defaultValue: false,
+				required: false
 			input "batterySortByValue", "bool",
 				title: "Sort by Battery Value?",
 				defaultValue: false,
@@ -227,6 +265,13 @@ def otherSettingsPage() {
 			input "lastEventSortByValue", "bool",
 				title: "Sort by Last Event Value?",
 				defaultValue: false,
+				required: false
+		}
+		section ("Scheduling") {
+			paragraph "Leave this field empty unless you're using an external timer to turn on a switch at regular intervals.  If you select a switch, the application will check to see if notifications need to be sent when its turned on instead of using SmartThings scheduler to check every 5 minutes."
+
+			input "timerSwitch", "capability.switch",
+				title: "Select timer switch:",
 				required: false
 		}
 	}
@@ -301,9 +346,20 @@ def capabilityPage(params) {
 
 def getParagraphs(listItems) {
 	listItems.sort { it.sortValue }
-	return listItems.unique().each { 
-		it.image = it.image ? it.image : ""
-		paragraph image: "${it.image}",	"${it.title}"
+	if (!condensedViewEnabled) {
+		return listItems.unique().each { 
+			it.image = it.image ? it.image : ""
+			paragraph image: "${it.image}",	"${it.title}"
+		}
+	}
+	else {
+		def content = null
+		listItems.unique().each { 
+			content = content ? content.concat("\n${it.title}") : "${it.title}"
+		}
+		if (content) {
+			paragraph "$content"
+		}
 	}
 }
 
@@ -349,7 +405,7 @@ def getDeviceCapabilityListItems(cap) {
 }
 
 def getSwitchToggleLinks() {
-	def cap = state.capabilitySettings.find { it.name == "Switch" }
+	def cap = getCapabilitySettingByName("Switch")
 	getDevicesByCapability("Switch")?.collect {
 		href(
 			name: "switchLink${it.id}", 
@@ -359,6 +415,10 @@ def getSwitchToggleLinks() {
 			params: [deviceId: it.id]
 		)			
 	}
+}
+
+def getCapabilitySettingByName(name) {
+	state.capabilitySettings.find { it.name == name }
 }
 
 def getAllDeviceLastEventListItems() {
@@ -373,7 +433,7 @@ def getDeviceLastEventListItem(device) {
 	
 	def listItem = [
 		value: lastEventTime ? now - lastEventTime : Long.MAX_VALUE,
-		status: lastEventTime ? "${getTimeSinceLastEvent(now - lastEventTime)}" : "No Events"
+		status: lastEventTime ? "${getTimeSinceLastEvent(now - lastEventTime)}" : "N/A"
 	]
 	
 	listItem.title = getDeviceStatusTitle(device, listItem.status)
@@ -391,19 +451,19 @@ def getDeviceLastEventTime(device) {
 
 def getTimeSinceLastEvent(ms) {
 	if (ms < msSecond()) {
-		return "$ms Milliseconds"
+		return "$ms MS"
 	}
 	else if (ms < msMinute()) {
-		return "${calculateTimeSince(ms, msSecond())} Seconds"
+		return "${calculateTimeSince(ms, msSecond())} SECS"
 	}
 	else if (ms < msHour()) {
-		return "${calculateTimeSince(ms, msMinute())} Minutes"
+		return "${calculateTimeSince(ms, msMinute())} MINS"
 	}
 	else if (ms < msDay()) {
-		return "${calculateTimeSince(ms, msHour())} Hours"
+		return "${calculateTimeSince(ms, msHour())} HRS"
 	}
 	else {
-		return "${calculateTimeSince(ms, msDay())} Days"
+		return "${calculateTimeSince(ms, msDay())} DAYS"
 	}		
 }
 
@@ -461,7 +521,7 @@ def getDeviceCapabilityStatusItem(device, cap) {
 				if (tempSortByValue) {
 					item.sortValue = item.value ? item.value.toInteger() : 0
 				}
-				break
+				break			
 		}
 	}
 	else {
@@ -530,22 +590,7 @@ boolean lastEventIsOld(lastEventTime) {
 			return true
 		}
 		else {
-			def threshold = lastEventThreshold ? lastEventThreshold : 7
-			def unitMS
-			switch (lastEventThresholdUnit) {
-				case "seconds":
-					unitMS = msSecond()
-					break
-				case "minutes":
-					unitMS = msMinute()
-					break
-				case "hours":
-					unitMS = msHour()
-					break
-				default:
-					unitMS = msDay()
-			}
-			return ((new Date().time - (threshold * unitMS)) > lastEventTime)
+			return ((new Date().time - getLastEventThresholdMS()) > lastEventTime)
 		}
 	}
 	catch (e) {
@@ -553,7 +598,24 @@ boolean lastEventIsOld(lastEventTime) {
 	}
 }
 
-
+long getLastEventThresholdMS() {
+def threshold = lastEventThreshold ? lastEventThreshold : 7
+	def unitMS
+	switch (lastEventThresholdUnit) {
+		case "seconds":
+			unitMS = msSecond()
+			break
+		case "minutes":
+			unitMS = msMinute()
+			break
+		case "hours":
+			unitMS = msHour()
+			break
+		default:
+			unitMS = msDay()
+	}
+	return (threshold * unitMS)
+}
 
 String getBatteryImage(batteryLevel) {
 	if (iconsAreEnabled() && batteryIsLow(batteryLevel)) {
@@ -615,12 +677,23 @@ def installed() {
 
 def updated() {
 	unsubscribe()
+	unschedule()
 	initialize()
 }
 
 def initialize() {
-	//log.debug "$settings"	
+	logDebug "Initializing"
+	state.nextCheckTime = null
+	if (!state.sentNotifications) {
+		state.sentNotifications = []
+	}
 	storeCapabilitySettings()
+	if (timerSwitch) {
+		subscribe(timerSwitch, "switch.on", timerSwitchEventHandler)
+	}
+	else {
+		runEvery5Minutes(checkAllDeviceThresholds)
+	}
 }
 
 void storeCapabilitySettings() {
@@ -686,4 +759,144 @@ void storeCapabilitySettings() {
 		activeState: "detected"
 	]	
 	state.capabilitySettings.sort { it.name }
+}
+
+def timerSwitchEventHandler(evt) {
+	checkAllDeviceThresholds()
+}
+
+def checkAllDeviceThresholds() {
+	if (!state.nextCheckTime || timeElapsed(state.nextCheckTime)) {
+		state.nextCheckTime = addMinutesToCurrentTime(5)		
+		state.currentCheckSent = 0
+		
+		if (batteryNotificationsEnabled) {
+			checkBatteries()
+		}			
+		if (temperatureNotificationsEnabled) {
+			checkTemperatures()
+		}			
+		if (lastEventNotificationsEnabled) {
+			checkLastEvents()
+		}
+	}
+}
+
+def checkTemperatures() {
+	logDebug "Checking Temperatures"
+	def cap = getCapabilitySettingByName("Temperature Measurement")
+	
+	getDevicesByCapability("Temperature Measurement")?.each {	
+		def item = getDeviceCapabilityStatusItem(it, cap)
+			
+		def message = null
+		if (tempIsHigh(item.value)) {
+			message = "High Temperature Alert - ${getDeviceStatusTitle(it, item.status)}"			
+		}
+		else if (tempIsLow(item.value)) {			
+			message = "Low Temperature Alert - ${getDeviceStatusTitle(it, item.status)}"			
+		}
+		
+		handleDeviceNotification(it, message, "temperature", temperatureNotificationsRepeat)
+	}
+}
+
+def checkBatteries() {
+	logDebug "Checking Batteries"
+	def cap = getCapabilitySettingByName("Battery")
+
+	getDevicesByCapability("Battery")?.each {		
+		def item = getDeviceCapabilityStatusItem(it, cap)
+		
+		def message = batteryIsLow(item.value) ? "Low Battery Alert - ${getDeviceStatusTitle(it, item.status)}" : null
+		
+		handleDeviceNotification(it, message, "battery", batteryNotificationsRepeat)
+	}
+}
+
+def checkLastEvents() {
+	logDebug "Checking Last Events"
+	getAllDevices()?.each {
+		def item = getDeviceLastEventListItem(it)
+		def message = item.value > getLastEventThresholdMS() ? "Last Event Alert - ${getDeviceStatusTitle(it, item.status)}" : null
+		
+		handleDeviceNotification(it, message, "lastEvent", lastEventNotificationsRepeat)
+	}
+}
+
+def handleDeviceNotification(device, message, notificationType, notificationRepeat) {
+	def id = "$notificationType${device.id}"
+	def lastSentMap = state.sentNotifications.find { it.id == id }
+	def lastSent = lastSentMap?.lastSent
+	def repeatMS = notificationRepeat ? (notificationRepeat * msHour()) : 0	
+		
+	if (message) {
+		if (canSendNotification(lastSent, repeatMS)){
+			if (lastSent) {
+				lastSentMap.lastSent = new Date().time
+			}
+			else {
+				state.sentNotifications << [id: "$id", lastSent: new Date().time]				
+			}			
+			sendNotificationMessage(message)
+		}
+	}
+	else if (lastSent) {
+		state.sentNotifications.remove(lastSentMap)
+	}
+}
+
+boolean canSendNotification(lastSent, repeatMS) {	
+	logDebug "canSendNotification($lastSent, $repeatMS)"
+	
+	def sendLimitExceeded = state.currentCheckSent >= (maxNotifications ? maxNotifications : 1000)
+	
+	if (!lastSent && !sendLimitExceeded) {
+		return true
+	}
+	else {
+		return (!sendLimitExceeded && repeatMS > 0 && timeElapsed(lastSent + repeatMS))
+	}
+}
+
+def sendNotificationMessage(message) {	
+	if (sendPush || recipients || phone) {
+		state.currentCheckSent = state.currentCheckSent + 1
+		logInfo "Sending $message"
+		if (sendPush) {
+			sendPush(message)
+		}
+		if (location.contactBookEnabled && recipients) {
+			sendNotificationToContacts(message, recipients)
+		} else {
+			if (phone) {
+				sendSms(phone, message)
+			}
+		}
+	}
+	else {
+		logInfo "Could not send message because notifications have not been configured.\nMessage: $message"
+	}
+}
+
+long addMinutesToCurrentTime(minutes) {
+	def currentTime = new Date().time
+	return (currentTime + (minutes * msMinute()))	
+}
+
+boolean timeElapsed(timeValue) {
+	if (timeValue != null) {
+		def currentTime = new Date().time
+		return (timeValue <= currentTime)
+	} else {
+		return false
+	}
+}
+
+def logDebug(msg) {
+	log.debug msg
+}
+
+def logInfo(msg) {
+	log.info msg
 }
