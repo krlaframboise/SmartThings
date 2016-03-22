@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.4.3
+ *  Simple Device Viewer v 1.4.4
  *  (https://community.smartthings.com/t/release-simple-device-viewer/42481/15?u=krlaframboise)
  *
  *  Author: 
@@ -14,6 +14,8 @@
  *      - 1.4.1 - Changed title formatting of capability screens.
  *      - 1.4.2 - Turned off unnecessary logging
  *      - 1.4.3 - Fixed bug caused by decimals in numeric fields.
+ *      - 1.4.4 - Fixed bug caused by settings object that has 
+ *                the property ID, but is not a device. (3/22)
  *
  *    1.3 (03/19/2016)
  *      - Added "Setup Thresholds" section that allows you
@@ -593,7 +595,14 @@ def getAllDevices() {
 
 boolean isDevice(obj) {
 	try {
-		return obj?.id ? true : false
+		if (obj?.id) {
+			// Make sure the obj is a device by checking for hasCapability function.
+			obj.hasCapability("") 
+			return true
+		}
+		else {
+			return false
+		}
 	}
 	catch (e) {
 		return false
