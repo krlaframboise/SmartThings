@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.4.2
+ *  Simple Device Viewer v 1.4.3
  *  (https://community.smartthings.com/t/release-simple-device-viewer/42481/15?u=krlaframboise)
  *
  *  Author: 
@@ -13,6 +13,7 @@
  *      - Created Custom Icon
  *      - 1.4.1 - Changed title formatting of capability screens.
  *      - 1.4.2 - Turned off unnecessary logging
+ *      - 1.4.3 - Fixed bug caused by decimals in numeric fields.
  *
  *    1.3 (03/19/2016)
  *      - Added "Setup Thresholds" section that allows you
@@ -515,14 +516,14 @@ def getDeviceCapabilityStatusItem(device, cap) {
 				item.status = "${item.status}%"
 				item.image = getBatteryImage(item.value)
 				if (batterySortByValue) {
-					item.sortValue = item.value ? item.value.toInteger() : 0
+					item.sortValue = safeToInteger(item.value)
 				}				
 				break
 			case "Temperature Measurement":
 				item.status = "${item.status}°${location.temperatureScale}"
 				item.image = getTemperatureImage(item.value)
 				if (tempSortByValue) {
-					item.sortValue = item.value ? item.value.toInteger() : 0
+					item.sortValue = safeToInteger(item.value)
 				}
 				break			
 		}
@@ -531,6 +532,24 @@ def getDeviceCapabilityStatusItem(device, cap) {
 		item.status = "N/A"
 	}
 	return item
+}
+
+int safeToInteger(val, defaultVal=0) {
+	try {
+		if (val) {
+			return val.toFloat().round().toInteger()
+		}
+		else if (defaultVal != 0){
+			return safeToInteger(defaultVal, 0)
+		}
+		else {
+			return defaultVal
+		}
+	}
+	catch (e) {
+		log.warn "safeToInteger($val, $defaultVal) failed with error $e"
+		return 0
+	}
 }
 
 def getSelectedCapabilitySettings() {
@@ -657,21 +676,11 @@ boolean iconsAreEnabled() {
 }
 
 boolean isAboveThreshold(val, threshold, int defaultThreshold) {
-	try {
-		return val.toInteger() > (!threshold ? defaultThreshold : threshold.toInteger())
-	}
-	catch (e) {
-		return false
-	}
+	return safeToInteger(val) > safeToInteger(threshold, defaultThreshold)	
 }
 
 boolean isBelowThreshold(val, threshold, int defaultThreshold) {
-	try {
-		return val.toInteger() < (threshold ? threshold.toInteger() : defaultThreshold)
-	}
-	catch (e) {
-		return false
-	}	
+	return safeToInteger(val) < safeToInteger(threshold,defaultThreshold)	
 }
 
 def installed() {
