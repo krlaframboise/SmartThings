@@ -1,11 +1,17 @@
 /**
- *  Simple Device Viewer v 1.4.4
+ *  Simple Device Viewer v 1.5
  *  (https://community.smartthings.com/t/release-simple-device-viewer/42481/15?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.5 (03/24/2016)
+ *      - Added Icons for Contact Sensors, Motion Sensors, 
+ *        Presence Sensors, Locks, and Switches.
+ *      - Added Exclude Device options for Battery, Temp,
+ *        and Last Event Notifications.
  *
  *    1.4 (03/20/2016)
  *      - Added Temp, Battery, and Last Event notifications.
@@ -54,9 +60,9 @@ definition(
     author: "Kevin LaFramboise",
     description: "Provides information about the state of the specified devices.",
     category: "My Apps",
-    iconUrl: "https://raw.githubusercontent.com/krlaframboise/Resources/master/smiple-device-viewer-icon.png",
-    iconX2Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/smiple-device-viewer-icon-2x.png",
-    iconX3Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/smiple-device-viewer-icon-3x.png")
+    iconUrl: "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-device-viewer-icon.png",
+    iconX2Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-device-viewer-icon-2x.png",
+    iconX3Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-device-viewer-icon-3x.png")
 
  preferences {
 	page(name:"mainPage", uninstall:true, install:true)
@@ -99,7 +105,7 @@ def mainPage() {
 				description: "",
 				page: "devicesPage", 
 				params: []
-			)
+			)			
 			href(
 				name: "thresholdsLink", 
 				title: "Threshold Settings",
@@ -222,6 +228,11 @@ def notificationsPage() {
 				title: "Send repeat notifications every: (hours)",
 				defaultValue: 0,
 				required: false
+			input "batteryNotificationsExcluded", "enum",
+				title: "Exclude these devices from battery notifications:",
+				multiple: true,
+				required: false,
+				options: getExcludedDeviceOptions("Battery")
 		}
 		section ("Temperature Notifications") {
 			input "temperatureNotificationsEnabled", "bool",
@@ -232,6 +243,11 @@ def notificationsPage() {
 				title: "Send repeat notifications every: (hours)",
 				defaultValue: 0,
 				required: false
+			input "temperatureNotificationsExcluded", "enum",
+				title: "Exclude these devices from temperature notifications:",
+				multiple: true,
+				required: false,
+				options: getExcludedDeviceOptions("Temperature Measurement")
 		}
 		section ("Last Event Notifications") {
 			input "lastEventNotificationsEnabled", "bool",
@@ -242,7 +258,21 @@ def notificationsPage() {
 				title: "Send repeat notifications every: (hours)",
 				defaultValue: 0,
 				required: false
+			input "lastEventNotificationsExcluded", "enum",
+				title: "Exclude these devices from last event notifications:",
+				multiple: true,
+				required: false,
+				options: getExcludedDeviceOptions(null)
 		}
+	}
+}
+
+def getExcludedDeviceOptions(capabilityName) {
+	if (capabilityName) {
+		getDevicesByCapability(capabilityName).collect { it.displayName }?.sort()
+	}
+	else {
+		getAllDevices().collect { it.displayName }?.sort()
 	}
 }
 
@@ -260,6 +290,12 @@ def otherSettingsPage() {
 				title: "Condensed View Enabled?",
 				defaultValue: false,
 				required: false
+			input "debugLogEnabled", "bool",
+				title: "Debug Logging Enabled?",
+				defaultValue: false,
+				required: false
+		}
+		section ("Sorting") {
 			input "batterySortByValue", "bool",
 				title: "Sort by Battery Value?",
 				defaultValue: false,
@@ -271,7 +307,7 @@ def otherSettingsPage() {
 			input "lastEventSortByValue", "bool",
 				title: "Sort by Last Event Value?",
 				defaultValue: false,
-				required: false
+				required: false			
 		}
 		section ("Scheduling") {
 			paragraph "Leave this field empty unless you're using an external timer to turn on a switch at regular intervals.  If you select a switch, the application will check to see if notifications need to be sent when its turned on instead of using SmartThings scheduler to check every 5 minutes."
@@ -332,8 +368,8 @@ def capabilityPage(params) {
 						title: "Turn Off All Switches",
 						description: "",
 						page: "toggleSwitchPage"
-					)			
-					getSwitchToggleLinks()
+					)
+					getSwitchToggleLinks(getDeviceCapabilityListItems(capSetting))
 				}
 				else {
 					getParagraphs(getDeviceCapabilityListItems(capSetting))
@@ -347,6 +383,20 @@ def capabilityPage(params) {
 				})
 			}
 		}			
+	}
+}
+
+def getSwitchToggleLinks(listItems) {
+	listItems.sort { it.sortValue }	
+	return listItems.unique().each {
+		href(
+			image: it.image ? it.image : "",
+			name: "switchLink${it.deviceId}", 
+			title: "${it.title}",
+			description: "",
+			page: "toggleSwitchPage", 
+			params: [deviceId: it.deviceId]
+		)
 	}
 }
 
@@ -405,21 +455,14 @@ def getDeviceAllCapabilitiesListItem(device) {
 def getDeviceCapabilityListItems(cap) {
 	getDevicesByCapability(cap.name)?.collect {
 		def listItem = getDeviceCapabilityStatusItem(it, cap)
-		listItem.title = getDeviceStatusTitle(it, listItem.status)
+		listItem.deviceId = "${it.id}"
+		if (listItem.image && cap.imageOnly) {
+			listItem.title = "${it.displayName}"
+		}
+		else {
+			listItem.title = "${getDeviceStatusTitle(it, listItem.status)}"
+		}
 		listItem
-	}
-}
-
-def getSwitchToggleLinks() {
-	def cap = getCapabilitySettingByName("Switch")
-	getDevicesByCapability("Switch")?.collect {
-		href(
-			name: "switchLink${it.id}", 
-			title: "${getDeviceStatusTitle(it, getDeviceCapabilityStatusItem(it, cap).status)}",
-			description: "",
-			page: "toggleSwitchPage", 
-			params: [deviceId: it.id]
-		)			
 	}
 }
 
@@ -527,7 +570,22 @@ def getDeviceCapabilityStatusItem(device, cap) {
 				if (tempSortByValue) {
 					item.sortValue = safeToInteger(item.value)
 				}
-				break			
+				break
+			case "Contact Sensor":
+				item.image = getContactImage(item.value)
+				break
+			case "Lock":
+				item.image = getLockImage(item.value)
+				break
+			case "Motion Sensor":
+				item.image = getMotionImage(item.value)
+				break
+			case "Presence Sensor":
+				item.image = getPresenceImage(item.value)
+				break
+			case "Switch":
+				item.image = getSwitchImage(item.value)
+				break
 		}
 	}
 	else {
@@ -549,7 +607,7 @@ int safeToInteger(val, defaultVal=0) {
 		}
 	}
 	catch (e) {
-		log.warn "safeToInteger($val, $defaultVal) failed with error $e"
+		logDebug "safeToInteger($val, $defaultVal) failed with error $e"
 		return 0
 	}
 }
@@ -596,7 +654,7 @@ def getAllDevices() {
 boolean isDevice(obj) {
 	try {
 		if (obj?.id) {
-			// Make sure the obj is a device by checking for hasCapability function.
+			// This isn't a device if the following line throws an exception.
 			obj.hasCapability("") 
 			return true
 		}
@@ -610,8 +668,8 @@ boolean isDevice(obj) {
 }
 
 String getLastEventImage(lastEventTime) {
-	if (iconsAreEnabled() && lastEventIsOld(lastEventTime)) {		
-		return "https://raw.githubusercontent.com/krlaframboise/Resources/master/warning.png"
+	if (lastEventIsOld(lastEventTime)) {		
+		return getImagePath("warning.png")
 	}
 }
 
@@ -648,9 +706,31 @@ def threshold = lastEventThreshold ? lastEventThreshold : 7
 	return (threshold * unitMS)
 }
 
+String getPresenceImage(currentState) {
+	def name = currentState == "present" ? "present" : "not-present"
+	return getImagePath("${name}.png")
+}
+
+String getContactImage(currentState) {
+	return  getImagePath("${currentState}.png")	
+}
+
+String getLockImage(currentState) {
+	return  getImagePath("${currentState}.png")	
+}
+
+String getMotionImage(currentState) {
+	def name = currentState == "active" ? "motion" : "no-motion"
+	return  getImagePath("${name}.png")	
+}
+
+String getSwitchImage(currentState) {
+	return  getImagePath("light-${currentState}.png")	
+}
+
 String getBatteryImage(batteryLevel) {
-	if (iconsAreEnabled() && batteryIsLow(batteryLevel)) {
-		return  "https://raw.githubusercontent.com/krlaframboise/Resources/master/low-battery.png"
+	if (batteryIsLow(batteryLevel)) {
+		return  getImagePath("low-battery.png")
 	}
 }
 
@@ -658,17 +738,15 @@ boolean batteryIsLow(batteryLevel) {
 	return isBelowThreshold(batteryLevel, lowBatteryThreshold, 25)
 }
 
-String getTemperatureImage(tempVal) {	
-	if (iconsAreEnabled()) {
-		if (tempIsHigh(tempVal)) {
-			return "https://raw.githubusercontent.com/krlaframboise/Resources/master/high-temp.png"
-		}
-		else if (tempIsLow(tempVal)) {
-			return "https://raw.githubusercontent.com/krlaframboise/Resources/master/low-temp.png"
-		}
-		else {
-			return "https://raw.githubusercontent.com/krlaframboise/Resources/master/normal-temp.png"
-		}
+String getTemperatureImage(tempVal) {		
+	if (tempIsHigh(tempVal)) {
+		return getImagePath("high-temp.png")
+	}
+	else if (tempIsLow(tempVal)) {
+		return getImagePath("low-temp.png")
+	}
+	else {
+		return getImagePath("normal-temp.png")
 	}
 }
 
@@ -678,6 +756,12 @@ boolean tempIsHigh(val) {
 
 boolean tempIsLow(val) {
 	return isBelowThreshold(val, lowTempThreshold, 63)
+}
+
+String getImagePath(imageName) {
+	if (iconsAreEnabled()) {
+		return "https://raw.githubusercontent.com/krlaframboise/Resources/master/$imageName"
+	}
 }
 
 boolean iconsAreEnabled() {
@@ -704,10 +788,12 @@ def updated() {
 
 def initialize() {
 	logDebug "Initializing"
+	
 	state.nextCheckTime = null
-	if (!state.sentNotifications) {
+		if (!state.sentNotifications) {
 		state.sentNotifications = []
 	}
+	
 	storeCapabilitySettings()
 	if (timerSwitch) {
 		subscribe(timerSwitch, "switch.on", timerSwitchEventHandler)
@@ -723,25 +809,29 @@ void storeCapabilitySettings() {
 	state.capabilitySettings << [
 		name: "Switch",
 		pluralName: "Switches",		
-		activeState: "on"
+		activeState: "on",
+		imageOnly: true
 	]
 	state.capabilitySettings << [
 		name: "Motion Sensor", 
 		prefName: "motionSensor",
 		attributeName: "motion",
-		activeState: "active"
+		activeState: "active",
+		imageOnly: true
 	]
 	state.capabilitySettings << [
 		name: "Contact Sensor",
 		prefName: "contactSensor",
 		attributeName: "contact",
-		activeState: "open"
+		activeState: "open",
+		imageOnly: true
 	]
 	state.capabilitySettings << [
 		name: "Presence Sensor",
 		prefName: "presenceSensor",
 		attributeName: "presence",
-		activeState: "present"
+		activeState: "present",
+		imageOnly: true
 	]
 	state.capabilitySettings << [
 		name: "Battery",
@@ -759,7 +849,8 @@ void storeCapabilitySettings() {
 	]
 	state.capabilitySettings << [
 		name: "Lock",
-		activeState: "locked"
+		activeState: "locked",
+		imageOnly: true
 	]
 	state.capabilitySettings << [
 		name: "Temperature Measurement",
@@ -807,9 +898,9 @@ def checkTemperatures() {
 	logDebug "Checking Temperatures"
 	def cap = getCapabilitySettingByName("Temperature Measurement")
 	
-	getDevicesByCapability("Temperature Measurement")?.each {	
+	removeExcludedDevices(getDevicesByCapability("Temperature Measurement"), temperatureNotificationsExcluded)?.each {	
 		def item = getDeviceCapabilityStatusItem(it, cap)
-			
+		
 		def message = null
 		if (tempIsHigh(item.value)) {
 			message = "High Temperature Alert - ${getDeviceStatusTitle(it, item.status)}"			
@@ -826,7 +917,7 @@ def checkBatteries() {
 	logDebug "Checking Batteries"
 	def cap = getCapabilitySettingByName("Battery")
 
-	getDevicesByCapability("Battery")?.each {		
+	removeExcludedDevices(getDevicesByCapability("Battery"), batteryNotificationsExcluded)?.each {
 		def item = getDeviceCapabilityStatusItem(it, cap)
 		
 		def message = batteryIsLow(item.value) ? "Low Battery Alert - ${getDeviceStatusTitle(it, item.status)}" : null
@@ -837,11 +928,27 @@ def checkBatteries() {
 
 def checkLastEvents() {
 	logDebug "Checking Last Events"
-	getAllDevices()?.each {
+	removeExcludedDevices(getAllDevices(), lastEventNotificationsExcluded)?.each {
 		def item = getDeviceLastEventListItem(it)
 		def message = item.value > getLastEventThresholdMS() ? "Last Event Alert - ${getDeviceStatusTitle(it, item.status)}" : null
 		
 		handleDeviceNotification(it, message, "lastEvent", lastEventNotificationsRepeat)
+	}
+}
+
+def removeExcludedDevices(deviceList, excludeList) {
+	if (excludeList && excludeList?.size() > 0) {
+		def result = []
+		deviceList.each {
+			def displayName = "${it.displayName}"
+			if (!excludeList.find { it == "$displayName" }) {
+				result << it
+			}
+		}
+		return result
+	}
+	else {
+		return deviceList
 	}
 }
 
@@ -850,7 +957,7 @@ def handleDeviceNotification(device, message, notificationType, notificationRepe
 	def lastSentMap = state.sentNotifications.find { it.id == id }
 	def lastSent = lastSentMap?.lastSent
 	def repeatMS = notificationRepeat ? (notificationRepeat * msHour()) : 0	
-		
+			
 	if (message) {
 		if (canSendNotification(lastSent, repeatMS)){
 			if (lastSent) {
@@ -913,7 +1020,9 @@ boolean timeElapsed(timeValue) {
 }
 
 def logDebug(msg) {
-	//log.debug msg
+	if (debugLogEnabled) {
+		log.debug msg
+	}
 }
 
 def logInfo(msg) {
