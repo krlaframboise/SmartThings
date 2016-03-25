@@ -1,30 +1,34 @@
 /**
- *  Aeotec Doorbell v 1.4
+ *  Aeotec Doorbell v 1.5
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
  *
  *  Capabilities:
- *					Switch, Alarm, Tone, Battery, Configuration, Refresh
+ *	  Switch, Alarm, Tone, Battery, Configuration, Refresh
  *
- *	Author: 
- *					Kevin LaFramboise (krlaframboise)
+ *  Author: 
+ *    Kevin LaFramboise (krlaframboise)
  *
- *	Changelog:
+ *  Changelog:
  *
- *	1.4 (02/28/2016)
- *		- UI Enhancements and fixed fingerprint so that it doesn't conflict
- *			with the Aeon Labs Multifunction Siren.
+ *  1.5 (03/24/2016)
+ *    - UI Enhancements			
  *
- *	1.3 (02/21/2016)
- *		-	UI Enhancements/Fixes, added Refresh capability.
+ *  1.4 (02/28/2016)
+ *    - UI Enhancements and fixed fingerprint so that
+ *      it doesn't conflict with the Aeon Labs
+ *      Multifunction Siren.
  *
- *	1.2 (02/17/2016)
- *		-	Fixed bug causing error on install.
+ *  1.3 (02/21/2016)
+ *    -	UI Enhancements/Fixes, added Refresh capability.
  *
- *	1.1 (02/15/2016)
- *		-	Consolidated code.
+ *  1.2 (02/17/2016)
+ *    -	Fixed bug causing error on install.
  *
- *	1.0 (02/14/2016)
- *		-	Initial Release
+ *  1.1 (02/15/2016)
+ *    -	Consolidated code.
+ *
+ *  1.0 (02/14/2016)
+ *    -	Initial Release
  * 
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -82,6 +86,15 @@ metadata {
 	}
 
 	tiles(scale: 2) {
+		multiAttributeTile(name:"status", type: "generic", width: 6, height: 3, canChangeIcon: true){
+			tileAttribute ("status", key: "PRIMARY_CONTROL") {
+				attributeState "off", label:'off', action: "off", icon:"st.Home.home30", backgroundColor:"#ffffff"
+				attributeState "doorbell", label:'Doorbell Ringing!', action: "off", icon:"st.Home.home30", backgroundColor:"#99c2ff"
+				attributeState "alarm", label:'Alarm!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "beep", label:'Beeping!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#99FF99"
+				attributeState "play", label:'Playing!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#694489"
+			}
+		}	
 		standardTile("playDoorbell", "device.status", label: 'Doorbell', width: 2, height: 2) {
 			state "default", 
 				label:'Doorbell', 
@@ -93,23 +106,6 @@ metadata {
 				action:"off",
 				icon:"",
 				background: "#ffffff"				
-		}
-		valueTile("doorbellTrack", "device.doorbellTrack", decoration: "flat", width:4, height: 1) {
-			state "doorbellTrack", label: 'Doorbell Track: ${currentValue}'
-		}
-		valueTile("doorbellTrackDown", "device.doorbellTrack", width: 1, height: 1) {
-			state "default", 
-			label:'<', 
-			action:"doorbellDown"
-		}
-		controlTile("doorbellSlider", "device.doorbellTrack", "slider", width: 2, height: 1, range: "(1..100)") {
-			state "doorbellTrack", action:"setDoorbellTrack"
-		}
-		valueTile("doorbellTrackUp", "device.doorbellTrack", width: 1, height: 1) {
-			state "default", 
-			label:'>', 
-			action:"doorbellUp",
-			icon: ""
 		}
 		standardTile("playBeep", "device.status", label: 'Beep', width: 2, height: 2) {
 			state "default", 
@@ -123,23 +119,6 @@ metadata {
 				icon:"", 
 				backgroundColor: "#ffffff"
 		}		
-		valueTile("beepTrack", "device.beepTrack", decoration: "flat", height:1, width:4) {
-			state "beepTrack", label: 'Beep Track: ${currentValue}'
-		}		
-		valueTile("beepTrackDown", "device.beepTrack", width: 1, height: 1) {
-			state "default", 
-			label:'<', 
-			action:"beepDown"
-		}
-		controlTile("beepSlider", "device.beepTrack", "slider", width: 2, height: 1, range: "(1..100)") {
-			state "beepTrack", action:"setBeepTrack"
-		}
-		valueTile("beepTrackUp", "device.beepTrack", width: 1, height: 1) {
-			state "default", 
-			label:'>', 
-			action:"beepUp",
-			icon: ""
-		}
 		standardTile("playAlarm", "device.alarm", label: 'Alarm', width: 2, height: 2) {
 			state "default", 
 				label:'Alarm', 
@@ -152,31 +131,68 @@ metadata {
 				icon:"", 
 				backgroundColor: "#ffffff"
 		}
-		valueTile("alarmTrack", "device.alarmTrack", decoration: "flat", height:1, width:4) {
-			state "alarmTrack", label: 'Alarm Track: ${currentValue}'
+		valueTile("doorbellTrack", "device.doorbellTrack", decoration: "flat", width:2, height: 2) {
+			state "doorbellTrack", label: 'DOORBELL: ${currentValue}'
+		}		
+		controlTile("doorbellSlider", "device.doorbellTrack", "slider", width: 3, height: 2, range: "(1..100)") {
+			state "doorbellTrack", action:"setDoorbellTrack"
 		}
-		valueTile("alarmTrackDown", "device.alarmTrack", width: 1, height: 1) {
+		valueTile("doorbellTrackUp", "device.doorbellTrack", width: 1, height: 1) {
 			state "default", 
-			label:'<', 
-			action:"alarmDown"
+			label:'', 
+			action:"doorbellUp",
+			icon: "st.thermostat.thermostat-up"
+		}		
+		valueTile("doorbellTrackDown", "device.doorbellTrack", width: 1, height: 1) {
+			state "default", 
+			label:'', 
+			action:"doorbellDown",
+			icon: "st.thermostat.thermostat-down"
 		}
-		controlTile("alarmSlider", "device.alarmTrack", "slider", width: 2, height: 1, range: "(1..100)") {
+		valueTile("beepTrack", "device.beepTrack", decoration: "flat", height:2, width:2) {
+			state "beepTrack", label: 'BEEP: ${currentValue}'
+		}
+		controlTile("beepSlider", "device.beepTrack", "slider", width: 3, height: 2, range: "(1..100)") {
+			state "beepTrack", action:"setBeepTrack"
+		}
+		valueTile("beepTrackUp", "device.beepTrack", width: 1, height: 1) {
+			state "default", 
+			label:'', 
+			action:"beepUp",
+			icon: "st.thermostat.thermostat-up"
+		}		
+		valueTile("beepTrackDown", "device.beepTrack", width: 1, height: 1) {
+			state "default", 
+			label:'', 
+			action:"beepDown",
+			icon: "st.thermostat.thermostat-down"
+		}		
+		valueTile("alarmTrack", "device.alarmTrack", decoration: "flat", height:2, width:2) {
+			state "alarmTrack", label: 'ALARM: ${currentValue}'
+		}
+		controlTile("alarmSlider", "device.alarmTrack", "slider", width: 3, height: 2, range: "(1..100)") {
 			state "alarmTrack", action:"setAlarmTrack"
 		}
 		valueTile("alarmTrackUp", "device.alarmTrack", width: 1, height: 1) {
 			state "default", 
-			label:'>', 
+			label:'', 
 			action:"alarmUp",
-			icon: ""
+			icon: "st.thermostat.thermostat-up"
 		}
+		valueTile("alarmTrackDown", "device.alarmTrack", width: 1, height: 1) {
+			state "default", 
+			label:'', 
+			action:"alarmDown",
+			icon: "st.thermostat.thermostat-down"
+		}		
 		valueTile("volume", "device.volume", decoration: "flat", height:1, width:2) {
-			state "volume", label: 'Volume ${currentValue}'
+			state "volume", label: 'VOLUME: ${currentValue}'
 		}
 		controlTile("volumeSlider", "device.volume", "slider", height: 1, width: 4, range: "(1..10)") {
 			state "volume", action:"setVolume"
 		}
 		valueTile("repeat", "device.repeat", decoration: "flat", height:1, width:2) {
-			state "repeat", label: 'Repeat ${currentValue}'
+			state "repeat", label: 'REPEAT: ${currentValue}'
 		}
 		controlTile("repeatSlider", "device.repeat", "slider", height: 1, width: 4, range: "(1..25)") {
 			state "repeat", action:"setRepeat"
@@ -187,8 +203,8 @@ metadata {
 		standardTile("refresh", "device.refresh", label: 'Refresh', width: 2, height: 2) {
 			state "default", label:'', action: "refresh", icon:"st.secondary.refresh"
 		}		
-		main "playDoorbell"
-		details(["playDoorbell", "doorbellTrack","doorbellTrackDown", "doorbellSlider",  "doorbellTrackUp", "playBeep", "beepTrack", "beepTrackDown", "beepSlider", "beepTrackUp", "playAlarm", "alarmTrack", "alarmTrackDown", "alarmSlider", "alarmTrackUp", "volume", "volumeSlider", "repeat", "repeatSlider", "battery", "refresh"])
+		main "status"
+		details(["status", "playDoorbell", "playBeep", "playAlarm", "doorbellTrack", "doorbellSlider", "doorbellTrackUp", "doorbellTrackDown", "beepTrack", "beepSlider", "beepTrackUp", "beepTrackDown", "alarmTrack", "alarmSlider", "alarmTrackUp", "alarmTrackDown", "volume", "volumeSlider", "repeat", "repeatSlider", "battery", "refresh"])
 	}
 }
 
