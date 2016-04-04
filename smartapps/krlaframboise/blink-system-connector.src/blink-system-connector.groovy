@@ -1,6 +1,6 @@
 /**
  *  Blink System Connector v 1.0
- *  (https://community.smartthings.com/t/???)
+ *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
