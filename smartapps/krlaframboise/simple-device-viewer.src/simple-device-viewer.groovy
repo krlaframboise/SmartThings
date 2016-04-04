@@ -1,11 +1,14 @@
 /**
- *  Simple Device Viewer v 1.5
+ *  Simple Device Viewer v 1.5.1
  *  (https://community.smartthings.com/t/release-simple-device-viewer/42481/15?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.5.1 (03/27/2016)
+ *      - Bug fix for random N/A notifications.
  *
  *    1.5 (03/24/2016)
  *      - Added Icons for Contact Sensors, Motion Sensors, 
@@ -957,8 +960,9 @@ def handleDeviceNotification(device, message, notificationType, notificationRepe
 	def lastSentMap = state.sentNotifications.find { it.id == id }
 	def lastSent = lastSentMap?.lastSent
 	def repeatMS = notificationRepeat ? (notificationRepeat * msHour()) : 0	
+	def unknownStatus = message?.contains("- N/A --") ? true : false
 			
-	if (message) {
+	if (message && !unknownStatus) {
 		if (canSendNotification(lastSent, repeatMS)){
 			if (lastSent) {
 				lastSentMap.lastSent = new Date().time
@@ -968,6 +972,11 @@ def handleDeviceNotification(device, message, notificationType, notificationRepe
 			}			
 			sendNotificationMessage(message)
 		}
+	}
+	else if (unknownStatus) {
+		// Do nothing because occassionally null is returned for
+		// battery or last event when it really has a value causing
+		// false notifications to be sent out.
 	}
 	else if (lastSent) {
 		state.sentNotifications.remove(lastSentMap)

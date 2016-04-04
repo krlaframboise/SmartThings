@@ -1,0 +1,422 @@
+/**
+ *  Blink System Connector v 1.0
+ *  (https://community.smartthings.com/t/???)
+ *
+ *  Author: 
+ *    Kevin LaFramboise (krlaframboise)
+ *
+ *  Changelog:
+ *
+ *    1.0 (4/3/2016)
+ *      - Initial Release
+ *
+ *  Licensed under the Apache License, Version 2.0 (the
+ *  "License"); you may not use this file except in
+ *  compliance with the License. You may obtain a copy of
+ *  the License at:
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in
+ *  writing, software distributed under the License is
+ *  distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
+ *  OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing
+ *  permissions and limitations under the License.
+ *
+ */
+definition(
+  name: "Blink System Connector",
+  namespace: "krlaframboise",
+  author: "Kevin LaFramboise",
+  description: "Provides Blink System Integration.",
+  category: "My Apps",
+  iconUrl: "https://raw.githubusercontent.com/krlaframboise/Resources/master/blink-camera.png",
+  iconX2Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/blink-camera-2x.png",
+  iconX3Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/blink-camera-3x.png",
+  singleInstance: true
+)
+
+preferences {
+  section("SmartThings Hub") {
+    input "hostHub", "hub", title: "Select Hub", multiple: false, required: true
+  }
+  section("Blink Credentials") {
+    input name: "blinkUser", type: "text", title: "Email", required: true
+    input name: "blinkPassword", type: "password", title: "Password", required: true
+  }
+  section("Smart Home Monitor") {
+    input "shmEnabled", "bool", title: "Integrate with Smart Home Monitor", required: true, defaultValue: true
+  }
+	section("options") {
+		input "disableImages", "bool", 
+			title: "Disable image functionality?", 
+			defaultValue: false
+			required: false
+		input "debugOutput", "bool", 
+			title: "Enable debug logging?", 
+			defaultValue: true
+			required: false
+	}
+}
+
+def installed() {
+  addBlinkCameras()  
+	initialize()	
+}
+
+def addBlinkCameras() {
+	getCameras().each {
+		try {
+			if (!getChildDevice(it.dni)) {
+				logDebug "Adding Blink Camera - ${it.cameraName}"
+				addBlinkCamera(it)
+			}
+		}
+		catch (e) {
+			log.error "Error Adding Camera ${it.cameraName}: ${e}"
+		}
+	}
+}
+
+private addBlinkCamera(camera) {
+	addChildDevice(
+		"krlaframboise", 
+		"Blink Wireless Camera", 
+		camera.dni, 
+		settings.hostHub?.id, 
+		[
+			"name": "Blink Wireless Camera",
+			label: "Blink - ${camera.cameraName}", 
+			completedSetup: true
+		]
+	)
+}
+
+def updated() {
+	unsubscribe()
+	unschedule()
+	initialize()	
+}
+
+def initialize() {
+	subscribe(location, "alarmSystemStatus", shmHandler)
+	runEvery5Minutes("refreshChildren")
+	runIn(3, refreshChildren, [overwrite: false])
+}
+
+def uninstalled() {
+	removeChildDevices(getChildDevices())
+}
+
+private removeChildDevices(devices) {
+	devices.each {
+		deleteChildDevice(it.deviceNetworkId)
+	}
+}
+
+def refreshChildren() {
+	if (timeElapsed(state.nextRefresh)) {
+		state.nextRefresh = addToCurrentTime(3)
+		
+		getCameras().each {			
+			logDebug "Refreshing ${it.cameraName}"
+			
+			def childDevice = getChildDevice(it.dni)
+			if (childDevice) {
+				childDevice.refresh(it)
+			}
+			else {
+				log.error "Could not find Child Device for: ${it}"
+			}
+		}
+	}
+}
+
+def getSystemStatus() {
+	return getNetwork()?.armed ? "armed" : "disarmed"
+}
+
+def getThumbnailImage(url) {
+	if (!imagesAreDisabled()) {
+		logDebug "Getting Thumbnail Image: $url"
+		
+		def resp = getFromBlink(buildRequest("${url}.jpg"))
+		
+		if (resp?.isSuccess() && resp?.getContentType() == "image/jpeg") {
+			return resp.data
+		}
+		else {
+			log.error "Unable to get image $url"
+			return null
+		}
+	}
+	else {
+		log.info "Image feature disabled"
+	}
+}
+
+def imagesAreDisabled() {
+	return settings.disableImages ? true : false
+}
+
+def arm() {
+	setStatus("arm")
+}
+
+def disarm() {
+	setStatus("disarm")
+}
+
+def setStatus(status) {
+	def networkId = getNetwork()?.id
+	def request = buildRequest("/network/${networkId}/${status}")
+	
+	def data = postToBlink(request)?.data
+	if (!data) {
+		log.error "Failed to set status: ${status}"
+	}
+	refreshChildren()
+	runIn(5, refreshChildren, [overwrite: false])
+}
+
+private getCommandStatus(commandId) {
+	def networkId = getNetwork()?.id
+	def request = buildRequest("/network/$networkId/command/$commandId")
+	def data = getFromBlink(request)?.data
+	if (!data) {
+		log.error "Failed to get status of command id $commandId"
+	}
+	return data	
+}
+
+private getCameras() {
+	def networkId = getNetwork()?.id
+	def events = getEvents()
+	def request = buildRequest("/homescreen")
+	def devicesData = getFromBlink(request)?.data?.devices
+	def cameras = devicesData?.findAll{ it.device_type == "camera" }?.collect {
+		if (it.device_type == "camera") {
+			return getCamera(networkId, it, findCameraEvents(events, it.device_id))
+		}
+	}		
+	if (!cameras) {
+		log.error "Failed to get cameras"
+	}
+	return cameras
+}
+
+private getCamera(networkId, homescreen, events) {
+	def camera = [
+		dni: getCameraDNI(
+				networkId,
+				homescreen.device_id
+		),
+		cameraId: homescreen.device_id,
+		cameraName: homescreen.name,
+		motionDetectionEnabled: homescreen.enabled,
+		status: homescreen.active,
+		thumbnailUrl: homescreen.thumbnail,
+		temperature: homescreen.temp,
+		battery: homescreen.battery,
+		syncModuleSignal: homescreen.lfr_strength,
+		wifiSignal: homescreen.wifi_strength,
+		systemArmed: homescreen.armed,
+		networkId: networkId,
+		updatedAt: formatTimeValue(homescreen.updated_at),
+		events: events
+	]
+}
+
+private formatTimeValue(val) {
+	return val?.replace("T"," ").replace("+00:00","")
+}
+
+private findCameraEvents(events, cameraId) {
+	return events.findAll { it.cameraId == cameraId }?.take(15)
+}
+
+def getCameraDNI(networkId, cameraId) {
+	if (networkId && cameraId) {
+		return "blink-$networkId-$cameraId"
+	}
+	else {
+		log.error "Unable to get Camera DNI for [networkId: $networkId, cameraId: $cameraId]"
+	}
+}
+
+private getHomescreens() {
+	def request = buildRequest("/homescreen")
+	def data = getFromBlink(request)?.data	
+	if (data) {		
+		state.systemArmed = data.network?.armed ? true : false
+		def homescreens = []
+		data.devices?.each {
+			if (it.device_type == "camera") {
+				homescreens << it
+			}
+		}
+	}
+	else {
+		log.error "Unable to retrieve homescreen"
+		return null
+	}
+}
+
+private getEvents() {
+	def networkId = getNetwork()?.id
+	def request = buildRequest("/events/network/$networkId")
+	def eventData = getFromBlink(request)?.data?.event
+	def events = eventData?.findAll { it.camera_id }?.collect {		
+			[
+				eventId: it.id,
+				cameraId: it.camera_id,
+				eventType: it.type,
+				thumbnailUrl: it.video_url?.replace(".mp4", ""),
+				eventTime: formatTimeValue(it.created_at)
+			]
+	}
+	if (!events) {
+		log.error "Failed to get events"
+	}
+	return events
+}
+
+private getNetwork() {
+	def networks = getNetworks()
+	if (networks && networks?.size() > 0) {
+		return networks[0]
+	}
+	else {
+		return null
+	}
+}
+
+private getNetworks() {	
+  def request = buildRequest("/networks")
+	def networks = getFromBlink(request)?.data?.networks	
+	if (!networks) {
+		log.error "Unable to retrieve networks"
+	}
+	return networks
+}
+
+private getAuthToken() {
+	if (!state.authToken) {
+		logDebug "Retrieving AuthToken"
+		def requestBody = [
+			email:    settings.blinkUser,
+			password: settings.blinkPassword,
+			client_specifier: "iPhone 9.2 | 2.2 | 222"
+		]
+		def request = buildRequest("/login", null, requestBody)	
+		state.authToken = postToBlink(request)?.data?.authtoken?.authtoken
+		if (!state.authToken) {
+			log.error "Failed to login: ${response}"
+		}
+	}
+	return state.authToken
+}
+
+private buildRequest(path) {
+	return buildRequest(path, [TOKEN_AUTH: getAuthToken()], null)
+}
+
+private buildRetryRequest(request) {
+	def authToken = getAuthToken()
+	if (request.headers?.TOKEN_AUTH) {
+		request.headers.TOKEN_AUTH = authToken
+	}
+	else {
+		request.headers = [TOKEN_AUTH: authToken]
+	}
+	return request
+}
+
+private buildRequest(path, requestHeaders, requestBody) {
+	def request = [
+		uri:  "https://prod.immedia-semi.com",
+		path: path
+	]
+	
+	if (requestHeaders) {
+		request.headers = requestHeaders
+	}
+	
+	if (requestBody) {
+		request.body = requestBody
+	}
+	return request
+}
+
+private getFromBlink(request) {
+	try {
+		httpGet(request) { objResponse ->
+			return objResponse
+    }
+  }
+	catch (e) {
+		if (canRetryRequest(e.message)) {
+			return getFromBlink(buildRetryRequest(request))
+		}
+		else {
+			log.error "Get from Blink ${request?.path} Exception: ${e}"
+			return null
+		}		
+  }
+}
+
+private postToBlink(request) {
+	try {
+		httpPostJson(request) { objResponse ->
+			return objResponse
+    }
+  }
+	catch (e) {
+		if (canRetryRequest(e.message)) {			
+			return postToBlink(buildRetryRequest(request))
+		}
+		else {
+			log.error "Post to Blink ${request?.path} Exception: ${e}"
+			return null
+		}
+  }
+}
+
+private canRetryRequest(errorMessage) {
+	if (state.authToken && errorMessage.contains("Unauthorized")) {
+		state.authToken = null
+		return true
+	}
+	else {
+		return false
+	}
+}
+
+private timeElapsed(time) {
+	return ((!time) || (time < new Date().time))
+}
+
+private addToCurrentTime(seconds) {
+	return ((new Date().time) + (seconds * 1000))
+}
+
+def shmHandler(evt) {
+	if (settings.shmEnabled && state.shmStatus != evt.value) {
+		
+		state.shmStatus = evt.value
+		def status = getSystemStatus()
+		
+		if (evt.value == "away" && status != "armed") {
+			arm()
+		}
+		else if (status != "disarmed") {
+			disarm()
+		}		
+	}	
+}
+
+private logDebug(msg) {
+	if (settings.debugOutput) {
+		log.debug "$msg"
+	}
+}
