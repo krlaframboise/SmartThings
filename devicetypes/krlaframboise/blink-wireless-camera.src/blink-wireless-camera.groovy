@@ -1,11 +1,15 @@
 /**
- *  Blink Wireless Camera v 1.0
+ *  Blink Wireless Camera v 1.1
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.1 (4/5/2016)
+ *      - Made date fields display formatted local time.
+ *      - UI Enhancements
  *
  *    1.0 (4/3/2016)
  *      - Initial Release
@@ -138,13 +142,18 @@ metadata {
 				action:"refresh.refresh", 
 				icon:"st.secondary.refresh", 
 				backgroundColor:"#ffffff"
-    }		
-		valueTile("viewEventImage", "device.activeEventNumber", width: 2, height: 2) {
-      state "default", label:'Load\nImage', 
+    }
+		valueTile("eventsLabel", "generic", width: 1, height: 1, decoration: "flat") {
+      state "default", label: 'Events:', 
+				action:"", 
+				icon:""
+    }
+		valueTile("loadEventImage", "device.activeEventNumber", width: 1, height: 1) {
+      state "default", label:'Load', 
 				action:"displayEventImage", 
 				icon:""
     }
-		valueTile("eventDesc", "device.activeEventDesc", width: 3, height: 2, decoration: "flat") {
+		valueTile("eventDesc", "device.activeEventDesc", width: 2, height: 1, decoration: "flat") {
       state "default", label:'${currentValue}', 
 				action:"", 
 				icon:""
@@ -166,19 +175,20 @@ metadata {
 
     main "mainStatus"
     details([
-      "cameraDetails",
 			"temperature",
 			"motion",			
 			"battery",
 			"syncModuleSignal",
 			"wifiSignal",
+      "cameraDetails",
 			"status",
 			"systemStatus",
 			"refresh",
-			"viewEventImage",
+			"eventsLabel",
 			"eventDesc",
 			"movePrevEvent",
 			"moveNextEvent",
+			"loadEventImage",
 			"desc"
     ])
   }
@@ -387,9 +397,13 @@ def updateCameraEventAttributes(eventNumber) {
 	])
 	generateEvent([
 		name: "activeEventDesc",
-		value: state.cameraEvents[eventNumber-1].eventTime,
+		value: "($eventNumber) ${getFormattedEventTime(state.cameraEvents[eventNumber-1].eventTime)}",
 		displayed: false
 	])
+}
+
+def getFormattedEventTime(eventTime) {
+	eventTime.replaceFirst(" ", "\n")
 }
 
 def displayEventImage() {	
@@ -401,17 +415,22 @@ def displayEventImage() {
 	}
 }
 
-private loadImage(sourceUrl, newImageName) {
+private loadImage(sourceUrl, newImageName) {			
 	if (sourceUrl && !parent.imagesAreDisabled()) {				
 		def imageBytes = parent.getThumbnailImage(sourceUrl)
 		if(imageBytes) {
-			storeImage(newImageName, imageBytes)
+		
+			storeImage(newImageName, imageBytes)			
+
 			generateEvent([
 				name: "image",
-				value: "smartthings-smartsense-camera: $newImageName",
-				displayed: true
-			])
+				value: newImage,
+				displayed: false
+			])			
 		}
+	}
+	else if (!sourceUrl) {
+		log.info "The image for this event has been deleted."
 	}
 	else {
 		log.info "The image feature has been disabled in the Blink System Connector SmartApp."
