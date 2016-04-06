@@ -1,11 +1,15 @@
 /**
- *  Blink System Connector v 1.0
+ *  Blink System Connector v 1.1
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.1 (4/5/2016)
+ *      - Made date fields use local time. 
+ *      - Fixed timeout exceptions by retrieving less events.
  *
  *    1.0 (4/3/2016)
  *      - Initial Release
@@ -140,7 +144,11 @@ def getThumbnailImage(url) {
 	if (!imagesAreDisabled()) {
 		logDebug "Getting Thumbnail Image: $url"
 		
-		def resp = getFromBlink(buildRequest("${url}.jpg"))
+		if (!url.toLowerCase().endsWith(".jpg")) {
+			url = "${url}.jpg"
+		}
+		
+		def resp = getFromBlink(buildRequest("${url}"))
 		
 		if (resp?.isSuccess() && resp?.getContentType() == "image/jpeg") {
 			return resp.data
@@ -222,17 +230,22 @@ private getCamera(networkId, homescreen, events) {
 		wifiSignal: homescreen.wifi_strength,
 		systemArmed: homescreen.armed,
 		networkId: networkId,
-		updatedAt: formatTimeValue(homescreen.updated_at),
+		updatedAt: getFormattedLocalTime(homescreen.updated_at),
 		events: events
 	]
 }
 
-private formatTimeValue(val) {
-	return val?.replace("T"," ").replace("+00:00","")
+def getFormattedLocalTime(utcDateString) {
+	def localTZ = TimeZone.getTimeZone(location.timeZone.ID)		
+	def utcDate = Date.parse(
+		"yyyy-MM-dd'T'HH:mm:ss", 
+		utcDateString.replace("+00:00", "")).time
+	def localDate = new Date(utcDate + localTZ.getOffset(utcDate))	
+	return localDate.format("MM/dd/yyyy hh:mm:ss a")
 }
 
 private findCameraEvents(events, cameraId) {
-	return events.findAll { it.cameraId == cameraId }?.take(15)
+	return events.findAll { it.cameraId == cameraId }?.take(6)
 }
 
 def getCameraDNI(networkId, cameraId) {
@@ -272,7 +285,7 @@ private getEvents() {
 				cameraId: it.camera_id,
 				eventType: it.type,
 				thumbnailUrl: it.video_url?.replace(".mp4", ""),
-				eventTime: formatTimeValue(it.created_at)
+				eventTime: getFormattedLocalTime(it.created_at)
 			]
 	}
 	if (!events) {
