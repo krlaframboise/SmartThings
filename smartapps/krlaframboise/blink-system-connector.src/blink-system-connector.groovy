@@ -1,11 +1,15 @@
 /**
- *  Blink System Connector v 1.1
+ *  Blink System Connector v 1.2
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.2 (4/7/2016)
+ *      - Added ability to take photos and enable/disable
+ *        the camera.
  *
  *    1.1 (4/5/2016)
  *      - Made date fields use local time. 
@@ -120,7 +124,7 @@ private removeChildDevices(devices) {
 
 def refreshChildren() {
 	if (timeElapsed(state.nextRefresh)) {
-		state.nextRefresh = addToCurrentTime(3)
+		state.nextRefresh = addToCurrentTime(5)
 		
 		getCameras().each {			
 			logDebug "Refreshing ${it.cameraName}"
@@ -140,9 +144,9 @@ def getSystemStatus() {
 	return getNetwork()?.armed ? "armed" : "disarmed"
 }
 
-def getThumbnailImage(url) {
-	if (!imagesAreDisabled()) {
-		logDebug "Getting Thumbnail Image: $url"
+def getImage(url) {
+	if (!imageFeatureDisabled()) {
+		logDebug "Getting Image: $url"
 		
 		if (!url.toLowerCase().endsWith(".jpg")) {
 			url = "${url}.jpg"
@@ -163,8 +167,39 @@ def getThumbnailImage(url) {
 	}
 }
 
-def imagesAreDisabled() {
+def imageFeatureDisabled() {
 	return settings.disableImages ? true : false
+}
+
+def takePhoto(dni) {
+	def request = buildRequest("${getCameraRequestPath(dni)}/thumbnail")
+	def data = postToBlink(request)?.data
+	if (!data) {
+		log.error "Failed to take photo"
+	}
+	refreshChildren()
+}
+
+def enableCamera(dni) {
+	return setCameraStatus(dni, "enable")
+}
+
+def disableCamera(dni) {
+	return setCameraStatus(dni, "disable")
+}
+
+private setCameraStatus(dni, status) {
+	def request = buildRequest("${getCameraRequestPath(dni)}/$status")
+	def data = postToBlink(request)?.data
+	if (!data) {
+		log.error "Failed to set status of camera $cameraId to $status"
+	}
+	log.debug "camera status response: $data}"
+	refreshChildren()
+}
+
+private getCameraRequestPath(dni) {
+	return "/network/${getNetworkIdFromDNI(dni)}/camera/${getCameraIdFromDNI(dni)}"
 }
 
 def arm() {
@@ -223,7 +258,7 @@ private getCamera(networkId, homescreen, events) {
 		cameraName: homescreen.name,
 		motionDetectionEnabled: homescreen.enabled,
 		status: homescreen.active,
-		thumbnailUrl: homescreen.thumbnail,
+		photoUrl: homescreen.thumbnail,
 		temperature: homescreen.temp,
 		battery: homescreen.battery,
 		syncModuleSignal: homescreen.lfr_strength,
@@ -257,6 +292,22 @@ def getCameraDNI(networkId, cameraId) {
 	}
 }
 
+private getNetworkIdFromDNI(dni) {
+	return getFromDNI(dni, 1)
+}
+
+private getCameraIdFromDNI(dni) {
+	return getFromDNI(dni, 2)
+}
+
+private getFromDNI(dni, index) {
+	def dniParts = dni?.split("-")	
+	if (dniParts?.size() == 3 && index < 3) {
+		return dniParts[index]
+	}
+}
+
+
 private getHomescreens() {
 	def request = buildRequest("/homescreen")
 	def data = getFromBlink(request)?.data	
@@ -284,7 +335,7 @@ private getEvents() {
 				eventId: it.id,
 				cameraId: it.camera_id,
 				eventType: it.type,
-				thumbnailUrl: it.video_url?.replace(".mp4", ""),
+				photoUrl: it.video_url?.replace(".mp4", ""),
 				eventTime: getFormattedLocalTime(it.created_at)
 			]
 	}
