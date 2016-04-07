@@ -1,11 +1,16 @@
 /**
- *  Blink Wireless Camera v 1.1
+ *  Blink Wireless Camera v 1.2
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.2 (4/7/2016)
+ *      - Added ability to take photos and enable/disable
+ *        the camera.
+ *      - UI Enhancements
  *
  *    1.1 (4/5/2016)
  *      - Made date fields display formatted local time.
@@ -41,15 +46,19 @@ metadata {
 		capability "Image Capture"
 		
 		attribute "homescreenImage", "String"
-		attribute "status", "enum", ["armed", "arming", "disabled", "disarmed", "disarming"]
-		attribute "systemStatus", "enum", ["armed", "disarmed"]
+		attribute "status", "enum", ["armed", "disarmed", "enabled", "disabled", "offline"]
+		attribute "actionStatus", "enum", ["ready", "arming", "disabling", "disarming", "enabling", "loading", "refreshing", "taking"]
+		attribute "systemStatus", "enum", ["armed", "disarmed", "offline"]
 		attribute "description", "String"
 		attribute "syncModuleSignal", "number"
 		attribute "wifiSignal", "number"
 		attribute "activeEventNumber", "number"
 		attribute "activeEventDesc", "String"
 		
-		command "toggleArmed"
+		command "enableCamera"
+		command "disableCamera"
+		command "armSystem"
+		command "disarmSystem"
 		command "displayEventImage"
 		command "nextEvent"
 		command "previousEvent"
@@ -82,28 +91,39 @@ metadata {
 		}		
 		carouselTile("cameraDetails", "device.image", width: 6, height: 4, decoration: "flat") { 
 		}
+		valueTile("actionStatus", "device.actionStatus", width: 2, height: 1, decoration: "flat") {
+			state "ready", label: '   Ready   ',
+				action:"",
+				icon:""
+			state "arming", label:'Arming\nSystem',
+				action:"",
+				icon:""
+			state "disabling", label:'Disabling\nCamera', 
+				action:""
+			state "disarming", label:'Disarming\nSystem', 
+				action:"", 
+				icon:""
+			state "enabling", label:'Enabling\nCamera', 
+				action:"", 
+				icon:""
+			state "loading", label:'Loading\nPhoto',
+				action:"",
+				icon:""
+			state "refreshing", label:'Refreshing\nCameras',
+				action:"",
+				icon:""
+			state "taking", label:'Taking\nPhoto',
+				action:"", 
+				icon:""
+    }
 		valueTile("status", "device.status", width: 2, height: 2) {
-			state "", label: '',
-				action:"toggleArmed",
+			state "enabled", label:'Camera\nEnabled',
+				action:"disableCamera",
 				icon:"",
-				defaultState: true
-			state "disarming", label:'Disarming\nCamera',
-				action:"switch.off",
-				icon:""
-			state "disarmed", label:'Camera\nDisarmed',
-				action:"switch.on",
-				icon:"",
-				backgroundColor:"#99c2ff"			
-			state "armed", label:'Camera\nArmed', 
-				action:"switch.off", 
-				icon:"", 
-				backgroundColor:"#ff9999"
-			state "arming", label:'Arming\nCamera', 
-				action:"switch.off",
-				icon:""
-			state "disabled", label:'Camera\nDisabled', 
-				action:"toggleArmed", 
-				icon:""
+				backgroundColor:"#99c2ff"
+			state "disabled", label:'Camera\nDisabled',
+				action:"enableCamera",
+				icon:""			
     }		
 		valueTile("systemStatus", "device.systemStatus", width: 2, height: 2) {      
 			state "disarmed", label:'System\nDisarmed', 
@@ -137,7 +157,13 @@ metadata {
 		valueTile("wifiSignal", "device.wifiSignal",  width: 1, height: 1, decoration: "flat") {
 			state "wifiSignal", label:'WIFI\n${currentValue}%'
 		}
-    standardTile("refresh", "generic", width: 2, height: 2) {
+    standardTile("takePhoto", "generic", width: 1, height: 1) {
+      state "default", label:'', 
+				action:"take", 
+				icon:"st.camera.take-photo", 
+				backgroundColor:"#ffffff"
+    }
+    standardTile("refresh", "generic", width: 1, height: 1) {
       state "default", label:'', 
 				action:"refresh.refresh", 
 				icon:"st.secondary.refresh", 
@@ -182,8 +208,10 @@ metadata {
 			"wifiSignal",
       "cameraDetails",
 			"status",
-			"systemStatus",
+			"takePhoto",
 			"refresh",
+			"systemStatus",
+			"actionStatus",			
 			"eventsLabel",
 			"eventDesc",
 			"movePrevEvent",
@@ -195,41 +223,53 @@ metadata {
 }
 
 def updated() {
-	poll()	
+	refresh()	
 }
 
-private toggleArmed() {
-	if (device.currentValue("systemStatus") == "armed") {
-		off()
-	}
-	else {
-		on()
-	}
+def armSystem() {
+	on()
+}
+
+def disarmSystem() {
+	off()
+}
+
+def enableCamera() {
+	generateEvent(getActionStatusEventData("enabling", "Enabling Camera"))
+	parent.enableCamera(device.deviceNetworkId)	
+}
+
+def disableCamera() {
+	generateEvent(getActionStatusEventData("disabling", "Disabling Camera"))
+	parent.disableCamera(device.deviceNetworkId)
+}
+
+def take() {
+	generateEvent(getActionStatusEventData("taking", "Taking Photo"))
+	parent.takePhoto(device.deviceNetworkId)
 }
 	
 def on() {
-	logDebug "Arming"
-	generateEvent(getStatusEventData("arming"))
+	generateEvent(getActionStatusEventData("arming", "Arming System"))
   parent.arm()
 }
 
 def off() {
-	logDebug "Disarming"
-	generateEvent(getStatusEventData("disarming"))
+	generateEvent(getActionStatusEventData("disarming", "Disarming System"))
 	parent.disarm()
 }
 
 def poll() {
 	logDebug "${device.displayName} Polling"
-	refresh()
+	parent.refreshChildren()
 }
 
 def refresh() {
-	parent.refreshChildren()	
+	generateEvent(getActionStatusEventData("refreshing", "Refreshing Camera Details"))
+	parent.refreshChildren()
 }
 
 def refresh(camera) {
-	logDebug "Refreshing Camera"
 	generateEvent(getStatusEventData(camera.status))
 	generateEvent(getSystemStatusEventData(camera.systemArmed))
 	generateEvent(getTemperatureEventData(camera.temperature))
@@ -239,7 +279,8 @@ def refresh(camera) {
 	generateEvent(getSwitchEventData(camera.status))	
 	generateEvent(getDescriptionEventData(camera))	
 	refreshEvents(camera.events)
-	refreshHomescreenImage(camera.thumbnailUrl)	
+	refreshHomescreenImage(camera.photoUrl)
+	generateEvent(getActionStatusEventData("", "Camera finished refreshing"))
 	runIn(60, poll)
 }
 
@@ -277,11 +318,20 @@ private getSwitchEventData(status) {
 	]
 }
 
+private getActionStatusEventData(status, desc) {
+	logDebug "$desc"
+	return [
+		name: "actionStatus",
+		value: status,
+		displayed: false
+	]
+}
+
 private getStatusEventData(status) {
 	return [
 		name: "status",
 		value: status,
-		displayed: (status in ["armed","disarmed"]) ? true : false
+		displayed: true
 	]
 }
 
@@ -306,7 +356,7 @@ private getDescription(camera) {
 		"Updated: ${camera.updatedAt}"
 }
 
-def generateEvent(eventData) {
+def generateEvent(eventData, onlyWhenChanged=true) {
 	try {
 		if ("${device.currentValue(eventData.name)}" != "${eventData.value}") {
 			sendEvent(
@@ -410,14 +460,15 @@ def displayEventImage() {
 	def activeIndex = safeToInteger(device.currentValue("activeEventNumber"))-1
 			
 	if (state.cameraEvents.size() > activeIndex) {
-		def url = state.cameraEvents[activeIndex]?.thumbnailUrl
+		def url = state.cameraEvents[activeIndex]?.photoUrl
 		loadImage(url, getEventImageName())			
 	}
 }
 
-private loadImage(sourceUrl, newImageName) {			
-	if (sourceUrl && !parent.imagesAreDisabled()) {				
-		def imageBytes = parent.getThumbnailImage(sourceUrl)
+private loadImage(sourceUrl, newImageName) {		
+	if (sourceUrl && !parent.imageFeatureDisabled()) {
+		generateEvent(getActionStatusEventData("loading", "Loading Event Image"))
+		def imageBytes = parent.getImage(sourceUrl)
 		if(imageBytes) {
 		
 			storeImage(newImageName, imageBytes)			
@@ -426,7 +477,8 @@ private loadImage(sourceUrl, newImageName) {
 				name: "image",
 				value: newImage,
 				displayed: false
-			])			
+			], true)
+			generateEvent(getActionStatusEventData("", ""))			
 		}
 	}
 	else if (!sourceUrl) {
