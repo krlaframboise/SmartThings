@@ -1,11 +1,18 @@
 /**
- *  Simple Device Viewer v 1.5.1
- *  (https://community.smartthings.com/t/release-simple-device-viewer/42481/15?u=krlaframboise)
+ *  Simple Device Viewer v 1.6
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
+ *  URL to documentation:
+ *    https://community.smartthings.com/t/release-simple-device-viewer/42481/15?u=krlaframboise
+ *
  *  Changelog:
+ *
+ *    1.6 (04/09/2016)
+ *      - Fixed condensed view bug introduced in version 1.5.
+ *      - Fixed duplicate notifications in message list bug.
+ *      - Documented public methods for publication.
  *
  *    1.5.1 (03/27/2016)
  *      - Bug fix for random N/A notifications.
@@ -78,6 +85,7 @@ definition(
 	page(name:"otherSettingsPage")
 }
 
+// Main Menu Page
 def mainPage() {
 	if (!state.capabilitySettings) {
 		storeCapabilitySettings()
@@ -135,7 +143,7 @@ def mainPage() {
 	}
 }
 
-
+// Page for choosing devices and which capabilities to use.
 def devicesPage() {
 	dynamicPage(name:"devicesPage") {		
 		section ("Choose Devices") {
@@ -167,6 +175,7 @@ def devicesPage() {
 	}
 }
 
+// Page for defining thresholds used for icons and notifications
 def thresholdsPage() {
 	dynamicPage(name:"thresholdsPage") {		
 		section () {
@@ -202,6 +211,7 @@ def thresholdsPage() {
 	}
 }
 
+// Page for SMS and Push notification settings
 def notificationsPage() {
 	dynamicPage(name:"notificationsPage") {
 		section ("Notification Settings") {
@@ -270,7 +280,7 @@ def notificationsPage() {
 	}
 }
 
-def getExcludedDeviceOptions(capabilityName) {
+private getExcludedDeviceOptions(capabilityName) {
 	if (capabilityName) {
 		getDevicesByCapability(capabilityName).collect { it.displayName }?.sort()
 	}
@@ -279,6 +289,7 @@ def getExcludedDeviceOptions(capabilityName) {
 	}
 }
 
+// Page for misc preferences.
 def otherSettingsPage() {
 	dynamicPage(name:"otherSettingsPage") {		
 		section ("Other Settings") {
@@ -322,6 +333,7 @@ def otherSettingsPage() {
 	}
 }
 
+// Lists all devices and their last event times.
 def lastEventPage() {
 	dynamicPage(name:"lastEventPage") {		
 		section ("Time Since Last Event") {
@@ -330,6 +342,7 @@ def lastEventPage() {
 	}
 }
 
+// Lists all devices supporting switch capability as links that can be used to toggle their state
 def toggleSwitchPage(params) {
 	dynamicPage(name:"toggleSwitchPage") {		
 		section () {
@@ -346,7 +359,7 @@ def toggleSwitchPage(params) {
 	}
 }
 
-def toggleSwitch(device, newState) {
+private toggleSwitch(device, newState) {
 	if (device) {	
 		if (newState == "on") {
 			device.on()
@@ -358,6 +371,7 @@ def toggleSwitch(device, newState) {
 	}
 }
 
+// Lists all devices and all the state of all their capabilities
 def capabilityPage(params) {
 	dynamicPage(name:"capabilityPage") {	
 		def capSetting = params.capabilitySetting ? params.capabilitySetting : state.lastCapabilitySetting
@@ -389,7 +403,7 @@ def capabilityPage(params) {
 	}
 }
 
-def getSwitchToggleLinks(listItems) {
+private getSwitchToggleLinks(listItems) {
 	listItems.sort { it.sortValue }	
 	return listItems.unique().each {
 		href(
@@ -403,7 +417,7 @@ def getSwitchToggleLinks(listItems) {
 	}
 }
 
-def getParagraphs(listItems) {
+private getParagraphs(listItems) {
 	listItems.sort { it.sortValue }
 	if (!condensedViewEnabled) {
 		return listItems.unique().each { 
@@ -422,7 +436,7 @@ def getParagraphs(listItems) {
 	}
 }
 
-def getCapabilityPageLink(cap) {		
+private getCapabilityPageLink(cap) {		
 	return href(
 		name: cap ? "${getPrefName(cap)}Link" : "allDevicesLink", 
 		title: cap ? "${getPluralName(cap)}" : "All Devices - States",
@@ -432,17 +446,18 @@ def getCapabilityPageLink(cap) {
 	)	
 }
 
-def devicesHaveCapability(name) {	
+// Checks if any devices have the specificed capability
+private devicesHaveCapability(name) {	
 	return getAllDevices().find { it.hasCapability(name) } ? true : false
 }
 
-def getDevicesByCapability(name) {
+private getDevicesByCapability(name) {
 	return getAllDevices()
 		.findAll { it.hasCapability(name.toString()) }
 		.sort() { it.displayName.toLowerCase() }		
 }
 
-def getDeviceAllCapabilitiesListItem(device) {
+private getDeviceAllCapabilitiesListItem(device) {
 	def listItem = [
 		sortValue: device.displayName
 	]	
@@ -455,11 +470,11 @@ def getDeviceAllCapabilitiesListItem(device) {
 	return listItem
 }
 
-def getDeviceCapabilityListItems(cap) {
+private getDeviceCapabilityListItems(cap) {
 	getDevicesByCapability(cap.name)?.collect {
 		def listItem = getDeviceCapabilityStatusItem(it, cap)
 		listItem.deviceId = "${it.id}"
-		if (listItem.image && cap.imageOnly) {
+		if (listItem.image && cap.imageOnly && !condensedViewEnabled) {
 			listItem.title = "${it.displayName}"
 		}
 		else {
@@ -469,17 +484,17 @@ def getDeviceCapabilityListItems(cap) {
 	}
 }
 
-def getCapabilitySettingByName(name) {
+private getCapabilitySettingByName(name) {
 	state.capabilitySettings.find { it.name == name }
 }
 
-def getAllDeviceLastEventListItems() {
+private getAllDeviceLastEventListItems() {
 	getAllDevices().collect {
 		getDeviceLastEventListItem(it)		
 	}
 }
 
-def getDeviceLastEventListItem(device) {
+private getDeviceLastEventListItem(device) {
 	def now = new Date().time
 	def lastEventTime = getDeviceLastEventTime(device)
 	
@@ -494,14 +509,14 @@ def getDeviceLastEventListItem(device) {
 	return listItem
 }
 
-def getDeviceLastEventTime(device) {
+private getDeviceLastEventTime(device) {
 	def lastEventTime = device.events(max: 1)?.date?.time
 	if (lastEventTime && lastEventTime.size() > 0) {
 		return lastEventTime[0]
 	}
 }
 
-def getTimeSinceLastEvent(ms) {
+private getTimeSinceLastEvent(ms) {
 	if (ms < msSecond()) {
 		return "$ms MS"
 	}
@@ -519,34 +534,34 @@ def getTimeSinceLastEvent(ms) {
 	}		
 }
 
-long msSecond() {
+private long msSecond() {
 	return 1000
 }
 
-long msMinute() {
+private long msMinute() {
 	return msSecond() * 60
 }
 
-long msHour() {
+private long msHour() {
 	return msMinute() * 60
 }
 
-long msDay() {
+private long msDay() {
 	return msHour() * 24
 }
 
-def calculateTimeSince(ms, divisor) {
+private calculateTimeSince(ms, divisor) {
 	return "${((float)(ms / divisor)).round()}"
 }
 
-String getDeviceStatusTitle(device, status) {
+private String getDeviceStatusTitle(device, status) {
 	if (!status || status == "null") {
 		status = "N/A"
 	}
 	return "${status?.toUpperCase()} -- ${device.displayName}"
 }
 
-def getDeviceCapabilityStatusItem(device, cap) {
+private getDeviceCapabilityStatusItem(device, cap) {
 	def item = [
 		image: "",
 		sortValue: device.displayName,
@@ -597,7 +612,7 @@ def getDeviceCapabilityStatusItem(device, cap) {
 	return item
 }
 
-int safeToInteger(val, defaultVal=0) {
+private int safeToInteger(val, defaultVal=0) {
 	try {
 		if (val) {
 			return val.toFloat().round().toInteger()
@@ -615,7 +630,7 @@ int safeToInteger(val, defaultVal=0) {
 	}
 }
 
-def getSelectedCapabilitySettings() {
+private getSelectedCapabilitySettings() {
 	if (!selectedCapabilities || selectedCapabilities.size() == 0) {
 		return state.capabilitySettings
 	}
@@ -624,37 +639,37 @@ def getSelectedCapabilitySettings() {
 	}
 }
 
-def getCapabilityNames() {
+private getCapabilityNames() {
 	state.capabilitySettings.collect { it.name }
 }
 
-String getAttributeName(capabilitySetting) {
+private String getAttributeName(capabilitySetting) {
 	capabilitySetting.attributeName ? capabilitySetting.attributeName : capabilitySetting.name.toLowerCase()
 }
 
-String getActiveState(capabilitySetting) {
+private String getActiveState(capabilitySetting) {
 	capabilitySetting.activeState ? capabilitySetting.activeState : capabilitySetting.name.toLowerCase()
 }
 
-String getPrefName(capabilitySetting) {
+private String getPrefName(capabilitySetting) {
 	capabilitySetting.prefName ? capabilitySetting.prefName : capabilitySetting.name.toLowerCase()
 }
 
-String getPluralName(capabilitySetting) {
+private String getPluralName(capabilitySetting) {
 	capabilitySetting.pluralName ? capabilitySetting.pluralName : "${capabilitySetting.name}s"
 }
 
-def getAllDeviceCapabilities() {
+private getAllDeviceCapabilities() {
 	def allCapabilities = getAllDevices()?.collect { it.capabilities }.flatten()
 	return allCapabilities.collect { it.toString() }.unique().sort()
 }
 
-def getAllDevices() {
+private getAllDevices() {
 	def values = settings.collect {k, device -> device}
 	return values.findAll { isDevice(it) }.flatten().unique()
 }
 
-boolean isDevice(obj) {
+private boolean isDevice(obj) {
 	try {
 		if (obj?.id) {
 			// This isn't a device if the following line throws an exception.
@@ -670,13 +685,13 @@ boolean isDevice(obj) {
 	}
 }
 
-String getLastEventImage(lastEventTime) {
+private String getLastEventImage(lastEventTime) {
 	if (lastEventIsOld(lastEventTime)) {		
 		return getImagePath("warning.png")
 	}
 }
 
-boolean lastEventIsOld(lastEventTime) {	
+private boolean lastEventIsOld(lastEventTime) {	
 	try {
 		if (!lastEventTime) {
 			return true
@@ -690,7 +705,7 @@ boolean lastEventIsOld(lastEventTime) {
 	}
 }
 
-long getLastEventThresholdMS() {
+private long getLastEventThresholdMS() {
 def threshold = lastEventThreshold ? lastEventThreshold : 7
 	def unitMS
 	switch (lastEventThresholdUnit) {
@@ -709,39 +724,39 @@ def threshold = lastEventThreshold ? lastEventThreshold : 7
 	return (threshold * unitMS)
 }
 
-String getPresenceImage(currentState) {
+private String getPresenceImage(currentState) {
 	def name = currentState == "present" ? "present" : "not-present"
 	return getImagePath("${name}.png")
 }
 
-String getContactImage(currentState) {
+private String getContactImage(currentState) {
 	return  getImagePath("${currentState}.png")	
 }
 
-String getLockImage(currentState) {
+private String getLockImage(currentState) {
 	return  getImagePath("${currentState}.png")	
 }
 
-String getMotionImage(currentState) {
+private String getMotionImage(currentState) {
 	def name = currentState == "active" ? "motion" : "no-motion"
 	return  getImagePath("${name}.png")	
 }
 
-String getSwitchImage(currentState) {
+private String getSwitchImage(currentState) {
 	return  getImagePath("light-${currentState}.png")	
 }
 
-String getBatteryImage(batteryLevel) {
+private String getBatteryImage(batteryLevel) {
 	if (batteryIsLow(batteryLevel)) {
 		return  getImagePath("low-battery.png")
 	}
 }
 
-boolean batteryIsLow(batteryLevel) {
+private boolean batteryIsLow(batteryLevel) {
 	return isBelowThreshold(batteryLevel, lowBatteryThreshold, 25)
 }
 
-String getTemperatureImage(tempVal) {		
+private String getTemperatureImage(tempVal) {		
 	if (tempIsHigh(tempVal)) {
 		return getImagePath("high-temp.png")
 	}
@@ -753,43 +768,45 @@ String getTemperatureImage(tempVal) {
 	}
 }
 
-boolean tempIsHigh(val) {
+private boolean tempIsHigh(val) {
 	return isAboveThreshold(val, highTempThreshold, 73)
 }
 
-boolean tempIsLow(val) {
+private boolean tempIsLow(val) {
 	return isBelowThreshold(val, lowTempThreshold, 63)
 }
 
-String getImagePath(imageName) {
+private String getImagePath(imageName) {
 	if (iconsAreEnabled()) {
 		return "https://raw.githubusercontent.com/krlaframboise/Resources/master/$imageName"
 	}
 }
 
-boolean iconsAreEnabled() {
+private boolean iconsAreEnabled() {
 	return (iconsEnabled || iconsEnabled == null)
 }
 
-boolean isAboveThreshold(val, threshold, int defaultThreshold) {
+private boolean isAboveThreshold(val, threshold, int defaultThreshold) {
 	return safeToInteger(val) > safeToInteger(threshold, defaultThreshold)	
 }
 
-boolean isBelowThreshold(val, threshold, int defaultThreshold) {
+private boolean isBelowThreshold(val, threshold, int defaultThreshold) {
 	return safeToInteger(val) < safeToInteger(threshold,defaultThreshold)	
 }
 
+// Subscribes to events, starts schedules and initializes all settings.
 def installed() {
 	initialize()
 }
 
+// Resets subscriptions, scheduling and ensures all settings are initialized.
 def updated() {
 	unsubscribe()
 	unschedule()
 	initialize()
 }
 
-def initialize() {
+private initialize() {
 	logDebug "Initializing"
 	
 	state.nextCheckTime = null
@@ -806,7 +823,7 @@ def initialize() {
 	}
 }
 
-void storeCapabilitySettings() {
+private void storeCapabilitySettings() {
 	state.capabilitySettings = []
 	
 	state.capabilitySettings << [
@@ -876,10 +893,12 @@ void storeCapabilitySettings() {
 	state.capabilitySettings.sort { it.name }
 }
 
+// Used to genrate notifications when external timer is being used instead of relying on SmartThings scheduler. 
 def timerSwitchEventHandler(evt) {
 	checkAllDeviceThresholds()
 }
 
+// Generates notifications if device attributes fall outside of specified thresholds and ensures that notifications are spaced at least 5 minutes apart.
 def checkAllDeviceThresholds() {
 	if (!state.nextCheckTime || timeElapsed(state.nextCheckTime)) {
 		state.nextCheckTime = addMinutesToCurrentTime(5)		
@@ -897,7 +916,7 @@ def checkAllDeviceThresholds() {
 	}
 }
 
-def checkTemperatures() {
+private checkTemperatures() {
 	logDebug "Checking Temperatures"
 	def cap = getCapabilitySettingByName("Temperature Measurement")
 	
@@ -916,7 +935,7 @@ def checkTemperatures() {
 	}
 }
 
-def checkBatteries() {
+private checkBatteries() {
 	logDebug "Checking Batteries"
 	def cap = getCapabilitySettingByName("Battery")
 
@@ -929,7 +948,7 @@ def checkBatteries() {
 	}
 }
 
-def checkLastEvents() {
+private checkLastEvents() {
 	logDebug "Checking Last Events"
 	removeExcludedDevices(getAllDevices(), lastEventNotificationsExcluded)?.each {
 		def item = getDeviceLastEventListItem(it)
@@ -939,7 +958,7 @@ def checkLastEvents() {
 	}
 }
 
-def removeExcludedDevices(deviceList, excludeList) {
+private removeExcludedDevices(deviceList, excludeList) {
 	if (excludeList && excludeList?.size() > 0) {
 		def result = []
 		deviceList.each {
@@ -955,7 +974,7 @@ def removeExcludedDevices(deviceList, excludeList) {
 	}
 }
 
-def handleDeviceNotification(device, message, notificationType, notificationRepeat) {
+private handleDeviceNotification(device, message, notificationType, notificationRepeat) {
 	def id = "$notificationType${device.id}"
 	def lastSentMap = state.sentNotifications.find { it.id == id }
 	def lastSent = lastSentMap?.lastSent
@@ -983,7 +1002,7 @@ def handleDeviceNotification(device, message, notificationType, notificationRepe
 	}
 }
 
-boolean canSendNotification(lastSent, repeatMS) {	
+private boolean canSendNotification(lastSent, repeatMS) {	
 	def sendLimitExceeded = state.currentCheckSent >= (maxNotifications ? maxNotifications : 1000)
 	
 	if (!lastSent && !sendLimitExceeded) {
@@ -994,7 +1013,7 @@ boolean canSendNotification(lastSent, repeatMS) {
 	}
 }
 
-def sendNotificationMessage(message) {	
+private sendNotificationMessage(message) {	
 	if (sendPush || recipients || phone) {
 		state.currentCheckSent = state.currentCheckSent + 1
 		logInfo "Sending $message"
@@ -1004,7 +1023,10 @@ def sendNotificationMessage(message) {
 		if (location.contactBookEnabled && recipients) {
 			sendNotificationToContacts(message, recipients)
 		} else {
-			if (phone) {
+			if (phone && sendPush) {
+				sendSmsMessage(phone, message)
+			}
+			else if (phone) {
 				sendSms(phone, message)
 			}
 		}
@@ -1014,12 +1036,12 @@ def sendNotificationMessage(message) {
 	}
 }
 
-long addMinutesToCurrentTime(minutes) {
+private long addMinutesToCurrentTime(minutes) {
 	def currentTime = new Date().time
 	return (currentTime + (minutes * msMinute()))	
 }
 
-boolean timeElapsed(timeValue) {
+private boolean timeElapsed(timeValue) {
 	if (timeValue != null) {
 		def currentTime = new Date().time
 		return (timeValue <= currentTime)
@@ -1028,12 +1050,12 @@ boolean timeElapsed(timeValue) {
 	}
 }
 
-def logDebug(msg) {
+private logDebug(msg) {
 	if (debugLogEnabled) {
 		log.debug msg
 	}
 }
 
-def logInfo(msg) {
+private logInfo(msg) {
 	log.info msg
 }
