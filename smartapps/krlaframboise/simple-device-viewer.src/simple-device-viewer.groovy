@@ -1,13 +1,16 @@
 /**
- *  Simple Device Viewer v 1.6
+ *  Simple Device Viewer v 1.6.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  URL to documentation:
- *    https://community.smartthings.com/t/release-simple-device-viewer/42481/15?u=krlaframboise
+ *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.6.1 (04/16/2016)
+ *      - Moved label preference to main page for windows app test.
  *
  *    1.6 (04/09/2016)
  *      - Fixed condensed view bug introduced in version 1.5.
@@ -70,12 +73,12 @@ definition(
     author: "Kevin LaFramboise",
     description: "Provides information about the state of the specified devices.",
     category: "My Apps",
-    iconUrl: "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-device-viewer-icon.png",
-    iconX2Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-device-viewer-icon-2x.png",
-    iconX3Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-device-viewer-icon-3x.png")
+		iconUrl: "https://raw.githubusercontent.com/krlaframboise/SmartThingsPublic/master/smartapps/krlaframboise/simple-device-viewer.src/simple-device-viewer-icon.png",
+    iconX2Url: "https://raw.githubusercontent.com/krlaframboise/SmartThingsPublic/master/smartapps/krlaframboise/simple-device-viewer.src/simple-device-viewer-icon-2x.png",
+    iconX3Url: "https://raw.githubusercontent.com/krlaframboise/SmartThingsPublic/master/smartapps/krlaframboise/simple-device-viewer.src/simple-device-viewer-icon-3x.png")
 
  preferences {
-	page(name:"mainPage", uninstall:true, install:true)
+	page(name:"mainPage", install: true, uninstall: true)
   page(name:"capabilityPage")
 	page(name:"lastEventPage")
 	page(name:"toggleSwitchPage")
@@ -87,11 +90,11 @@ definition(
 
 // Main Menu Page
 def mainPage() {
-	if (!state.capabilitySettings) {
-		storeCapabilitySettings()
-	}
-	dynamicPage(name:"mainPage") {				
+	dynamicPage(name:"mainPage") {		
 		section() {	
+			if (!state.capabilitySettings) {
+				storeCapabilitySettings()
+			}			
 			if (getAllDevices().size() != 0) {
 				state.lastCapabilitySetting = null
 				href(
@@ -139,6 +142,10 @@ def mainPage() {
 				params: []
 			)
 			paragraph ""
+			
+			label(name: "label",
+				title: "Assign a name",
+				required: false)
 		}
 	}
 }
@@ -293,9 +300,7 @@ private getExcludedDeviceOptions(capabilityName) {
 def otherSettingsPage() {
 	dynamicPage(name:"otherSettingsPage") {		
 		section ("Other Settings") {
-			label(name: "label",
-				title: "Assign a name",
-				required: false)
+			
 			input "iconsEnabled", "bool",
 				title: "Display Device State Icons?",
 				defaultValue: true,
@@ -778,7 +783,7 @@ private boolean tempIsLow(val) {
 
 private String getImagePath(imageName) {
 	if (iconsAreEnabled()) {
-		return "https://raw.githubusercontent.com/krlaframboise/Resources/master/$imageName"
+		return "https://raw.githubusercontent.com/krlaframboise/SmartThingsPublic/master/smartapps/krlaframboise/simple-device-viewer.src/$imageName"
 	}
 }
 
