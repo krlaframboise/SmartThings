@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.6.1
+ *  Simple Device Viewer v 1.6.2
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,9 @@
  *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.6.2 (04/18/2016)
+ *      - Another minor change for windows app test.
  *
  *    1.6.1 (04/16/2016)
  *      - Moved label preference to main page for windows app test.
@@ -78,7 +81,7 @@ definition(
     iconX3Url: "https://raw.githubusercontent.com/krlaframboise/SmartThingsPublic/master/smartapps/krlaframboise/simple-device-viewer.src/simple-device-viewer-icon-3x.png")
 
  preferences {
-	page(name:"mainPage", install: true, uninstall: true)
+	page(name:"mainPage")
   page(name:"capabilityPage")
 	page(name:"lastEventPage")
 	page(name:"toggleSwitchPage")
@@ -90,7 +93,7 @@ definition(
 
 // Main Menu Page
 def mainPage() {
-	dynamicPage(name:"mainPage") {		
+	dynamicPage(name:"mainPage", install: true, uninstall: true) {		
 		section() {	
 			if (!state.capabilitySettings) {
 				storeCapabilitySettings()
@@ -233,8 +236,6 @@ def notificationsPage() {
 					description: "Phone Number", 
 					required: false
       }
-			mode title: "Only send Notifications for specific mode(s)",
-				required: false
 			input "maxNotifications", "number",
 				title: "Enter maximum number of notifications to receive within 5 minutes:",
 				required: false
