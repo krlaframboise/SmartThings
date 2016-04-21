@@ -1,5 +1,5 @@
 /**
- *  Home Presence Manager v 1.2.3
+ *  Home Presence Manager v 1.2.3a
  *
  *  Copyright 2016 Kevin LaFramboise
  *
@@ -24,13 +24,13 @@ definition(
     iconX3Url: "http://cdn.device-icons.smartthings.com/Home/home4-icn@3x.png")
 
 preferences {
-	page(name:"mainPage", uninstall:true, install: true)
+	page(name:"mainPage")
   page(name:"roomPage")
 	page(name:"optionsPage")
 }
 
 def mainPage() {
-	dynamicPage(name:"mainPage") {				
+	dynamicPage(name:"mainPage", uninstall:true, install: true) {				
 		section("Rooms") {
 			state.newRoomNum = null			
 			
