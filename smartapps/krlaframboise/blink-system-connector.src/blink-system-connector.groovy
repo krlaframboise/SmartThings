@@ -1,11 +1,17 @@
 /**
- *  Blink System Connector v 1.2
+ *  Blink System Connector v 1.3 (alpha)
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.3 (alpha) (4/21/2016)
+ *      - This version is still buggy and incomple, I'm only
+ *        releasing it because I now have more than one camera
+ *        so I know that the prior versions didn't work with
+ *        more than one.
  *
  *    1.2 (4/7/2016)
  *      - Added ability to take photos and enable/disable
@@ -45,48 +51,128 @@ definition(
 )
 
 preferences {
-  section("SmartThings Hub") {
-    input "hostHub", "hub", title: "Select Hub", multiple: false, required: true
-  }
-  section("Blink Credentials") {
-    input name: "blinkUser", type: "text", title: "Email", required: true
-    input name: "blinkPassword", type: "password", title: "Password", required: true
-  }
-  section("Smart Home Monitor") {
-    input "shmEnabled", "bool", title: "Integrate with Smart Home Monitor", required: true, defaultValue: true
-  }
-	section("options") {
-		input "disableImages", "bool", 
-			title: "Disable image functionality?", 
-			defaultValue: false
-			required: false
-		input "debugOutput", "bool", 
-			title: "Enable debug logging?", 
-			defaultValue: true
-			required: false
-	}
+	page(name:"mainPage", uninstall:true, install:true)
+  page(name:"blinkSetupPage")
+	page(name:"optionsPage")
+	page(name:"toggleArmedPage")
+	page(name:"addCamerasPage")
+	page(name:"refreshCamerasPage")
+	page(name:"cameraPage")
 }
 
-def installed() {
-  addBlinkCameras()  
-	initialize()	
-}
-
-def addBlinkCameras() {
-	getCameras().each {
-		try {
-			if (!getChildDevice(it.dni)) {
-				logDebug "Adding Blink Camera - ${it.cameraName}"
-				addBlinkCamera(it)
+def mainPage() {
+	dynamicPage(name:"mainPage") {				
+		if (state.completedSetup) {
+			state.lastCameraViewed = null				
+			section("System Status") {
+				getSystemStatusParagraph()
+			}
+			section() {
+				getToggleArmedPageLink()
+				getPageLink("addCamerasPageLink", 
+					"Add Cameras", 
+					"addCamerasPage")
+				getPageLink("refreshCamerasPageLink", 
+					"Refresh Cameras", 
+					"refreshCamerasPage")
+			}
+			section("Cameras") {
+				getCameraPageLinks()
 			}
 		}
-		catch (e) {
-			log.error "Error Adding Camera ${it.cameraName}: ${e}"
+		section("Settings") {
+			if(state.completedSetup) {
+				getPageLink("optionsPageLink",
+					"Options",
+					"optionsPage")				
+			}
+			getPageLink("blinkSetupPageLink",
+				"Blink Acount Settings",
+				"blinkSetupPage")
 		}
 	}
 }
 
-private addBlinkCamera(camera) {
+private getSystemStatusParagraph() {
+	try {
+		def data = getHomeScreenData()
+		def network = data?.network
+		def devices = data?.devices
+		def syncModule = devices?.find { it.device_type == "sync_module" }
+		def cameraCount = devices?.count { it.device_type == "camera" }
+		def disabledCount = devices?.count { it.device_type == "camera" && !it.enabled}
+		
+		paragraph "System Armed: ${network?.armed}\n" +
+			"System Status: ${network?.status}\n" +
+			"Notifications: ${network?.notifications}\n" +
+			"Sync Module Status: ${syncModule?.status}\n" +
+			"Sync Module Response: ${getFormattedLocalTime(syncModule?.last_hb)}\n" +
+			"Cameras: ${cameraCount}\n" +
+			"Disabled Cameras: ${disabledCount}"
+	}
+	catch (e) {
+		def msg = "Unable to connect to Blink.  This is usually caused by either an invalid username/password or the Blink service being temporarily down."
+		log.error "getSystemStatusParagraph Error: $e"
+	}
+}
+
+private getToggleArmedPageLink() {
+	def newStatus = state.systemArmed ? "Disarm" : "Arm"
+	getPageLink("toggleSystemArmed", 
+		"${newStatus} System",
+		"toggleArmedPage")
+}
+
+def toggleArmedPage() {
+	dynamicPage(name:"toggleArmedPage") {
+		def result
+		if (state.systemArmed) {
+			result = disarm()
+		}
+		else {
+			result = arm()
+		}
+		if (result) {
+			def status = state.systemArmed ? "Armed" : "Disarmed"
+			paragraph "The system is now $status"
+		}
+		else {
+			def status = state.systemArmed ? "Disarm" : "Arm"
+			paragraph "Unable to $status System"
+		}
+	}
+}
+
+def addCamerasPage() {
+	dynamicPage(name:"addCamerasPage") {
+		section("Add Cameras") {
+			def msg = ""
+			getCameras().each {				
+				try {
+					if (!getChildDevice(it.dni)) {
+						logDebug "Adding Camera - ${it.cameraName}"
+						addCamera(it)
+						msg += "Added Camera ${it.cameraName}\n"
+						getChildDevice(it.dni).refreshDetails(it)						
+					}
+				}
+				catch (e) {
+					msg += "Unable to add camera ${it.cameraName}\n"
+					log.error "Error Adding Camera ${it.cameraName}: ${e}"
+				}
+			}
+			
+			if (!msg) {
+				paragraph "No new cameras were found"
+			}
+			else {
+				paragraph "$msg"
+			}
+		}
+	}
+}
+
+private addCamera(camera) {
 	addChildDevice(
 		"krlaframboise", 
 		"Blink Wireless Camera", 
@@ -100,48 +186,151 @@ private addBlinkCamera(camera) {
 	)
 }
 
+def refreshCamerasPage() {
+	dynamicPage(name:"refreshCamerasPage") {
+		section("Camera Details") {
+			paragraph "${refreshAllCameraDetails()}"
+		}
+		section("Camera Events") {
+			paragraph "${refreshAllCameraEvents()}"
+		}
+	}
+}
+
+private getCameraPageLinks() {
+	try {
+		getChildDevices().sort{it.displayName}.each {
+			def dni = it.deviceNetworkId
+			def cameraId = getCameraIdFromDNI(dni)
+			if (cameraId) {
+				getPageLink("camera${cameraId}PageLink",
+					"${it.displayName} (${it.currentStatus})",
+					"cameraPage",
+					[dni: "${dni}"])
+			}		
+		}
+	}
+	catch (e) {
+		log.error "Unable to list camera links: $e"
+	}
+}
+
+def cameraPage() {
+	dynamicPage(name:"cameraPage") {		
+		def dni = "${params.dni}"
+		section ("Camera $dni") {
+			paragraph "Camera details go here"
+		}
+	}
+}
+
+def optionsPage() {
+	dynamicPage(name:"optionsPage") {		
+		section ("Options") {
+			input "shmEnabled", "bool", 
+				title: "Integrate with Smart Home Monitor?",
+				required: true, 
+				defaultValue: true
+			input "disableImages", "bool", 
+				title: "Disable image functionality?",
+				defaultValue: false,
+				required: false
+			input "debugOutput", "bool", 
+				title: "Enable debug logging?", 
+				defaultValue: true,
+				required: false
+		}
+	}
+}
+
+def blinkSetupPage() {
+	dynamicPage(name:"blinkSetupPage") {		
+		section () {
+			input "hostHub", "hub", 
+				title: "Select SmartThings Hub",
+				multiple: false, 
+				required: true		
+		}
+		section ("Blink Account Settings") {
+			input "blinkUser", "text", 
+				title: "Blink Account Email",
+				required: true
+			input "blinkPassword", "password", 
+				title: "Blink Account Password", 
+				required: true
+		}	
+	}
+}
+
+private getPageLink(linkName, linkText, pageName, args=[]) {
+	href(
+		name: "$linkName", 
+		title: "$linkText",
+		description: "",
+		page: "$pageName", 
+		params: args
+	)
+}
+
+def installed() {
+	initialize()	
+}
+
 def updated() {
+	state.completedSetup = true
 	unsubscribe()
 	unschedule()
 	initialize()	
 }
 
-def initialize() {
-	subscribe(location, "alarmSystemStatus", shmHandler)
-	runEvery5Minutes("refreshChildren")
-	runIn(3, refreshChildren, [overwrite: false])
+private initialize() {
+	if (settings.hostHub && settings.blinkUser && settings.blinkPassword) {
+		state.completedSetup = true		
+	}
+	if (state.completedSetup) {
+		subscribe(location, "alarmSystemStatus", shmHandler)
+		runEvery5Minutes(refreshAllCameraEvents)
+		runEvery5Minutes(refreshAllCameraDetails)
+		//schedule("23 0/1 * * * ?", refreshAllCameraDetails)
+		//schedule("23 0/1 * * * ?", refreshAllCameraEvents)		
+	}
 }
 
 def uninstalled() {
-	removeChildDevices(getChildDevices())
+	removeAllCameras(getChildDevices())
 }
 
-private removeChildDevices(devices) {
+private removeAllCameras(devices) {
 	devices.each {
-		deleteChildDevice(it.deviceNetworkId)
+		removeCamera(it.deviceNetworkId)
 	}
 }
 
-def refreshChildren() {
-	if (timeElapsed(state.nextRefresh)) {
-		state.nextRefresh = addToCurrentTime(5)
-		
-		getCameras().each {			
-			logDebug "Refreshing ${it.cameraName}"
-			
-			def childDevice = getChildDevice(it.dni)
-			if (childDevice) {
-				childDevice.refresh(it)
-			}
-			else {
-				log.error "Could not find Child Device for: ${it}"
-			}
-		}
-	}
+def removeCamera(dni) {
+	deleteChildDevice(dni)
 }
 
 def getSystemStatus() {
 	return getNetwork()?.armed ? "armed" : "disarmed"
+}
+
+def arm() {
+	setStatus("arm")
+}
+
+def disarm() {
+	setStatus("disarm")
+}
+
+private setStatus(status) {
+	def networkId = getNetwork()?.id
+	def request = buildRequest("/network/${networkId}/${status}")
+	
+	def data = postToBlink(request)?.data
+	if (!data) {
+		log.error "Failed to set status: ${status}"
+	}
+	//runIn(1, refreshCameras, [overwrite: false])
 }
 
 def getImage(url) {
@@ -152,8 +341,7 @@ def getImage(url) {
 			url = "${url}.jpg"
 		}
 		
-		def resp = getFromBlink(buildRequest("${url}"))
-		
+		def resp = getFromBlink(buildRequest("${url}"))	
 		if (resp?.isSuccess() && resp?.getContentType() == "image/jpeg") {
 			return resp.data
 		}
@@ -174,18 +362,47 @@ def imageFeatureDisabled() {
 def takePhoto(dni) {
 	def request = buildRequest("${getCameraRequestPath(dni)}/thumbnail")
 	def data = postToBlink(request)?.data
-	if (!data) {
-		log.error "Failed to take photo"
+	if (data) {
+		return waitForCommandToComplete(getNetworkIdFromDNI(dni), data.id, 8)
 	}
-	refreshChildren()
+	else {
+		log.error "Failed to take photo"
+		return false
+	}
+}
+
+boolean waitForCommandToComplete(networkId, commandId, timeoutSecs) {
+	def abortTime = addToCurrentTime(timeoutSecs * 1000)
+	def successful = false
+	def completed = false
+	
+	while (!timeElapsed(abortTime) && !completed) {		
+		pause(500)
+		def commandStatus = getCommandStatus(networkId, commandId)?.data
+		
+		if (commandStatus?.complete) {
+			successful = commandStatus?.status_msg?.toLowerCase()?.contains("succeeded")				
+			completed = true
+		}
+		else if (status?.status_msg) {				
+			logDebug "commandCheckResponse: ${commandStatus.data}"
+		}
+	}	
+	return (completed && successful)
+}
+
+private getCommandStatus(networkId, commandId) {
+	def request = buildRequest("/network/${networkId}/command/${commandId}")
+	
+	return getFromBlink(request)
 }
 
 def enableCamera(dni) {
-	return setCameraStatus(dni, "enable")
+	setCameraStatus(dni, "enable")	
 }
 
 def disableCamera(dni) {
-	return setCameraStatus(dni, "disable")
+	setCameraStatus(dni, "disable")
 }
 
 private setCameraStatus(dni, status) {
@@ -195,154 +412,140 @@ private setCameraStatus(dni, status) {
 		log.error "Failed to set status of camera $cameraId to $status"
 	}
 	log.debug "camera status response: $data}"
-	refreshChildren()
+	//refreshCamera(dni)
 }
 
 private getCameraRequestPath(dni) {
 	return "/network/${getNetworkIdFromDNI(dni)}/camera/${getCameraIdFromDNI(dni)}"
 }
 
-def arm() {
-	setStatus("arm")
-}
-
-def disarm() {
-	setStatus("disarm")
-}
-
-def setStatus(status) {
-	def networkId = getNetwork()?.id
-	def request = buildRequest("/network/${networkId}/${status}")
-	
-	def data = postToBlink(request)?.data
-	if (!data) {
-		log.error "Failed to set status: ${status}"
+def refreshAllCameraDetails() {
+	def msg = ""
+	try {
+		if (!state.refreshingDetails) {
+			state.refreshingDetails = true
+			
+			logDebug "Refreshing Details of All Cameras"
+			
+			getCameras().each {
+				def childDevice = getChildDevice(it.dni)
+				if (childDevice) {
+					logDebug "Refreshing ${it.cameraName}"
+					childDevice.refreshDetails(it)
+					msg += "${it.cameraName}: Refreshed\n"
+				}
+				else {
+					logDebug "Skipped ${it.cameraName}"
+					msg += "${it.cameraName}: Skipped\n"
+				}
+			}
+		}
+		else {
+			msg += "Refresh Already Running\n"
+		}
 	}
-	refreshChildren()
-	runIn(5, refreshChildren, [overwrite: false])
+	catch(e) {
+		log.error "refreshAllCameraDetails Error: $e"
+		msg += "Refresh Failed: ${e}\n"
+	}
+	state.refreshingDetails = false
+	return msg
 }
 
-private getCommandStatus(commandId) {
-	def networkId = getNetwork()?.id
-	def request = buildRequest("/network/$networkId/command/$commandId")
-	def data = getFromBlink(request)?.data
-	if (!data) {
-		log.error "Failed to get status of command id $commandId"
-	}
-	return data	
+def getCameraDetails(dni) {
+	return getCameras().find { it?.dni == dni }
 }
 
 private getCameras() {
 	def networkId = getNetwork()?.id
-	def events = getEvents()
-	def request = buildRequest("/homescreen")
-	def devicesData = getFromBlink(request)?.data?.devices
-	def cameras = devicesData?.findAll{ it.device_type == "camera" }?.collect {
-		if (it.device_type == "camera") {
-			return getCamera(networkId, it, findCameraEvents(events, it.device_id))
-		}
-	}		
-	if (!cameras) {
-		log.error "Failed to get cameras"
+	def cameras = getHomeScreenData()?.devices?.findAll{ it.device_type == "camera" }?.collect {	
+		return getCamera(networkId, it)
 	}
-	return cameras
+	if (cameras) {
+		return cameras.sort { it.cameraName }
+	}
+	else {
+		log.error "Failed to get cameras"
+	}	
 }
 
-private getCamera(networkId, homescreen, events) {
-	def camera = [
+private getCamera(networkId, device) {
+	return [
 		dni: getCameraDNI(
 				networkId,
-				homescreen.device_id
+				device.device_id
 		),
-		cameraId: homescreen.device_id,
-		cameraName: homescreen.name,
-		motionDetectionEnabled: homescreen.enabled,
-		status: homescreen.active,
-		photoUrl: homescreen.thumbnail,
-		temperature: homescreen.temp,
-		battery: homescreen.battery,
-		syncModuleSignal: homescreen.lfr_strength,
-		wifiSignal: homescreen.wifi_strength,
-		systemArmed: homescreen.armed,
+		cameraId: device.device_id,
+		cameraName: device.name,
+		motionDetectionEnabled: device.enabled,
+		status: device.active,
+		photoUrl: device.thumbnail,
+		temperature: device.temp,
+		battery: device.battery,
+		syncModuleSignal: device.lfr_strength,
+		wifiSignal: device.wifi_strength,
+		systemArmed: device.armed,
 		networkId: networkId,
-		updatedAt: getFormattedLocalTime(homescreen.updated_at),
-		events: events
+		updatedAt: getFormattedLocalTime(device.updated_at)
 	]
 }
 
-def getFormattedLocalTime(utcDateString) {
-	def localTZ = TimeZone.getTimeZone(location.timeZone.ID)		
-	def utcDate = Date.parse(
-		"yyyy-MM-dd'T'HH:mm:ss", 
-		utcDateString.replace("+00:00", "")).time
-	def localDate = new Date(utcDate + localTZ.getOffset(utcDate))	
-	return localDate.format("MM/dd/yyyy hh:mm:ss a")
-}
-
-private findCameraEvents(events, cameraId) {
-	return events.findAll { it.cameraId == cameraId }?.take(6)
-}
-
-def getCameraDNI(networkId, cameraId) {
-	if (networkId && cameraId) {
-		return "blink-$networkId-$cameraId"
-	}
-	else {
-		log.error "Unable to get Camera DNI for [networkId: $networkId, cameraId: $cameraId]"
-	}
-}
-
-private getNetworkIdFromDNI(dni) {
-	return getFromDNI(dni, 1)
-}
-
-private getCameraIdFromDNI(dni) {
-	return getFromDNI(dni, 2)
-}
-
-private getFromDNI(dni, index) {
-	def dniParts = dni?.split("-")	
-	if (dniParts?.size() == 3 && index < 3) {
-		return dniParts[index]
-	}
-}
-
-
-private getHomescreens() {
+private getHomeScreenData() {
 	def request = buildRequest("/homescreen")
-	def data = getFromBlink(request)?.data	
-	if (data) {		
-		state.systemArmed = data.network?.armed ? true : false
-		def homescreens = []
-		data.devices?.each {
-			if (it.device_type == "camera") {
-				homescreens << it
+	return getFromBlink(request)?.data
+}
+
+def refreshAllCameraEvents() {
+	def msg = ""
+	try {
+		if (!state.refreshingEvents) {
+			state.refreshingEvents = true
+			logDebug "Refreshing All Camera Events"
+			
+			getChildDevices().sort{it.displayName}.each {
+				logDebug "Refreshing ${it.displayName} Events"
+				def events = getCameraEvents(it.deviceNetworkId)
+				if (events) {
+					it.refreshEvents(events)
+					msg += "${it.displayName}: Refreshed\n"
+				}
+				else {
+					msg += "${it.displayName}: No Events Found\n"
+				}
 			}
 		}
+		else {
+			msg += "Refresh Already Running\n"
+		}
 	}
-	else {
-		log.error "Unable to retrieve homescreen"
-		return null
+	catch(e) {		
+		log.error "refreshAllCameraEvents Error: $e"
+		msg += "Refresh Failed: ${e}\n"
 	}
+	state.refreshingEvents = false
+	return msg
 }
 
-private getEvents() {
-	def networkId = getNetwork()?.id
-	def request = buildRequest("/events/network/$networkId")
-	def eventData = getFromBlink(request)?.data?.event
-	def events = eventData?.findAll { it.camera_id }?.collect {		
-			[
-				eventId: it.id,
-				cameraId: it.camera_id,
-				eventType: it.type,
-				photoUrl: it.video_url?.replace(".mp4", ""),
-				eventTime: getFormattedLocalTime(it.created_at)
-			]
+def getCameraEvents(dni) {
+	def request = buildRequest("/events${getCameraRequestPath(dni)}")
+	def events = getFromBlink(request)?.data?.event?.collect {
+		[
+			eventId: it.id,
+			cameraId: it.camera_id,
+			eventType: it.type,
+			photoUrl: it.video_url?.replace(".mp4", ""),
+			eventTime: getFormattedLocalTime(it.created_at)
+		]
 	}
-	if (!events) {
-		log.error "Failed to get events"
+	return events?.take(5)
+}
+
+private getCameraDevice(dni) {
+	def device = getChildDevice(dni)
+	if (!device) {		
+		logDebug "Device $dni not found"
 	}
-	return events
+	return device
 }
 
 private getNetwork() {
@@ -400,12 +603,10 @@ private buildRequest(path, requestHeaders, requestBody) {
 	def request = [
 		uri:  "https://prod.immedia-semi.com",
 		path: path
-	]
-	
+	]	
 	if (requestHeaders) {
 		request.headers = requestHeaders
-	}
-	
+	}	
 	if (requestBody) {
 		request.body = requestBody
 	}
@@ -446,13 +647,59 @@ private postToBlink(request) {
   }
 }
 
-private canRetryRequest(errorMessage) {
-	if (state.authToken && errorMessage.contains("Unauthorized")) {
+private canRetryRequest(errorMsg) {
+	if (state.authToken && errorMsg.contains("Unauthorized")) {
 		state.authToken = null
 		return true
 	}
 	else {
 		return false
+	}
+}
+
+def shmHandler(evt) {
+	if (settings.shmEnabled && state.shmStatus != evt.value) {		
+		state.shmStatus = evt.value
+		def status = getSystemStatus()		
+		if (evt.value == "away" && status != "armed") {
+			arm()
+		}
+		else if (status != "disarmed") {
+			disarm()
+		}		
+	}	
+}
+
+def getFormattedLocalTime(utcDateString) {
+	def localTZ = TimeZone.getTimeZone(location.timeZone.ID)		
+	def utcDate = Date.parse(
+		"yyyy-MM-dd'T'HH:mm:ss", 
+		utcDateString.replace("+00:00", "")).time
+	def localDate = new Date(utcDate + localTZ.getOffset(utcDate))	
+	return localDate.format("MM/dd/yyyy hh:mm:ss a")
+}
+
+def getCameraDNI(networkId, cameraId) {
+	if (networkId && cameraId) {
+		return "blink-$networkId-$cameraId"
+	}
+	else {
+		log.error "Unable to get Camera DNI for [networkId: $networkId, cameraId: $cameraId]"
+	}
+}
+
+private getNetworkIdFromDNI(dni) {
+	return getFromDNI(dni, 1)
+}
+
+private getCameraIdFromDNI(dni) {
+	return getFromDNI(dni, 2)
+}
+
+private getFromDNI(dni, index) {
+	def dniParts = dni?.split("-")	
+	if (dniParts?.size() == 3 && index < 3) {
+		return dniParts[index]
 	}
 }
 
@@ -462,21 +709,6 @@ private timeElapsed(time) {
 
 private addToCurrentTime(seconds) {
 	return ((new Date().time) + (seconds * 1000))
-}
-
-def shmHandler(evt) {
-	if (settings.shmEnabled && state.shmStatus != evt.value) {
-		
-		state.shmStatus = evt.value
-		def status = getSystemStatus()
-		
-		if (evt.value == "away" && status != "armed") {
-			arm()
-		}
-		else if (status != "disarmed") {
-			disarm()
-		}		
-	}	
 }
 
 private logDebug(msg) {
