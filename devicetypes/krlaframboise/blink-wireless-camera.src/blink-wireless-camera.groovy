@@ -1,11 +1,17 @@
 /**
- *  Blink Wireless Camera v 1.2
+ *  Blink Wireless Camera v 1.3 (alpha)
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.3 (alpha) (4/21/2016)
+ *      - This version is still buggy and incomple, I'm only
+ *        releasing it because I now have more than one camera
+ *        so I know that the prior versions didn't work with
+ *        more than one.
  *
  *    1.2 (4/7/2016)
  *      - Added ability to take photos and enable/disable
@@ -109,7 +115,7 @@ metadata {
 			state "loading", label:'Loading\nPhoto',
 				action:"",
 				icon:""
-			state "refreshing", label:'Refreshing\nCameras',
+			state "refreshing", label:'Refreshing\nCamera',
 				action:"",
 				icon:""
 			state "taking", label:'Taking\nPhoto',
@@ -222,8 +228,14 @@ metadata {
   }
 }
 
+def installed() {
+	runIn(1, refresh)
+}
+
 def updated() {
-	refresh()	
+	unschedule()
+	//schedule("23 0/1 * * * ?", poll)	
+	runEvery5Minutes(poll)	
 }
 
 def armSystem() {
@@ -237,51 +249,79 @@ def disarmSystem() {
 def enableCamera() {
 	generateEvent(getActionStatusEventData("enabling", "Enabling Camera"))
 	parent.enableCamera(device.deviceNetworkId)	
+	runIn(5, refreshDetails)
 }
 
 def disableCamera() {
 	generateEvent(getActionStatusEventData("disabling", "Disabling Camera"))
 	parent.disableCamera(device.deviceNetworkId)
+	runIn(5, refreshDetails)
 }
 
 def take() {
 	generateEvent(getActionStatusEventData("taking", "Taking Photo"))
-	parent.takePhoto(device.deviceNetworkId)
+	if (parent.takePhoto(device.deviceNetworkId)) {
+		refreshDetails()
+	}
+	else {
+		generateFailedStatusEvent()
+	}
+}
+
+def generateFailedStatusEvent(changeActionStatus=true) {
+	generateEvent(getActionStatusEventData("failed", "Failed", changeActionStatus))
+	runIn(2, resetStatus)
+}
+
+def resetStatus() {
+	generateEvent(getActionStatusEventData("", ""))
 }
 	
 def on() {
 	generateEvent(getActionStatusEventData("arming", "Arming System"))
   parent.arm()
+	runIn(5, refreshDetails)
 }
 
 def off() {
 	generateEvent(getActionStatusEventData("disarming", "Disarming System"))
 	parent.disarm()
+	runIn(5, refreshDetails)
 }
 
 def poll() {
-	logDebug "${device.displayName} Polling"
-	parent.refreshChildren()
+	logDebug "Polling ${device.displayName}"
+	refresh()
 }
 
 def refresh() {
-	generateEvent(getActionStatusEventData("refreshing", "Refreshing Camera Details"))
-	parent.refreshChildren()
+	refreshDetails()
+	runIn(5, refreshEvents)
 }
 
-def refresh(camera) {
-	generateEvent(getStatusEventData(camera.status))
-	generateEvent(getSystemStatusEventData(camera.systemArmed))
-	generateEvent(getTemperatureEventData(camera.temperature))
-	generateEvent(getBatteryEventData(camera.battery))
-	generateEvent(getSignalEventData("syncModuleSignal",camera.syncModuleSignal))
-	generateEvent(getSignalEventData("wifiSignal",camera.wifiSignal))	
-	generateEvent(getSwitchEventData(camera.status))	
-	generateEvent(getDescriptionEventData(camera))	
-	refreshEvents(camera.events)
-	refreshHomescreenImage(camera.photoUrl)
-	generateEvent(getActionStatusEventData("", "Camera finished refreshing"))
-	runIn(60, poll)
+def refreshDetails() {
+	generateEvent(getActionStatusEventData("refreshing", "Refreshing Camera Details", true))
+	def details = parent.getCameraDetails(device.deviceNetworkId)
+	if (details) {
+		refreshDetails(details)
+		generateEvent(getActionStatusEventData("", "Camera Details Refreshed", true))
+	}
+	else {
+		logDebug "Unable to get camera details."
+		generateFailedStatusEvent(true)
+	}
+}
+
+def refreshDetails(details) {
+	generateEvent(getStatusEventData(details.status))
+	generateEvent(getSystemStatusEventData(details.systemArmed))
+	generateEvent(getTemperatureEventData(details.temperature))
+	generateEvent(getBatteryEventData(details.battery))
+	generateEvent(getSignalEventData("syncModuleSignal",details.syncModuleSignal))
+	generateEvent(getSignalEventData("wifiSignal",details.wifiSignal))	
+	generateEvent(getSwitchEventData(details.status))	
+	generateEvent(getDescriptionEventData(details))	
+	refreshHomescreenImage(details.photoUrl)
 }
 
 private getTemperatureEventData(temp) {
@@ -318,13 +358,14 @@ private getSwitchEventData(status) {
 	]
 }
 
-private getActionStatusEventData(status, desc) {
-	logDebug "$desc"
-	return [
-		name: "actionStatus",
-		value: status,
-		displayed: false
-	]
+private getActionStatusEventData(status, desc, changeActionStatus=true) {
+	if (changeActionStatus) {
+		return [
+			name: "actionStatus",
+			value: status,
+			displayed: false
+		]
+	}
 }
 
 private getStatusEventData(status) {
@@ -358,7 +399,7 @@ private getDescription(camera) {
 
 def generateEvent(eventData, onlyWhenChanged=true) {
 	try {
-		if ("${device.currentValue(eventData.name)}" != "${eventData.value}") {
+		if (eventData && "${device.currentValue(eventData.name)}" != "${eventData.value}") {
 			sendEvent(
 				name: eventData.name, 
 				value: eventData.value, 
@@ -373,16 +414,29 @@ def generateEvent(eventData, onlyWhenChanged=true) {
 	}		
 }
 
+def refreshEvents() {
+	generateEvent(getActionStatusEventData("refreshing", "Refreshing Events", true))
+	def events = parent.getCameraEvents(device.deviceNetworkId)
+	if (events) {		
+		refreshEvents(events)
+		generateEvent(getActionStatusEventData("", "Camera Events Refreshed", true))		
+	}
+	else {
+		logDebug "Unable to get camera events."
+		generateFailedStatusEvent(true)
+	}
+}
+
 def refreshEvents(events) {
 	def newEvent = false	
 	if (!state.cameraEvents) {
 		state.cameraEvents = []
 	}
 	
-	events.take(15).reverse().each { 	
+	events.take(5).reverse().each { 	
 		if (eventIsNew(it.eventId)) {
 			newEvent = true
-			if (state.cameraEvents.size() == 15) {
+			if (state.cameraEvents.size() >= 5) {
 				state.cameraEvents.pop()
 			}
 			state.cameraEvents.add(0, it)
@@ -400,7 +454,7 @@ def refreshEvents(events) {
 			])
 			runIn(5, setMotionInactive)
 		}
-	}
+	}	
 }
 
 def eventIsNew(eventId) {
@@ -423,6 +477,10 @@ def refreshHomescreenImage(url) {
 		loadImage(url, getHomescreenImageName())
 		state.homescreenImageSource = url		
 	}	
+}
+
+def refreshSettings(cameraSettings) {
+
 }
 
 def nextEvent() {
