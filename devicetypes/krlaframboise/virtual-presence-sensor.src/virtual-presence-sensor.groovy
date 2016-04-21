@@ -1,5 +1,5 @@
 /**
- *  Virtual Presence Sensor v 1.1
+ *  Virtual Presence Sensor v 1.2
  *
  *  Capabilities:
  *    Presence Sensor
@@ -8,6 +8,10 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.2 (04/20/2016)
+ *      -	Added departed and arrived commands because that's
+ *        what the simulated presence sensor DH uses.
  *
  *    1.1 (03/06/2016)
  *      -	Made force commands always change state.
@@ -33,7 +37,9 @@ metadata {
 		capability "Actuator"
 		
 		command "forcePresent"
+		command "arrived"
 		command "forceNotPresent"
+		command "departed"
 	}
 
 	simulator {
@@ -48,12 +54,12 @@ metadata {
 					label:'Present', 
 					backgroundColor:"#99c2ff", 
 					labelIcon:"", 
-					action: "forceNotPresent")
+					action: "departed")
 				attributeState("not present", 
 					label:'Not Present', 
 					backgroundColor: "#cccccc", 
 					labelIcon:"", 
-					action: "forcePresent")			
+					action: "arrived")			
 			}
 		}				
 		main "presence"
@@ -62,9 +68,18 @@ metadata {
 }
 
 def forcePresent() {
+	arrived()
+}
+
+def arrived() {
 	sendEvent(name: "presence", value: "present", isStateChange: true)
 }
+
 def forceNotPresent() {
+	departed()
+}
+
+def departed() {
 	sendEvent(name: "presence", value: "not present", isStateChange: true)
 }
 
