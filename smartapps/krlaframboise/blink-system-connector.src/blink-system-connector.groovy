@@ -1,5 +1,5 @@
 /**
- *  Blink System Connector v 1.3 (alpha)
+ *  Blink System Connector v 1.3
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
@@ -7,11 +7,8 @@
  *
  *  Changelog:
  *
- *    1.3 (alpha) (4/21/2016)
- *      - This version is still buggy and incomple, I'm only
- *        releasing it because I now have more than one camera
- *        so I know that the prior versions didn't work with
- *        more than one.
+ *    1.3 (4/22/2016)
+ *      - Added multicamera support.
  *
  *    1.2 (4/7/2016)
  *      - Added ability to take photos and enable/disable
@@ -411,7 +408,7 @@ private setCameraStatus(dni, status) {
 	if (!data) {
 		log.error "Failed to set status of camera $cameraId to $status"
 	}
-	log.debug "camera status response: $data}"
+	//log.debug "camera status response: $data}"
 	//refreshCamera(dni)
 }
 
@@ -537,6 +534,7 @@ def getCameraEvents(dni) {
 			eventTime: getFormattedLocalTime(it.created_at)
 		]
 	}
+	events?.removeAll { !it.photoUrl }
 	return events?.take(5)
 }
 
