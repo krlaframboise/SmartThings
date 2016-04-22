@@ -150,7 +150,7 @@ def addCamerasPage() {
 						logDebug "Adding Camera - ${it.cameraName}"
 						addCamera(it)
 						msg += "Added Camera ${it.cameraName}\n"
-						getChildDevice(it.dni).refreshDetails(it)						
+						getChildDevice(it.dni)?.refreshDetails(it)						
 					}
 				}
 				catch (e) {
