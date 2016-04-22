@@ -1,5 +1,5 @@
 /**
- *  Blink Wireless Camera v 1.3 (alpha)
+ *  Blink Wireless Camera v 1.3
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
@@ -7,11 +7,10 @@
  *
  *  Changelog:
  *
- *    1.3 (alpha) (4/21/2016)
- *      - This version is still buggy and incomple, I'm only
- *        releasing it because I now have more than one camera
- *        so I know that the prior versions didn't work with
- *        more than one.
+ *    1.3 (4/22/2016)
+ *      - Switched from carousel to htmltile.
+ *      - Added multicamera support.
+ *      - Fixed missing icons caused by android update.
  *
  *    1.2 (4/7/2016)
  *      - Added ability to take photos and enable/disable
@@ -60,6 +59,7 @@ metadata {
 		attribute "wifiSignal", "number"
 		attribute "activeEventNumber", "number"
 		attribute "activeEventDesc", "String"
+		attribute "imageDataJpeg", "String"
 		
 		command "enableCamera"
 		command "disableCamera"
@@ -94,9 +94,15 @@ metadata {
 					icon:"st.camera.dropcam", 
 					backgroundColor:"#ff9999"
 			}
-		}		
-		carouselTile("cameraDetails", "device.image", width: 6, height: 4, decoration: "flat") { 
-		}
+		}	
+		htmlTile(name:"imageHTML", 
+			action: "getImageHTML", , 
+			refreshInterval: 1, 
+			width: 6, 
+			height: 4)
+			
+		 // carouselTile("cameraDetails", "device.imageDataJpeg", width: 6, height: 4, decoration: "flat") { 
+		 // }
 		valueTile("actionStatus", "device.actionStatus", width: 2, height: 1, decoration: "flat") {
 			state "ready", label: '   Ready   ',
 				action:"",
@@ -145,12 +151,10 @@ metadata {
 			state("temperature", label:'${currentValue}°'
 			)
 		}
-		valueTile("motion", "device.motion",  width: 1, height: 1) {
-			state "inactive", label:'', 
-				icon: "st.motion.motion.inactive"
-			state "active", label:'', 
-				icon: "st.motion.motion.inactive", 
-				backgroundColor:"#99c2ff"
+		valueTile("motion", "device.motion",  width: 1, height: 1, decoration: "flat") {
+			state "inactive", label:'No Motion'//, icon: "st.motion.motion.inactive"
+			state "active", label:'Motion', 				
+				backgroundColor:"#99c2ff"//,icon: "st.motion.motion.active"
 		}
 		valueTile("battery", "device.battery",  width: 2, height: 1, decoration: "flat") {
 			state "battery", label:'BATTERY\n${currentValue}%', 
@@ -191,14 +195,12 @@ metadata {
 				icon:""
     }
 		valueTile("movePrevEvent", "generic", width: 1, height: 1) {
-      state "default", label:'', 
-				action:"previousEvent", 
-				icon:"st.thermostat.thermostat-up"
+      state "default", label:'Prev', 
+				action:"previousEvent"//,icon:"st.thermostat.thermostat-left"
     }
 		valueTile("moveNextEvent", "generic", width: 1, height: 1) {
-      state "default", label:'', 
-				action:"nextEvent", 
-				icon:"st.thermostat.thermostat-down"
+      state "default", label:'Next', 
+				action:"nextEvent"//, icon:"st.thermostat.thermostat-right"
     }		
 		valueTile("desc", "device.description",  width: 6, height: 2, decoration: "flat") {
 			state "description", label:'${currentValue}', 
@@ -212,7 +214,8 @@ metadata {
 			"battery",
 			"syncModuleSignal",
 			"wifiSignal",
-      "cameraDetails",
+      //"cameraDetails",
+			"imageHTML",
 			"status",
 			"takePhoto",
 			"refresh",
@@ -235,7 +238,7 @@ def installed() {
 def updated() {
 	unschedule()
 	//schedule("23 0/1 * * * ?", poll)	
-	runEvery5Minutes(poll)	
+	//runEvery5Minutes(poll)	
 }
 
 def armSystem() {
@@ -295,6 +298,7 @@ def poll() {
 }
 
 def refresh() {
+	state.homescreenImageSource = ""
 	refreshDetails()
 	runIn(5, refreshEvents)
 }
@@ -422,8 +426,10 @@ def refreshEvents() {
 		generateEvent(getActionStatusEventData("", "Camera Events Refreshed", true))		
 	}
 	else {
-		logDebug "Unable to get camera events."
-		generateFailedStatusEvent(true)
+		logDebug "No Events Found"
+		state.cameraEvents?.clear()
+		updateCameraEventAttributes(0)
+		resetStatus()
 	}
 }
 
@@ -432,6 +438,10 @@ def refreshEvents(events) {
 	if (!state.cameraEvents) {
 		state.cameraEvents = []
 	}
+	
+	state.cameraEvents.removeAll { item ->
+		!events?.find { it.eventId == item.eventId }
+	}		
 	
 	events.take(5).reverse().each { 	
 		if (eventIsNew(it.eventId)) {
@@ -503,9 +513,10 @@ def updateCameraEventAttributes(eventNumber) {
 		value: eventNumber,
 		displayed: false
 	])
+	def desc = (eventNumber == 0) ? "" : "($eventNumber) ${getFormattedEventTime(state.cameraEvents[eventNumber-1].eventTime)}"
 	generateEvent([
 		name: "activeEventDesc",
-		value: "($eventNumber) ${getFormattedEventTime(state.cameraEvents[eventNumber-1].eventTime)}",
+		value: "$desc",
 		displayed: false
 	])
 }
@@ -526,17 +537,21 @@ def displayEventImage() {
 private loadImage(sourceUrl, newImageName) {		
 	if (sourceUrl && !parent.imageFeatureDisabled()) {
 		generateEvent(getActionStatusEventData("loading", "Loading Event Image"))
-		def imageBytes = parent.getImage(sourceUrl)
+		def imageBytes = parent.getImage(sourceUrl)?.buf
 		if(imageBytes) {
-		
-			storeImage(newImageName, imageBytes)			
-
+			
 			generateEvent([
-				name: "image",
-				value: newImage,
+				name: "imageDataJpeg",
+				value: imageBytes.encodeBase64(),
 				displayed: false
-			], true)
-			generateEvent(getActionStatusEventData("", ""))			
+			], false)
+			//storeImage(newImageName, imageBytes)			
+			// generateEvent([
+				// name: "image",
+				// value: "https://graph.api.smartthings.com/api/s3/smartthings-smartsense-camera/$newImageName",
+				// displayed: false
+			// ], false)
+			resetStatus()			
 		}
 	}
 	else if (!sourceUrl) {
@@ -569,6 +584,26 @@ int safeToInteger(val) {
 	catch (e) {
 		return 0
 	}
+}
+
+mappings {
+    path("/getImageHTML") {action: [GET: "getImageHTML"]}
+}
+
+def getImageHTML() {	
+	def imageData = device.currentValue("imageDataJpeg")
+	renderHTML {
+    	head {
+        	"""
+            	<style type="text/css">img{max-width:100%;max-height:100%;}</style>
+            """
+        }
+        body {
+        	"""
+               <img src='data:image/jpeg;base64,$imageData' />
+            """
+        }
+    }
 }
 
 private logDebug(msg) {
