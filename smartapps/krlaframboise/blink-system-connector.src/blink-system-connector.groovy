@@ -229,8 +229,8 @@ def optionsPage() {
 		section ("Options") {
 			input "shmEnabled", "bool", 
 				title: "Integrate with Smart Home Monitor?",
-				required: true, 
-				defaultValue: true
+				required: false, 
+				defaultValue: false
 			input "disableImages", "bool", 
 				title: "Disable image functionality?",
 				defaultValue: false,
