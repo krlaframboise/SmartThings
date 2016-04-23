@@ -98,7 +98,9 @@ private getSystemStatusParagraph() {
 		def syncModule = devices?.find { it.device_type == "sync_module" }
 		def cameraCount = devices?.count { it.device_type == "camera" }
 		def disabledCount = devices?.count { it.device_type == "camera" && !it.enabled}
-		
+
+		state.systemArmed = network?.armed ? true : false
+
 		paragraph "System Armed: ${network?.armed}\n" +
 			"System Status: ${network?.status}\n" +
 			"Notifications: ${network?.notifications}\n" +
@@ -122,20 +124,21 @@ private getToggleArmedPageLink() {
 
 def toggleArmedPage() {
 	dynamicPage(name:"toggleArmedPage") {
-		def result
-		if (state.systemArmed) {
-			result = disarm()
-		}
-		else {
-			result = arm()
-		}
-		if (result) {
-			def status = state.systemArmed ? "Armed" : "Disarmed"
-			paragraph "The system is now $status"
-		}
-		else {
-			def status = state.systemArmed ? "Disarm" : "Arm"
-			paragraph "Unable to $status System"
+		section() {
+			def newStatus = state.systemArmed ? "Disarm" : "Arm"
+			def result
+			if (state.systemArmed) {
+				result = disarm()
+			}
+			else {
+				result = arm()
+			}
+			if (result) {				
+				paragraph "The system is now ${newStatus}ed"
+			}
+			else {
+				paragraph "Unable to $NewStatus System"
+			}
 		}
 	}
 }
@@ -324,10 +327,14 @@ private setStatus(status) {
 	def request = buildRequest("/network/${networkId}/${status}")
 	
 	def data = postToBlink(request)?.data
-	if (!data) {
+	
+	if (data) {
+		runIn(5, refreshAllCameraDetails)
+	}
+	else {
 		log.error "Failed to set status: ${status}"
 	}
-	//runIn(1, refreshCameras, [overwrite: false])
+	return data	
 }
 
 def getImage(url) {
