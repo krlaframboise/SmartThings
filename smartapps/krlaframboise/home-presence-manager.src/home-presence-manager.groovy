@@ -1,5 +1,5 @@
 /**
- *  Home Presence Manager v test
+ *  Home Presence Manager v 1.2.3b
  *
  *  Copyright 2016 Kevin LaFramboise
  *
@@ -17,304 +17,510 @@ definition(
     name: "Home Presence Manager",
     namespace: "krlaframboise",
     author: "Kevin LaFramboise",
-    description: "Uses motion and virtual presence sensors to keep track of current location in the house.",
+    description: "Uses motion sensors, contact sensors and virtual presence sensors to keep track of the room you're in so that you can make the lights stay on until you exit instead of relying on inactivity timeouts",
     category: "My Apps",
     iconUrl: "http://cdn.device-icons.smartthings.com/Home/home4-icn.png",
     iconX2Url: "http://cdn.device-icons.smartthings.com/Home/home4-icn@2x.png"
+		// ,iconX3Url: "http://cdn.device-icons.smartthings.com/Home/home4-icn@3x.png"
 )
 
 preferences {
-	page(name: "selectButton")
-	page(name: "configureButton1")
-	page(name: "configureButton2")
-	page(name: "configureButton3")
-	page(name: "configureButton4")
-
-	page(name: "timeIntervalInput", title: "Only during a certain time") {
-		section {
-			input "starting", "time", title: "Starting", required: false
-			input "ending", "time", title: "Ending", required: false
-		}
-	}
+	page(name:"mainPage")
+  page(name:"roomPage")
+	page(name:"optionsPage")
 }
 
-def selectButton() {
-	dynamicPage(name: "selectButton", title: "First, select your button device", nextPage: "configureButton1", uninstall: configured()) {
-		section {
-			input "buttonDevice", "capability.button", title: "Button", multiple: false, required: true
-		}
-
-		section(title: "More options", hidden: hideOptionsSection(), hideable: true) {
-
-			def timeLabel = timeIntervalLabel()
-
-			href "timeIntervalInput", title: "Only during a certain time", description: timeLabel ?: "Tap to set", state: timeLabel ? "complete" : null
-
-			input "days", "enum", title: "Only on certain days of the week", multiple: true, required: false,
-				options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
-			input "modes", "mode", title: "Only when mode is", multiple: true, required: false
-		}
-	}
-}
-
-def configureButton1() {
-	dynamicPage(name: "configureButton1", title: "Now let's decide how to use the first button",
-		nextPage: "configureButton2", uninstall: configured(), getButtonSections(1))
-}
-def configureButton2() {
-	dynamicPage(name: "configureButton2", title: "If you have a second button, set it up here",
-		nextPage: "configureButton3", uninstall: configured(), getButtonSections(2))
-}
-
-def configureButton3() {
-	dynamicPage(name: "configureButton3", title: "If you have a third button, you can do even more here",
-		nextPage: "configureButton4", uninstall: configured(), getButtonSections(3))
-}
-def configureButton4() {
-	dynamicPage(name: "configureButton4", title: "If you have a fourth button, you rule, and can set it up here",
-		install: true, uninstall: true, getButtonSections(4))
-}
-
-def getButtonSections(buttonNumber) {
-	return {
-		section("Lights") {
-			input "lights_${buttonNumber}_pushed", "capability.switch", title: "Pushed", multiple: true, required: false
-			input "lights_${buttonNumber}_held", "capability.switch", title: "Held", multiple: true, required: false
-		}
-		section("Locks") {
-			input "locks_${buttonNumber}_pushed", "capability.lock", title: "Pushed", multiple: true, required: false
-			input "locks_${buttonNumber}_held", "capability.lock", title: "Held", multiple: true, required: false
-		}
-		section("Sonos") {
-			input "sonos_${buttonNumber}_pushed", "capability.musicPlayer", title: "Pushed", multiple: true, required: false
-			input "sonos_${buttonNumber}_held", "capability.musicPlayer", title: "Held", multiple: true, required: false
-		}
-		section("Modes") {
-			input "mode_${buttonNumber}_pushed", "mode", title: "Pushed", required: false
-			input "mode_${buttonNumber}_held", "mode", title: "Held", required: false
-		}
-		def phrases = location.helloHome?.getPhrases()*.label
-		if (phrases) {
-			section("Hello Home Actions") {
-				log.trace phrases
-				input "phrase_${buttonNumber}_pushed", "enum", title: "Pushed", required: false, options: phrases
-				input "phrase_${buttonNumber}_held", "enum", title: "Held", required: false, options: phrases
+def mainPage() {
+	dynamicPage(name:"mainPage", title: "Main Menu", uninstall:true, install: true) {				
+		section("Rooms") {
+			state.newRoomNum = null			
+			
+			def rooms = []
+			for (int roomNum = 1; roomNum <= 25; roomNum++) {
+				def room = getRoom(roomNum)
+				if (room) {
+					rooms << room
+				}
+			}			
+			rooms.sort { it.roomName.toLowerCase() }
+			
+			for (room in rooms) {
+				getRoomPageLink(room)
 			}
+			
+			href(
+				name: "optionsLink", 
+				title: "Options",
+				description: "",
+				page: "optionsPage", 
+				params: []
+			)	
 		}
-        section("Sirens") {
-            input "sirens_${buttonNumber}_pushed","capability.alarm" ,title: "Pushed", multiple: true, required: false
-            input "sirens_${buttonNumber}_held", "capability.alarm", title: "Held", multiple: true, required: false
-        }
+	}
+}
 
-		section("Custom Message") {
-			input "textMessage_${buttonNumber}", "text", title: "Message", required: false
+def getRoom(roomNum) {
+	def roomName = getRoomName(roomNum)
+	
+	if (!roomName && !state.newRoomNum) {
+		state.newRoomNum = roomNum
+		roomName = "< Add New Room >"
+	}
+	
+	if (roomName) {
+		return [roomName: roomName, roomNumber: roomNum]		
+	}
+	else {
+		return null
+	}
+}
+
+def getRoomPageLink(room) {	
+	return href(
+		name: "room${room.roomNumber}Link", 
+		title: "${room.roomName}",
+		description: "",
+		page: "roomPage", 
+		params: [roomNumber: room.roomNumber]
+	)	
+}
+
+def roomPage(params) {
+	dynamicPage(name:"roomPage", title:"Room Details") {
+		def roomNumber = params.roomNumber.toInteger()
+		def roomName = getRoomName(roomNumber)
+		def roomLabel = roomName ? roomName : "New Room"		
+		
+		section("$roomLabel") {
+			input "roomName$roomNumber", "text", 
+				title: "Room Name", 
+				defaultValue: roomName, 
+				required: false
+			input "presence$roomNumber", "capability.presenceSensor",
+				title: "Which presence sensor represents this room?",
+				required: false
+		}		
+		section("Motion Sensors") {
+			input "motion$roomNumber", "capability.motionSensor", 
+				title: "Which motion sensors indicate presence?", 
+				multiple: true, 
+				required: false
+			input "motionTimeout$roomNumber", "number", 
+				title: "How many seconds after motion stops does it take the sensor to report inactive?", 
+				required: false
+		}			
+		section ("Contact Sensors") {
+			input "contact$roomNumber", "capability.contactSensor", 
+				title: "Which contact sensors indicate presence?", 
+				multiple: true, 
+				required: false
+			input "contactPresence$roomNumber", "enum",
+				title: "Present when contact is?",
+				options: ["open", "closed", "toggle open", "toggle closed"],
+				required: false
+		}			
+		// section ("Switches") {
+			// input "switch$roomNumber", "capability.switch",
+				// title: "Which switches indicate presence?",
+				// multiple: true,
+				// required: false
+			// input "switchPresence$roomNumber", "enum",
+				// title: "Present when switch is?",
+				// options: ["on", "off"],
+				// required: false
+		// }
+		section ("Lights") {
+			input "lights$roomNumber", "capability.switch",
+				title: "Turn which lights on when present?",
+				multiple: true,
+				required: false
+			// input "lightOffDelay$roomNumber", "number",
+				// title: "Off delay in Minutes?",
+				// defaultValue: 0,
+				// required: false
+		}		
+	}
+}
+
+def getRoomName(roomNumber) {
+	if (settings."roomName$roomNumber") {
+		return settings."roomName$roomNumber"
+	}
+	else {
+		return ""
+	}	
+}
+
+def optionsPage() {
+	dynamicPage(name:"optionsPage", title: "Options") {		
+		section("Options") {
+			mode title: "Only for mode(s)",
+				required: false
+			input "debugLogEnabled", "bool",
+				title: "Debug Logging Enabled?",
+				defaultValue: true,
+				required: false							
 		}
+		// section ("Scheduling") {
+			// paragraph "Leave this field empty unless you're using an external timer to turn on a switch at regular intervals.  If you select a switch, the application will check to see if notifications need to be sent when its turned on instead of using SmartThings scheduler to check every 5 minutes."
 
-        section("Push Notifications") {
-            input "notifications_${buttonNumber}_pushed","bool" ,title: "Pushed", required: false, defaultValue: false
-            input "notifications_${buttonNumber}_held", "bool", title: "Held", required: false, defaultValue: false
-        }
-
-        section("Sms Notifications") {
-            input "phone_${buttonNumber}_pushed","phone" ,title: "Pushed", required: false
-            input "phone_${buttonNumber}_held", "phone", title: "Held", required: false
-        }
+			// input "btnTimer", "capability.button",
+				// title: "Which Button Timer?",
+				// required: false
+		// }
 	}
 }
 
 def installed() {
+	logDebug "Installed"
+
 	initialize()
 }
 
-def updated() {
-	unsubscribe()
-	initialize()
+def updated() {	
+	if (!isDuplicateCall(state.lastUpdate, 1)) {
+		state.lastUpdate = new Date().time
+		logDebug "Updated"
+		unschedule()
+		unsubscribe()
+		initialize()
+	}
 }
 
 def initialize() {
-	subscribe(buttonDevice, "button", buttonEvent)
-}
-
-def configured() {
-	return buttonDevice || buttonConfigured(1) || buttonConfigured(2) || buttonConfigured(3) || buttonConfigured(4)
-}
-
-def buttonConfigured(idx) {
-	return settings["lights_$idx_pushed"] ||
-		settings["locks_$idx_pushed"] ||
-		settings["sonos_$idx_pushed"] ||
-		settings["mode_$idx_pushed"] ||
-        settings["notifications_$idx_pushed"] ||
-        settings["sirens_$idx_pushed"] ||
-        settings["notifications_$idx_pushed"]   ||
-        settings["phone_$idx_pushed"]
-}
-
-def buttonEvent(evt){
-	if(allOk) {
-		def buttonNumber = evt.data // why doesn't jsonData work? always returning [:]
-		def value = evt.value
-		log.debug "buttonEvent: $evt.name = $evt.value ($evt.data)"
-		log.debug "button: $buttonNumber, value: $value"
-
-		def recentEvents = buttonDevice.eventsSince(new Date(now() - 3000)).findAll{it.value == evt.value && it.data == evt.data}
-		log.debug "Found ${recentEvents.size()?:0} events in past 3 seconds"
-
-		if(recentEvents.size <= 1){
-			switch(buttonNumber) {
-				case ~/.*1.*/:
-					executeHandlers(1, value)
-					break
-				case ~/.*2.*/:
-					executeHandlers(2, value)
-					break
-				case ~/.*3.*/:
-					executeHandlers(3, value)
-					break
-				case ~/.*4.*/:
-					executeHandlers(4, value)
-					break
-			}
-		} else {
-			log.debug "Found recent button press events for $buttonNumber with value $value"
+try {
+	if (!isDuplicateCall(state.lastInitialize, 1)) {
+		state.lastInitialize = (new Date().time)
+		
+		// logDebug "$btnTimer"
+		// if (btnTimer) {
+			// subscribe(btnTimer, "button.pushed", timerEventHandler)
+		// }
+		
+		initializeRooms()
+				
+		for (room in state.rooms) {
+			
+			subscribe(presenceSensor(room), "presence", presenceEventHandler)
+		
+			subscribe(motionSensors(room), "motion.active", motionActiveEventHandler)
+			
+			subscribe(motionSensors(room), "motion.inactive", motionInactiveEventHandler)
+			
+			subscribe(contactSensors(room), "contact", contactEventHandler)
+			
+			//subscribe(switches(room), "switch", switchEventHandler)
 		}
 	}
 }
-
-def executeHandlers(buttonNumber, value) {
-	log.debug "executeHandlers: $buttonNumber - $value"
-
-	def lights = find('lights', buttonNumber, value)
-	if (lights != null) toggle(lights)
-
-	def locks = find('locks', buttonNumber, value)
-	if (locks != null) toggle(locks)
-
-	def sonos = find('sonos', buttonNumber, value)
-	if (sonos != null) toggle(sonos)
-
-	def mode = find('mode', buttonNumber, value)
-	if (mode != null) changeMode(mode)
-
-	def phrase = find('phrase', buttonNumber, value)
-	if (phrase != null) location.helloHome.execute(phrase)
-
-	def textMessage = findMsg('textMessage', buttonNumber)
-
-	def notifications = find('notifications', buttonNumber, value)
-	if (notifications?.toBoolean()) sendPush(textMessage ?: "Button $buttonNumber was pressed" )
-
-	def phone = find('phone', buttonNumber, value)
-	if (phone != null) sendSms(phone, textMessage ?:"Button $buttonNumber was pressed")
-
-    def sirens = find('sirens', buttonNumber, value)
-    if (sirens != null) toggle(sirens)
+catch(e) {
+	log.error "Initialize Error: $e"
+}
 }
 
-def find(type, buttonNumber, value) {
-	def preferenceName = type + "_" + buttonNumber + "_" + value
-	def pref = settings[preferenceName]
-	if(pref != null) {
-		log.debug "Found: $pref for $preferenceName"
-	}
+// def timerEventHandler(evt) {
+	// def btnNumber = evt.data.replace("{\"buttonNumber\":", "").replace("}", "").substring(2)
+	// def roomNumber = validateRoomNumber(btnNumber)
+	
+	// if (roomNumber > 0) {
+		// def room = findRoomByRoomNumber(roomNumber)
+		// lights(room)?.off()	
+	// }		
+// }
 
-	return pref
+int validateRoomNumber(roomNumber) {
+	try {
+		return roomNumber.toInteger()
+	}
+	catch (e) {
+		return 0
+	}	
 }
 
-def findMsg(type, buttonNumber) {
-	def preferenceName = type + "_" + buttonNumber
-	def pref = settings[preferenceName]
-	if(pref != null) {
-		log.debug "Found: $pref for $preferenceName"
+def initializeRooms() {
+	def roomCount = 25
+	if (state.rooms?.size() != roomCount) {
+		createRooms(roomCount)
 	}
-
-	return pref
+	
+	for (room in state.rooms) {
+		room.roomName = settings["roomName${room.roomNumber}"]
+		if (!room.roomName) room.roomName = "Room ${room.roomNumber}"
+		
+		room.motionTimeout = settings["motionTimeout${room.roomNumber}"]
+		if (!room.motionTimeout) room.motionTimeout = 65
+		
+		room.pendingExit = false
+	}		
 }
 
-def toggle(devices) {
-	log.debug "toggle: $devices = ${devices*.currentValue('switch')}"
+def createRooms(roomCount) {
+	def lastActivity = ((new Date().time) - (120 * 1000))
+	state.rooms = []
+	
+	for (int roomNumber = 1; roomNumber < roomCount; roomNumber++) {
+		state.rooms << [
+			roomNumber: roomNumber,
+			lastActivity: lastActivity]
+	}
+}
 
-	if (devices*.currentValue('switch').contains('on')) {
-		devices.off()
+def presenceEventHandler(evt) {
+	def room = findRoomByDeviceId(evt.device.id)	
+	if (evt.value == "present") {
+		turnOnLights(room)
 	}
-	else if (devices*.currentValue('switch').contains('off')) {
-		devices.on()
-	}
-	else if (devices*.currentValue('lock').contains('locked')) {
-		devices.unlock()
-	}
-	else if (devices*.currentValue('lock').contains('unlocked')) {
-		devices.lock()
-	}
-	else if (devices*.currentValue('alarm').contains('off')) {
-        devices.siren()
-    }
 	else {
-		devices.on()
+		turnOffLights(room)		
 	}
 }
 
-def changeMode(mode) {
-	log.debug "changeMode: $mode, location.mode = $location.mode, location.modes = $location.modes"
+def motionActiveEventHandler(evt) {
+	def room = findRoomByDeviceId(evt.device.id)
+	logDebug "${room.roomName} Motion is Active"
+	
+	room.lastActivity = new Date().time
+	room.pendingExit = false
+	
+	handlePresentRoom(room)
+}
 
-	if (location.mode != mode && location.modes?.find { it.name == mode }) {
-		setLocationMode(mode)
+def motionInactiveEventHandler(evt) {	
+	def room = findRoomByDeviceId(evt.device.id)
+	logDebug "${room.roomName} Motion is Inactive"	
+	handleMotionInactiveRoom(room)
+}
+
+def contactEventHandler(evt) {
+	def room = findRoomByDeviceId(evt.device.id)
+	def presenceType = contactPresenceType(room)
+	def currentlyPresent = isPresent(room)
+	
+	logDebug "${room.roomName} contact is ${evt.value}"
+	
+	if (presenceType == evt.value) {
+		handlePresentRoom(room, true)
 	}
-}
-
-// execution filter methods
-private getAllOk() {
-	modeOk && daysOk && timeOk
-}
-
-private getModeOk() {
-	def result = !modes || modes.contains(location.mode)
-	log.trace "modeOk = $result"
-	result
-}
-
-private getDaysOk() {
-	def result = true
-	if (days) {
-		def df = new java.text.SimpleDateFormat("EEEE")
-		if (location.timeZone) {
-			df.setTimeZone(location.timeZone)
+	else if (currentlyPresent && (!presenceType.contains("toggle"))) {
+		handleNotPresentRoom(room)
+	}
+	else if (presenceType.contains(evt.value)) {
+		if (currentlyPresent) {
+			handleNotPresentRoom(room)
 		}
 		else {
-			df.setTimeZone(TimeZone.getTimeZone("America/New_York"))
+			handlePresentRoom(room, true)
 		}
-		def day = df.format(new Date())
-		result = days.contains(day)
 	}
-	log.trace "daysOk = $result"
+}
+
+// def switchEventHandler(evt) {
+
+// }
+
+def handleMotionInactiveRoom(room) {	
+	if (otherRoomsAreActive(room)) {
+		logDebug "Exiting ${room.roomName} because other rooms are active."
+		handleNotPresentRoom(room)
+	}
+	else {
+		logDebug "${room.roomName} is Pending Exit"
+		room.lastActivity = new Date().time
+		room.pendingExit = true
+		handleRoomsPendingExit(room, false)
+	}
+}
+
+def otherRoomsAreActive(room) {
+	for (otherRoom in state.rooms) {
+		if (room.roomNumber != otherRoom.roomNumber 
+		&& hasActiveMotion(otherRoom) 
+		&& !hasPendingMotion(otherRoom, room.lastActivity)) {
+			logDebug "${otherRoom.roomName} is Active (otherRoomsAreActive)\n$otherRoom"
+			return true
+		}
+	}	
+	return false
+}
+
+def hasPendingMotion(room, startTime) {
+	if (hasActiveMotion(room)) {			
+		return ((new Date().time) <	(startTime + (room.motionTimeout * 1000)))	
+	}
+	else {
+		return false
+	}
+}
+
+def handlePresentRoom(room, forceExit=false) {
+	turnOnLights(room)
+	if (!isPresent(room)) {
+		logDebug "Setting ${room.roomName} to Present"
+		//presenceSensor(room)?.forcePresent()
+		presenceSensor(room)?.arrived()
+		//presenceSensor(room)?.each { it.currentState = "present" }
+	}	
+	handleRoomsPendingExit(room, forceExit)	
+}
+
+def handleRoomsPendingExit(ignoreRoom, forceExit) {
+	for (room in state.rooms) {		
+		if (room.roomNumber != ignoreRoom.roomNumber
+		&& (room.pendingExit || forceExit)) {
+			logDebug "Exiting ${room.roomName} because ${ignoreRoom.roomName} is Present"
+			handleNotPresentRoom(room)
+		}
+	}
+}
+
+def handleNotPresentRoom(room) {
+	//logDebug "${room.roomName} is ${presenceSensor(room)?.currentPresence} (handleNotPresentRoom)"
+	//if (isPresent(room)) {
+		//logDebug "Setting ${room.roomName} to Not Present (handleNotPresentRoom)\n$room"
+		logDebug "Setting ${room.roomName} to Not Present"
+		
+		//turnOffLights(room)
+		//presenceSensor(room)?.forceNotPresent()
+		presenceSensor(room)?.departed()
+		//presenceSensor(room)?.each { log.debug "it: $it" }
+		//presenceSensor(room)?.each { log.debug "it[0]: ${it[0]}" }
+		//presenceSensor(room)?.each { log.debug "it.device: ${it.device}" }
+		//presenceSensor(room)?.each { it.currentState = "not present" }
+		room.pendingExit = false
+		
+	//}
+	//else {
+	//	logDebug "Skipped Setting ${room.roomName} to Not Present (handleNotPresentRoom)\n$room"
+	//}	
+}
+
+private turnOnLights(room) {
+	if (!lightsMatchState(room, "on")) {
+		logDebug "${room.roomName} has been entered"
+		lights(room).on()
+	}
+}
+
+private turnOffLights(room) {
+	if (!lightsMatchState(room, "off")) {
+		logDebug "${room.roomName} has been exited"
+		// def offDelay = lightOffDelay(room) 
+		// if (offDelay > 0) {
+			// logDebug "${room.roomName}'s light(s) will turn off in $offDelay minutes"
+			
+			// btnTimer.pushButtonIn("10" + room.roomNumber.toString(), offDelay * 60)
+			
+		// }
+		// else {
+			lights(room).off()
+		//}
+	}
+}
+
+def lightsMatchState(room, switchState) {
+	return lights(room)?.find { it.currentSwitch != switchState} ? false : true
+}
+
+def isPresent(room) {	
+	return (presenceSensor(room)?.currentPresence == "present")
+}
+
+def hasActiveMotion(room) {	
+	return (motionSensors(room)?.currentMotion == "active")
+}
+
+def findRoomByRoomNumber(roomNumber) {	
+	for (room in state.rooms) {		
+		if (room.roomNumber == roomNumber) {
+			return room
+		}
+	}
+	return null	
+}
+
+def findRoomByDeviceId(deviceId) {
+	def currentRoom = null
+		
+	for (room in state.rooms) {
+		
+		if (!currentRoom) {
+			def device = presenceSensor(room)?.find() {it.id == deviceId} 
+			if (!device) { 
+				device = motionSensors(room)?.find() {it.id == deviceId} 
+			}
+			if (!device) {
+				device = contactSensors(room)?.find() {it.id == deviceId} 
+			}
+			// if (!device) {
+				// device = switches(room)?.find() {it.id == deviceId} 
+			// }
+			
+			if (device != null) {
+				currentRoom = room
+			}		
+		}
+	}	
+	return currentRoom
+}
+
+def presenceSensor(room) {
+	return getSetting(room, "presence")	
+}
+
+def motionSensors(room) {
+	return getSetting(room, "motion")	
+}
+
+def contactSensors(room) {
+	return getSetting(room, "contact")
+}
+
+def contactPresenceType(room) {
+	if (getSetting(room, "contactPresence")) {
+		return getSetting(room, "contactPresence")
+	}
+	else {
+		return ""
+	}
+}
+
+// def switches(room) {
+	// return getSetting(room, "switches")		
+// }
+
+def lights(room) {
+	return getSetting(room, "lights")	
+}
+
+// int lightOffDelay(room) {
+	// def delay = getSetting(room, "lightOffDelay")
+	// if (delay?.isNumber()) {
+		// return delay.toInteger()
+	// }
+	// else {
+		// return 0
+	// }
+// }
+
+private getSetting(room, settingName) {
+	if (room?.roomNumber) {
+		return settings["$settingName${room.roomNumber}"]
+	}
+	else {
+		return null
+	}
+}
+
+private isDuplicateCall(lastRun, allowedEverySeconds) {
+	def result = false
+	if (lastRun) {
+		result =((new Date().time) - lastRun) < (allowedEverySeconds * 1000)
+	}
 	result
 }
 
-private getTimeOk() {
-	def result = true
-	if (starting && ending) {
-		def currTime = now()
-		def start = timeToday(starting).time
-		def stop = timeToday(ending).time
-		result = start < stop ? currTime >= start && currTime <= stop : currTime <= stop || currTime >= start
+private logDebug(msg) {
+	if (debugLogEnabled) {
+		log.debug msg
 	}
-	log.trace "timeOk = $result"
-	result
-}
-
-private hhmm(time, fmt = "h:mm a")
-{
-	def t = timeToday(time, location.timeZone)
-	def f = new java.text.SimpleDateFormat(fmt)
-	f.setTimeZone(location.timeZone ?: timeZone(time))
-	f.format(t)
-}
-
-private hideOptionsSection() {
-	(starting || ending || days || modes) ? false : true
-}
-
-private timeIntervalLabel() {
-	(starting && ending) ? hhmm(starting) + "-" + hhmm(ending, "h:mm a z") : ""
 }
