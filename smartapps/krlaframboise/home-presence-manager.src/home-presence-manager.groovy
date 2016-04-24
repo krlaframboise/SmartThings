@@ -28,6 +28,11 @@ preferences {
 	page(name:"mainPage")
   //page(name:"roomPage")
 	page(name:"optionsPage")
+	page(name: "timeIntervalInput", title: "Normal Page") {
+		section {
+			input "starting", "time", title: "Normal Page Field", required: false
+		}
+	}
 }
 
 def mainPage() {
@@ -47,7 +52,7 @@ def mainPage() {
 			// for (room in rooms) {
 				// getRoomPageLink(room)
 			// }
-			
+			paragraph "This is the main page"
 			href(
 				name: "optionsLink", 
 				title: "Options",
