@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.6.3a
+ *  Simple Device Viewer v 1.6.3b
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -80,7 +80,7 @@ definition(
     iconX3Url: "https://raw.githubusercontent.com/krlaframboise/SmartThingsPublic/master/smartapps/krlaframboise/simple-device-viewer.src/simple-device-viewer-icon-3x.png")
 
  preferences {
-	page(name:"mainPage", uninstall:true, install:true)
+	page(name:"mainPage")
   page(name:"capabilityPage")
 	page(name:"lastEventPage")
 	page(name:"toggleSwitchPage")
@@ -95,7 +95,7 @@ def mainPage() {
 	if (!state.capabilitySettings) {
 		storeCapabilitySettings()
 	}
-	dynamicPage(name:"mainPage") {				
+	dynamicPage(name:"mainPage", uninstall:true, install:true) {				
 		section() {	
 			if (getAllDevices().size() != 0) {
 				state.lastCapabilitySetting = null
@@ -103,8 +103,8 @@ def mainPage() {
 					name: "lastEventLink", 
 					title: "All Devices - Last Event",
 					description: "",
-					page: "lastEventPage", 
-					params: []
+					page: "lastEventPage",
+					required: false
 				)
 				getCapabilityPageLink(null)			
 			}		
@@ -120,28 +120,28 @@ def mainPage() {
 				title: "Choose Devices & Capabilities",
 				description: "",
 				page: "devicesPage", 
-				params: []
+				required: false
 			)			
 			href(
 				name: "thresholdsLink", 
 				title: "Threshold Settings",
 				description: "",
 				page: "thresholdsPage", 
-				params: []
+				required: false
 			)
 			href(
 				name: "notificationsLink", 
 				title: "Notification Settings",
 				description: "",
 				page: "notificationsPage", 
-				params: []
+				required: false
 			)
 			href(
 				name: "otherSettingsLink", 
 				title: "Other Settings",
 				description: "",
-				page: "otherSettingsPage", 
-				params: []
+				page: "otherSettingsPage",
+				required: false
 			)
 			paragraph ""
 		}
@@ -389,7 +389,8 @@ def capabilityPage(params) {
 						name: "allOffSwitchLink", 
 						title: "Turn Off All Switches",
 						description: "",
-						page: "toggleSwitchPage"
+						page: "toggleSwitchPage",
+						required: false
 					)
 					getSwitchToggleLinks(getDeviceCapabilityListItems(capSetting))
 				}
@@ -417,6 +418,7 @@ private getSwitchToggleLinks(listItems) {
 			title: "${it.title}",
 			description: "",
 			page: "toggleSwitchPage", 
+			required: false,
 			params: [deviceId: it.deviceId]
 		)
 	}
@@ -447,6 +449,7 @@ private getCapabilityPageLink(cap) {
 		title: cap ? "${getPluralName(cap)}" : "All Devices - States",
 		description: "",
 		page: "capabilityPage", 
+		required: false,
 		params: [capabilitySetting: cap]
 	)	
 }
