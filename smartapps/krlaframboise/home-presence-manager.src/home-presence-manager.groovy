@@ -1,5 +1,5 @@
 /**
- *  Home Presence Manager v 1.2.3 testing
+ *  Home Presence Manager v 1.2.4 testing
  *
  *  Copyright 2016 Kevin LaFramboise
  *
@@ -26,34 +26,34 @@ definition(
 
 preferences {
 	page(name:"mainPage")
-  //page(name:"optionsPage")	
+  page(name:"optionsPage")	
 }
 
 def mainPage() {
-	dynamicPage(name:"mainPage", title: "Main Menu", uninstall:true, install: true) {				
+	dynamicPage(name:"mainPage", uninstall:true, install: true){
 		section("Rooms") {
 			paragraph "This is the main page"
-			// href(
-				// name: "optionsLink", 
-				// title: "Options",
-				// description: "",
-				// page: "optionsPage", 
-				// params: []
-			// )	
+			href(
+				name: "optionsLink", 
+				title: "Options",
+				description: "",
+				page: "optionsPage",
+				required: false
+			)	
 		}
 	}
 }
 
-// def optionsPage() {
-	// dynamicPage(name:"optionsPage", title: "Options") {		
-		// section("Options2") {
-			// input "debugLogEnabled", "bool",
-				// title: "Debug Logging Enabled?",
-				// defaultValue: true,
-				// required: false							
-		// }
-	// }
-// }
+def optionsPage() {
+	dynamicPage(name:"optionsPage") {		
+		section("Options") {
+			input "debugLogEnabled", "bool",
+				title: "Debug Logging Enabled?",
+				defaultValue: true,
+				required: false							
+		}
+	}
+}
 
 def installed() {
 	log.debug "Installed"
