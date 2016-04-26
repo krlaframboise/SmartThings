@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.6.2
+ *  Simple Device Viewer v 1.6.3
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,11 +9,10 @@
  *
  *  Changelog:
  *
- *    1.6.2 (04/18/2016)
- *      - Another minor change for windows app test.
- *
- *    1.6.1 (04/16/2016)
- *      - Moved label preference to main page for windows app test.
+ *    1.6.3 (04/26/2016)
+ *      - Accidentally removed modes option in one of the last
+ *        test versions so reverting back to version before those
+ *        changes.
  *
  *    1.6 (04/09/2016)
  *      - Fixed condensed view bug introduced in version 1.5.
@@ -81,7 +80,7 @@ definition(
     iconX3Url: "https://raw.githubusercontent.com/krlaframboise/SmartThingsPublic/master/smartapps/krlaframboise/simple-device-viewer.src/simple-device-viewer-icon-3x.png")
 
  preferences {
-	page(name:"mainPage")
+	page(name:"mainPage", uninstall:true, install:true)
   page(name:"capabilityPage")
 	page(name:"lastEventPage")
 	page(name:"toggleSwitchPage")
@@ -93,11 +92,11 @@ definition(
 
 // Main Menu Page
 def mainPage() {
-	dynamicPage(name:"mainPage", install: true, uninstall: true) {		
+	if (!state.capabilitySettings) {
+		storeCapabilitySettings()
+	}
+	dynamicPage(name:"mainPage") {				
 		section() {	
-			if (!state.capabilitySettings) {
-				storeCapabilitySettings()
-			}			
 			if (getAllDevices().size() != 0) {
 				state.lastCapabilitySetting = null
 				href(
@@ -145,10 +144,6 @@ def mainPage() {
 				params: []
 			)
 			paragraph ""
-			
-			label(name: "label",
-				title: "Assign a name",
-				required: false)
 		}
 	}
 }
@@ -236,6 +231,8 @@ def notificationsPage() {
 					description: "Phone Number", 
 					required: false
       }
+			mode title: "Only send Notifications for specific mode(s)",
+				required: false
 			input "maxNotifications", "number",
 				title: "Enter maximum number of notifications to receive within 5 minutes:",
 				required: false
@@ -301,7 +298,9 @@ private getExcludedDeviceOptions(capabilityName) {
 def otherSettingsPage() {
 	dynamicPage(name:"otherSettingsPage") {		
 		section ("Other Settings") {
-			
+			label(name: "label",
+				title: "Assign a name",
+				required: false)
 			input "iconsEnabled", "bool",
 				title: "Display Device State Icons?",
 				defaultValue: true,
