@@ -567,54 +567,65 @@ private String getDeviceStatusTitle(device, status) {
 }
 
 private getDeviceCapabilityStatusItem(device, cap) {
-	def item = [
-		image: "",
-		sortValue: device.displayName,
-		value: device.currentValue(getAttributeName(cap)).toString()
-	]
-	item.status = item.value
-	if ("${item.status}" != "null") {
-	
-		if (item.status == getActiveState(cap)) {
-			item.status = "*${item.status}"
-		}
+	try {
+		def item = [
+			image: "",
+			sortValue: device.displayName,
+			value: device.currentValue(getAttributeName(cap)).toString()
+		]
+		item.status = item.value
+		if ("${item.status}" != "null") {
 		
-		switch (cap.name) {
-			case "Battery":			
-				item.status = "${item.status}%"
-				item.image = getBatteryImage(item.value)
-				if (batterySortByValue) {
-					item.sortValue = safeToInteger(item.value)
-				}				
-				break
-			case "Temperature Measurement":
-				item.status = "${item.status}°${location.temperatureScale}"
-				item.image = getTemperatureImage(item.value)
-				if (tempSortByValue) {
-					item.sortValue = safeToInteger(item.value)
-				}
-				break
-			case "Contact Sensor":
-				item.image = getContactImage(item.value)
-				break
-			case "Lock":
-				item.image = getLockImage(item.value)
-				break
-			case "Motion Sensor":
-				item.image = getMotionImage(item.value)
-				break
-			case "Presence Sensor":
-				item.image = getPresenceImage(item.value)
-				break
-			case "Switch":
-				item.image = getSwitchImage(item.value)
-				break
+			if (item.status == getActiveState(cap)) {
+				item.status = "*${item.status}"
+			}
+			
+			switch (cap.name) {
+				case "Battery":			
+					item.status = "${item.status}%"
+					item.image = getBatteryImage(item.value)
+					if (batterySortByValue) {
+						item.sortValue = safeToInteger(item.value)
+					}				
+					break
+				case "Temperature Measurement":
+					item.status = "${item.status}°${location.temperatureScale}"
+					item.image = getTemperatureImage(item.value)
+					if (tempSortByValue) {
+						item.sortValue = safeToInteger(item.value)
+					}
+					break
+				case "Contact Sensor":
+					item.image = getContactImage(item.value)
+					break
+				case "Lock":
+					item.image = getLockImage(item.value)
+					break
+				case "Motion Sensor":
+					item.image = getMotionImage(item.value)
+					break
+				case "Presence Sensor":
+					item.image = getPresenceImage(item.value)
+					break
+				case "Switch":
+					item.image = getSwitchImage(item.value)
+					break
+			}
 		}
+		else {
+			item.status = "N/A"
+		}
+		return item
 	}
-	else {
-		item.status = "N/A"
+	catch (e) {
+		log.error "Device: ${device?.displayName} - Capability: $cap - Error: $e"
+		return [
+			image: "",
+			sortValue: device?.displayName,
+			value: "",
+			status: "N/A"
+		]
 	}
-	return item
 }
 
 private int safeToInteger(val, defaultVal=0) {
