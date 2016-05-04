@@ -5,16 +5,16 @@
  *      Alarm, Tone, Switch, Battery, Polling
  *      Speech Synthesis, Music Player
  *
- *	Author: 
- *      Kevin LaFramboise (krlaframboise)
+ *  Author: 
+ *     Kevin LaFramboise (krlaframboise)
  *
  *  Url to Documentation:
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
- *	Changelog:
+ *  Changelog:
  *
- *	  1.0 (05/04/2016)
- *		  -	Initial Release
+ *    1.0 (05/04/2016)
+ *      - Initial Release
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
