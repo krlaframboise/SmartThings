@@ -60,7 +60,12 @@ metadata {
 			title: "Length of Beep in Milliseconds", 
 			defaultValue: 50, 
 			displayDuringSetup: true, 
-			required: false		
+			required: false
+		input "strobeBeep", "bool", 
+			title: "Strobe instead of Beep?\n(Enabling this will cause the light to flash when the beep command is executed instead of making a sound.)", 
+			defaultValue: false, 
+			displayDuringSetup: true, 
+			required: false
 		input "bothAlarmTypeOverride", "enum",
 			title: "What should the 'both' and 'on' commands turn on?\n(Some SmartApps like Smart Home Monitor use the both command so you can't use just the siren or the strobe.  This setting allows you to override the default action of those commands.)",
 			defaultValue: "Siren and Strobe",
@@ -68,7 +73,7 @@ metadata {
 			required: false,
 			options: ["Siren and Strobe", "Siren Only", "Strobe Only"]
 		input "staticAlarmType", "bool", 
-			title: "Always use both/on setting?\n(When this is enabled, the alarm type chosen above will always be used.  This eliminates the need to set the alarm type before turning the device on and it should also improve performance and reliability.)", 
+			title: "Always use both/on setting?\n(When enabled, the type of alarm chosen for both/on will override all commands.  This usually needs to be enabled in order for the beep feature to work correctly, but must be disabled if the strobe beep setting is enabled.)", 
 			defaultValue: false, 
 			displayDuringSetup: true, 
 			required: false
@@ -124,8 +129,14 @@ def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 1000)) {
 		state.lastUpdated = new Date().time
 		state.staticAlarmType = validateBoolean(settings.staticAlarmType, false)
+		state.strobeBeep = validateBoolean(settings.strobeBeep, false)
 		state.debugOutput = validateBoolean(settings.debugOutput, true)
-			
+		
+		if (state.strobeBeep) {
+			// Static alarm type other than strobe will cause the strobe beep to actually beep.
+			state.staticAlarmType = false
+		}
+		
 		logDebug "Updating"
 
 		def cmds = []		
@@ -322,7 +333,7 @@ def beep(beepLengthMS) {
 	
 	logDebug "Executing beep(${beepLengthMS}) Command"
 	
-	def alarmTypeCmd = sirenOnlyAlarmTypeSetCmd()
+	def alarmTypeCmd = state.strobeBeep ? strobeOnlyAlarmTypeSetCmd() : sirenOnlyAlarmTypeSetCmd()
 	state.lastAlarmType = null
 	
 	def result = []	
@@ -331,6 +342,9 @@ def beep(beepLengthMS) {
 		result << "delay 250"
 	}
 	result << switchOnSetCmd()
+	if (beepLengthMS > 1000) {
+		result << switchGetCmd()
+	}
 	if (beepLengthMS > 0) {
 		result << "delay $beepLengthMS"
 	}
