@@ -1,7 +1,6 @@
 /**
  *  GoControl Multifunction Siren v 1.0
- *  (https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise)
- *
+ *  
  *  Capabilities:
  *      Alarm, Tone, Switch, Battery, Polling
  *      Speech Synthesis, Music Player
