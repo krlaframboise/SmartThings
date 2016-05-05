@@ -1,5 +1,5 @@
 /**
- *  GoControl Contact Sensor v1.4
+ *  GoControl Contact Sensor v1.4.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,9 +9,10 @@
  *
  *  Changelog:
  *
- *    1.4 (05/5/2016)
+ *    1.4.1 (05/5/2016)
  *      -  UI Enhancements
  *      -  Added Debug Logging
+ *      -  Fixed default tamper state
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -108,6 +109,12 @@ metadata {
 		
 		main("contact")
 		details(["contact", "battery", "tampering", "refresh"])
+	}
+}
+
+def updated() {
+	if (!device.currentValue("tamper")) {
+		sendEvent(getTamperEventMap("clear"))
 	}
 }
 
