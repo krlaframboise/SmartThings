@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.0.1
+ *  GoControl Multifunction Siren v 1.0.2
  *  
  *  Capabilities:
  *      Alarm, Tone, Switch, Battery, Polling
@@ -12,6 +12,11 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.0.2 (05/07/2016)
+ *      - I don't believe the device sleeps because it needs to
+ *        be able to receive commands at all times, but I've
+ *        added the wakeup event code so I can be sure.
  *
  *    1.0.1 (05/04/2016)
  *      - Enhanced reporting of status, alarm, and switch state.
@@ -196,12 +201,12 @@ def poll() {
 	if (canPoll()) {
 		state.lastPoll = new Date().time
 		logDebug "Checking Battery Level"		
-		response(batteryGetCmd())
+		batteryGetCmd()
 	}	
 }
 
 private canPoll() {
-	return (!state.lastPoll || (new Date().time) - state.lastPoll > 8*60*60*1000)
+	return (!state.lastPoll || (new Date().time) - state.lastPoll > 1*60*60*1000)
 }
 
 def speak(text) {
@@ -579,6 +584,18 @@ private getLastAlarmStateValue() {
 			result = "off"
 	}		
 	return result
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.wakeupv1.WakeUpNotification cmd) {
+	def event = createEvent(descriptionText: "${device.displayName} woke up", displayed: false)
+
+	def cmds = []
+	if (canPoll()) {
+		cmds << poll()
+		cmds << "delay 1200"
+	}
+	cmds << zwave.wakeUpV1.wakeUpNoMoreInformation().format()
+	[event, response(cmds)]
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
