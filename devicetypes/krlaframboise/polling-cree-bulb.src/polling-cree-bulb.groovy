@@ -84,7 +84,7 @@ metadata {
 
 // Parse incoming device messages to generate events
 def parse(String description) {
-	logDebug "description is $description"
+	//logDebug "description is $description"
 
 	def finalResult = isKnownDescription(description)
 	if (finalResult != "false") {
@@ -103,7 +103,9 @@ def parse(String description) {
 				to account for the different Divisor value (AttrId: 0302) and POWER Unit (AttrId: 0300). CLUSTER for simple metering is 0702
 			*/
 		}
-		else if (finalResult.type == "level") {
+		else if (finalResult.type == "level" && state.polling) {
+			state.polling = false
+			logDebug "Poll Completed Successfully"
 			sendEvent(name: "level", value: finalResult.value, isStateChange: true)
 		}
 		else {			
@@ -111,7 +113,7 @@ def parse(String description) {
 		}
 	}
 	else {
-		logDebug "DID NOT PARSE MESSAGE for description : ${description}\n${parseDescriptionAsMap(description)}"
+		//logDebug "DID NOT PARSE MESSAGE for description : ${description}\n${parseDescriptionAsMap(description)}"
 	}
 }
 
@@ -144,6 +146,7 @@ def setLevel(value) {
 
 def poll() {
 	logDebug "Polling"
+	state.polling = true
 	refresh()
 }
 
