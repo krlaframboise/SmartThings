@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.8
+ *  Simple Device Viewer v 1.8.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,14 @@
  *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.8.1 (05/10/2016)
+ *      - Modified the Last Event check so that it only
+ *        uses DEVICE events because polling the device
+ *        creates an APP COMMAND event.
+ *      - SmartThings made a change that prevents you from
+ *        retrieving more than 50 events the default polling
+ *        interval was changed to 60 minutes.
  *
  *    1.8 (05/08/2016)
  *      - Fixed bug with new feature that caused duplicates
@@ -351,7 +359,7 @@ def otherSettingsPage() {
 				required: false
 			input "pollingInterval", "number",
 				title: "Polling Interval in Minutes:\n(Must be between 5 and ${6 * 24 * 60})",
-				defaultValue: 5,
+				defaultValue: 60,
 				range: "5..${6 * 24 * 60}",
 				required: false		
 		}
@@ -564,14 +572,11 @@ private getDeviceLastEventListItem(device) {
 }
 
 private getDeviceLastEventTime(device) {
-	def lastEvents = device.events(max: 1)?.date?.time
-	def lastEventTime
 	def lastStateTime
-	
-	if (lastEvents && lastEvents.size() > 0) {
-		lastEventTime = lastEvents[0]
-	}	
-	
+	def lastEventTime = device.events(max: 500)?.flatten()?.find {
+		"${it.source}".startsWith("DEVICE")
+	}?.date?.time	
+		
 	if (lastEventIsOld(lastEventTime) && settings.lastEventByStateEnabled) {		
 		lastStateTime = getDeviceLastEventTimeByState(device)
 	}
