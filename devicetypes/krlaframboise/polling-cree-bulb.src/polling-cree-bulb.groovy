@@ -1,9 +1,14 @@
 /**
- *  Polling Cree Bulb 1.0
+ *  Polling Cree Bulb 1.0.1
  *
- *	Changelog:
+ *	Changelog: 
  *
- *	1.0 (05/10/2016)
+ *	1.0.1 (05/11/2016)
+ *    - Made the switch level events always change state so
+ *      that the state change can be used to verify if the
+ *      device is stil online.
+ *
+ *	1.0.1 (05/10/2016)
  *    - Started with the SmartPower Dimming Outlet DH that
  *      was written by SmartThings.
  *    - Changed not parsed warning messages into debug messages
@@ -98,7 +103,10 @@ def parse(String description) {
 				to account for the different Divisor value (AttrId: 0302) and POWER Unit (AttrId: 0300). CLUSTER for simple metering is 0702
 			*/
 		}
-		else {
+		else if (finalResult.type == "level") {
+			sendEvent(name: "level", value: finalResult.value, isStateChange: true)
+		}
+		else {			
 			sendEvent(name: finalResult.type, value: finalResult.value)
 		}
 	}
