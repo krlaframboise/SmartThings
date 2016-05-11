@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.8.1
+ *  Simple Device Viewer v 1.8.2
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,10 @@
  *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.8.2 (05/10/2016)
+ *      - Added workaround for the 50 event limit so the N/A
+ *        last event time should no longer be a problem.
  *
  *    1.8.1 (05/10/2016)
  *      - Modified the Last Event check so that it only
@@ -572,15 +576,47 @@ private getDeviceLastEventListItem(device) {
 }
 
 private getDeviceLastEventTime(device) {
+	def lastEventTime = getDeviceSourceLastEventTime(device)
 	def lastStateTime
-	def lastEventTime = device.events(max: 500)?.flatten()?.find {
-		"${it.source}".startsWith("DEVICE")
-	}?.date?.time	
-		
+			
 	if (lastEventIsOld(lastEventTime) && settings.lastEventByStateEnabled) {		
 		lastStateTime = getDeviceLastEventTimeByState(device)
 	}
 	return lastStateTime ? lastStateTime : lastEventTime
+}
+
+/*There's currently a bug that limits the number
+of events returned to 50 so this method loops
+through the list until it finds one that has 
+a source containing "DEVICE".*/
+private getDeviceSourceLastEventTime(device) {
+	def totalLoops = 20
+	def startDate = new Date() - 7
+	def endDate = new Date()
+	def lastEventTime 
+	
+	for (int index= 0; index < totalLoops; index++) {
+		def events = device.eventsBetween(startDate, endDate, [max:50]).flatten()
+		
+		if (events) {			
+			lastEventTime = events?.find { "${it.source}".startsWith("DEVICE") }?.date?.time
+		
+			if (lastEventTime) {
+				// Found an event with the correct source so stop checking.
+				index = totalLoops
+			}
+			else {
+				// Haven't found an event with the correct so move the
+				// end date so the next 50 events will be retrieved.
+				endDate = events.last()?.date
+			}
+		}
+		else {
+			// Checked all the events so stop checking.
+			index = totalLoops
+		}
+	}
+	return lastEventTime
 }
 
 private getDeviceLastEventTimeByState(device) {
