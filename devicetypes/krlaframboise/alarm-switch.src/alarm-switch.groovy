@@ -1,10 +1,13 @@
 /**
- *  Alarm Switch v1.0
+ *  Alarm Switch v1.1
  *
  *  Author: 
  *     Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.1 (05/12/2016)
+ *      - Fixed bug in polling feature.
  *
  *    1.0 (05/10/2016)
  *      - Initial Release
@@ -109,28 +112,37 @@ def off() {
 }
 
 def poll() {
-	logDebug "Polling"
+	logDebug "Starting Poll"
+	state.polling = true
+	runIn(15, checkPoll)
 	[
-		zwave.basicV1.basicGet().format()
+		zwave.versionV1.versionGet().format()
 	]
+}
+
+void checkPoll() {
+	if (state.polling) {
+		state.polling = false
+		log.warn "Poll Failed"
+	}
 }
 
 def parse(String description) {
 	def result = null
-	def cmd = zwave.parse(description, [0x20: 1])
+	def cmd = zwave.parse(description, [0x20: 1, 0x86: 1])
 	if (cmd) {
-		result = createEvents(cmd)
+		result = zwaveEvent(cmd)
 	}
 	return result
 }
 
-def createEvents(physicalgraph.zwave.commands.basicv1.BasicReport cmd)
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd)
 {
 	boolean alarmOn = cmd.value
 	def switchValue = alarmOn ? "on" : "off"
 	def alarmValue = alarmOn ? getAlarmValue() : "off"
 	
-	if (!alarmOn) {
+	if (!alarmOn && device.currentValue("alarm") != "off") {
 		logDebug "Alarm Turned Off"
 	}
 	
@@ -155,7 +167,18 @@ private getAlarmValue() {
 	return alarmValue
 }
 
-def createEvents(physicalgraph.zwave.Command cmd) {
+def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
+	if (state.polling) {
+		state.polling = false
+		logDebug "Poll Successful"
+		sendEvent(name: "switch", value: device.currentValue("switch"), isStateChange: true, displayed: false)		
+	}
+	else {
+		logDebug("Version: $cmd")
+	}
+}
+
+def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	logDebug "UNEXPECTED COMMAND: $cmd"
 }
 
