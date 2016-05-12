@@ -183,7 +183,7 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 }
 
 private logDebug(msg) {
-	if (state.debugOutput) {
+	if (settings.debugOutput) {
 		log.debug "$msg"
 	}
 }
