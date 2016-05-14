@@ -1,14 +1,21 @@
 /**
- *  Aeoc Labs Multifunction Siren v 1.4
+ *  Aeon Labs Multifunction Siren v 1.5
  *  (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
  *
  *  Capabilities:
- *					Switch, Alarm, Tone, Music Player
+ *      Switch, Alarm, Tone, Music Player, Speech Synthesis, Polling
  *
  *	Author: 
- *					Kevin LaFramboise (krlaframboise)
+ *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *	1.5 (05/12/2016)
+ *    - Added Polling & Speech Synthesis functionality.
+ *		-	Adding attribute for lastPoll
+ *
+ *	1.4.1 (05/10/2016)
+ *		-	Bug fix for Smart Alarm music player device commands.
  *
  *	1.4 (03/05/2016)
  *		-	Enhanced Logging
@@ -41,44 +48,48 @@
  *  for the specific language governing permissions and limitations under the License.
  */
 metadata {
- definition (name: "Aeon Labs Multifunction Siren", namespace: "krlaframboise", author: "Kevin LaFramboise") {
-	capability "Actuator"
-	capability "Switch"
-	capability "Alarm"
-	capability "Tone"
-	capability "Configuration"
-	capability "Music Player"
+	definition (name: "Aeon Labs Multifunction Siren", namespace: "krlaframboise", author: "Kevin LaFramboise") {
+		capability "Actuator"
+		capability "Switch"
+		capability "Alarm"
+		capability "Tone"
+		capability "Configuration"
+		capability "Music Player"
+		capability "Speech Synthesis"
+		capability "Polling"
 
-	attribute "status", "enum", ["off", "alarm", "customAlarm", "delayedAlarm", "beepDelayedAlarm", "beep", "beepSchedule", "customBeep", "customBeepSchedule"]
+		attribute "status", "enum", ["off", "alarm", "customAlarm", "delayedAlarm", "beepDelayedAlarm", "beep", "beepSchedule", "customBeep", "customBeepSchedule"]
+		
+		attribute "lastPoll", "number"
 
-	command "customAlarm", ["number", "number", "number"]
-	command "delayedAlarm", ["number", "number", "number", "number"]
-	command "customBeep", ["number", "number", "number", "number", "number"]
-	command "startBeep"
-	command "startBeepDelayedAlarm"
-	command "startCustomBeep", ["number", "number", "number", "number", "number", "number", "number"]
+		command "customAlarm", ["number", "number", "number"]
+		command "delayedAlarm", ["number", "number", "number", "number"]
+		command "customBeep", ["number", "number", "number", "number", "number"]
+		command "startBeep"
+		command "startBeepDelayedAlarm"
+		command "startCustomBeep", ["number", "number", "number", "number", "number", "number", "number"]
 
-	command "customBeep1"
-	command "customBeep2"
-	command "customBeep3"
-	command "customBeep4"
-	command "customBeep5"
-	command "customBeep6"
-	
-	// Music and Sonos Related Commands
-	command "playSoundAndTrack"
-	command "playTrackAndRestore"
-	command "playTrackAndResume"
-	command "playTextAndResume"
-	command "playTextAndRestore"
+		command "customBeep1"
+		command "customBeep2"
+		command "customBeep3"
+		command "customBeep4"
+		command "customBeep5"
+		command "customBeep6"
 
-	fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98,0x25,0x70,0x85,0x59,0x72,0x2B,0x2C,0x86,0x7A,0x73", outClusters: "0x5A,0x82"
- }
+		// Music and Sonos Related Commands
+		command "playSoundAndTrack"
+		command "playTrackAndRestore"
+		command "playTrackAndResume"
+		command "playTextAndResume"
+		command "playTextAndRestore"
 
- simulator {
-	reply "9881002001FF,9881002002": "command: 9881, payload: 002003FF"
-	reply "988100200100,9881002002": "command: 9881, payload: 00200300"
- }
+		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98,0x25,0x70,0x85,0x59,0x72,0x2B,0x2C,0x86,0x7A,0x73", outClusters: "0x5A,0x82"
+	}
+
+	simulator {
+		reply "9881002001FF,9881002002": "command: 9881, payload: 002003FF"
+		reply "988100200100,9881002002": "command: 9881, payload: 00200300"
+	}
 
 	preferences {
 		input "sirenSound", "number", 
@@ -196,6 +207,24 @@ metadata {
 	}
 }
 
+def poll() {	
+	logDebug "Starting Poll"
+	state.polling = true
+	runIn(10, checkPoll)
+	secureCmd(zwave.versionV1.versionGet())
+}
+
+void checkPoll() {
+	if (state.polling) {
+		state.polling = false
+		log.warn "Poll Failed"
+	}
+}
+
+def speak(text) {
+	playText(text)
+}
+
 // Unsuported Music Player commands
 def unmute() { handleUnsupportedCommand("unmute") }
 def resumeTrack(map) { handleUnsupportedCommand("resumeTrack") }
@@ -286,11 +315,11 @@ def playText(text) {
 }
 
 def cleanTextCmd(text) {
-	return text?.
-		toLowerCase()?.
-		replace(",", "_")?.
-		replace(" ", "")?.
-		replace("(", "")?.
+	return "$text".
+		toLowerCase().
+		replace(",", "_").
+		replace(" ", "").
+		replace("(", "").
 		replace(")", "")
 }
 
@@ -816,6 +845,18 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	[
 		response(playScheduledBeep())
 	]	
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
+	if (state.polling) {
+		logDebug "Poll Successful"
+		state.polling = false		
+		
+		createEvent(name: "lastPoll", value: new Date().time, displayed: false, isStateChange: true)
+	}
+	else {
+		logDebug("Version: $cmd")
+	}	
 }
 
 // Writes unexpected commands to debug log

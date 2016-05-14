@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.0.2
+ *  GoControl Multifunction Siren v 1.0.3
  *  
  *  Capabilities:
  *      Alarm, Tone, Switch, Battery, Polling
@@ -12,6 +12,9 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.0.3 (05/12/2016)
+ *      - Improved polling functionality.
  *
  *    1.0.2 (05/07/2016)
  *      - I don't believe the device sleeps because it needs to
@@ -43,6 +46,8 @@ metadata {
 		capability "Speech Synthesis"
 		capability "Switch"
 		capability "Tone"
+		
+		attribute "lastPoll", "number"
 
 		// Music and Sonos Related Commands
 		command "playSoundAndTrack"
@@ -196,17 +201,25 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
 }
 
-def poll() {	
-	logDebug "Polling"
+def poll() {
 	if (canPoll()) {
-		state.lastPoll = new Date().time
-		logDebug "Checking Battery Level"		
+		logDebug "Starting Poll"		
+		state.polling = true		
+		runIn(10, checkPoll)
 		batteryGetCmd()
 	}	
 }
 
 private canPoll() {
-	return (!state.lastPoll || (new Date().time) - state.lastPoll > 1*60*60*1000)
+	def lastPoll = device.currentValue("lastPoll")
+	return (!lastPoll || (new Date().time) - lastPoll > 1*60*60*1000)
+}
+
+void checkPoll() {
+	if (state.polling) {
+		state.polling = false
+		log.warn "Poll Failed"
+	}
 }
 
 def speak(text) {
@@ -330,7 +343,6 @@ private removeCmdPrefix(text, prefix) {
 		return text
 	}
 }
-
 
 // Turns on siren and strobe
 def on() {
@@ -483,10 +495,6 @@ private switchOffSetCmds() {
 		zwave.basicV1.basicSet(value: 0x00).format(),
 		switchGetCmd()
 	], 50)
-	// return [
-		// zwave.basicV1.basicSet(value: 0x00).format(),
-		// switchGetCmd()
-	// ]
 }
 
 private switchGetCmd() {	
@@ -587,7 +595,7 @@ private getLastAlarmStateValue() {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv1.WakeUpNotification cmd) {
-	def event = createEvent(descriptionText: "${device.displayName} woke up", displayed: false)
+	def event = createEvent(descriptionText: "${device.displayName} woke up", displayed: true)
 
 	def cmds = []
 	if (canPoll()) {
@@ -611,8 +619,13 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	} else {
 		map.value = cmd.batteryLevel
 		map.description = "Battery is ${cmd.batteryLevel}%"
-	}	
-	return createEvent(map)
+	}
+	logDebug "Poll Successful"
+	state.polling = false
+	[
+		createEvent(map),
+		createEvent(name:"lastPoll", value: new Date().time, displayed: false, isStateChange: true)
+	]
 }
 
 // Writes unexpected commands to debug log

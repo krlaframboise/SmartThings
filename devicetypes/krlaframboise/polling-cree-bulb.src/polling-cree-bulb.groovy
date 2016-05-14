@@ -1,12 +1,12 @@
 /**
- *  Polling Cree Bulb 1.1
+ *  Polling Cree Bulb 1.1.2
  *
  *  Author: 
  *     Kevin LaFramboise (krlaframboise)
  *
  *	Changelog: 
  *
- *	1.1 (05/12/2016)
+ *	1.1.2 (05/13/2016)
  *    - Completely re-wrote the Cree Bulb Device Handler.
  *    - Included self polling feature.
  *
@@ -30,6 +30,8 @@ metadata {
 		capability "Switch Level"
 		capability "Polling"
 		
+		attribute "lastPoll", "number"
+		
 		fingerprint profileId: "C05E", inClusters: "0000,1000,0004,0003,0005,0006,0008", outClusters: "0000,0019"
 	}
 
@@ -48,7 +50,7 @@ metadata {
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: false, 
-			displayDuringSetup: false, 
+			displayDuringSetup: false,
 			required: false	
 	}
 	
@@ -75,8 +77,7 @@ metadata {
 }
 
 def updated() {
-	if (!state.configured) {
-		state.configured = true
+	if (!state.configured) {		
 		return response(configure())
 	}
 }
@@ -86,40 +87,80 @@ def parse(String description) {
 	def result = []
 	def evt = zigbee.getEvent(description)
 	if (evt) {
-		handleDescriptionEvent(evt)
+		if (state.polling) {
+			logDebug "Poll Successful"
+			state.polling = false
+		}
+		result << createEvent(evt)
 	}
 	else {
 		def map = zigbee.parseDescriptionAsMap(description)
 		if (map) {
-			result += response(handleUnknownDescriptionMap(map))
+			result += handleUnknownDescriptionMap(map)
 		}
 		else { 
 			logDebug "Unknown Command: $description"
-			//logDebug "Unknown Command: ${}"
 		}
 	}
 	return result
 }
 
-private handleDescriptionEvent(evt) {
-	if (state.polling && evt.name == "level") {
-		logDebug "Poll Successful"
-		state.polling = false
-		evt.displayed = (device.currentValue("level") != evt.value)
-		evt.isStateChange = true
-	}	
-	sendEvent(evt)
-}
-
 private handleUnknownDescriptionMap(map) {
-	if ("${map.command}" == "0A") {
+	def result = []
+	if ("${map.command}" == "0A") {	
+	
 		if (map.clusterInt == 6) {
-			logDebug "Auto Polling - Switch"
+			logDebug "Switch Reported"
+			result += response(getSwitchValue())					
 		}
 		else if (map.clusterInt == 8) {
-			logDebug "Auto Polling - Level"
-		}		
-		return poll()
+			logDebug "Switch Level Reported"
+			result += response(getSwitchLevelValue())
+		}
+		
+		result << createEvent(getLastPollEventMap())
+	}
+	return result
+}
+
+private getLastPollEventMap() {
+	[
+		name: "lastPoll", 
+		value: new Date().time, 
+		displayed: false, 
+		isStateChange: true
+	]
+}
+
+def poll() {	
+	if (autoPollStopped()) {
+		logDebug "Starting Poll"
+		state.polling = true
+		runIn(10, checkPoll)
+		return getSwitchValue() +
+			getSwitchLevelValue() +
+			configureSwitchReporting() +
+			configureSwitchLevelReporting()
+	}
+}
+
+// Device self polls/reports, but if the bulb is turned off
+// the reporting stops so 
+private autoPollStopped() {
+	def lastPoll = device.currentValue("lastPoll")
+	if (!lastPoll) {
+		return true
+	}
+	else {
+		def problemFrequencyMS = ((maxSelfPollFrequencySeconds() + 60) * 1000)
+		return (lastPoll < (new Date().time - problemFrequencyMS))
+	}	
+}
+
+void checkPoll() {
+	if (state.polling) {
+		state.polling = false
+		log.warn "Poll Failed"
 	}
 }
 
@@ -159,36 +200,20 @@ def on() {
 	zigbee.on()
 }
 
-def poll() {
-	if (canPoll()) {		
-		logDebug "Starting Poll"
-		state.lastPoll = new Date().time
-		state.polling = true
-		runIn(15, checkPoll)
-		refresh()
-	}
-	else {
-		logDebug "Skipping Duplicate Poll Request"
-	}
-}
-
-private canPoll() {
-	return (!state.lastPoll || ((state.lastPoll + (5 * 60 * 1000)) < new Date().time))
-}
-
-void checkPoll() {
-	if (state.polling) {
-		state.polling = false
-		state.lastPoll = null
-		log.warn "Poll Failed"
-	}
-}
-
 def refresh() {
-	[
-		getSwitchValue(),
+	return getSwitchValue() +
+		getSwitchLevelValue() +
+		configureSwitchReporting() +
+		configureSwitchLevelReporting()
+}
+  
+def configure() {
+	logDebug "Configuring Reporting and Bindings"	
+	state.configured = true
+	return configureSwitchReporting() +
+		configureSwitchLevelReporting() +
+		getSwitchValue() +
 		getSwitchLevelValue()
-	]
 }
 
 private getSwitchValue() {
@@ -199,12 +224,16 @@ private getSwitchLevelValue() {
 	zigbee.readAttribute(0x0008, 0x0000)
 }
 
-def configure() {
-	logDebug "Configuring"
-	[
-		zigbee.configureReporting(0x0008, 0x0000, 0x20, 1, 3600, 0x01),
-		zigbee.configureReporting(0x0006, 0x0000, 0x10, 0, 600, null)
-	]
+private configureSwitchReporting() {
+	zigbee.configureReporting(0x0006, 0x0000, 0x10, 0, maxSelfPollFrequencySeconds(), null)
+}
+
+private configureSwitchLevelReporting() {
+	zigbee.configureReporting(0x0008, 0x0000, 0x20, 1, (maxSelfPollFrequencySeconds() + 30), 0x01)
+}
+
+private maxSelfPollFrequencySeconds() {
+	return 600
 }
 
 private logDebug(msg) {

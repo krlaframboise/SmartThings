@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.8.3
+ *  Aeon Labs Multifunction Doorbell v 1.8.4
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-multifunction-doorbell/36586?u=krlaframboise)
  *
  *  Capabilities:
@@ -11,6 +11,9 @@
  *					(Based off of the "Aeon Doorbell" device type)
  *
  *	Changelog:
+ *
+ *	1.8.4 (05/12/2016)
+ *		- Added lastPoll attribute and improved functionality.
  *
  *	1.8.3 (03/13/2016)
  *		- Fixed UI Presence Tile bug caused by Android 2.1.0 Update.
@@ -104,6 +107,8 @@ metadata {
 		capability "Polling"
 		capability "Presence Sensor"
 		capability "Refresh"
+
+		attribute "lastPoll", "number"
 		
 		command "pushButton"
 		
@@ -194,7 +199,7 @@ metadata {
 def pushButton() {	
 	if (!state.isPlaying) {
 		state.pushingButton = true
-		writeToDebugLog("Pushing doorbell button")
+		logDebug("Pushing doorbell button")
 		secureDelayBetween([
 			zwave.basicV1.basicSet(value: 0xFF)
 		])
@@ -287,7 +292,7 @@ def playText(text) {
 					cmds += play()
 					break
 				default:
-					writeToDebugLog "'$text' is not a valid command or track number."
+					logDebug "'$text' is not a valid command or track number."
 			}
 		}
 		return cmds
@@ -299,7 +304,7 @@ def previousTrack() {
 	if (newTrack < minTrack()) {
 		newTrack = minTrack()
 	} 
-	writeToDebugLog("Previous Track: $newTrack")
+	logDebug("Previous Track: $newTrack")
 	setTrack(newTrack)	
 }
 
@@ -308,13 +313,13 @@ def nextTrack() {
 	if (newTrack > maxTrack()) {
 		newTrack = maxTrack()
 	}
-	writeToDebugLog("Next Track: $newTrack")
+	logDebug("Next Track: $newTrack")
 	setTrack(newTrack)
 }
 
 def setTrack(track) {	
 	state.currentTrack = validateTrackNumber(track)	
-	writeToDebugLog("currentTrack set to ${state.currentTrack}")
+	logDebug("currentTrack set to ${state.currentTrack}")
 	
 	sendEvent(name:"trackDescription", value: track, descriptionText:"Track $track", isStateChange: true, displayed: false)
 }
@@ -339,7 +344,7 @@ def playTrack(track, status, desc) {
 	def result = []
 	
 	if (canPlay()) {
-		writeToDebugLog("Playing Track $track ($status: $desc)")
+		logDebug("Playing Track $track ($status: $desc)")
 		
 		if (status == "alarm") {
 			sendEvent(name: "alarm", value: "both")
@@ -364,12 +369,12 @@ private canPlay() {
 			result = true
 		
 		} else {
-			writeToDebugLog("Skipped Play because already playing")
+			logDebug("Skipped Play because already playing")
 		}	
 	
 	} else {
 		def current = new Date().time
-		writeToDebugLog("Duplicate Play Call ${state.lastPlay} - $current")
+		logDebug("Duplicate Play Call ${state.lastPlay} - $current")
 	}
 	result
 }
@@ -395,7 +400,7 @@ private isStuckPlaying() {
 }
 
 def setLevel(level) {
-	writeToDebugLog("Setting soundLevel to $level")
+	logDebug("Setting soundLevel to $level")
 	return [secureCommand(soundLevelSetCommand(level))]	
 }
 
@@ -411,7 +416,7 @@ def refresh() {
 		result += secureDelayBetween(reportCommands())
 	}
 	else {
-		sendPresenceEvent("", false)	
+		sendEvent(getPresenceEventMap(""))
 		result += off()
 		result += poll()	
 	}	
@@ -419,27 +424,34 @@ def refresh() {
 }
 
 def poll() {
+	logDebug "Starting Poll"
 	state.polling = true
-	runIn(10, pollFailed)	
-	return [secureCommand(pollCommand())]
+	runIn(10, checkPoll)	
+	return [secureCommand(reportVersionCommand())]
 }
 
-def pollFailed() {
+void checkPoll() {
 	if (state.polling) {
-		sendPresenceEvent("not present", true)
+		log.warn "Poll Failed"
+		sendEvent(getPresenceEventMap("not present"))		
 	}
 }
 
-private sendPresenceEvent(presenceVal, displayedVal) {
-	sendEvent(name: "presence", value: presenceVal, displayed: displayedVal)
+private getPresenceEventMap(presenceVal) {	
+	def displayedVal = (presenceVal && (device.currentValue("presence") != presenceVal))
+	[
+		name: "presence", 
+		value: presenceVal, 
+		displayed: displayedVal, 
+		isStateChange: true
+	]
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {		
 	def result = []	
 	
 	if (cmd.value == 0) {
-		clearPlayingStatus()
-		//writeToDebugLog("BasicReport OFF")
+		clearPlayingStatus()		
 		
 		result << createEvent(name:"status", value: "off", displayed: false)
 		
@@ -448,18 +460,13 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 		result << createEvent(name:"switch", value: "off", descriptionText: "$device.displayName switch is off", displayed: false)		
 	
 	} 
-	else if (cmd.value == 255) {
-		//writeToDebugLog("BasicReport ON")
-		
+	else if (cmd.value == 255) {		
 		if (state.isPlaying) {
-			//writeToDebugLog("Something is playing")			
+			//logDebug("Something is playing")			
 		} 
 		else {
 			state.isPlaying = true
-			writeToDebugLog("Doorbell button was pushed.")					
-			
-			// Force poll on device power on.
-			//result << response(pollCommand())			
+			logDebug("Doorbell button was pushed.")					
 			
 			result << createEvent(name: "button", value: "pushed", data: [buttonNumber: 1], descriptionText: "$device.displayName doorbell button was pushed", isStateChange: true)
 		
@@ -467,8 +474,9 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 				result << createEvent(name: "status", value: "bell", descriptionText: "$device.displayName doorbell is ringing", isStateChange: true)
 			} 
 			else {
-				writeToDebugLog("Silent Button Enabled (If it's still making sound then you need to verify that the doorbell track doesn't have a corresponding file. I recommend using track 100)")
-			}			
+				logDebug("Silent Button Enabled (If it's still making sound then you need to verify that the doorbell track doesn't have a corresponding file. I recommend using track 100)")
+			}
+			result += response(poll())
 		}
 	}	
 	return result
@@ -482,7 +490,7 @@ private clearPlayingStatus() {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
-	writeToDebugLog("WakeUpNotification: $cmd")
+	logDebug("WakeUpNotification: $cmd")
 	
 	def result = []
 	
@@ -503,12 +511,17 @@ def zwaveEvent(physicalgraph.zwave.commands.firmwareupdatemdv2.FirmwareMdReport 
 }   
 
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
+	def result = []
 	if (state.polling) {
+		logDebug "Poll Successful"
 		state.polling = false
-		sendPresenceEvent("present", false)
-	} else {
+		result << createEvent(getPresenceEventMap("present"))
+		result << createEvent(name: "lastPoll", value: new Date().time, displayed: false, isStateChange: true)
+	}
+	else {
 		writeToInfoLog("Version: $cmd")
 	}
+	return result
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.associationv2.AssociationReport cmd) {
@@ -557,7 +570,7 @@ private batteryHealthReport(cmd) {
 }
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
-	writeToDebugLog("Unhandled: $cmd")
+	logDebug("Unhandled: $cmd")
 	createEvent(descriptionText: cmd.toString(), isStateChange: false)
 }
 
@@ -579,7 +592,7 @@ def parse(String description) {
 		}
 	}
 	else {
-		writeToDebugLog("Did Not Parse: $description")
+		logDebug("Did Not Parse: $description")
 	}
 	return result
 }
@@ -606,7 +619,7 @@ def updated() {
 
 //Configuration.configure
 def configure() {
-	writeToDebugLog("Configuration being sent to ${device.displayName}")
+	logDebug("Configuration being sent to ${device.displayName}")
 	
 	initializePreferences()
 
@@ -646,10 +659,6 @@ private reportAssociationCommands() {
 
 private reportFirmwareCommand() {
 	return zwave.firmwareUpdateMdV2.firmwareMdGet()
-}
-
-private pollCommand() {
-	return reportVersionCommand()
 }
 
 private reportVersionCommand() {
@@ -739,7 +748,7 @@ int validateNumberRange(value, defaultValue, minValue, maxValue) {
 	} 
 	
 	if (result != intValue) {
-		writeToDebugLog("$value is invalid, defaulting to $result.")
+		logDebug("$value is invalid, defaulting to $result.")
 	}
 	result
 }
@@ -786,7 +795,7 @@ private isDuplicateCall(lastRun, allowedEverySeconds) {
 	result
 }
 
-private writeToDebugLog(msg) {	
+private logDebug(msg) {	
 	if (state.debugOutput) {
 		log.debug msg
 	}
