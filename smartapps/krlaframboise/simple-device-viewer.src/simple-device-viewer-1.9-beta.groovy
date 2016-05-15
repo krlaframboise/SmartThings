@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.9 Beta
+ *  Simple Device Viewer v 1.9.1 Beta
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,7 +9,7 @@
  *
  *  Changelog:
  *
- *    1.9 Beta (05/??/2016)
+ *    1.9.1 Beta (05/??/2016)
  *      - Added Event/State Caching
  *      - Added accuracy level for retrieving events so it can
  *        check between 50 and 1,250 events based on accuracy
@@ -994,8 +994,8 @@ private cleanState() {
 void initializeDevicesCache() {
 	def dnis = getAllDNIs()
 	
-	state.devicesCache.removeAll { cache ->
-		!dnis.find { dni -> cache.dni == dni }
+	state.devicesCache?.removeAll { cache ->
+		!dnis?.find { dni -> cache.dni == dni }
 	}	
 }
 
