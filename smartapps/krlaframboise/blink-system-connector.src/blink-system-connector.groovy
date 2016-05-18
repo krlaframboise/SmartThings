@@ -1,11 +1,18 @@
 /**
- *  Blink System Connector v 1.3
+ *  Blink System Connector v 1.4
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.4 (5/18/2016)
+ *      - Fixed the way the settings are displayed
+ *        during new installation.
+ *      - Fixed ui issue that prevented the SmartApp from
+ *        working on Windows Phone.
+ *      - Improved the way it polls the devices.
  *
  *    1.3 (4/22/2016)
  *      - Added multicamera support.
@@ -48,7 +55,7 @@ definition(
 )
 
 preferences {
-	page(name:"mainPage", uninstall:true, install:true)
+	page(name:"mainPage")
   page(name:"blinkSetupPage")
 	page(name:"optionsPage")
 	page(name:"toggleArmedPage")
@@ -58,7 +65,7 @@ preferences {
 }
 
 def mainPage() {
-	dynamicPage(name:"mainPage") {				
+	dynamicPage(name:"mainPage", uninstall:true, install:true) {				
 		if (state.completedSetup) {
 			state.lastCameraViewed = null				
 			section("System Status") {
@@ -76,16 +83,20 @@ def mainPage() {
 			section("Cameras") {
 				getCameraPageLinks()
 			}
+			section("Settings") {
+				if(state.completedSetup) {
+					getPageLink("optionsPageLink",
+						"Options",
+						"optionsPage")
+				}
+				getPageLink("blinkSetupPageLink",
+					"Blink Acount Settings",
+					"blinkSetupPage")
+			}	
 		}
-		section("Settings") {
-			if(state.completedSetup) {
-				getPageLink("optionsPageLink",
-					"Options",
-					"optionsPage")				
-			}
-			getPageLink("blinkSetupPageLink",
-				"Blink Acount Settings",
-				"blinkSetupPage")
+		else {
+			getBlinkSetupPageContents()
+			getOptionsPageContents()
 		}
 	}
 }
@@ -137,7 +148,7 @@ def toggleArmedPage() {
 				paragraph "The system is now ${newStatus}ed"
 			}
 			else {
-				paragraph "Unable to $NewStatus System"
+				paragraph "Unable to $newStatus System"
 			}
 		}
 	}
@@ -146,22 +157,7 @@ def toggleArmedPage() {
 def addCamerasPage() {
 	dynamicPage(name:"addCamerasPage") {
 		section("Add Cameras") {
-			def msg = ""
-			getCameras().each {				
-				try {
-					if (!getChildDevice(it.dni)) {
-						logDebug "Adding Camera - ${it.cameraName}"
-						addCamera(it)
-						msg += "Added Camera ${it.cameraName}\n"
-						getChildDevice(it.dni)?.refreshDetails(it)						
-					}
-				}
-				catch (e) {
-					msg += "Unable to add camera ${it.cameraName}\n"
-					log.error "Error Adding Camera ${it.cameraName}: ${e}"
-				}
-			}
-			
+			def msg = addCameras()
 			if (!msg) {
 				paragraph "No new cameras were found"
 			}
@@ -170,6 +166,25 @@ def addCamerasPage() {
 			}
 		}
 	}
+}
+
+private addCameras() {
+	def msg = ""
+	getCameras().each {				
+		try {
+			if (!getChildDevice(it.dni)) {
+				logDebug "Adding Camera - ${it.cameraName}"
+				addCamera(it)
+				msg += "Added Camera ${it.cameraName}\n"
+				getChildDevice(it.dni)?.refreshDetails(it)						
+			}
+		}
+		catch (e) {
+			msg += "Unable to add camera ${it.cameraName}\n"
+			log.error "Error Adding Camera ${it.cameraName}: ${e}"
+		}
+	}
+	return msg
 }
 
 private addCamera(camera) {
@@ -219,57 +234,64 @@ def cameraPage() {
 	dynamicPage(name:"cameraPage") {		
 		def dni = "${params.dni}"
 		section ("Camera $dni") {
-			paragraph "Camera details go here"
+			paragraph "This feature is not available yet."
 		}
 	}
 }
 
 def optionsPage() {
 	dynamicPage(name:"optionsPage") {		
-		section ("Options") {
-			input "shmEnabled", "bool", 
-				title: "Integrate with Smart Home Monitor?",
-				required: false, 
-				defaultValue: false
-			input "disableImages", "bool", 
-				title: "Disable image functionality?",
-				defaultValue: false,
-				required: false
-			input "debugOutput", "bool", 
-				title: "Enable debug logging?", 
-				defaultValue: true,
-				required: false
-		}
+		getOptionsPageContents()
+	}
+}
+
+private getOptionsPageContents() {
+	section ("Options") {
+		input "shmEnabled", "bool", 
+			title: "Integrate with Smart Home Monitor?",
+			required: false, 
+			defaultValue: false
+		input "debugOutput", "bool", 
+			title: "Enable debug logging?", 
+			defaultValue: true,
+			required: false
 	}
 }
 
 def blinkSetupPage() {
 	dynamicPage(name:"blinkSetupPage") {		
-		section () {
-			input "hostHub", "hub", 
-				title: "Select SmartThings Hub",
-				multiple: false, 
-				required: true		
-		}
-		section ("Blink Account Settings") {
-			input "blinkUser", "text", 
-				title: "Blink Account Email",
-				required: true
-			input "blinkPassword", "password", 
-				title: "Blink Account Password", 
-				required: true
-		}	
+		getBlinkSetupPageContents()
 	}
 }
 
-private getPageLink(linkName, linkText, pageName, args=[]) {
-	href(
+private getBlinkSetupPageContents() {
+	section () {
+		input "hostHub", "hub", 
+			title: "Select SmartThings Hub",
+			multiple: false, 
+			required: true		
+	}
+	section ("Blink Account Settings") {
+		input "blinkUser", "text", 
+			title: "Blink Account Email",
+			required: true
+		input "blinkPassword", "password", 
+			title: "Blink Account Password", 
+			required: true
+	}	
+}
+
+private getPageLink(linkName, linkText, pageName, args=null) {
+	def map = [
 		name: "$linkName", 
 		title: "$linkText",
 		description: "",
-		page: "$pageName", 
-		params: args
-	)
+		page: "$pageName"
+	]
+	if (args) {
+		map.params = args
+	}
+	href(map)
 }
 
 def installed() {
@@ -277,27 +299,30 @@ def installed() {
 }
 
 def updated() {
-	state.completedSetup = true
 	unsubscribe()
 	unschedule()
-	initialize()	
+	initialize()
 }
 
 private initialize() {
-	if (settings.hostHub && settings.blinkUser && settings.blinkPassword) {
-		state.completedSetup = true		
+	if (settings.hostHub && settings.blinkUser && settings.blinkPassword && !state.completedSetup) {
+		state.completedSetup = true
+		logDebug "${addCameras()}"
 	}
 	if (state.completedSetup) {
-		subscribe(location, "alarmSystemStatus", shmHandler)
-		runEvery5Minutes(refreshAllCameraEvents)
-		runEvery5Minutes(refreshAllCameraDetails)
-		//schedule("23 0/1 * * * ?", refreshAllCameraDetails)
-		//schedule("23 0/1 * * * ?", refreshAllCameraEvents)		
+		if (settings.shmEnabled) {
+			subscribe(location, "alarmSystemStatus", shmHandler)
+		}		
+		runEvery5Minutes(refreshAllCameraDetails)	
 	}
 }
 
 def uninstalled() {
 	removeAllCameras(getChildDevices())
+}
+
+def childUninstalled() {
+
 }
 
 private removeAllCameras(devices) {
@@ -315,11 +340,17 @@ def getSystemStatus() {
 }
 
 def arm() {
-	setStatus("arm")
+	schedule("23 0/1 * * * ?", refreshAllCameraEvents)
+	return setStatus("arm")	
 }
 
 def disarm() {
-	setStatus("disarm")
+	runIn(5, unscheduleRefreshAllCameraEvents)
+	return setStatus("disarm")	
+}
+
+def unscheduleRefreshAllCameraEvents() {
+	unschedule(refreshAllCameraEvents)
 }
 
 private setStatus(status) {
@@ -337,30 +368,28 @@ private setStatus(status) {
 	return data	
 }
 
-def getImage(url) {
-	if (!imageFeatureDisabled()) {
-		logDebug "Getting Image: $url"
-		
-		if (!url.toLowerCase().endsWith(".jpg")) {
-			url = "${url}.jpg"
-		}
-		
-		def resp = getFromBlink(buildRequest("${url}"))	
-		if (resp?.isSuccess() && resp?.getContentType() == "image/jpeg") {
-			return resp.data
-		}
-		else {
-			log.error "Unable to get image $url"
-			return null
-		}
-	}
-	else {
-		log.info "Image feature disabled"
+def getBase64EncodedImage(url) {
+	def imageBytes = getImage(url)?.buf
+	if(imageBytes) {
+		return imageBytes.encodeBase64()
 	}
 }
 
-def imageFeatureDisabled() {
-	return settings.disableImages ? true : false
+def getImage(url) {
+	logDebug "Getting Image: $url"
+	
+	if (!url.toLowerCase().endsWith(".jpg")) {
+		url = "${url}.jpg"
+	}
+	
+	def resp = getFromBlink(buildRequest("${url}"))		
+	if (resp?.isSuccess() && resp?.getContentType() == "image/jpeg") {
+		return resp.data
+	}
+	else {
+		log.error "Unable to get image $url"
+		return null
+	}
 }
 
 def takePhoto(dni) {
