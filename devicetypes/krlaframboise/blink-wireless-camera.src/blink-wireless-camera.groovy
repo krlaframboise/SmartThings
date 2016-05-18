@@ -1,11 +1,17 @@
 /**
- *  Blink Wireless Camera v 1.3
+ *  Blink Wireless Camera v 1.4
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.4 (5/18/2016)
+ *      - Fixed word wrap issues caused by last mobile app update.
+ *      - Removed scheduling functionality and letting parent
+ *        control that instead.
+ *      - Enhanced UI feedback by utilizing the nextState feature.
  *
  *    1.3 (4/22/2016)
  *      - Switched from carousel to htmltile.
@@ -100,9 +106,6 @@ metadata {
 			refreshInterval: 1, 
 			width: 6, 
 			height: 4)
-			
-		 // carouselTile("cameraDetails", "device.imageDataJpeg", width: 6, height: 4, decoration: "flat") { 
-		 // }
 		valueTile("actionStatus", "device.actionStatus", width: 2, height: 1, decoration: "flat") {
 			state "ready", label: '   Ready   ',
 				action:"",
@@ -129,23 +132,42 @@ metadata {
 				icon:""
     }
 		valueTile("status", "device.status", width: 2, height: 2) {
-			state "enabled", label:'Camera\nEnabled',
+			state "enabled", label:'Enabled',
+				nextState: "disabling",
 				action:"disableCamera",
 				icon:"",
 				backgroundColor:"#99c2ff"
-			state "disabled", label:'Camera\nDisabled',
+			state "disabling", label:'Disabling',
+				action:"disableCamera",
+				icon:""
+			state "disabled", label:'Disabled',
+				nextState:"enabling",
 				action:"enableCamera",
-				icon:""			
+				icon:""
+			state "enabling", label:'Enabling',
+				icon:"",
+				action:"enableCamera",
+				backgroundColor:"#99c2ff"
     }		
 		valueTile("systemStatus", "device.systemStatus", width: 2, height: 2) {      
-			state "disarmed", label:'System\nDisarmed', 
+			state "disarmed", label:'Disarmed',
+				nextState: "arming",
 				action: "switch.on", 
 				icon: "", 
 				backgroundColor: "#99c2ff"
-			state "armed", label:'System\nArmed', 
+			state "arming", label:'Arming', 
+				action: "switch.on", 
+				icon: "", 
+				backgroundColor: "#ff9999"
+			state "armed", label:'Armed',
+				nextState: "disarming",
 				action: "switch.off", 
 				icon: "", 
 				backgroundColor: "#ff9999"
+			state "disarming", label:'Disarming',
+				action: "switch.off", 
+				icon: "", 
+				backgroundColor: "#99c2ff"
     }
 		valueTile("temperature", "device.temperature", width: 1, height: 1, decoration: "flat") {
 			state("temperature", label:'${currentValue}°'
@@ -235,12 +257,6 @@ def installed() {
 	runIn(1, refresh)
 }
 
-def updated() {
-	unschedule()
-	//schedule("23 0/1 * * * ?", poll)	
-	//runEvery5Minutes(poll)	
-}
-
 def armSystem() {
 	on()
 }
@@ -283,7 +299,7 @@ def resetStatus() {
 def on() {
 	generateEvent(getActionStatusEventData("arming", "Arming System"))
   parent.arm()
-	runIn(5, refreshDetails)
+	runIn(5, refreshDetails)	
 }
 
 def off() {
@@ -535,30 +551,20 @@ def displayEventImage() {
 }
 
 private loadImage(sourceUrl, newImageName) {		
-	if (sourceUrl && !parent.imageFeatureDisabled()) {
+	if (sourceUrl) {
 		generateEvent(getActionStatusEventData("loading", "Loading Event Image"))
-		def imageBytes = parent.getImage(sourceUrl)?.buf
-		if(imageBytes) {
-			
+		def encodedImage = parent.getBase64EncodedImage(sourceUrl)
+		if (encodedImage) {			
 			generateEvent([
 				name: "imageDataJpeg",
-				value: imageBytes.encodeBase64(),
+				value: encodedImage,
 				displayed: false
 			], false)
-			//storeImage(newImageName, imageBytes)			
-			// generateEvent([
-				// name: "image",
-				// value: "https://graph.api.smartthings.com/api/s3/smartthings-smartsense-camera/$newImageName",
-				// displayed: false
-			// ], false)
 			resetStatus()			
 		}
 	}
-	else if (!sourceUrl) {
-		log.info "The image for this event has been deleted."
-	}
 	else {
-		log.info "The image feature has been disabled in the Blink System Connector SmartApp."
+		log.info "The image for this event has been deleted."
 	}
 }
 
