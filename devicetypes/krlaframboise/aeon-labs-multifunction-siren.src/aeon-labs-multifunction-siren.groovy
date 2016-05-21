@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.5
+ *  Aeon Labs Multifunction Siren v 1.6
  *  (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
  *
  *  Capabilities:
@@ -9,6 +9,13 @@
  *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *	1.6 (05/21/2016)
+ *    - Removed poll check.
+ *    - Moved lastPoll event creation into parse method so that
+ *      it gets raised every time the device responds.
+ *    - Modified the poll command so that it only polls if the
+ *      lastPoll event is old.
  *
  *	1.5 (05/12/2016)
  *    - Added Polling & Speech Synthesis functionality.
@@ -207,17 +214,15 @@ metadata {
 	}
 }
 
-def poll() {	
-	logDebug "Starting Poll"
-	state.polling = true
-	runIn(10, checkPoll)
-	secureCmd(zwave.versionV1.versionGet())
-}
-
-void checkPoll() {
-	if (state.polling) {
-		state.polling = false
-		log.warn "Poll Failed"
+def poll() {
+	def minimumPollMinutes = 60
+	def lastPoll = device.currentValue("lastPoll")
+	if ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000)) {
+		logDebug "Poll: Refreshing because lastPoll was more than ${minimumPollMinutes} minutes ago."
+		secureCmd(zwave.versionV1.versionGet())
+	}
+	else {
+		logDebug "Poll: Skipped because lastPoll was within ${minimumPollMinutes} minutes"
 	}
 }
 
@@ -783,21 +788,21 @@ private supportedSecurityGetCmd() {
 
 // Parses incoming message warns if not paired securely
 def parse(String description) {
-	def result = null
 	if (description.startsWith("Err 106")) {
 		state.useSecureCommands = false
 		def msg = "Secure Inclusion Failed.  You may need to remove and add the device again while pushing the action button repeatedly during the Inclusion process."
 		log.warn "$msg"
-		result = createEvent( name: "secureInclusion", value: "failed", isStateChange: true, descriptionText: "$msg")
+		return createEvent( name: "secureInclusion", value: "failed", isStateChange: true, descriptionText: "$msg")
 	}
 	else if (description != null && description != "updated") {
 		def cmd = zwave.parse(description, [0x98: 1, 0x20: 1, 0x70: 1, 0x7A: 2, 0x25: 1])
 
 		if (cmd != null) {
-			result = zwaveEvent(cmd)
+			sendEvent(name: "lastPoll", value: new Date().time, displayed: false, isStateChange: true)
+			
+			return zwaveEvent(cmd)
 		} 
 	}
-	result
 }
 
 // Unencapsulates the secure command.
@@ -848,15 +853,7 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
-	if (state.polling) {
-		logDebug "Poll Successful"
-		state.polling = false		
-		
-		createEvent(name: "lastPoll", value: new Date().time, displayed: false, isStateChange: true)
-	}
-	else {
-		logDebug("Version: $cmd")
-	}	
+	logDebug("Version: $cmd")		
 }
 
 // Writes unexpected commands to debug log
