@@ -1,16 +1,37 @@
 /**
- *  Home Presence Manager v 1.2.5
+ *  Home Presence Manager v 1.3
  *
- *  Copyright 2016 Kevin LaFramboise
+ *  Author: 
+ *    Kevin LaFramboise (krlaframboise)
  *
- *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- *  in compliance with the License. You may obtain a copy of the License at:
+ *  URL to documentation:
+ *    
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  Changelog:
  *
- *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
- *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
- *  for the specific language governing permissions and limitations under the License.
+ *    1.3 (05/21/2016)
+ *      - Added buttonTimer back so delayed off works.
+ *      - Added check for room active based on contact sensor.
+ *      - Removed preferences for features that haven't
+ *        been implemented yet.
+ *      - Added preference to disable info logging.
+ *      - Added optional info logging.
+ *
+ *    1.2.6 (04/26/2016)
+ *      - Fixed bug that broke app for Windows Phone.
+ *
+ *  Licensed under the Apache License, Version 2.0 (the
+ *  "License"); you may not use this file except in
+ *  compliance with the License. You may obtain a copy of
+ *  the License at:
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in
+ *  writing, software distributed under the License is
+ *  distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
+ *  OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing
+ *  permissions and limitations under the License.
  *
  */
 definition(
@@ -119,25 +140,16 @@ def roomPage(params) {
 				options: ["open", "closed", "toggle open", "toggle closed"],
 				required: false
 		}			
-		// section ("Switches") {
-			// input "switch$roomNumber", "capability.switch",
-				// title: "Which switches indicate presence?",
-				// multiple: true,
-				// required: false
-			// input "switchPresence$roomNumber", "enum",
-				// title: "Present when switch is?",
-				// options: ["on", "off"],
-				// required: false
-		// }
+		
 		section ("Lights") {
 			input "lights$roomNumber", "capability.switch",
 				title: "Turn which lights on when present?",
 				multiple: true,
 				required: false
-			// input "lightOffDelay$roomNumber", "number",
-				// title: "Off delay in Minutes?",
-				// defaultValue: 0,
-				// required: false
+			input "lightOffDelay$roomNumber", "number",
+				title: "Off delay in Minutes?\n(This feature will only work if you've specified a Button Timer in the options.)",
+				defaultValue: 0,
+				required: false
 		}		
 	}
 }
@@ -156,18 +168,25 @@ def optionsPage() {
 		section("Options") {
 			mode title: "Only for mode(s)",
 				required: false
-			input "debugLogEnabled", "bool",
-				title: "Debug Logging Enabled?",
+			//input "multiPersonMode", "capability.switch",
+			//	title: "Which Switch Indicates Multi People Present?",
+			//	required: false
+			input "infoLoggingEnabled", "bool",
+				title: "Info Logging Enabled?",
 				defaultValue: true,
+				required: false
+			input "debugLoggingEnabled", "bool",
+				title: "Debug Logging Enabled?",
+				defaultValue: false,
 				required: false							
 		}
-		// section ("Scheduling") {
-			// paragraph "Leave this field empty unless you're using an external timer to turn on a switch at regular intervals.  If you select a switch, the application will check to see if notifications need to be sent when its turned on instead of using SmartThings scheduler to check every 5 minutes."
+		section ("Scheduling") {
+			paragraph "Leave this field empty unless you're using an external timer to turn on a switch at regular intervals.  This field is required for the light delay off feature to work."
 
-			// input "btnTimer", "capability.button",
-				// title: "Which Button Timer?",
-				// required: false
-		// }
+			input "buttonTimer", "capability.button",
+				title: "Which Button Timer?",
+				required: false
+		}
 	}
 }
 
@@ -191,10 +210,9 @@ def initialize() {
 	if (!isDuplicateCall(state.lastInitialize, 1)) {
 		state.lastInitialize = (new Date().time)
 		
-		// logDebug "$btnTimer"
-		// if (btnTimer) {
-			// subscribe(btnTimer, "button.pushed", timerEventHandler)
-		// }
+		if (buttonTimer) {
+			subscribe(buttonTimer, "button.pushed", timerEventHandler)
+		}
 		
 		initializeRooms()
 				
@@ -207,21 +225,21 @@ def initialize() {
 			subscribe(motionSensors(room), "motion.inactive", motionInactiveEventHandler)
 			
 			subscribe(contactSensors(room), "contact", contactEventHandler)
-			
-			//subscribe(switches(room), "switch", switchEventHandler)
 		}
 	}
 }
 
-// def timerEventHandler(evt) {
-	// def btnNumber = evt.data.replace("{\"buttonNumber\":", "").replace("}", "").substring(2)
-	// def roomNumber = validateRoomNumber(btnNumber)
+def timerEventHandler(evt) {
+	def btnNumber = evt.data.replace("{\"buttonNumber\":", "").replace("}", "").substring(2)
+	def roomNumber = validateRoomNumber(btnNumber)
 	
-	// if (roomNumber > 0) {
-		// def room = findRoomByRoomNumber(roomNumber)
-		// lights(room)?.off()	
-	// }		
-// }
+	if (roomNumber > 0) {
+		def room = findRoomByRoomNumber(roomNumber)
+		if (!isPresent(room)) {
+			changeSwitchState(room, "on", "off")
+		}
+	}
+}
 
 int validateRoomNumber(roomNumber) {
 	try {
@@ -309,10 +327,6 @@ def contactEventHandler(evt) {
 	}
 }
 
-// def switchEventHandler(evt) {
-
-// }
-
 def handleMotionInactiveRoom(room) {	
 	if (otherRoomsAreActive(room)) {
 		logDebug "Exiting ${room.roomName} because other rooms are active."
@@ -329,8 +343,7 @@ def handleMotionInactiveRoom(room) {
 def otherRoomsAreActive(room) {
 	for (otherRoom in state.rooms) {
 		if (room.roomNumber != otherRoom.roomNumber 
-		&& hasActiveMotion(otherRoom) 
-		&& !hasPendingMotion(otherRoom, room.lastActivity)) {
+		&& roomIsActive(otherRoom, room.lastActivity))	{
 			logDebug "${otherRoom.roomName} is Active (otherRoomsAreActive)\n$otherRoom"
 			return true
 		}
@@ -338,22 +351,12 @@ def otherRoomsAreActive(room) {
 	return false
 }
 
-def hasPendingMotion(room, startTime) {
-	if (hasActiveMotion(room)) {			
-		return ((new Date().time) <	(startTime + (room.motionTimeout * 1000)))	
-	}
-	else {
-		return false
-	}
-}
 
 def handlePresentRoom(room, forceExit=false) {
 	turnOnLights(room)
 	if (!isPresent(room)) {
-		logDebug "Setting ${room.roomName} to Present"
-		//presenceSensor(room)?.forcePresent()
+		logInfo "Setting ${room.roomName} to Present"
 		presenceSensor(room)?.arrived()
-		//presenceSensor(room)?.each { it.currentState = "present" }
 	}	
 	handleRoomsPendingExit(room, forceExit)	
 }
@@ -369,51 +372,54 @@ def handleRoomsPendingExit(ignoreRoom, forceExit) {
 }
 
 def handleNotPresentRoom(room) {
-	//logDebug "${room.roomName} is ${presenceSensor(room)?.currentPresence} (handleNotPresentRoom)"
-	//if (isPresent(room)) {
-		//logDebug "Setting ${room.roomName} to Not Present (handleNotPresentRoom)\n$room"
-		logDebug "Setting ${room.roomName} to Not Present"
-		
-		//turnOffLights(room)
-		//presenceSensor(room)?.forceNotPresent()
+	if (presenceSensor(room)) {
+		logInfo "Setting ${room.roomName} to Not Present"
 		presenceSensor(room)?.departed()
-		//presenceSensor(room)?.each { log.debug "it: $it" }
-		//presenceSensor(room)?.each { log.debug "it[0]: ${it[0]}" }
-		//presenceSensor(room)?.each { log.debug "it.device: ${it.device}" }
-		//presenceSensor(room)?.each { it.currentState = "not present" }
-		room.pendingExit = false
-		
-	//}
-	//else {
-	//	logDebug "Skipped Setting ${room.roomName} to Not Present (handleNotPresentRoom)\n$room"
-	//}	
+	}
+	room.pendingExit = false	
 }
 
 private turnOnLights(room) {
-	if (!lightsMatchState(room, "on")) {
-		logDebug "${room.roomName} has been entered"
-		lights(room).on()
-	}
+	changeSwitchState(room, "off", "on")
 }
 
 private turnOffLights(room) {
-	if (!lightsMatchState(room, "off")) {
-		logDebug "${room.roomName} has been exited"
-		// def offDelay = lightOffDelay(room) 
-		// if (offDelay > 0) {
-			// logDebug "${room.roomName}'s light(s) will turn off in $offDelay minutes"
-			
-			// btnTimer.pushButtonIn("10" + room.roomNumber.toString(), offDelay * 60)
-			
-		// }
-		// else {
-			lights(room).off()
-		//}
+	def offDelay = lightOffDelay(room) 
+	if (buttonTimer && offDelay > 0) {
+		logDebug "${room.roomName}'s light(s) will turn off in $offDelay minutes"
+		buttonTimer.pushButtonIn("10" + room.roomNumber.toString(), offDelay * 60)
+	}	
+	else {
+		changeSwitchState(room, "on", "off")
 	}
 }
 
-def lightsMatchState(room, switchState) {
-	return lights(room)?.find { it.currentSwitch != switchState} ? false : true
+private changeSwitchState(room, oldState, newState) {
+	lights(room)?.each {
+		if (it.currentSwitch == oldState) {
+			logInfo "Turning $newState ${it.displayName}"
+			(newState == "on") ? it.on() : it.off()
+		}
+	}
+}
+
+def roomIsActive(room, motionStartTime=null) {
+	return ((hasActiveMotion(room)
+		&& !hasPendingMotion(room, motionStartTime))
+		|| hasActiveContact(room))
+}
+
+def hasPendingMotion(room, startTime) {
+	if (hasActiveMotion(room) && !startTime) {			
+		return ((new Date().time) <	(startTime + (room.motionTimeout * 1000)))	
+	}
+	else {
+		return false
+	}
+}
+
+def hasActiveContact(room) {
+	return (!contactPresenceType(room) && isPresent(room))
 }
 
 def isPresent(room) {	
@@ -446,9 +452,6 @@ def findRoomByDeviceId(deviceId) {
 			if (!device) {
 				device = contactSensors(room)?.find() {it.id == deviceId} 
 			}
-			// if (!device) {
-				// device = switches(room)?.find() {it.id == deviceId} 
-			// }
 			
 			if (device != null) {
 				currentRoom = room
@@ -479,23 +482,19 @@ def contactPresenceType(room) {
 	}
 }
 
-// def switches(room) {
-	// return getSetting(room, "switches")		
-// }
-
 def lights(room) {
 	return getSetting(room, "lights")	
 }
 
-// int lightOffDelay(room) {
-	// def delay = getSetting(room, "lightOffDelay")
-	// if (delay?.isNumber()) {
-		// return delay.toInteger()
-	// }
-	// else {
-		// return 0
-	// }
-// }
+int lightOffDelay(room) {
+	def delay = getSetting(room, "lightOffDelay")
+	if (delay?.isNumber()) {
+		return delay.toInteger()
+	}
+	else {
+		return 0
+	}
+}
 
 private getSetting(room, settingName) {
 	if (room?.roomNumber) {
@@ -514,8 +513,24 @@ private isDuplicateCall(lastRun, allowedEverySeconds) {
 	result
 }
 
+private logInfo(msg) {
+	if (validateBool(settings.infoLoggingEnabled, true)) {
+		log.info "$msg"
+		logDebug msg
+	}
+}
+
 private logDebug(msg) {
-	if (debugLogEnabled) {
-		log.debug msg
+	if (validateBool(settings.debugLoggingEnabled, false)) {
+		log.debug "$msg"
+	}
+}
+
+private validateBool(value, defaultValue) {
+	if (value == null) {
+		return defaultValue
+	}
+	else {
+		return value
 	}
 }
