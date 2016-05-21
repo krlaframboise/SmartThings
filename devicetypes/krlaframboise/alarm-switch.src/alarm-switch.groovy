@@ -1,13 +1,25 @@
 /**
- *  Alarm Switch v1.1
+ *  Alarm Switch v1.2
  *
+ *  Capabilities:
+ *    Switch, Alarm, Polling
+ *
+ *  Description:
+ *    Provides alarm capabilities to regular on/off switch
+ *    so that it shows up like an alarm and can be used as
+ *    an alarm in SmartApps like SHM.
+ *
+ *  URL to documentation:
+ *    n/a
+ 
  *  Author: 
- *     Kevin LaFramboise (krlaframboise)
+ *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
  *
- *    1.1 (05/12/2016)
+ *    1.2 (05/21/2016)
  *      - Fixed bug in polling feature.
+ *      - UI Enhancements
  *
  *    1.0 (05/10/2016)
  *      - Initial Release
@@ -28,6 +40,8 @@ metadata {
     capability "Alarm"
 		capability "Switch"
 		capability "Polling"
+		
+		attribute "lastPoll", "number"
 
 		fingerprint inClusters: "0x20,0x25,0x86,0x80,0x85,0x72,0x71"
 	}
@@ -58,21 +72,37 @@ metadata {
 	
 	tiles(scale: 2) {
 		multiAttributeTile(name:"alarm", type: "generic", width: 6, height: 3, canChangeIcon: true){
-			tileAttribute ("alarm", key: "PRIMARY_CONTROL") {
-				attributeState "off", label:'off', action: "on", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
-				attributeState "siren", label:'Siren On!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
-				attributeState "strobe", label:'Strobe On!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
-				attributeState "both", label:'Siren/Strobe On!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"				
+			tileAttribute ("device.alarm", key: "PRIMARY_CONTROL") {
+				attributeState "off", label:'off', action: "alarm.both", nextState: "turningOn", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
+				attributeState "turningOn", label:'Turning On!', action: "alarm.off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "turningOff", label:'Turning Off!', action: "alarm.both", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
+				attributeState "siren", label:'Siren On!', action: "alarm.off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "strobe", label:'Strobe On!', action: "alarm.off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "both", label:'Siren/Strobe On!', action: "alarm.off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"				
 			}
 		}
 		
-		valueTile("switch", "device.switch", label: 'On', width: 2, height: 2) {
-			state "off", label:'Turn On', action: "on", icon:""
-			state "on", label:'Turn Off', action: "off", icon:"", backgroundColor:"#79b821"
+		standardTile("switch", "device.switch", label: 'On', width: 4, height: 4) {
+			state "off", label:'Off', action: "switch.on", nextState: "turningOn", icon:"st.switches.switch.off", background: "#ffffff"
+			state "turningOn", label:'Turning On', action: "switch.off", icon:"st.switches.switch.on", background: "#79b821"
+			state "on", label:'On', nextState: "turningOff", action: "switch.off", icon:"st.switches.switch.on", backgroundColor:"#79b821"
+			state "turningOff", label:'Turning Off', action: "switch.on", icon:"st.switches.switch.off", background: "#ffffff"
 		}	
 		      
 		main "alarm"
 		details(["alarm","switch"])
+	}
+}
+
+def poll() {
+	def minimumPollMinutes = 30
+	def lastPoll = device.currentValue("lastPoll")
+	if ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000)) {
+		logDebug "Poll: Refreshing because lastPoll was more than ${minimumPollMinutes} minutes ago."
+		return zwave.versionV1.versionGet().format()
+	}
+	else {
+		logDebug "Poll: Skipped because lastPoll was within ${minimumPollMinutes} minutes"
 	}
 }
 
@@ -111,28 +141,13 @@ def off() {
 	]
 }
 
-def poll() {
-	logDebug "Starting Poll"
-	state.polling = true
-	runIn(15, checkPoll)
-	[
-		zwave.versionV1.versionGet().format()
-	]
-}
-
-void checkPoll() {
-	if (state.polling) {
-		state.polling = false
-		log.warn "Poll Failed"
-	}
-}
-
 def parse(String description) {
-	def result = null
+	def result = []
 	def cmd = zwave.parse(description, [0x20: 1, 0x86: 1])
 	if (cmd) {
-		result = zwaveEvent(cmd)
+		result += zwaveEvent(cmd)
 	}
+	result << createEvent(name: "lastPoll",value: new Date().time, isStateChange: true, displayed: false)
 	return result
 }
 
@@ -167,15 +182,8 @@ private getAlarmValue() {
 	return alarmValue
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
-	if (state.polling) {
-		state.polling = false
-		logDebug "Poll Successful"
-		sendEvent(name: "switch", value: device.currentValue("switch"), isStateChange: true, displayed: false)		
-	}
-	else {
-		logDebug("Version: $cmd")
-	}
+def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {	
+	logDebug("Version: $cmd")
 }
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
@@ -183,7 +191,16 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 }
 
 private logDebug(msg) {
-	if (settings.debugOutput) {
-		log.debug "$msg"
+	if (validateBool(settings.debugLoggingEnabled, false)) {
+		log.debug "${device.displayName}: $msg"
+	}
+}
+
+private validateBool(value, defaultValue) {
+	if (value == null) {
+		return defaultValue
+	}
+	else {
+		return value
 	}
 }
