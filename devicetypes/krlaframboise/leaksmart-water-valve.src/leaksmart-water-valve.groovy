@@ -1,8 +1,8 @@
 /**
- *  LeakSmart Water Valve v 1.0
+ *  LeakSmart Water Valve v 1.0.1
  *  
  *  Capabilities:
- *      Configuration, Refresh, Switch, Battery, Valve
+ *      Configuration, Refresh, Switch, Valve, Polling
  *
  *  Author: 
  *     Kevin LaFramboise (krlaframboise)
@@ -12,8 +12,8 @@
  *
  *  Changelog:
  *
- *    1.0 Beta (05/20/2016)
- *      - Testing
+ *    1.0.1 (05/21/2016)
+ *      - Initial Release
  *
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -30,11 +30,12 @@
 metadata {
 	definition (name: "LeakSmart Water Valve", namespace: "krlaframboise", author: "Kevin LaFramboise") {
 		capability "Actuator"
-		capability "Battery"
+		//capability "Battery"
 		capability "Configuration"
 		capability "Refresh"
 		capability "Switch"
 		capability "Valve"
+		capability "Polling"
 
 		attribute "lastPoll", "number"	
 		
@@ -50,58 +51,44 @@ metadata {
 	}
 	
 	tiles(scale: 2) {
-		multiAttributeTile(name:"contact", type: "generic", width: 6, height: 3, canChangeIcon: true){
-			tileAttribute ("device.contact", key: "PRIMARY_CONTROL") {
-				attributeState "closed", 
-					label:'Valve Closed', 
-					action: "valve.open", 
-					nextState: "opening", 
-					icon:"st.valves.water.closed", 
-					backgroundColor:"#e86d13"
-				attributeState "opening", 
-					label:'Opening Valve', 
-					action: "valve.open", 
-					icon:"st.valves.water.closed", 
-					backgroundColor:"#53a7c0"
-				attributeState "open", 
-					label:'Valve Open', 
-					action: "valve.close", 
-					nextState: "closing",
-					icon:"st.valves.water.open", 
-					backgroundColor:"#53a7c0"
-				attributeState "closing", 
-					label:'Closing Valve', 
-					action: "valve.close", 
-					icon:"st.valves.water.open", 
-					backgroundColor:"#e86d13"
-			}
-		}
-		standardTile("openValve", "general", width: 2, height: 2, canChangeIcon: true) {
-			state "default", 
-				label: 'Open', 
-				action: "open", 
-				icon: ""			
-		}
-		standardTile("closeValve", "general", width: 2, height: 2, canChangeIcon: true) {
-			state "default", 
-				label: 'Close', 
-				action: "close", 
-				icon: ""			
-		}
+		standardTile("contact", "device.contact", width: 4, height: 4, canChangeIcon: true) {
+			state "closed", 
+				label:'Closed', 
+				action: "valve.open", 
+				nextState: "opening", 
+				icon:"st.valves.water.closed", 
+				backgroundColor:"#e86d13"
+			state "opening", 
+				label:'Opening', 
+				action: "valve.close", 
+				icon:"st.valves.water.open", 
+				backgroundColor:"#ffe71e"
+			state "open", 
+				label:'Open', 
+				action: "valve.close", 
+				nextState: "closing",
+				icon:"st.valves.water.open", 
+				backgroundColor:"#53a7c0"
+			state "closing", 
+				label:'Closing', 
+				action: "valve.open", 
+				icon:"st.valves.water.open", 
+				backgroundColor:"#ffe71e"
+		}		
 		standardTile("refresh", "device.refresh", width: 2, height: 2, canChangeIcon: true) {
 			state "default", 
 				label: 'Refresh', 
 				action: "refresh.refresh", 
 				icon: ""			
 		}		
-		valueTile("battery", "device.battery", width: 2, height: 2, canChangeIcon: true) {
-			state "battery", 
-				label: 'Battery ${currentValue}%',
-				unit: "%"
-				icon: ""			
-		}
+		// valueTile("battery", "device.battery", width: 2, height: 2, canChangeIcon: true) {
+			// state "battery", 
+				// label: 'Battery ${currentValue}%',
+				// unit: "%"
+				// icon: ""			
+		// }
 		main "contact"
-		details(["contact", "openValve", "closeValve", "refresh", "battery"])
+		details(["contact", "refresh", "battery"])
 	}
 }
 
@@ -112,65 +99,68 @@ def updated() {
 }
 
 def parse(String description) {
-	log.debug "DESCRIPTION:$description\nEVENT:${zigbee.getEvent(description)}\nMAP:${zigbee.parseDescriptionAsMap(description)}"
 	def result = []
 	def evt = zigbee.getEvent(description)
 	if (evt) {
-		//logDebug "name: ${evt.name}, value: ${evt.value}\n$evt"
 		if (evt.name == "switch") {
-			result << createEvent(name: "contact", value: (evt.value == "on") ? "open" : "closed")
+			def val = (evt.value == "on") ? "open" : "closed"
+			logDebug "Valve is $val"
+			createEvent([
+				name: "contact",
+				value: val
+			])
+		}
+		else {
+			logDebug "Ignored Event: $evt"
 		}
 		result << createEvent(evt)
 	}
 	else {
 		def map = zigbee.parseDescriptionAsMap(description)
 		if (map) {			
-			result += handleUnknownDescriptionMap(map)
+			logDebug "Ignored Map: $map"
 		}
 		else { 
-			//logDebug "Unknown Command: $description"
+			logDebug "Ignored Description: $description"
 		}
 	}
-	result << createEvent(name: "lastPoll",value: new Date().time, isStateChange: true, displayed: false)
 	return result
 }
 
-private handleUnknownDescriptionMap(map) {
-	logDebug "Unknown Map: $map"
-	def result = []	
-	return result
-}
-
-// Commands to device
 def on() {
-	logDebug "on()"
 	open()
 }
 
 def off() {
-	logDebug "off()"
 	close()
 }
 
 def open() {
-	logDebug "Opening Valve"
+	logDebug "Opening"
 	zigbee.on()	
 }
 
 def close() {
-	logDebug "Closing Valve"
+	logDebug "Closing"
 	zigbee.off()
+}
+
+def poll() {
+	def minimumPollMinutes = 180 // 3 Hours
+	def lastPoll = device.currentValue("lastPoll")
+	if ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000)) {
+		logDebug "Poll: Refreshing because lastPoll was more than ${minimumPollMinutes} minutes ago."
+		return refresh()
+	}
+	else {
+		logDebug "Poll: Skipped because lastPoll was within ${minimumPollMinutes} minutes"
+	}
 }
 
 def refresh() {
 	logDebug "Refreshing"	
 	return zigbee.onOffRefresh() + 
-		zigbee.simpleMeteringPowerRefresh() + 
-		zigbee.electricMeasurementPowerRefresh() + 
 		zigbee.onOffConfig() + 
-		zigbee.simpleMeteringPowerConfig() + 
-		zigbee.electricMeasurementPowerConfig() +
-		configureSwitchReporting() +
 		configureBatteryReporting()		
 }
 
@@ -178,18 +168,8 @@ def configure() {
 	logDebug "Configuring Reporting and Bindings."
 	state.configured = true
 	return zigbee.onOffConfig() + 
-		zigbee.simpleMeteringPowerConfig() + 
-		zigbee.electricMeasurementPowerConfig() + 
-		configureSwitchReporting() +
 		configureBatteryReporting() +
-		zigbee.onOffRefresh() + 
-		zigbee.simpleMeteringPowerRefresh() + 
-		zigbee.electricMeasurementPowerRefresh()
-}
-
-private configureSwitchReporting() {
-	def interval = 3600 // 1 Hour
-	zigbee.configureReporting(0x0006, 0x0000, 0x10, 1, interval, null)
+		zigbee.onOffRefresh() 
 }
 
 private configureBatteryReporting() {
