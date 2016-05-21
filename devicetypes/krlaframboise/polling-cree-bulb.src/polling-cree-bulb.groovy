@@ -1,10 +1,18 @@
 /**
- *  Polling Cree Bulb 1.1.2
+ *  Polling Cree Bulb 1.2.1
  *
  *  Author: 
  *     Kevin LaFramboise (krlaframboise)
  *
  *	Changelog: 
+ *
+ *	1.2.1 (05/21/2016)
+ *    - Made the poll command only refresh if it thinks
+ *      internal polling is no longer running.
+ *
+ *	1.2 (05/20/2016)
+ *    - Added preference for dim rate, cleaned up the config
+ *      refresh sections and updated fingerprint to new format.
  *
  *	1.1.2 (05/13/2016)
  *    - Completely re-wrote the Cree Bulb Device Handler.
@@ -32,64 +40,83 @@ metadata {
 		
 		attribute "lastPoll", "number"
 		
-		fingerprint profileId: "C05E", inClusters: "0000,1000,0004,0003,0005,0006,0008", outClusters: "0000,0019"
+		fingerprint profileId: "C05E", inClusters: "0000,1000,0004,0003,0005,0006,0008", outClusters: "0000,0019", manufacturer: "CREE", model: "Connected A-19 60W Equivalent", deviceJoinName: "Cree Bulb"
 	}
 
-	// simulator metadata
-	simulator {
-		// status messages
-		status "on": "on/off: 1"
-		status "off": "on/off: 0"
+	tiles {
+		standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
+			state "on", 
+				label: '${name}', 
+				action: "switch.off", 
+				icon: "st.switches.light.on", 
+				backgroundColor: "#79b821", 
+				nextState:"turningOff"
+			state "off", 
+				label: '${name}', 
+				action: "switch.on", 
+				icon: "st.switches.light.off", 
+				backgroundColor: "#ffffff", 
+				nextState:"turningOn"
+ 			state "turningOn", 
+				label:'${name}', 
+				action: "switch.off", 
+				icon:"st.switches.light.on", 
+				backgroundColor:"#79b821", 
+				nextState:"turningOff"
+      state "turningOff", 
+				label:'${name}', 
+				action: "switch.on", 
+				icon:"st.switches.light.off", 
+				backgroundColor:"#ffffff", 
+				nextState:"turningOn"
+		}
+		standardTile("refresh", "device.switch", decoration: "flat") {
+			state "default", 
+				label:'', 
+				action:"refresh.refresh", 
+				icon:"st.secondary.refresh"
+		}
+		controlTile("levelSliderControl", "device.level", "slider", height: 1, width: 3, range:"(0..100)") {
+			state "level", action:"switch level.setLevel"
+		}
+		valueTile("level", "device.level", decoration: "flat") {
+			state "level", label: 'Level ${currentValue}%'
+		}
 
-		// reply messages
-		reply "zcl on-off on": "on/off: 1"
-		reply "zcl on-off off": "on/off: 0"
+		main(["switch"])
+		details(["switch", "level", "levelSliderControl", "refresh"])
 	}
-	
+
 	preferences {
-		input "debugOutput", "bool", 
+		input "dimRate", "enum", 
+			title: "Dim Rate", 
+			options: ["Instant", "Normal", "Slow", "Very Slow"],
+			defaultValue: "Normal", 
+			required: false, 
+			displayDuringSetup: true		
+		input "infoLoggingEnabled", "bool", 
+			title: "Enable info logging?", 
+			defaultValue: true,
+			required: false,
+			displayDuringSetup: false
+		input "debugLoggingEnabled", "bool", 
 			title: "Enable debug logging?", 
-			defaultValue: false, 
-			displayDuringSetup: false,
-			required: false	
-	}
-	
-	tiles(scale: 2) {
-		multiAttributeTile(name:"switch", type: "lighting", width: 6, height: 4){
-			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
-				attributeState "on", label:'${name}', action:"switch.off", icon:"st.switches.light.on", backgroundColor:"#79b821", nextState:"turningOff"
-				attributeState "off", label:'${name}', action:"switch.on", icon:"st.switches.light.off", backgroundColor:"#ffffff", nextState:"turningOn"
-				attributeState "turningOn", label:'${name}', action:"switch.off", icon:"st.switches.light.on", backgroundColor:"#79b821", nextState:"turningOff"
-				attributeState "turningOff", label:'${name}', action:"switch.on", icon:"st.switches.light.off", backgroundColor:"#ffffff", nextState:"turningOn"
-			}
-			tileAttribute ("device.level", key: "SLIDER_CONTROL") {
-				attributeState "level", action:"switch level.setLevel"
-			}
-		}
-
-		standardTile("refresh", "device.refresh", width: 2, height: 2) {
-			state "default", label:'Refresh', action:"refresh.refresh", icon:""
-		}
-
-		main "switch"
-		details(["switch", "refresh"])
-	}
-}
-
-def updated() {
-	if (!state.configured) {		
-		return response(configure())
+			defaultValue: false,
+			required: false,
+			displayDuringSetup: false
 	}
 }
 
 // Parse incoming device messages to generate events
-def parse(String description) {
+def parse(String description) {			
 	def result = []
 	def evt = zigbee.getEvent(description)
 	if (evt) {
-		if (state.polling) {
-			logDebug "Poll Successful"
-			state.polling = false
+		if (evt.name == "switch") {
+			logEvent("Switch turned ${evt.value}",evt)
+		}
+		else if (evt.name == "level") {
+			logEvent("Switch Level changed to ${evt.value}", evt)
 		}
 		result << createEvent(evt)
 	}
@@ -102,6 +129,7 @@ def parse(String description) {
 			logDebug "Unknown Command: $description"
 		}
 	}
+	result << createEvent(name: "lastPoll", value: new Date().time, displayed: false, isStateChange: true)
 	return result
 }
 
@@ -111,88 +139,34 @@ private handleUnknownDescriptionMap(map) {
 	
 		if (map.clusterInt == 6) {
 			logDebug "Switch Reported"
-			result += response(getSwitchValue())					
+			result += response(zigbee.onOffRefresh())
 		}
 		else if (map.clusterInt == 8) {
 			logDebug "Switch Level Reported"
-			result += response(getSwitchLevelValue())
+			result += response(zigbee.levelRefresh())
 		}
-		
-		result << createEvent(getLastPollEventMap())
 	}
 	return result
 }
 
-private getLastPollEventMap() {
-	[
-		name: "lastPoll", 
-		value: new Date().time, 
-		displayed: false, 
-		isStateChange: true
-	]
-}
-
-def poll() {	
-	if (autoPollStopped()) {
-		logDebug "Starting Poll"
-		state.polling = true
-		runIn(10, checkPoll)
-		return getSwitchValue() +
-			getSwitchLevelValue() +
-			configureSwitchReporting() +
-			configureSwitchLevelReporting()
-	}
-}
-
-// Device self polls/reports, but if the bulb is turned off
-// the reporting stops so 
-private autoPollStopped() {
-	def lastPoll = device.currentValue("lastPoll")
-	if (!lastPoll) {
-		return true
-	}
-	else {
-		def problemFrequencyMS = ((maxSelfPollFrequencySeconds() + 60) * 1000)
-		return (lastPoll < (new Date().time - problemFrequencyMS))
-	}	
-}
-
-void checkPoll() {
-	if (state.polling) {
-		state.polling = false
-		log.warn "Poll Failed"
-	}
-}
-
-def setLevel(value) {
-	value = validateLevel(value)
-	logDebug "Changing Level to $value"	
-	[
-		zigbee.setLevel(value, 0),
-		"delay 100",
-		getSwitchLevelValue()
-	]
-}
-
-private Integer validateLevel(value) {
-	Integer result = 100
-	try {
-		if (value != null && value > 0) {
-			result = value.toInteger()
+def updated() {
+	if (!isDuplicateCommand(state.lastUpdated, 1000)) {
+		state.lastUpdated = new Date().time // This method is often called twice which occassionally causes the SmartThings mobile app to crash.
+		logDebug "Updating Settings"		
+		if (!state.configured) {
+			state.currentDimRate = settings.dimRate
+			state.configured = true
+			return response(configure())
 		}
-		else if (value == 0) {
-			result = 1
-		}		
+		else if (state.currentDimRate != settings.dimRate) {
+			state.currentDimRate = settings.dimRate
+			return response(refresh())
+		}			
 	}
-	catch (e) {
-		log.error "Unable to validate level ${value} so using 100 instead.\nError: $e"
-	}
-	return result
 }
 
-def off() {
-	logDebug "Turning Off"
-	zigbee.off()
+private isDuplicateCommand(lastExecuted, allowedMil) {
+	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
 }
 
 def on() {
@@ -200,44 +174,89 @@ def on() {
 	zigbee.on()
 }
 
+def off() {
+	logDebug "Turning Off"
+	zigbee.off()
+}
+
+def setLevel(value) {
+	value = validateLevel(value)
+	logDebug "Changing Switch Level to $value"	
+	zigbee.setLevel(value, getDimRate())
+}
+
+private Integer validateLevel(value) {
+	if (value == 0) {
+		return 1
+	}
+	else {
+		return value ?: 100
+	}
+}
+
+private getDimRate() {
+	switch (settings.dimRate) {		
+		case "Normal":
+			return 15			
+		case "Slow":
+			return 25
+		case "Very Slow":
+			return 35
+		default:
+			return 0
+	}
+}
+
+def poll() {
+	def minimumPollMinutes = 30
+	def lastPoll = device.currentValue("lastPoll")
+	if ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000)) {
+		logDebug "Poll: Refreshing because lastPoll was more than ${minimumPollMinutes} minutes ago."
+		refresh()
+	}
+	else {
+		logDebug "Poll: Skipped because lastPoll was within ${minimumPollMinutes} minutes"
+	}
+}
+
 def refresh() {
-	return getSwitchValue() +
-		getSwitchLevelValue() +
-		configureSwitchReporting() +
-		configureSwitchLevelReporting()
+	logDebug "Refreshing Switch and Switch Level"
+	return zigbee.onOffRefresh() + 
+		zigbee.levelRefresh() + 
+		zigbee.onOffConfig() + 
+		zigbee.levelConfig() // + configureSwitchReporting()
 }
-  
+
 def configure() {
-	logDebug "Configuring Reporting and Bindings"	
-	state.configured = true
-	return configureSwitchReporting() +
-		configureSwitchLevelReporting() +
-		getSwitchValue() +
-		getSwitchLevelValue()
+	logDebug "Configuring Reporting and Bindings."	
+	return zigbee.onOffConfig() + 
+		zigbee.levelConfig() + //configureSwitchReporting() + 
+		zigbee.onOffRefresh() + 
+		zigbee.levelRefresh()
 }
 
-private getSwitchValue() {
-	zigbee.readAttribute(0x0006, 0x0000)
-}
+// private configureSwitchReporting() {
+	// def interval = 1800 // 30 Minutes
+	// zigbee.configureReporting(0x0006, 0x0000, 0x10, 1, interval, null)
+// }
 
-private getSwitchLevelValue() {
-	zigbee.readAttribute(0x0008, 0x0000)
-}
-
-private configureSwitchReporting() {
-	zigbee.configureReporting(0x0006, 0x0000, 0x10, 0, maxSelfPollFrequencySeconds(), null)
-}
-
-private configureSwitchLevelReporting() {
-	zigbee.configureReporting(0x0008, 0x0000, 0x20, 1, (maxSelfPollFrequencySeconds() + 30), 0x01)
-}
-
-private maxSelfPollFrequencySeconds() {
-	return 600
+private logEvent(msg, evt) {
+	if (validateBool(settings.infoLoggingEnabled, true) && device.currentValue(evt.name) != evt.value) {
+		log.info "${device.displayName}: $msg"
+	}
 }
 
 private logDebug(msg) {
-	if (settings.debugOutput) {
-		log.debug "$msg"
+	if (validateBool(settings.debugLoggingEnabled, false)) {
+		log.debug "${device.displayName}: $msg"
+	}
+}
+
+private validateBool(value, defaultValue) {
+	if (value == null) {
+		return defaultValue
+	}
+	else {
+		return value
 	}
 }
