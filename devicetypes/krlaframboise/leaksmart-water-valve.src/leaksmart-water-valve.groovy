@@ -1,5 +1,5 @@
 /**
- *  LeakSmart Water Valve v 1.0 Beta
+ *  LeakSmart Water Valve v 1.0
  *  
  *  Capabilities:
  *      Configuration, Refresh, Switch, Battery, Valve
@@ -36,7 +36,7 @@ metadata {
 		capability "Switch"
 		capability "Valve"
 
-		//fingerprint profileId: "0104", inClusters: "0000,0001,0003,0004,0005,0020,0006,0B02", outClusters: "0003"
+		attribute "lastPoll", "number"	
 		
 		fingerprint profileId: "0104", inClusters: "0000,0001,0003,0006,0020,0B02", outClusters: "0019"
 	}
@@ -53,24 +53,24 @@ metadata {
 		multiAttributeTile(name:"contact", type: "generic", width: 6, height: 3, canChangeIcon: true){
 			tileAttribute ("device.contact", key: "PRIMARY_CONTROL") {
 				attributeState "closed", 
-					label:'Closed', 
+					label:'Valve Closed', 
 					action: "valve.open", 
 					nextState: "opening", 
 					icon:"st.valves.water.closed", 
 					backgroundColor:"#e86d13"
 				attributeState "opening", 
-					label:'Opening', 
+					label:'Opening Valve', 
 					action: "valve.open", 
 					icon:"st.valves.water.closed", 
 					backgroundColor:"#53a7c0"
 				attributeState "open", 
-					label:'Open', 
+					label:'Valve Open', 
 					action: "valve.close", 
 					nextState: "closing",
 					icon:"st.valves.water.open", 
 					backgroundColor:"#53a7c0"
 				attributeState "closing", 
-					label:'Closing', 
+					label:'Closing Valve', 
 					action: "valve.close", 
 					icon:"st.valves.water.open", 
 					backgroundColor:"#e86d13"
@@ -93,19 +93,7 @@ metadata {
 				label: 'Refresh', 
 				action: "refresh.refresh", 
 				icon: ""			
-		}
-		standardTile("refresh", "device.refresh", width: 2, height: 2, canChangeIcon: true) {
-			state "default", 
-				label: 'Refresh', 
-				action: "refresh.refresh", 
-				icon: ""			
-		}
-		standardTile("configure", "device.configuration", width: 2, height: 2, canChangeIcon: true) {
-			state "default", 
-				label: 'Config', 
-				action: "configuration.configure", 
-				icon: ""			
-		}
+		}		
 		valueTile("battery", "device.battery", width: 2, height: 2, canChangeIcon: true) {
 			state "battery", 
 				label: 'Battery ${currentValue}%',
@@ -113,7 +101,7 @@ metadata {
 				icon: ""			
 		}
 		main "contact"
-		details(["contact", "openValve", "closeValve", "refresh", "configure", "battery"])
+		details(["contact", "openValve", "closeValve", "refresh", "battery"])
 	}
 }
 
@@ -130,10 +118,7 @@ def parse(String description) {
 	if (evt) {
 		//logDebug "name: ${evt.name}, value: ${evt.value}\n$evt"
 		if (evt.name == "switch") {
-			createEvent([
-				name: "contact",
-				value: (evt.value == "on") ? "open" : "closed"
-			])
+			result << createEvent(name: "contact", value: (evt.value == "on") ? "open" : "closed")
 		}
 		result << createEvent(evt)
 	}
@@ -146,6 +131,7 @@ def parse(String description) {
 			//logDebug "Unknown Command: $description"
 		}
 	}
+	result << createEvent(name: "lastPoll",value: new Date().time, isStateChange: true, displayed: false)
 	return result
 }
 
