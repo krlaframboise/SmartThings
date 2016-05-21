@@ -1,5 +1,5 @@
 /**
- *  GoControl Contact Sensor v1.4.1
+ *  GoControl Contact Sensor v1.4.2
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,10 @@
  *    n/a
  *
  *  Changelog:
+ *
+ *    1.4.2 (05/21/2016)
+ *      -  Fixing polling so that it doesn't require forcing
+ *         state changes or always displaying events.
  *
  *    1.4.1 (05/5/2016)
  *      -  UI Enhancements
@@ -35,6 +39,8 @@ metadata {
 		capability "Battery"
 		capability "Tamper Alert"
 		capability "Refresh"
+		
+		attribute "lastPoll", "number"
 
 		fingerprint deviceId: "0x2001", 
 			inClusters: "0x71,0x85,0x80,0x72,0x30,0x86,0x84"
@@ -93,9 +99,8 @@ metadata {
 		}
 		
 		valueTile("tampering", "device.tamper", label: 'Tamper', width: 2, height: 2) {
-			state "default", label:'', icon:"", backgroundColor: "#FF0000"
-			state "clear", label:'Tamper\nClear', backgroundColor: "#CCCCCC"
-			state "detected", label:'Tamper Detected', backgroundColor: "#FF0000"			
+			state "clear", label:'Tamper\nClear', backgroundColor: "#CCCCCC", nextState: "detected"
+			state "detected", label:'Tamper Detected', backgroundColor: "#FF0000", nextState: "clear"			
 		}
 		standardTile("refresh", "device.refresh", 
 			width: 2, 
@@ -119,16 +124,17 @@ def updated() {
 }
 
 def parse(String description) {
-	def result = null
+	def result = []
 	if (description.startsWith("Err")) {
-		result = createEvent(descriptionText:description, displayed:true)
+		result << createEvent(descriptionText:description, displayed:true)
 	} 
-	else {
+	else {		
 		def cmd = zwave.parse(description, [0x20: 1, 0x25: 1, 0x30: 1, 0x31: 5, 0x80: 1, 0x84: 1, 0x71: 3, 0x9C: 1])
 		if (cmd) {
-			result = zwaveEvent(cmd)
+			result += zwaveEvent(cmd)
 		}
 	}
+		result << createEvent(name: "lastPoll",value: new Date().time, isStateChange: true, displayed: false)
 	return result
 }
 
@@ -157,23 +163,22 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv1.WakeUpNotification cmd)
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {	
 	def map = [ 
 		name: "battery", 		
-		unit: "%", 
-		isStateChange: true, 
-		displayed: false
+		unit: "%"
 	]
 	
 	if (cmd.batteryLevel == 0xFF) {
 		map.value = 1
 		map.descriptionText = "Battery is low"
+		map.displayed = true
 	}
 	else {
 		map.value = cmd.batteryLevel
-		map.descriptionText = "Battery is ${cmd.batteryLevel}%"
+		map.displayed = false
 	}
 	
 	logDebug "${map.descriptionText}"
 	state.lastBatteryReport = new Date().time	
-	createEvent(map)
+	[createEvent(map)]
 }
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
@@ -186,11 +191,11 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd)
 	
 	logDebug "Contact is $contactVal"
 	
-	createEvent(name: "contact", 
+	[createEvent(name: "contact", 
 		value: contactVal, 
 		isStateChange: true, 
 		displayed: true, 
-		descriptionText: "Contact is $contactVal")		
+		descriptionText: "Contact is $contactVal")]
 }
 
 // Sets tamper attribute to detected when the device is opened.
