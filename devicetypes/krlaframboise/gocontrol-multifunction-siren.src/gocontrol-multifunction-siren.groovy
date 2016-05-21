@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.0.3
+ *  GoControl Multifunction Siren v 1.1
  *  
  *  Capabilities:
  *      Alarm, Tone, Switch, Battery, Polling
@@ -13,15 +13,10 @@
  *
  *  Changelog:
  *
- *    1.0.3 (05/12/2016)
+ *    1.1 (05/21/2016)
  *      - Improved polling functionality.
  *
- *    1.0.2 (05/07/2016)
- *      - I don't believe the device sleeps because it needs to
- *        be able to receive commands at all times, but I've
- *        added the wakeup event code so I can be sure.
- *
- *    1.0.1 (05/04/2016)
+ *    1.0.3 (05/04/2016 - 05/12/2016)
  *      - Enhanced reporting of status, alarm, and switch state.
  *      - Enhanced activity feed messages.
  *      - Enhanced debug logging.
@@ -101,39 +96,44 @@ metadata {
 
 	tiles(scale: 2) {
 		multiAttributeTile(name:"status", type: "generic", width: 6, height: 3, canChangeIcon: true){
-			tileAttribute ("status", key: "PRIMARY_CONTROL") {
-				attributeState "off", label:'off', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
-				attributeState "siren", label:'Siren On!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
-				attributeState "strobe", label:'Strobe On!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
-				attributeState "both", label:'Siren/Strobe On!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
-				attributeState "beep", label:'Beeping!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#99FF99"							
+			tileAttribute ("device.status", key: "PRIMARY_CONTROL") {
+				attributeState "off", label:'Off', action: "alarm.off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
+				attributeState "turningOff", label:'Turing Off', action: "alarm.off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
+				attributeState "siren", label:'Siren On!', action: "alarm.off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "strobe", label:'Strobe On!', action: "alarm.off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "both", label:'Siren/Strobe On!', action: "alarm.off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "beep", label:'Beeping!', action: "alarm.off", nextState: "turningOff", icon:"st.Entertainment.entertainment2", backgroundColor:"#99FF99"							
 			}
 		}
 		valueTile("off", "device.status", label: 'off', width: 2, height: 2) {
-			state "default", label:'', action: "off", icon:""
-			state "off", label:'Off', action: "off"
-			state "siren", label:'Turn Off', action: "off", icon:"", backgroundColor: "#99c2ff"
-			state "strobe", label:'Turn Off', action: "off", icon:"", backgroundColor: "#99c2ff"
-			state "both", label:'Turn Off', action: "off", icon:"", backgroundColor: "#99c2ff"
-			state "beep", label:'Turn Off', action: "off", icon:"", backgroundColor: "#99c2ff"
+			state "off", label:'Off', action: "alarm.off", icon:"", backgroundColor: "#ffffff"
+			state "turningOff", label:'Turning Off', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#ffffff"			
+			state "siren", label:'Turn Off', action: "alarm.off", nextState: "turningOff", icon:"", backgroundColor: "#99c2ff"
+			state "strobe", label:'Turn Off', action: "alarm.off", nextState: "turningOff", icon:"", backgroundColor: "#99c2ff"
+			state "both", label:'Turn Off', action: "alarm.off", nextState: "turningOff", icon:"", backgroundColor: "#99c2ff"
+			state "beep", label:'Turn Off', action: "alarm.off", nextState: "turningOff", icon:"", backgroundColor: "#99c2ff"
 		}	
 		valueTile("testBeep", "device.status", label: 'beep', width: 2, height: 2) {
-			state "default", label:'Test Beep', action:"beep", icon:"", backgroundColor: "#99FF99"
-			state "beep", label:'Stop Beep', action: "off", icon:"", backgroundColor: "#99c2ff"			
+			state "default", label:'Test Beep', action:"tone.beep", nextState: "turningOn", icon:"", backgroundColor: "#99FF99"
+			state "turningOn", label:'Turning On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"
+			state "beep", label:'Beeping', action: "alarm.off", nextState: "alarm.off", icon:"", backgroundColor: "#99c2ff"
 		}	
 				
 		valueTile("testSiren", "device.status", label: 'Siren', width: 2, height: 2) {
-			state "default", label:'Test Siren', action: "siren", icon:"", backgroundColor: "#ff9999"					
-			state "siren", label:'Stop Siren', action: "off", icon:"", backgroundColor: "#99c2ff"			
+			state "default", label:'Test Siren', action: "alarm.siren", nextState: "turningOn", icon:"", backgroundColor: "#ff9999"
+			state "turningOn", label:'Turning On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"
+			state "siren", label:'Siren On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"			
 		
 		}
 		valueTile("testStrobe", "device.status", label: 'Strobe', width: 2, height: 2) {
-			state "default", label:'Test Strobe', action: "strobe", icon:"", backgroundColor: "#ff9999"
-			state "strobe", label:'Stop Strobe', action: "off", icon:"", backgroundColor: "#99c2ff"
+			state "default", label:'Test Strobe', action: "alarm.strobe", nextState: "turningOn", icon:"", backgroundColor: "#ff9999"
+			state "turningOn", label:'Turning On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"
+			state "strobe", label:'Strobe On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"
 		}
 		valueTile("testBoth", "device.status", label: 'Both', width: 2, height: 2) {
-			state "default", label:'Test Both', action: "both", icon:"", backgroundColor: "#ff9999"
-			state "both", label:'Stop Both', action: "off", icon:"", backgroundColor: "#99c2ff"						
+			state "default", label:'Test Both', action: "alarm.both", nextState: "turningOn", icon:"", backgroundColor: "#ff9999"
+			state "turningOn", label:'Turning On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"
+			state "both", label:'Both On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"						
 		}		
 		valueTile("battery", "device.battery", label: '', decoration: "flat", width: 2, height: 2) {
 			state "battery", label:'Battery ${currentValue}%', icon:""
@@ -146,7 +146,7 @@ metadata {
 
 // Stores preferences and displays device settings.
 def updated() {
-	if (!isDuplicateCommand(state.lastUpdated, 5000)) {
+	if (!isDuplicateCommand(state.lastUpdated, 2000)) {
 		state.lastUpdated = new Date().time
 		state.staticAlarmType = validateBoolean(settings.staticAlarmType, false)
 		state.strobeBeep = validateBoolean(settings.strobeBeep, false)
@@ -202,23 +202,14 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 }
 
 def poll() {
-	if (canPoll()) {
-		logDebug "Starting Poll"		
-		state.polling = true		
-		runIn(10, checkPoll)
-		batteryGetCmd()
-	}	
-}
-
-private canPoll() {
+	def minimumPollMinutes = 30
 	def lastPoll = device.currentValue("lastPoll")
-	return (!lastPoll || (new Date().time) - lastPoll > 1*60*60*1000)
-}
-
-void checkPoll() {
-	if (state.polling) {
-		state.polling = false
-		log.warn "Poll Failed"
+	if ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000)) {
+		logDebug "Poll: Refreshing because lastPoll was more than ${minimumPollMinutes} minutes ago."
+		return batteryGetCmd()
+	}
+	else {
+		logDebug "Poll: Skipped because lastPoll was within ${minimumPollMinutes} minutes"
 	}
 }
 
@@ -511,16 +502,17 @@ private batteryGetCmd() {
 
 // Parses incoming message
 def parse(String description) {	
-	def result = null
+	def result = []
 	if (description.startsWith("Err")) {
 		log.error "Unknown Error: $description"		
 	}
 	else if (description != null && description != "updated") {
 		def cmd = zwave.parse(description, [0x20: 1, 0x25: 1, 0x80: 1, 0x70: 2, 0x72: 2, 0x86: 1])		
 		if (cmd) {
-			result = zwaveEvent(cmd)
+			result += zwaveEvent(cmd)
 		}
 	}
+	result << createEvent(name:"lastPoll", value: new Date().time, displayed: false, isStateChange: true)
 	return result
 }
 
@@ -609,23 +601,18 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv1.WakeUpNotification cmd) {
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	def map = [ 
 		name: "battery", 
-		unit: "%", 
-		isStateChange: true,
-		displayed: true
+		unit: "%"
 	]
 	if (cmd.batteryLevel == 0xFF) {
 		map.value = 1
 		map.descriptionText = "Battery is low"
+		map.isStateChange = true
+		map.displayed = true
 	} else {
 		map.value = cmd.batteryLevel
-		map.description = "Battery is ${cmd.batteryLevel}%"
-	}
-	logDebug "Poll Successful"
-	state.polling = false
-	[
-		createEvent(map),
-		createEvent(name:"lastPoll", value: new Date().time, displayed: false, isStateChange: true)
-	]
+		map.displayed = false
+	}	
+	[createEvent(map)]
 }
 
 // Writes unexpected commands to debug log
