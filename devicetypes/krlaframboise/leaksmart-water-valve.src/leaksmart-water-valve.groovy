@@ -1,5 +1,5 @@
 /**
- *  LeakSmart Water Valve v 1.0 Alpha
+ *  LeakSmart Water Valve v 1.0 Beta
  *  
  *  Capabilities:
  *      Configuration, Refresh, Switch, Battery, Valve
@@ -12,7 +12,7 @@
  *
  *  Changelog:
  *
- *    1.0 Alpha (05/19/2016)
+ *    1.0 Beta (05/20/2016)
  *      - Testing
  *
  *
@@ -29,6 +29,7 @@
 
 metadata {
 	definition (name: "LeakSmart Water Valve", namespace: "krlaframboise", author: "Kevin LaFramboise") {
+		capability "Actuator"
 		capability "Battery"
 		capability "Configuration"
 		capability "Refresh"
@@ -75,6 +76,24 @@ metadata {
 					backgroundColor:"#e86d13"
 			}
 		}
+		standardTile("openValve", "general", width: 2, height: 2, canChangeIcon: true) {
+			state "default", 
+				label: 'Open', 
+				action: "open", 
+				icon: ""			
+		}
+		standardTile("closeValve", "general", width: 2, height: 2, canChangeIcon: true) {
+			state "default", 
+				label: 'Close', 
+				action: "close", 
+				icon: ""			
+		}
+		standardTile("refresh", "device.refresh", width: 2, height: 2, canChangeIcon: true) {
+			state "default", 
+				label: 'Refresh', 
+				action: "refresh.refresh", 
+				icon: ""			
+		}
 		standardTile("refresh", "device.refresh", width: 2, height: 2, canChangeIcon: true) {
 			state "default", 
 				label: 'Refresh', 
@@ -94,15 +113,22 @@ metadata {
 				icon: ""			
 		}
 		main "contact"
-		details(["contact", "refresh", "configure", "battery"])
+		details(["contact", "openValve", "closeValve", "refresh", "configure", "battery"])
+	}
+}
+
+def updated() {
+	if (!state.configured) {		
+		return response(configure())
 	}
 }
 
 def parse(String description) {
+	log.debug "DESCRIPTION:$description\nEVENT:${zigbee.getEvent(description)}\nMAP:${zigbee.parseDescriptionAsMap(description)}"
 	def result = []
 	def evt = zigbee.getEvent(description)
 	if (evt) {
-		logDebug "name: ${evt.name}, value: ${evt.value}\n$evt"
+		//logDebug "name: ${evt.name}, value: ${evt.value}\n$evt"
 		if (evt.name == "switch") {
 			createEvent([
 				name: "contact",
@@ -117,7 +143,7 @@ def parse(String description) {
 			result += handleUnknownDescriptionMap(map)
 		}
 		else { 
-			logDebug "Unknown Command: $description"
+			//logDebug "Unknown Command: $description"
 		}
 	}
 	return result
@@ -151,21 +177,42 @@ def close() {
 }
 
 def refresh() {
-	logDebug "Refreshing Valve State"
-	zigbee.readAttribute(0x0006, 0x0000)
+	logDebug "Refreshing"	
+	return zigbee.onOffRefresh() + 
+		zigbee.simpleMeteringPowerRefresh() + 
+		zigbee.electricMeasurementPowerRefresh() + 
+		zigbee.onOffConfig() + 
+		zigbee.simpleMeteringPowerConfig() + 
+		zigbee.electricMeasurementPowerConfig() +
+		configureSwitchReporting() +
+		configureBatteryReporting()		
 }
-	
+
 def configure() {
-	logDebug "Sending Configuration Commands"
-	Integer maxReportingInterval = 14400 // 4 Hours
+	logDebug "Configuring Reporting and Bindings."
+	state.configured = true
 	return zigbee.onOffConfig() + 
-		zigbee.configureReporting(0x0006, 0x0000, 0x10, 0, maxReportingInterval, null) + 
-		zigbee.configureReporting(0x0001, 0x0020, 0x20, 30, maxReportingInterval, 0x01) + 
-		zigbee.readAttribute(0x0006, 0x0000)
+		zigbee.simpleMeteringPowerConfig() + 
+		zigbee.electricMeasurementPowerConfig() + 
+		configureSwitchReporting() +
+		configureBatteryReporting() +
+		zigbee.onOffRefresh() + 
+		zigbee.simpleMeteringPowerRefresh() + 
+		zigbee.electricMeasurementPowerRefresh()
+}
+
+private configureSwitchReporting() {
+	def interval = 3600 // 1 Hour
+	zigbee.configureReporting(0x0006, 0x0000, 0x10, 1, interval, null)
+}
+
+private configureBatteryReporting() {
+	def interval = 14400 // 4 Hours	
+	zigbee.configureReporting(0x0001, 0x0020, 0x20, 30, interval, 0x01)
 }
 
 private logDebug(msg) {
-	if (settings.debugOutput) {
+	if (settings.debugOutput != false) {
 		log.debug "$msg"
 	}
 }
