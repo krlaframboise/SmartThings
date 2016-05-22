@@ -122,6 +122,7 @@ def parse(String description) {
 		if (map) {
 			if (map.clusterInt == 1) {
 				def batteryLevel = getBatteryLevel(zigbee.convertHexToInt(map.value))
+				logDebug "Battery Level is ${batteryLevel}%"
 				result << createEvent(name: "battery", value: batteryLevel, unit:"%")
 			}
 			else {
