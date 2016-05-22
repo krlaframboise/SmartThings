@@ -1,5 +1,5 @@
 /**
- *  Home Presence Manager v 1.3 
+ *  Home Presence Manager v 1.3
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
