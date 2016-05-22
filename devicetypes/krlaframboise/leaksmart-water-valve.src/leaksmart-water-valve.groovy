@@ -1,5 +1,5 @@
 /**
- *  LeakSmart Water Valve v 1.1
+ *  LeakSmart Water Valve v 1.1.1
  *  
  *  Capabilities:
  *      Configuration, Refresh, Switch, Valve, Polling
@@ -12,8 +12,9 @@
  *
  *  Changelog:
  *
- *    1.1 (05/22/2016)
+ *    1.1.1 (05/22/2016)
  *      - Added battery capability and tile
+ *      - Added debug logging for battery map.
  *
  *    1.0.3 (05/22/2016)
  *      - Initial Release
@@ -122,7 +123,7 @@ def parse(String description) {
 		if (map) {
 			if (map.clusterInt == 1) {
 				def batteryLevel = getBatteryLevel(zigbee.convertHexToInt(map.value))
-				logDebug "Battery Level is ${batteryLevel}%"
+				logDebug "Battery Level is ${batteryLevel}%\nMap: $map"
 				result << createEvent(name: "battery", value: batteryLevel, unit:"%")
 			}
 			else {
