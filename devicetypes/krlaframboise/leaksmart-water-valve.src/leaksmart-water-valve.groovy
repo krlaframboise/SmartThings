@@ -1,5 +1,5 @@
 /**
- *  LeakSmart Water Valve v 1.0.1
+ *  LeakSmart Water Valve v 1.0.2
  *  
  *  Capabilities:
  *      Configuration, Refresh, Switch, Valve, Polling
@@ -11,6 +11,9 @@
  *      
  *
  *  Changelog:
+ *
+ *    1.0.2 (05/22/2016)
+ *      - 
  *
  *    1.0.1 (05/21/2016)
  *      - Initial Release
@@ -74,7 +77,7 @@ metadata {
 				action: "valve.open", 
 				icon:"st.valves.water.open", 
 				backgroundColor:"#ffe71e"
-		}		
+		}
 		standardTile("refresh", "device.refresh", width: 2, height: 2, canChangeIcon: true) {
 			state "default", 
 				label: 'Refresh', 
@@ -105,10 +108,10 @@ def parse(String description) {
 		if (evt.name == "switch") {
 			def val = (evt.value == "on") ? "open" : "closed"
 			logDebug "Valve is $val"
-			createEvent([
-				name: "contact",
-				value: val
-			])
+			result << createEvent([
+					name: "contact",
+					value: val
+				])
 		}
 		else {
 			logDebug "Ignored Event: $evt"
@@ -137,7 +140,7 @@ def off() {
 
 def open() {
 	logDebug "Opening"
-	zigbee.on()	
+	zigbee.on()
 }
 
 def close() {
