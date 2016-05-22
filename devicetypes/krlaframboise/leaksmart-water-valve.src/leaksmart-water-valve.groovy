@@ -112,6 +112,7 @@ def parse(String description) {
 			def val = (evt.value == "on") ? "open" : "closed"
 			logDebug "Valve is $val"
 			result << createEvent(name: "contact", value: val)
+			result << createEvent(name: "lastPoll",value: new Date().time, isStateChange: true, displayed: false)
 		}
 		else {
 			logDebug "Ignored Event: $evt"
@@ -126,8 +127,7 @@ def parse(String description) {
 		else { 
 			logDebug "Ignored Description: $description"
 		}
-	}
-	result << createEvent(name: "lastPoll",value: new Date().time, isStateChange: true, displayed: false)
+	}	
 	return result
 }
 
