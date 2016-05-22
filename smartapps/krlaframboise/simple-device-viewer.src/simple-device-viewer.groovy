@@ -2,7 +2,7 @@
  *  Simple Device Viewer v 1.9.1
  *
  *  Author: 
- *    Kevin LaFramboise (krlaframboise)
+ *    Kevin LaFramboise (krlaframboise) 
  *
  *  URL to documentation:
  *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
