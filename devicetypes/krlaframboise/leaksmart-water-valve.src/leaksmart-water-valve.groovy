@@ -1,5 +1,5 @@
 /**
- *  LeakSmart Water Valve v 1.0.2
+ *  LeakSmart Water Valve v 1.0.3
  *  
  *  Capabilities:
  *      Configuration, Refresh, Switch, Valve, Polling
@@ -12,8 +12,11 @@
  *
  *  Changelog:
  *
+ *    1.0.3 (05/22/2016)
+ *      - Added last poll event creation.
+ *
  *    1.0.2 (05/22/2016)
- *      - 
+ *      - Fixed Contact event creation
  *
  *    1.0.1 (05/21/2016)
  *      - Initial Release
@@ -108,10 +111,7 @@ def parse(String description) {
 		if (evt.name == "switch") {
 			def val = (evt.value == "on") ? "open" : "closed"
 			logDebug "Valve is $val"
-			result << createEvent([
-					name: "contact",
-					value: val
-				])
+			result << createEvent(name: "contact", value: val)
 		}
 		else {
 			logDebug "Ignored Event: $evt"
@@ -127,6 +127,7 @@ def parse(String description) {
 			logDebug "Ignored Description: $description"
 		}
 	}
+	result << createEvent(name: "lastPoll",value: new Date().time, isStateChange: true, displayed: false)
 	return result
 }
 
