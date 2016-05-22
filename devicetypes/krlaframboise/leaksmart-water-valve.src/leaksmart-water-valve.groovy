@@ -1,5 +1,5 @@
 /**
- *  LeakSmart Water Valve v 1.0.3
+ *  LeakSmart Water Valve v 1.1
  *  
  *  Capabilities:
  *      Configuration, Refresh, Switch, Valve, Polling
@@ -12,14 +12,12 @@
  *
  *  Changelog:
  *
+ *    1.1 (05/22/2016)
+ *      - Added battery capability and tile
+ *
  *    1.0.3 (05/22/2016)
- *      - Added last poll event creation.
- *
- *    1.0.2 (05/22/2016)
- *      - Fixed Contact event creation
- *
- *    1.0.1 (05/21/2016)
  *      - Initial Release
+ *      - Bug fixes
  *
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -36,7 +34,7 @@
 metadata {
 	definition (name: "LeakSmart Water Valve", namespace: "krlaframboise", author: "Kevin LaFramboise") {
 		capability "Actuator"
-		//capability "Battery"
+		capability "Battery"
 		capability "Configuration"
 		capability "Refresh"
 		capability "Switch"
@@ -87,12 +85,12 @@ metadata {
 				action: "refresh.refresh", 
 				icon: ""			
 		}		
-		// valueTile("battery", "device.battery", width: 2, height: 2, canChangeIcon: true) {
-			// state "battery", 
-				// label: 'Battery ${currentValue}%',
-				// unit: "%"
-				// icon: ""			
-		// }
+		valueTile("battery", "device.battery", width: 2, height: 2, canChangeIcon: true) {
+			state "battery", 
+				label: 'Battery ${currentValue}%',
+				unit: "%"
+				icon: ""			
+		}
 		main "contact"
 		details(["contact", "refresh", "battery"])
 	}
@@ -121,14 +119,37 @@ def parse(String description) {
 	}
 	else {
 		def map = zigbee.parseDescriptionAsMap(description)
-		if (map) {			
-			logDebug "Ignored Map: $map"
+		if (map) {
+			if (map.clusterInt == 1) {
+				def batteryLevel = getBatteryLevel(zigbee.convertHexToInt(map.value))
+				result << createEvent(name: "battery", value: batteryLevel, unit:"%")
+			}
+			else {
+				logDebug "Ignored Map: $map"
+			}
 		}
 		else { 
 			logDebug "Ignored Description: $description"
 		}
 	}	
 	return result
+}
+
+private getBatteryLevel(rawValue) {
+	def maxVolts = 6.1
+	def minVolts = 5.8
+	def volts = (rawValue / 10)
+	def batteryPercentages = (volts - minVolts) / (maxVolts - minVolts)	
+	def batteryLevel = (int) batteryPercentages * 100
+	if (batteryLevel > 100) {
+		return 100
+	}
+	else if (batteryLevel < 0) {
+		return 0
+	}
+	else {
+		return batteryLevel
+	}	
 }
 
 def on() {
@@ -164,8 +185,7 @@ def poll() {
 def refresh() {
 	logDebug "Refreshing"	
 	return zigbee.onOffRefresh() + 
-		zigbee.onOffConfig() + 
-		configureBatteryReporting()		
+		getBatteryReport()				
 }
 
 def configure() {
@@ -173,12 +193,17 @@ def configure() {
 	state.configured = true
 	return zigbee.onOffConfig() + 
 		configureBatteryReporting() +
-		zigbee.onOffRefresh() 
+		zigbee.onOffRefresh() +
+		getBatteryReport()
 }
 
 private configureBatteryReporting() {
 	def interval = 14400 // 4 Hours	
 	zigbee.configureReporting(0x0001, 0x0020, 0x20, 30, interval, 0x01)
+}
+
+private getBatteryReport() {
+	zigbee.readAttribute(0x0001, 0x0020)
 }
 
 private logDebug(msg) {
