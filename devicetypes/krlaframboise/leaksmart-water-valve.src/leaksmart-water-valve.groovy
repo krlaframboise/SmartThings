@@ -1,5 +1,5 @@
 /**
- *  LeakSmart Water Valve v 1.1.1
+ *  LeakSmart Water Valve v 1.1.2
  *  
  *  Capabilities:
  *      Configuration, Refresh, Switch, Valve, Polling
@@ -12,9 +12,13 @@
  *
  *  Changelog:
  *
- *    1.1.1 (05/22/2016)
+ *    1.1.2 (05/22/2016)
  *      - Added battery capability and tile
  *      - Added debug logging for battery map.
+ *      - Changed poll method  read instead of configure.
+ *      - Changed minimum batterr reporting interval to 10 minutes
+ *        to avoid duplicates.  
+ *      - Changed upper battery voltage to 6.0.
  *
  *    1.0.3 (05/22/2016)
  *      - Initial Release
@@ -138,7 +142,7 @@ def parse(String description) {
 }
 
 private getBatteryLevel(rawValue) {
-	def maxVolts = 6.1
+	def maxVolts = 6.0
 	def minVolts = 5.8
 	def volts = (rawValue / 10)
 	def batteryPercentages = (volts - minVolts) / (maxVolts - minVolts)	
@@ -173,11 +177,12 @@ def close() {
 }
 
 def poll() {
-	def minimumPollMinutes = 180 // 3 Hours
+	def minimumPollMinutes = (3 * 60) // 3 Hours
 	def lastPoll = device.currentValue("lastPoll")
 	if ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000)) {
 		logDebug "Poll: Refreshing because lastPoll was more than ${minimumPollMinutes} minutes ago."
-		return refresh()
+		return getSwitchReport() + 
+			getBatteryReport()
 	}
 	else {
 		logDebug "Poll: Skipped because lastPoll was within ${minimumPollMinutes} minutes"
@@ -187,7 +192,9 @@ def poll() {
 def refresh() {
 	logDebug "Refreshing"	
 	return zigbee.onOffRefresh() + 
-		getBatteryReport()				
+		getBatteryReport() +
+		zigbee.onOffConfig() + 
+		configureBatteryReporting()
 }
 
 def configure() {
@@ -200,8 +207,13 @@ def configure() {
 }
 
 private configureBatteryReporting() {
-	def interval = 14400 // 4 Hours	
-	zigbee.configureReporting(0x0001, 0x0020, 0x20, 30, interval, 0x01)
+	def minSeconds = (10 * 60) // 10 Minutes
+	def maxSeconds = (4 * 60 * 60) // 4 Hours	
+	zigbee.configureReporting(0x0001, 0x0020, 0x20, minSeconds, maxSeconds, 0x01)
+}
+
+private getSwitchReport() {
+	return readAttribute(0x0006, 0x0000)
 }
 
 private getBatteryReport() {
