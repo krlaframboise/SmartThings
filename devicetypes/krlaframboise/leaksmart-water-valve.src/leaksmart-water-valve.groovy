@@ -1,5 +1,5 @@
 /**
- *  LeakSmart Water Valve v 1.1.2
+ *  LeakSmart Water Valve v 1.1.3
  *  
  *  Capabilities:
  *      Configuration, Refresh, Switch, Valve, Polling
@@ -11,6 +11,9 @@
  *      
  *
  *  Changelog:
+ *
+ *    1.1.3 (05/23/2016)
+ *      - Changed lower battery limit to 5.5
  *
  *    1.1.2 (05/22/2016)
  *      - Added battery capability and tile
@@ -143,7 +146,7 @@ def parse(String description) {
 
 private getBatteryLevel(rawValue) {
 	def maxVolts = 6.0
-	def minVolts = 5.8
+	def minVolts = 5.5
 	def volts = (rawValue / 10)
 	def batteryPercentages = (volts - minVolts) / (maxVolts - minVolts)	
 	def batteryLevel = (int) batteryPercentages * 100
@@ -181,8 +184,7 @@ def poll() {
 	def lastPoll = device.currentValue("lastPoll")
 	if ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000)) {
 		logDebug "Poll: Refreshing because lastPoll was more than ${minimumPollMinutes} minutes ago."
-		return getSwitchReport() + 
-			getBatteryReport()
+		return refresh()
 	}
 	else {
 		logDebug "Poll: Skipped because lastPoll was within ${minimumPollMinutes} minutes"
