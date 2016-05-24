@@ -1,10 +1,13 @@
 /**
- *  Polling Cree Bulb 1.2.1
+ *  Polling Cree Bulb 1.2.2
  *
  *  Author: 
  *     Kevin LaFramboise (krlaframboise)
  *
  *	Changelog: 
+ *
+ *	1.2.2 (05/23/2016)
+ *    - Fixed bug with the switch level event not being reported.
  *
  *	1.2.1 (05/21/2016)
  *    - Made the poll command only refresh if it thinks
@@ -58,13 +61,13 @@ metadata {
 				backgroundColor: "#ffffff", 
 				nextState:"turningOn"
  			state "turningOn", 
-				label:'${name}', 
+				label:'Turning On', 
 				action: "switch.off", 
 				icon:"st.switches.light.on", 
 				backgroundColor:"#79b821", 
 				nextState:"turningOff"
       state "turningOff", 
-				label:'${name}', 
+				label:'Turning Off', 
 				action: "switch.on", 
 				icon:"st.switches.light.off", 
 				backgroundColor:"#ffffff", 
@@ -114,16 +117,21 @@ def parse(String description) {
 	if (evt) {
 		if (evt.name == "switch") {
 			logEvent("Switch turned ${evt.value}",evt)
+			result << createEvent(evt)
 		}
 		else if (evt.name == "level") {
 			logEvent("Switch Level changed to ${evt.value}", evt)
+			result << createEvent(evt)
 		}
-		result << createEvent(evt)
+		else {
+			logDebug "Unknown Event: $evt"
+		}
 	}
 	else {
-		def map = zigbee.parseDescriptionAsMap(description)
+		def map = zigbee.parseDescriptionAsMap(description)		
 		if (map) {
-			result += handleUnknownDescriptionMap(map)
+			logDebug "Unknown Command: $map"
+			//result += handleUnknownDescriptionMap(map)
 		}
 		else { 
 			logDebug "Unknown Command: $description"
@@ -133,21 +141,21 @@ def parse(String description) {
 	return result
 }
 
-private handleUnknownDescriptionMap(map) {
-	def result = []
-	if ("${map.command}" == "0A") {	
+// private handleUnknownDescriptionMap(map) {
+	// def result = []
+	// if ("${map.command}" == "0A") {	
 	
-		if (map.clusterInt == 6) {
-			logDebug "Switch Reported"
-			result += response(zigbee.onOffRefresh())
-		}
-		else if (map.clusterInt == 8) {
-			logDebug "Switch Level Reported"
-			result += response(zigbee.levelRefresh())
-		}
-	}
-	return result
-}
+		// if (map.clusterInt == 6) {
+			// logDebug "Switch Reported\n$map"
+			// result += response(zigbee.onOffRefresh())
+		// }
+		// else if (map.clusterInt == 8) {
+			// logDebug "Switch Level Reported\n$map"
+			// result += response(zigbee.levelRefresh())
+		// }
+	// }
+	// return result
+// }
 
 def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 1000)) {
@@ -182,7 +190,8 @@ def off() {
 def setLevel(value) {
 	value = validateLevel(value)
 	logDebug "Changing Switch Level to $value"	
-	zigbee.setLevel(value, getDimRate())
+	return zigbee.setLevel(value, getDimRate()) +
+		zigbee.readAttribute(0x0008, 0x0000)
 }
 
 private Integer validateLevel(value) {
@@ -243,6 +252,9 @@ def configure() {
 private logEvent(msg, evt) {
 	if (validateBool(settings.infoLoggingEnabled, true) && device.currentValue(evt.name) != evt.value) {
 		log.info "${device.displayName}: $msg"
+	}
+	else {
+		logDebug msg
 	}
 }
 
