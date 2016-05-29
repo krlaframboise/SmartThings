@@ -1,7 +1,10 @@
 /**
- *  Polling GE Link Bulb v1.0.2
+ *  Polling GE Link Bulb v1.0.3
  *
  *  Author: Kevin LaFramboise (krlaframboise)
+ *
+ *  1.0.3 - 05/29/2016
+ *    - Made the poll command only refresh if it thinks
  *
  *  1.0.2 - 05/21/2016
  *    - Made the poll command only refresh if it thinks
@@ -126,12 +129,15 @@ def parse(String description) {
 		def descMap = zigbee.parseDescriptionAsMap(description)
 		logDebug "Unknown Description: $description\n$descMap"
 	}
-	result << createEvent(name: "lastPoll",value: new Date().time, isStateChange: true, displayed: false)
+	
+	if (canPoll()) {
+		result << createEvent(name: "lastPoll",value: new Date().time, isStateChange: true, displayed: false)
+	}
 	return result
 }
 
 def updated() {
-	if (!isDuplicateCommand(state.lastUpdated, 1000)) {
+	if (!isDuplicateCommand(state.lastUpdated, 5000)) {
 		state.lastUpdated = new Date().time // This method is often called twice which occassionally causes the SmartThings mobile app to crash.
 		logDebug "Updating Settings"		
 		if (!state.configured) {
@@ -191,9 +197,7 @@ private getDimRate() {
 }
 
 def poll() {
-	def minimumPollMinutes = 30
-	def lastPoll = device.currentValue("lastPoll")
-	if ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000)) {
+	if (canPoll()) {
 		logDebug "Poll: Refreshing because lastPoll was more than ${minimumPollMinutes} minutes ago."
 		refresh()
 	}
@@ -202,22 +206,31 @@ def poll() {
 	}
 }
 
+private canPoll() {
+	def minimumPollMinutes = 29
+	def lastPoll = device.currentValue("lastPoll")
+	return ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000))
+}
+
+
 def refresh() {
 	logDebug "Refreshing Switch and Switch Level"
-	return zigbee.onOffRefresh() + 
-		zigbee.levelRefresh() + 
-		zigbee.onOffConfig() + 
-		zigbee.levelConfig() + 
-		setOnOffDimRate() // + configureSwitchReporting()
+	// return zigbee.onOffRefresh() + 
+		// zigbee.levelRefresh() + 
+		// zigbee.onOffConfig() + 
+		// zigbee.levelConfig() + 
+		// setOnOffDimRate() 
+	return configureSwitchReporting() + 
+		configureSwitchLevelReporting()
 }
 
 def configure() {
 	logDebug "Configuring Reporting and Bindings."	
 	return zigbee.onOffConfig() + 
 		zigbee.levelConfig() + 
-		setOnOffDimRate() + //configureSwitchReporting() + 
-		zigbee.onOffRefresh() + 
-		zigbee.levelRefresh()
+		setOnOffDimRate() + 
+		configureSwitchReporting() + 
+		configureSwitchLevelReporting()
 }
 
 private setOnOffDimRate() {
@@ -226,10 +239,15 @@ private setOnOffDimRate() {
 	zigbee.writeAttribute(0x0008, 0x0010, 0x21, zigbee.convertToHexString(onOffDimRate, 4))	
 }
 
-// private configureSwitchReporting() {
-	// def interval = 1800 // 30 Minutes
-	// zigbee.configureReporting(0x0006, 0x0000, 0x10, 1, interval, null)
-// }
+private configureSwitchReporting() {
+	def interval = (2 * 60 * 60) // 2 Hours
+	zigbee.configureReporting(0x0006, 0x0000, 0x10, 1, interval, null)
+}
+
+private configureSwitchLevelReporting() {
+	def interval = (2 * 60 * 60) // 2 Hours
+	zigbee.configureReporting(0x0008, 0x0000, 0x20, 1, interval, 0x01)
+}
 
 private logEvent(msg, evt) {
 	if (validateBool(settings.infoLoggingEnabled, true) && device.currentValue(evt.name) != evt.value) {
