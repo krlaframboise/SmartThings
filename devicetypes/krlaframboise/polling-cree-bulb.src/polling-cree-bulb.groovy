@@ -1,17 +1,14 @@
 /**
- *  Polling Cree Bulb 1.2.2
+ *  Polling Cree Bulb 1.3
  *
  *  Author: 
  *     Kevin LaFramboise (krlaframboise)
  *
  *	Changelog: 
  *
- *	1.2.2 (05/23/2016)
- *    - Fixed bug with the switch level event not being reported.
- *
- *	1.2.1 (05/21/2016)
- *    - Made the poll command only refresh if it thinks
- *      internal polling is no longer running.
+ *	1.3 (05/30/2016)
+ *    - Added setting that allows you to changed
+ *      reporting frequency.
  *
  *	1.2 (05/20/2016)
  *    - Added preference for dim rate, cleaned up the config
@@ -96,7 +93,12 @@ metadata {
 			options: ["Instant", "Normal", "Slow", "Very Slow"],
 			defaultValue: "Normal", 
 			required: false, 
-			displayDuringSetup: true		
+			displayDuringSetup: true
+		input "selfPollingInterval", "number",
+			title: "Self Polling Interval (Minutes)",
+			defaultValue: 120,
+			required: false,
+			displayDuringSetup: false			
 		input "infoLoggingEnabled", "bool", 
 			title: "Enable info logging?", 
 			defaultValue: true,
@@ -137,7 +139,9 @@ def parse(String description) {
 			logDebug "Unknown Command: $description"
 		}
 	}
-	result << createEvent(name: "lastPoll", value: new Date().time, displayed: false, isStateChange: true)
+	if (canPoll()) {
+		result << createEvent(name: "lastPoll", value: new Date().time, displayed: false, isStateChange: true)
+	}
 	return result
 }
 
@@ -163,11 +167,13 @@ def updated() {
 		logDebug "Updating Settings"		
 		if (!state.configured) {
 			state.currentDimRate = settings.dimRate
+			state.selfPollingInterval = settings.selfPollingInterval
 			state.configured = true
 			return response(configure())
 		}
-		else if (state.currentDimRate != settings.dimRate) {
+		else if (state.currentDimRate != settings.dimRate || state.selfPollingInterval != settings.selfPollingInterval) {
 			state.currentDimRate = settings.dimRate
+			state.selfPollingInterval = settings.selfPollingInterval
 			return response(refresh())
 		}			
 	}
@@ -217,9 +223,7 @@ private getDimRate() {
 }
 
 def poll() {
-	def minimumPollMinutes = 30
-	def lastPoll = device.currentValue("lastPoll")
-	if ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000)) {
+	if (canPoll()) {
 		logDebug "Poll: Refreshing because lastPoll was more than ${minimumPollMinutes} minutes ago."
 		refresh()
 	}
@@ -228,26 +232,35 @@ def poll() {
 	}
 }
 
+private canPoll() {
+	def minimumPollMinutes = 29
+	def lastPoll = device.currentValue("lastPoll")
+	return ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000))
+}
+
 def refresh() {
 	logDebug "Refreshing Switch and Switch Level"
-	return zigbee.onOffRefresh() + 
-		zigbee.levelRefresh() + 
-		zigbee.onOffConfig() + 
-		zigbee.levelConfig() // + configureSwitchReporting()
+	return configureSwitchReporting() + 
+		configureSwitchLevelReporting()
 }
 
 def configure() {
 	logDebug "Configuring Reporting and Bindings."	
 	return zigbee.onOffConfig() + 
-		zigbee.levelConfig() + //configureSwitchReporting() + 
-		zigbee.onOffRefresh() + 
-		zigbee.levelRefresh()
+		zigbee.levelConfig() + 
+		configureSwitchReporting() + 
+		configureSwitchLevelReporting()
 }
 
-// private configureSwitchReporting() {
-	// def interval = 1800 // 30 Minutes
-	// zigbee.configureReporting(0x0006, 0x0000, 0x10, 1, interval, null)
-// }
+private configureSwitchReporting() {
+	def interval = ((settings.selfPollingInterval ?: 120) * 60)
+	zigbee.configureReporting(0x0006, 0x0000, 0x10, 0, interval, null)
+}
+
+private configureSwitchLevelReporting() {
+	def interval = ((settings.selfPollingInterval ?: 120) * 60)
+	zigbee.configureReporting(0x0008, 0x0000, 0x20, 0, interval, 0x01)
+}
 
 private logEvent(msg, evt) {
 	if (validateBool(settings.infoLoggingEnabled, true) && device.currentValue(evt.name) != evt.value) {

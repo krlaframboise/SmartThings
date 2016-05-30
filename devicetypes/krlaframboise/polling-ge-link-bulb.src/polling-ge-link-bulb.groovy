@@ -1,18 +1,10 @@
 /**
- *  Polling GE Link Bulb v1.0.3
+ *  Polling GE Link Bulb v1.1
  *
  *  Author: Kevin LaFramboise (krlaframboise)
  *
- *  1.0.3 - 05/29/2016
- *    - Made the poll command only refresh if it thinks
- *
- *  1.0.2 - 05/21/2016
- *    - Made the poll command only refresh if it thinks
- *      internal polling is no longer running.
- *
- *  1.0.1 - 05/20/2016
- *    - Turning off the custom reporting because it appears
- *      to be doing it on its own.
+ *  1.1 - 05/30/2016
+ *    - Improved self polling and made configurable
  *
  *  1.0 - 05/20/2016
  *    - Initial Release
@@ -98,6 +90,11 @@ metadata {
 			defaultValue: "Normal", 
 			required: false, 
 			displayDuringSetup: true		
+		input "selfPollingInterval", "number",
+			title: "Self Polling Interval (Minutes)",
+			defaultValue: 120,
+			required: false,
+			displayDuringSetup: false						
 		input "infoLoggingEnabled", "bool", 
 			title: "Enable info logging?", 
 			defaultValue: true,
@@ -116,7 +113,7 @@ def parse(String description) {
 	def result = []
 	def evt =  zigbee.getEvent(description)
 	if (evt) {
-		if (description?.contains("on/off")) {			
+		if (description?.contains("on/off") || (evt.name == "switch" & evt.value != device.currentValue("switch"))) {			
 			logEvent("Switch turned ${evt.value}", evt)
 			result << createEvent(evt)
 		}
@@ -143,12 +140,14 @@ def updated() {
 		if (!state.configured) {
 			state.currentDimRate = settings.dimRate
 			state.currentDimOnOff = settings.dimOnOff
+			state.selfPollingInterval = settings.selfPollingInterval			
 			state.configured = true
 			return response(configure())
 		}
-		else if (state.currentDimOnOff != settings.dimOnOff || state.currentDimRate != settings.dimRate) {
+		else if (state.currentDimOnOff != settings.dimOnOff || state.currentDimRate != settings.dimRate || state.selfPollingInterval != settings.selfPollingInterval) {
 			state.currentDimRate = settings.dimRate
 			state.currentDimOnOff = settings.dimOnOff
+			state.selfPollingInterval = settings.selfPollingInterval
 			return response(refresh())
 		}			
 	}
@@ -214,14 +213,12 @@ private canPoll() {
 
 
 def refresh() {
-	logDebug "Refreshing Switch and Switch Level"
-	// return zigbee.onOffRefresh() + 
-		// zigbee.levelRefresh() + 
-		// zigbee.onOffConfig() + 
-		// zigbee.levelConfig() + 
-		// setOnOffDimRate() 
+	logDebug "Refreshing Switch and Switch Level"		
 	return configureSwitchReporting() + 
-		configureSwitchLevelReporting()
+		configureSwitchLevelReporting() +
+		zigbee.onOffConfig() + 
+		zigbee.levelConfig() + 
+		setOnOffDimRate() 
 }
 
 def configure() {
@@ -240,12 +237,12 @@ private setOnOffDimRate() {
 }
 
 private configureSwitchReporting() {
-	def interval = (2 * 60 * 60) // 2 Hours
-	zigbee.configureReporting(0x0006, 0x0000, 0x10, 1, interval, null)
+	def interval = ((settings.selfPollingInterval ?: 120) * 60)
+	zigbee.configureReporting(0x0006, 0x0000, 0x10, 0, interval, null)
 }
 
 private configureSwitchLevelReporting() {
-	def interval = (2 * 60 * 60) // 2 Hours
+	def interval = ((settings.selfPollingInterval ?: 120) * 60)
 	zigbee.configureReporting(0x0008, 0x0000, 0x20, 1, interval, 0x01)
 }
 
