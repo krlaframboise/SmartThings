@@ -323,7 +323,7 @@ def pollingPage() {
 	dynamicPage(name:"pollingPage") {
 		section ("Polling Settings") {
 			paragraph "If you enable the polling feature, the devices that support the Polling Capability will be polled at a regular interval."
-			paragraph "Polling your devices too frequently can cause them to stop respondingig or miss other commands that get sent to it."
+			paragraph "Polling your devices too frequently can cause them to stop responding or miss other commands that get sent to it."
 			input "pollingEnabled", "bool",
 				title: "Polling Enabled",
 				defaultValue: false,
