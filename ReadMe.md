@@ -151,6 +151,7 @@ Supports the Tamper Capability.</li>
 <li>DTH for the Cree Connect Bulb that fixes the problem with the official Cree Bulb DTH where it doesn't remember the last level it was set to when it's turned on.<br /></li>
 <li>It also reports at a regular interval so it can be monitored to ensure it doesn't drop offline.<br /></li>
 <li>Allows you to control the dim rate.</li>
+<li>I find this version to work a lot better than the default Cree Bulb DTH and since the default version doesn't run locally, there's really no downside to using my version.</li>
 </ul>
 
 <hr />
@@ -158,6 +159,7 @@ Supports the Tamper Capability.</li>
 <h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/polling-ge-link-bulb.src">Polling GE Link Bulb</a></h3>
 <ul>
 <li>DTH for the GE Link Bulb that reports at regular intervals so you can monitor it to ensure that it hasn't dropped offline.</li>
+<li>The default GE Link Bull DTH responds to poll requests and runs locally so instead of using this one, you might be better off sticking with the default and using a SmartApp like pollster or my Simple Device Viewer to poll it a couple of times a day to make sure it's still online.</li> 
 </ul>
 
 <hr />
