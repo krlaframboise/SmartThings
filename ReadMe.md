@@ -167,7 +167,7 @@ Supports the Tamper Capability.</li>
 <h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/thingshield-timer.src">ThingShield Timer</a></h3>
 
 <ul>
-<li>Allows you to use an external timing source, like the Arduino Uno, with the Arduino ThingShield to push a momentar switch at regular intervals.<br /></li>
-<li>It can also be used for scheduling in SmartApps so that you don't have to rely on SmartThings Scheduler.<br /></li>
+<li>Allows you to use an external timing source, like the Arduino Uno, with the Arduino ThingShield to push a momentary switch at regular intervals.<br /> </li>
+<li>It can also be used for scheduling in SmartApps so that you don't have to rely on SmartThings Scheduler.  You basically tell it to push a certain button number in a certain amount of time and then subscribe to its button pushed event and in the event handler method, you check to see if the button number pushed was the one you scheduled.<br /> </li>
 <li>I created this because of all the problems SmartThings had with their scheduler, but the new version of their scheduler has been stable for a while so it's probably no longer needed.</li>
 </ul>
