@@ -121,7 +121,7 @@ I don't think SmartThings developers should charge for the things they create, b
 <ul>
 <li>Adds the buttons "Arrive" and "Depart" to the normal "Mobile Presence" DTH so you can force the presence state.</li>
 <li>The default DTH doesn't appear to run locally so I'm unaware of any downsides to using this one.</li>
-<li>Those buttons can really come in handy if your locked out of your house or your alarm won't disarm because your phone gets stuck on "not present".</li>
+<li>Those buttons can really come in handy if you're locked out of your house or your alarm won't disarm because your phone gets stuck on "not present".</li>
 </ul>
 
 
