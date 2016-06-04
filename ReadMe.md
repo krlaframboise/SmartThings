@@ -115,6 +115,16 @@ I don't think SmartThings developers should charge for the things they create, b
 <li><a href="https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 </ul>
 
+
+<hr />
+<h3><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/forcible-mobile-presence.src/forcible-mobile-presence.groovy">Forcible Mobile Presence</a></h3>
+<ul>
+<li>Adds the buttons "Arrive" and "Depart" to the normal "Mobile Presence" DTH so you can force the presence state.</li>
+<li>The default DTH doesn't appear to run locally so I'm unaware of any downsides to using this one.</li>
+<li>Those buttons can really come in handy if your locked out of your house or your alarm won't disarm because your phone gets stuck on "not present".</li>
+</ul>
+
+
 <hr />
 <h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/gocontrol-contact-sensor.src">GoControl/Linear Door/Window Sensor</a></h3>
 
@@ -137,7 +147,7 @@ Supports the Tamper Capability.</li>
 
 <hr />
 
-<h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/leaksmart-water-valve.src">LeakSmart Water Valve</a></h3>
+<h3><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/leaksmart-water-valve.src/leaksmart-water-valve.groovy">LeakSmart Water Valve</a></h3>
 
 <ul>
 <li>DTH foor the LeakSmart Water Valve and it polls regularly so you can use a SmartApp like the Simple Device Viewer to monitor it and receive notifications if it stops reporting.<br /></li>
