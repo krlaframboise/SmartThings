@@ -53,15 +53,6 @@ I don't think SmartThings developers should charge for the things they create, b
 
 <h2>Device Type Handlers</h2>
 
-<h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/alarm-switch.src">Alarm Switch</a></h3>
-<ul>
-<li>Allows you to use any device that supports the Switch Capability as an alarm device.<br /></li>
-<li>You can set it to automatically turn off after a specified amount of time.<br /></li>
-<li>You can choose which alarm event should be raised when the alarm is activiated (strobe, siren, strobe & siren).</li>
-</ul>
-
-<hr />
-
 <h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/aeotec-doorbell.src">Aeon Labs Aeotec Doorbell</a></h3>
 
 <ul>
@@ -90,6 +81,15 @@ I don't think SmartThings developers should charge for the things they create, b
 <ul>
 <li>DTH for the Aeon Labs Siren that provides features like beeping, auto off, delayed alarm, beep scheduling for things like beeping during entry and exit.<br /></li>
 <li><a href="https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
+</ul>
+
+<hr />
+
+<h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/alarm-switch.src">Alarm Switch</a></h3>
+<ul>
+<li>Allows you to use any device that supports the Switch Capability as an alarm device.<br /></li>
+<li>You can set it to automatically turn off after a specified amount of time.<br /></li>
+<li>You can choose which alarm event should be raised when the alarm is activiated (strobe, siren, strobe & siren).</li>
 </ul>
 
 <hr />
