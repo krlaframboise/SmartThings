@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.2
+ *  GoControl Multifunction Siren v 1.2.1
  *  
  *  Capabilities:
  *      Alarm, Tone, Switch, Battery, Polling
@@ -13,7 +13,14 @@
  *
  *  Changelog:
  *
- *    1.2 (06/12/2016)
+ *    1.2.1 (06/12/2016)
+ *      - Improved beep performance. 
+ *      - Fixed UI issue caused by latest android update.
+ *        (unable to completely fix, but the buttons no longer
+ *         completely disapear)
+ *      - Fixed icons and colors in activity log.
+ *
+ *    1.2 (06/11/2016)
  *      - *** BREAKING CHANGES ***
  *            - Removed strobe instead of beep option from settings.
  *            - Removed always use both/on option from settings.
@@ -114,53 +121,49 @@ metadata {
 	}
 
 	tiles(scale: 2) {
-		multiAttributeTile(name:"status", type: "generic", width: 6, height: 4, canChangeIcon: true){
+		multiAttributeTile(name:"status", type: "generic", width: 6, height: 3, canChangeIcon: true){
 			tileAttribute ("device.status", key: "PRIMARY_CONTROL") {
-				attributeState "off", label:'Off', action: "alarm.off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
-				attributeState "turningOff", label:'Turning Off', action: "alarm.off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
-				attributeState "alarmPending", label:'Alarm Pending!', action: "alarm.off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
-				attributeState "siren", label:'Siren On!', action: "alarm.off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
-				attributeState "strobe", label:'Strobe On!', action: "alarm.off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
-				attributeState "both", label:'Siren/Strobe On!', action: "alarm.off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
-				attributeState "beep", label:'Beeping!', action: "alarm.off", nextState: "turningOff", icon:"st.Entertainment.entertainment2", backgroundColor:"#99FF99"							
+				attributeState "off", label:'Off', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
+				attributeState "turningOff", label:'Turning Off', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
+				attributeState "alarmPending", label:'Alarm Pending!', action: "off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "siren", label:'Siren On!', action: "off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "strobe", label:'Strobe On!', action: "off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "both", label:'Siren/Strobe On!', action: "off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "beep", label:'Beeping!', action: "off", nextState: "turningOff", icon:"st.Entertainment.entertainment2", backgroundColor:"#99ff99"							
 			}
 		}
-		valueTile("off", "device.status", label: '', width: 2, height: 2) {
-			state "off", label:'Off', action: "alarm.off", icon:"", backgroundColor: "#ffffff"
-			state "turningOff", label:'Turning Off', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#ffffff"			
-			state "siren", label:'Turn Off', action: "alarm.off", nextState: "turningOff", icon:"", backgroundColor: "#99c2ff"
-			state "strobe", label:'Turn Off', action: "alarm.off", nextState: "turningOff", icon:"", backgroundColor: "#99c2ff"
-			state "both", label:'Turn Off', action: "alarm.off", nextState: "turningOff", icon:"", backgroundColor: "#99c2ff"
-			state "beep", label:'Turn Off', action: "alarm.off", nextState: "turningOff", icon:"", backgroundColor: "#99c2ff"
-			state "alarmPending", label:'Cancel Alarm', action: "alarm.off", nextState: "turningOff", icon:"", backgroundColor: "#99c2ff"
+		standardTile("turnOff", "device.alarm", width: 2, height: 2) {
+			state "default", label:'Off', action: "off", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm", defaultState: true
+			state "off", label:'Off', action: "off", backgroundColor: "#ffffff", icon:"st.alarm.alarm.alarm"
+			state "turningOff", label:'Wait', action: "off", nextState: "off", backgroundColor: "#ffffff", icon:"st.alarm.alarm.alarm"
+			state "alarmPending", label:'Cancel', action: "off", nextState: "turningOff", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm"
 		}	
-		valueTile("battery", "device.battery", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-			state "battery", label:'Battery ${currentValue}%', unit:""
+		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2) {
+			state "battery", label:'Battery ${currentValue}%', unit:"", defaultState: true
 		}		
-		valueTile("testBeep", "device.status", label: 'beep', width: 2, height: 2) {
-			state "default", label:'Test Beep', action:"tone.beep", nextState: "turningOn", icon:"", backgroundColor: "#99FF99"
-			state "turningOn", label:'Turning On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"
-			state "beep", label:'Beeping', action: "alarm.off", nextState: "alarm.off", icon:"", backgroundColor: "#99c2ff"
-		}	
-				
-		valueTile("testSiren", "device.status", label: 'Siren', width: 2, height: 2) {
-			state "off", label:'Test Siren', action: "alarm.siren", nextState: "turningOn", icon:"", backgroundColor: "#ff9999"
-			state "turningOn", label:'Turning On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"
-			state "siren", label:'Siren On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"		
+		standardTile("testBeep", "device.tone", width: 2, height: 2) {
+			state "off", label:' Beep ', action:"beep", icon:"st.Entertainment.entertainment2", backgroundColor: "#99ff99", defaultState: true
+			state "beep", label:'Beeping', action: "off", nextState: "turningOnOff", icon:"st.Entertainment.entertainment2", backgroundColor: "#99c2ff"
+			state "turningOnOff", label:' Wait ', action: "off", nextState: "off", icon:"st.Entertainment.entertainment2", backgroundColor: "#99c2ff"
+		}					
+		standardTile("testSiren", "device.alarm", width: 2, height: 2) {
+			state "off", label:'Siren ', action: "alarm.siren", nextState: "turningOnOff", backgroundColor: "#ff9999", icon:"st.alarm.alarm.alarm", defaultState: true
+			state "turningOnOff", label:' Wait ', action: "alarm.off", nextState: "off", icon:"st.alarm.alarm.alarm", backgroundColor: "#99c2ff"
+			state "siren", label:' Siren', action: "alarm.off", nextState: "turningOnOff", icon:"st.alarm.alarm.alarm", backgroundColor: "#99c2ff"		
 		}
-		valueTile("testStrobe", "device.status", label: 'Strobe', width: 2, height: 2) {
-			state "default", label:'Test Strobe', action: "alarm.strobe", nextState: "turningOn", icon:"", backgroundColor: "#ff9999"
-			state "turningOn", label:'Turning On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"
-			state "strobe", label:'Strobe On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"
+		standardTile("testStrobe", "device.alarm", width: 2, height: 2) {
+			state "off", label:'Strobe', action: "alarm.strobe", nextState: "turningOnOff", backgroundColor: "#ff9999", icon:"st.alarm.alarm.alarm", defaultState: true
+			state "turningOnOff", label:' Wait ', action: "alarm.off", nextState: "off", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm"
+			state "strobe", label:'Strobe', action: "alarm.off", nextState: "turningOnOff", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm"
 		}
-		valueTile("testBoth", "device.status", label: 'Both', width: 2, height: 2) {
-			state "default", label:'Test Both', action: "alarm.both", nextState: "turningOn", icon:"", backgroundColor: "#ff9999"
-			state "turningOn", label:'Turning On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"
-			state "both", label:'Both On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"						
+		standardTile("testBoth", "device.alarm", width: 2, height: 2) {
+			state "off", label:' Both ', action: "alarm.both", nextState: "turningOnOff", backgroundColor: "#ff9999", icon:"st.alarm.alarm.alarm", defaultState: true
+			state "turningOnOff", label:' Wait ', action: "alarm.off", nextState: "off", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm"
+			state "both", label:' Both ', action: "alarm.off", nextState: "turningOnOff", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm"
 		}		
 				
 		main "status"
-		details(["status", "testSiren", "testStrobe", "testBoth", "off", "testBeep", "battery"])
+		details(["status", "testSiren", "testStrobe", "testBoth", "turnOff", "testBeep", "battery"])
 	}
 }
 
@@ -235,18 +238,18 @@ def customBeep(beepLengthMS) {
 	beepLengthMS = validateRange(beepLengthMS, 0, 0, Integer.MAX_VALUE, "Beep Length")
 	
 	logDebug "Executing ${beepLengthMS} Millisecond Beep"
+
+	state.activeAlarm = null
+	sendEvent(getStatusEventMap("beep"))
 	
 	def result = []	
 	result += alarmTypeSetCmds(getSirenOnlyAlarmType())
-	result << "delay 200"
 	result << switchOnSetCmd()
 	
 	if (beepLengthMS > 0) {
 		result << "delay $beepLengthMS"
 	}
 	result += switchOffSetCmds()
-		
-	sendEvent(getStatusEventMap("beep"))
 	
 	return result	
 }
@@ -408,7 +411,7 @@ private alarmTypeSetCmds(alarmType) {
 		configSetCmd(0, 1, alarmType)
 	]
 
-	if (alarmType == 1) {
+	if (alarmType == 1  && state.activeAlarm) {
 		// Prevents strobe light from staying on when setting to Siren Only.
 		result << switchBinaryGetCmd()
 	}	
@@ -439,7 +442,7 @@ private switchOffSetCmds() {
 	return delayBetween([
 		zwave.basicV1.basicSet(value: 0x00).format(),
 		switchGetCmd()
-	], 20)
+	], 50)
 }
 
 private switchGetCmd() {	
