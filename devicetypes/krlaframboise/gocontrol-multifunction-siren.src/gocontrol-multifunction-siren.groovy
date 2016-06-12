@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.1
+ *  GoControl Multifunction Siren v 1.2
  *  
  *  Capabilities:
  *      Alarm, Tone, Switch, Battery, Polling
@@ -12,6 +12,20 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.2 (06/12/2016)
+ *      - *** BREAKING CHANGES ***
+ *            - Removed strobe instead of beep option from settings.
+ *            - Removed always use both/on option from settings.
+ *            - Removed beep(length) command, but it still works 
+ *              in the speakText or playText fields.
+ *      - Added settings for default alarm delay time and
+ *        default strobe during delay.
+ *      - Added commands customAlarm, customSiren, customBoth
+ *      - Made it check the current alarmtype and only change it
+ *        as needed which prevents it from always flashing before
+ *        turning on.
+ *      - Misc bug fixes.
  *
  *    1.1 (05/21/2016)
  *      - Improved polling functionality.
@@ -44,6 +58,11 @@ metadata {
 		
 		attribute "lastPoll", "number"
 
+		command "customBeep" // beepLengthMS
+		command "customBoth" // delaySeconds, autoOffSeconds, useStrobe
+		command "customSiren" // delaySeconds, autoOffSeconds, useStrobe
+		command "customStrobe" // delaySeconds, autoOffSeconds
+		
 		// Music and Sonos Related Commands
 		command "playSoundAndTrack"
 		command "playTrackAndRestore"
@@ -71,19 +90,19 @@ metadata {
 			defaultValue: 0, 
 			displayDuringSetup: true, 
 			required: false
-		input "strobeBeep", "bool", 
-			title: "Strobe instead of Beep?\n(Enabling this will cause the light to flash when the beep command is executed instead of making a sound.)", 
-			defaultValue: false, 
-			displayDuringSetup: true, 
-			required: false
 		input "bothAlarmTypeOverride", "enum",
 			title: "What should the 'both' and 'on' commands turn on?\n(Some SmartApps like Smart Home Monitor use the both command so you can't use just the siren or the strobe.  This setting allows you to override the default action of those commands.)",
 			defaultValue: "Siren and Strobe",
 			displayDuringSetup: true,
 			required: false,
 			options: ["Siren and Strobe", "Siren Only", "Strobe Only"]
-		input "staticAlarmType", "bool", 
-			title: "Always use both/on setting?\n(When enabled, the type of alarm chosen for both/on will override all commands.  This usually needs to be enabled in order for the beep feature to work correctly, but must be disabled if the strobe beep setting is enabled.)", 
+		input "alarmDelaySeconds", "number", 
+			title: "Alarm Delay in Seconds", 
+			defaultValue: 0, 
+			displayDuringSetup: true, 
+			required: false
+		input "alarmDelayStrobe", "bool", 
+			title: "Strobe during alarm delay?", 
 			defaultValue: false, 
 			displayDuringSetup: true, 
 			required: false
@@ -95,24 +114,29 @@ metadata {
 	}
 
 	tiles(scale: 2) {
-		multiAttributeTile(name:"status", type: "generic", width: 6, height: 3, canChangeIcon: true){
+		multiAttributeTile(name:"status", type: "generic", width: 6, height: 4, canChangeIcon: true){
 			tileAttribute ("device.status", key: "PRIMARY_CONTROL") {
 				attributeState "off", label:'Off', action: "alarm.off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
-				attributeState "turningOff", label:'Turing Off', action: "alarm.off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
+				attributeState "turningOff", label:'Turning Off', action: "alarm.off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
+				attributeState "alarmPending", label:'Alarm Pending!', action: "alarm.off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
 				attributeState "siren", label:'Siren On!', action: "alarm.off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
 				attributeState "strobe", label:'Strobe On!', action: "alarm.off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
 				attributeState "both", label:'Siren/Strobe On!', action: "alarm.off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
 				attributeState "beep", label:'Beeping!', action: "alarm.off", nextState: "turningOff", icon:"st.Entertainment.entertainment2", backgroundColor:"#99FF99"							
 			}
 		}
-		valueTile("off", "device.status", label: 'off', width: 2, height: 2) {
+		valueTile("off", "device.status", label: '', width: 2, height: 2) {
 			state "off", label:'Off', action: "alarm.off", icon:"", backgroundColor: "#ffffff"
 			state "turningOff", label:'Turning Off', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#ffffff"			
 			state "siren", label:'Turn Off', action: "alarm.off", nextState: "turningOff", icon:"", backgroundColor: "#99c2ff"
 			state "strobe", label:'Turn Off', action: "alarm.off", nextState: "turningOff", icon:"", backgroundColor: "#99c2ff"
 			state "both", label:'Turn Off', action: "alarm.off", nextState: "turningOff", icon:"", backgroundColor: "#99c2ff"
 			state "beep", label:'Turn Off', action: "alarm.off", nextState: "turningOff", icon:"", backgroundColor: "#99c2ff"
+			state "alarmPending", label:'Cancel Alarm', action: "alarm.off", nextState: "turningOff", icon:"", backgroundColor: "#99c2ff"
 		}	
+		valueTile("battery", "device.battery", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+			state "battery", label:'Battery ${currentValue}%', unit:""
+		}		
 		valueTile("testBeep", "device.status", label: 'beep', width: 2, height: 2) {
 			state "default", label:'Test Beep', action:"tone.beep", nextState: "turningOn", icon:"", backgroundColor: "#99FF99"
 			state "turningOn", label:'Turning On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"
@@ -120,10 +144,9 @@ metadata {
 		}	
 				
 		valueTile("testSiren", "device.status", label: 'Siren', width: 2, height: 2) {
-			state "default", label:'Test Siren', action: "alarm.siren", nextState: "turningOn", icon:"", backgroundColor: "#ff9999"
+			state "off", label:'Test Siren', action: "alarm.siren", nextState: "turningOn", icon:"", backgroundColor: "#ff9999"
 			state "turningOn", label:'Turning On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"
-			state "siren", label:'Siren On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"			
-		
+			state "siren", label:'Siren On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"		
 		}
 		valueTile("testStrobe", "device.status", label: 'Strobe', width: 2, height: 2) {
 			state "default", label:'Test Strobe', action: "alarm.strobe", nextState: "turningOn", icon:"", backgroundColor: "#ff9999"
@@ -135,9 +158,6 @@ metadata {
 			state "turningOn", label:'Turning On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"
 			state "both", label:'Both On', action: "alarm.off", nextState: "off", icon:"", backgroundColor: "#99c2ff"						
 		}		
-		valueTile("battery", "device.battery", label: '', decoration: "flat", width: 2, height: 2) {
-			state "battery", label:'Battery ${currentValue}%', icon:""
-		}		
 				
 		main "status"
 		details(["status", "testSiren", "testStrobe", "testBoth", "off", "testBeep", "battery"])
@@ -148,25 +168,13 @@ metadata {
 def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 2000)) {
 		state.lastUpdated = new Date().time
-		state.staticAlarmType = validateBoolean(settings.staticAlarmType, false)
-		state.strobeBeep = validateBoolean(settings.strobeBeep, false)
 		state.debugOutput = validateBoolean(settings.debugOutput, true)
-		
-		if (state.strobeBeep && state.staticAlarmType) {
-			// Static alarm type other than strobe will cause the strobe beep to actually beep.
-			logDebug "Overriding 'Always use both/on setting?' setting because 'Strobe instead of beep?' setting is enabled."			
-			state.staticAlarmType = false
-		}
-		
+		state.alarmDelaySeconds = validateRange(settings.alarmDelaySeconds, 0, 0, Integer.MAX_VALUE, "alarmDelaySeconds") 
+		state.alarmDelayStrobe = validateBoolean(settings.alarmDelayStrobe, false)
 		logDebug "Updating"
 
 		def cmds = []		
 		cmds << autoOffSetCmd(getAutoOffTimeValue())
-		
-		if (state.staticAlarmType) {
-			cmds += sirenAndStrobeAlarmTypeSetCmds()
-		}
-				
 		cmds << batteryGetCmd()
 		cmds += turnOff()		
 		response(delayBetween(cmds, 20))
@@ -174,26 +182,24 @@ def updated() {
 }
 
 private getAutoOffTimeValue() {
-	def result
-	def autoOffSeconds
+	def result	
 	switch (settings.autoOffTime) {
 		case "60 Seconds":
-			autoOffSeconds = 60
+			state.autoOffSeconds = 60
 			result = 1
 			break
 		case "120 Seconds":
-			autoOffSeconds = 120
+			state.autoOffSeconds = 120
 			result = 2
 			break
 		case "Disable Auto Off":
-			autoOffSeconds = null
+			state.autoOffSeconds = null
 			result = 3
 			break
 		default:
-			autoOffSeconds = 30
+			state.autoOffSeconds = 30
 			result = 0 // 30 Seconds
 	}
-	state.autoOffMS = autoOffSeconds  ? (autoOffSeconds * 1000) : null
 	return result
 }
 
@@ -202,15 +208,369 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 }
 
 def poll() {
+	def result = []
 	def minimumPollMinutes = 30
 	def lastPoll = device.currentValue("lastPoll")
 	if ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000)) {
 		logDebug "Poll: Refreshing because lastPoll was more than ${minimumPollMinutes} minutes ago."
-		return batteryGetCmd()
+		result << batteryGetCmd()
 	}
 	else {
-		logDebug "Poll: Skipped because lastPoll was within ${minimumPollMinutes} minutes"
+		logDebug "Poll: Skipped because lastPoll was within ${minimumPollMinutes} minutes"		
 	}
+	return result
+}
+
+// Turns on siren and strobe
+def on() {
+	both()	
+}
+
+def beep() {
+	customBeep(settings.beepLength)
+}
+
+// Turns on and then off after specified milliseconds.
+def customBeep(beepLengthMS) {	
+	beepLengthMS = validateRange(beepLengthMS, 0, 0, Integer.MAX_VALUE, "Beep Length")
+	
+	logDebug "Executing ${beepLengthMS} Millisecond Beep"
+	
+	def result = []	
+	result += alarmTypeSetCmds(getSirenOnlyAlarmType())
+	result << "delay 200"
+	result << switchOnSetCmd()
+	
+	if (beepLengthMS > 0) {
+		result << "delay $beepLengthMS"
+	}
+	result += switchOffSetCmds()
+		
+	sendEvent(getStatusEventMap("beep"))
+	
+	return result	
+}
+
+// Turns on siren and strobe using default autooff
+def both() {	
+	customBoth(state.alarmDelaySeconds, state.autoOffSeconds, state.alarmDelayStrobe)
+}
+
+// Turns on siren and strobe using specified auto off, delay and whether or not it should strobe during delay.
+def customBoth(delaySeconds, autoOffSeconds, useStrobe) {
+	turnOn(getSirenAndStrobeAlarmType(), delaySeconds, autoOffSeconds, useStrobe)	
+}
+
+// Turns on strobe using default autooff
+def strobe() {
+	customStrobe(state.alarmDelaySeconds, state.autoOffSeconds)	
+}
+
+// Turn on strobe using specified autooff.
+def customStrobe(delaySeconds, autoOffSeconds) {	
+	turnOn(getStrobeOnlyAlarmType(), delaySeconds, autoOffSeconds, false)
+}
+
+// Turns on siren using default auto off
+def siren() {
+	customSiren(state.alarmDelaySeconds, state.autoOffSeconds, state.alarmDelayStrobe)
+}
+
+// Turns on siren using specified auto off, delay and whether or not it should strobe during delay.
+def customSiren(delaySeconds, autoOffSeconds, useStrobe) {
+	turnOn(getSirenOnlyAlarmType(), delaySeconds, autoOffSeconds, useStrobe)	
+}
+
+// Stores a map with the alarm settings and requests the
+// current alarmType from the device.
+def turnOn(alarmType, delaySeconds, autoOffSeconds, useStrobe) {
+	delaySeconds = validateRange(delaySeconds, 0, 0, Integer.MAX_VALUE, "delaySeconds")
+	autoOffSeconds = validateRange(autoOffSeconds, 0, 0, Integer.MAX_VALUE, "autoOffSeconds")
+	useStrobe = validateBoolean(useStrobe, false)
+	
+	state.activeAlarm = [
+		alarmType: alarmType,
+		autoOffSeconds: autoOffSeconds,
+		delaySeconds: delaySeconds,
+		useStrobe: useStrobe
+	]
+	
+	def result = []
+	if (delaySeconds > 0 && !useStrobe) {
+		result += startDelayedAlarm()
+	}
+	// else if (validateBoolean(settings.alwaysSetAlarmType, false)) {
+		// result += turnOn(null)
+	// }
+	else {
+		result << alarmTypeGetCmd()
+	}
+	return result
+}
+
+def turnOn(currentAlarmType) {
+	def result = []
+	def activeAlarm = state.activeAlarm
+	
+	if (activeAlarm) {	
+		if (activeAlarm.delaySeconds > 2 && activeAlarm.useStrobe) {			
+			logDebug "Turning on strobe for ${activeAlarm.delaySeconds} seconds"
+			
+			if (getStrobeOnlyAlarmType() != currentAlarmType) {
+				result += alarmTypeSetCmds(getStrobeOnlyAlarmType())
+			}
+			result << switchOnSetCmd()
+			result += startDelayedAlarm()
+			result << zwave.basicV1.basicSet(value: 0x00).format()
+		}
+		else {
+			state.activeAlarm.alarmPending = false
+			
+			if (activeAlarm.alarmType != currentAlarmType) {
+				result += alarmTypeSetCmds(activeAlarm.alarmType)
+			}
+			
+			result << switchOnSetCmd()
+			result << switchGetCmd()
+
+			if (activeAlarm.autoOffSeconds) {
+				logDebug "Turning on Alarm for ${activeAlarm.autoOffSeconds} seconds."
+				result << "delay ${activeAlarm.autoOffSeconds * 1000}"
+				result += switchOffSetCmds()			
+			}	
+			else {
+				logDebug "Turning on Alarm"
+			}
+		}
+	}
+	return delayBetween(result, 100)
+}
+
+private startDelayedAlarm() {
+	def result = []
+	def delaySeconds = state.activeAlarm.delaySeconds
+	
+	result << "delay ${delaySeconds * 1000}"
+	result << alarmTypeGetCmd()
+	
+	logDebug "Alarm delayed by ${delaySeconds} seconds"
+	sendEvent(getStatusEventMap("alarmPending"))
+	
+	state.activeAlarm.delaySeconds = null
+	state.activeAlarm.useStrobe = null
+	state.activeAlarm.alarmPending = true
+	
+	return result
+}
+
+// Turns off siren and strobe
+def off() {
+	logDebug "Executing off() command"
+	turnOff()
+}
+
+private turnOff() {
+	return switchOffSetCmds()
+}
+
+private getSirenAndStrobeAlarmType() {
+	def overriding = true
+	def result
+	switch (settings.bothAlarmTypeOverride) {
+		case "Siren Only":
+			result = getSirenOnlyAlarmType()
+			break
+		case "Strobe Only":
+			result = getStrobeOnlyAlarmType()
+			break
+		default:
+			overriding = false
+			result = 0
+	}
+	if (overriding) {
+		logDebug "Overriding \"both\" command with \"${settings.bothAlarmTypeOverride}\""
+	}
+	return result
+}
+
+private getSirenOnlyAlarmType() {
+	return 1
+}
+
+private getStrobeOnlyAlarmType() {
+	return 2
+}
+
+private alarmTypeSetCmds(alarmType) {
+	alarmType = validateRange(alarmType, 0, 0, 2, "Alarm Type")
+	
+	def result = [
+		configSetCmd(0, 1, alarmType)
+	]
+
+	if (alarmType == 1) {
+		// Prevents strobe light from staying on when setting to Siren Only.
+		result << switchBinaryGetCmd()
+	}	
+	return result	
+}
+
+private alarmTypeGetCmd() {
+	configGetCmd(0)
+}
+
+private autoOffSetCmd(autoOff) {	
+	configSetCmd(1, 1, validateRange(autoOff, 0, 0, 3, "Auto Off"))
+}
+
+private configSetCmd(paramNumber, paramSize, paramValue) {
+	zwave.configurationV1.configurationSet(parameterNumber: paramNumber, size: paramSize, scaledConfigurationValue: paramValue).format()
+}
+
+private configGetCmd(paramNumber) {
+	zwave.configurationV2.configurationGet(parameterNumber: paramNumber).format()
+}
+
+private switchOnSetCmd() {
+	zwave.basicV1.basicSet(value: 0xFF).format()
+}
+
+private switchOffSetCmds() {
+	return delayBetween([
+		zwave.basicV1.basicSet(value: 0x00).format(),
+		switchGetCmd()
+	], 20)
+}
+
+private switchGetCmd() {	
+	zwave.basicV1.basicGet().format()
+}
+
+private switchBinaryGetCmd() {
+	zwave.switchBinaryV1.switchBinaryGet().format()
+}
+
+private batteryGetCmd() {
+	zwave.batteryV1.batteryGet().format()
+}
+
+// Parses incoming message
+def parse(String description) {	
+	def result = []
+	if (description.startsWith("Err")) {
+		log.error "Unknown Error: $description"		
+	}
+	else if (description != null && description != "updated") {
+		def cmd = zwave.parse(description, [0x20: 1, 0x25: 1, 0x80: 1, 0x70: 2, 0x72: 2, 0x86: 1])		
+		if (cmd) {
+			result += zwaveEvent(cmd)
+		}
+	}
+	result << createEvent(name:"lastPoll", value: new Date().time, displayed: false, isStateChange: true)
+	return result
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
+	//logDebug "BinaryReport: $cmd"
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {
+	if (cmd.parameterNumber == 0) {		
+		return response(turnOn(cmd.configurationValue[0]))		
+	}
+	else {
+		logDebug "$cmd"
+	}
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
+	def switchValue = (cmd.value == 0) ? "off" : "on"
+	def alarmValue = null
+	
+	if (cmd.value == 0) {
+		if (device.currentValue("alarm") != "off") {
+			logDebug "Alarm is off"
+		}
+		state.activeAlarm = null
+		alarmValue = "off"
+	}
+	else {		
+		alarmValue = getLastAlarmStateValue()			
+	}	
+	
+	return getCommandEvents(alarmValue, switchValue, alarmValue)
+}
+
+private getCommandEvents(alarmValue, switchValue, statusValue) {
+	[		
+		createEvent(
+			getStatusEventMap(statusValue)
+		),
+		createEvent(
+			name:"alarm",
+			description: "Alarm is $alarmValue",
+			value: alarmValue, 
+			isStateChange: true, 
+			displayed: false
+		),
+		createEvent(
+			name:"switch", 
+			description: "Switch is $switchValue",
+			value: switchValue, 
+			isStateChange: true, 
+			displayed: false
+		)
+	]	
+}
+
+private getStatusEventMap(statusValue) {
+	return [
+		name: "status",
+		description: "Status is $statusValue",
+		value: statusValue, 
+		isStateChange: true, 
+		displayed: true
+	]
+}
+
+private getLastAlarmStateValue() {
+	def result
+	switch (state.activeAlarm?.alarmType) {
+		case 0:
+			result = "both"
+			break
+		case 1:
+			result = "siren"
+			break
+		case 2:
+			result = "strobe"
+			break			
+		default:
+			result = "off"
+	}		
+	return result
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
+	def map = [ 
+		name: "battery", 
+		unit: "%"
+	]
+	if (cmd.batteryLevel == 0xFF) {
+		map.value = 1
+		map.descriptionText = "Battery is low"
+		map.isStateChange = true
+		map.displayed = true
+	} else {
+		map.value = cmd.batteryLevel
+		map.displayed = false
+	}	
+	[createEvent(map)]
+}
+
+// Writes unexpected commands to debug log
+def zwaveEvent(physicalgraph.zwave.Command cmd) {
+	logDebug "Unknown Command: $cmd"	
 }
 
 def speak(text) {
@@ -265,20 +625,11 @@ def playText(text) {
 	text = cleanTextCmd(text)
 	def cmds
 	switch (text) {
-		case "siren":
-			cmds = siren()
-			break
-		case "strobe":
-			cmds = strobe()
-			break
-		case ["both", "on", "play"]:
+		case ["on", "play"]:
 			cmds = both()
 			break
 		case ["stop", "off", "pause", "mute"]:
 			cmds = off()
-			break
-		case "beep":
-			cmds = beep()
 			break
 		default:
 			if (text) {
@@ -305,20 +656,24 @@ def cleanTextCmd(text) {
 def parseComplexCommand(text) {	
 	def cmds = []
 	def args = getComplexCmdArgs(text)
-	
-	if (text.contains("beep") && args?.size() == 1) {
-		cmds += beep(args[0])
+	if (text.contains("beep")) {		
+		cmds += (args?.size() == 1) ? customBeep(args[0]) : beep()
 	}	
+	else if (text.contains("strobe")) {	
+		cmds += (args?.size() == 2) ? customStrobe(args[0], args[1]) : strobe()
+	}
+	else if (text.contains("both")) {
+		cmds += (args?.size() == 3) ? customBoth(args[0], args[1], args[2]) : both()
+	}
+	else if (text.contains("siren")) {
+		cmds += (args?.size() == 3) ? customSiren(args[0], args[1], args[2]) : siren()
+	}
 	return cmds
 }
 
 private getComplexCmdArgs(text) {
-	for (prefix in ["beep"]) {
-		text = removeCmdPrefix(text, prefix)
-	}
-	
-	def args = text.tokenize("_")
-	if (args.every { node -> isNumeric(node) }) {
+	def args = removeCmdPrefix(text).tokenize("_")
+	if (args.every { node -> isNumeric(node) || node in ["true","false"]}) {
 		return args
 	}
 	else {
@@ -326,298 +681,31 @@ private getComplexCmdArgs(text) {
 	}	
 }
 
-private removeCmdPrefix(text, prefix) {
-	if (text.startsWith(prefix)) {
-		return text.replace("$prefix_", "").replace(prefix, "")
+private removeCmdPrefix(text) {
+	for (prefix in ["custombeep","beep","customboth","both","customsiren","siren","customstrobe","strobe"]) {
+		if (text.startsWith(prefix)) {
+			return text.replace("${prefix}_", "").replace("$prefix", "")
+		}		
+	}
+	return text	
+}
+
+private isNumeric(val) {
+	return val?.toString()?.isNumber()
+}
+
+private validateBoolean(val, defaulVal) {
+	if (val == null) {
+		defaultVal
 	}
 	else {
-		return text
+		(val == true || val == "true")
 	}
 }
 
-// Turns on siren and strobe
-def on() {
-	both()	
-}
-
-def beep() {
-	beep(settings.beepLength)
-}
-
-// Turns on and then off after specified milliseconds.
-def beep(beepLengthMS) {	
-	beepLengthMS = validateRange(beepLengthMS, 0, 0, Integer.MAX_VALUE, "Beep Length")
-	
-	logDebug "Executing beep(${beepLengthMS}) Command"
-	state.beeping = true
-	
-	sendEvent(getStatusEventMap("beep"))
-	
-	def alarmTypeCmds = state.strobeBeep ? strobeOnlyAlarmTypeSetCmds() : sirenOnlyAlarmTypeSetCmds()
-			
-	def result = []	
-	if (!state.staticAlarmType) {
-		result += alarmTypeCmds
-	}
-	else {
-		displayStaticAlarmTypeOverrideDebugMessage()
-	}
-
-	result << switchOnSetCmd()
-
-	if (beepLengthMS > 0) {
-		result << "delay $beepLengthMS"
-	}
-	result += switchOffSetCmds()
-	return result
-}
-
-// Turns on siren and strobe
-def both() {
-	logDebug "Executing both() command"
-	turnOn(sirenAndStrobeAlarmTypeSetCmds())	
-}
-
-// Turns on strobe
-def strobe() {
-	logDebug "Executing strobe() command"
-	turnOn(strobeOnlyAlarmTypeSetCmds())
-}
-
-// Turns on siren
-def siren() {
-	logDebug "Executing siren() command"
-	turnOn(sirenOnlyAlarmTypeSetCmds())
-}
-
-private turnOn(alarmTypeCmds) {
-	def result = []
-	state.beeping = false
-	if (!state.staticAlarmType) {
-		result += alarmTypeCmds		
-	}
-	else {
-		displayStaticAlarmTypeOverrideDebugMessage()
-	}
-	result << switchOnSetCmd()
-	result << switchGetCmd()
-	
-	if (state.autoOffMS) {
-		result << "delay ${state.autoOffMS}"
-		result += switchOffSetCmds()
-	}
-	
-	return result
-}
-
-private displayStaticAlarmTypeOverrideDebugMessage() {
-	logDebug "Using Alarm Type '${settings.bothAlarmTypeOverride}' because 'Always use both/on setting?' setting is enabled."
-}
-
-// Turns off siren and strobe
-def off() {
-	logDebug "Executing off() command"
-	turnOff()
-}
-
-private turnOff() {
-	return switchOffSetCmds()
-}
-
-private sirenAndStrobeAlarmTypeSetCmds() {
-	def overriding = true
-	def result
-	switch (settings.bothAlarmTypeOverride) {
-		case "Siren Only":
-			result = sirenOnlyAlarmTypeSetCmds()
-			break
-		case "Strobe Only":
-			result = strobeOnlyAlarmTypeSetCmds()
-			break
-		default:
-			overriding = false
-			result = alarmTypeSetCmds(0)
-	}
-	if (overriding) {
-		logDebug "Overriding 'both' command with '${settings.bothAlarmTypeOverride}'"
-	}
-	return result
-}
-
-private sirenOnlyAlarmTypeSetCmds() {
-	alarmTypeSetCmds(1)
-}
-
-private strobeOnlyAlarmTypeSetCmds() {
-	alarmTypeSetCmds(2)
-}
-
-private alarmTypeSetCmds(alarmType) {
-	state.lastAlarmType = validateRange(alarmType, 0, 0, 2, "Alarm Type")
-	
-	def result = [
-		configSetCmd(0, 1, state.lastAlarmType)
-	]
-	
-	if (state.beeping) {
-		state.lastAlarmType = null		
-	}
-	else if (state.lastAlarmType == 1) {
-		// Prevents light from staying on when setting to Siren Only.
-		result << switchBinaryGetCmd()
-	}
-	return result	
-}
-
-private autoOffSetCmd(autoOff) {	
-	configSetCmd(1, 1, validateRange(autoOff, 0, 0, 3, "Auto Off"))
-}
-
-private configSetCmd(paramNumber, paramSize, paramValue) {
-	zwave.configurationV1.configurationSet(parameterNumber: paramNumber, size: paramSize, scaledConfigurationValue: paramValue).format()
-}
-
-private switchOnSetCmd() {
-	zwave.basicV1.basicSet(value: 0xFF).format()
-}
-
-private switchOffSetCmds() {
-	return delayBetween([
-		zwave.basicV1.basicSet(value: 0x00).format(),
-		switchGetCmd()
-	], 50)
-}
-
-private switchGetCmd() {	
-	zwave.basicV1.basicGet().format()
-}
-
-private switchBinaryGetCmd() {
-	zwave.switchBinaryV1.switchBinaryGet().format()
-}
-
-private batteryGetCmd() {
-	zwave.batteryV1.batteryGet().format()
-}
-
-// Parses incoming message
-def parse(String description) {	
-	def result = []
-	if (description.startsWith("Err")) {
-		log.error "Unknown Error: $description"		
-	}
-	else if (description != null && description != "updated") {
-		def cmd = zwave.parse(description, [0x20: 1, 0x25: 1, 0x80: 1, 0x70: 2, 0x72: 2, 0x86: 1])		
-		if (cmd) {
-			result += zwaveEvent(cmd)
-		}
-	}
-	result << createEvent(name:"lastPoll", value: new Date().time, displayed: false, isStateChange: true)
-	return result
-}
-
-def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
-	//logDebug "BinaryReport: $cmd"
-}
-
-def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
-	def switchValue = (cmd.value == 0) ? "off" : "on"
-	def alarmValue = null
-	
-	if (cmd.value == 0) {
-		state.lastAlarmType = null
-		state.beeping = false
-		alarmValue = "off"
-	}
-	else {
-		alarmValue = getLastAlarmStateValue()	
-	}	
-	
-	return getCommandEvents(alarmValue, switchValue, alarmValue)
-}
-
-private getCommandEvents(alarmValue, switchValue, statusValue) {
-	[		
-		createEvent(
-			getStatusEventMap(statusValue)
-		),
-		createEvent(
-			name:"alarm",
-			description: "Alarm is $alarmValue",
-			value: alarmValue, 
-			isStateChange: true, 
-			displayed: false
-		),
-		createEvent(
-			name:"switch", 
-			description: "Switch is $switchValue",
-			value: switchValue, 
-			isStateChange: true, 
-			displayed: false
-		)
-	]	
-}
-
-private getStatusEventMap(statusValue) {
-	return [
-		name: "status",
-		description: "Status is $statusValue",
-		value: statusValue, 
-		isStateChange: true, 
-		displayed: true
-	]
-}
-
-private getLastAlarmStateValue() {
-	def result
-	switch (state.lastAlarmType) {
-		case 0:
-			result = "both"
-			break
-		case 1:
-			result = "siren"
-			break
-		case 2:
-			result = "strobe"
-			break			
-		default:
-			result = "off"
-	}		
-	return result
-}
-
-def zwaveEvent(physicalgraph.zwave.commands.wakeupv1.WakeUpNotification cmd) {
-	def event = createEvent(descriptionText: "${device.displayName} woke up", displayed: true)
-
-	def cmds = []
-	if (canPoll()) {
-		cmds << poll()
-		cmds << "delay 1200"
-	}
-	cmds << zwave.wakeUpV1.wakeUpNoMoreInformation().format()
-	[event, response(cmds)]
-}
-
-def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
-	def map = [ 
-		name: "battery", 
-		unit: "%"
-	]
-	if (cmd.batteryLevel == 0xFF) {
-		map.value = 1
-		map.descriptionText = "Battery is low"
-		map.isStateChange = true
-		map.displayed = true
-	} else {
-		map.value = cmd.batteryLevel
-		map.displayed = false
-	}	
-	[createEvent(map)]
-}
-
-// Writes unexpected commands to debug log
-def zwaveEvent(physicalgraph.zwave.Command cmd) {
-	logDebug "Unknown Command: $cmd"	
+private currentValue(attributeName) {
+	def val = device.currentValue(attributeName)
+	return val ? val : ""	
 }
 
 private int validateRange(val, defaultVal, minVal, maxVal, desc) {
@@ -651,26 +739,17 @@ private int validateRange(val, defaultVal, minVal, maxVal, desc) {
 	}
 }
 
-private isNumeric(val) {
-	return val?.toString()?.isNumber()
-}
-
-private validateBoolean(val, defaulVal) {
-	if (val == null) {
-		defaultVal
-	}
-	else {
-		(val == true || val == "true")
-	}
-}
-
-private currentValue(attributeName) {
-	def val = device.currentValue(attributeName)
-	return val ? val : ""	
-}
-
 private logDebug(msg) {
 	if (state.debugOutput || state.debugOutput == null) {
 		log.debug "${device.displayName}: $msg"
 	}
+}
+
+def describeCommands() {
+	return [
+		"customBeep": [ display: "Custom Beep", description: "{0} Beep Length in Milliseconds", parameters:["number"]], // beepLengthMS
+		"customBoth": [ display: "Custom Strobe and Siren", description: "(delaySeconds: {0}, autoOffSeconds: {1}, useStrobe: {2})", parameters:["number", "number", "bool"]],
+		"customSiren": [ display: "Custom Siren", description: "", parameters:["number", "number", "bool"]], // delaySeconds, autoOffSeconds, useStrobe
+		"customStrobe": [ display: "Custom Strobe", description: "", parameters:["number", "number"]] // delaySeconds, autoOffSeconds
+	]
 }
