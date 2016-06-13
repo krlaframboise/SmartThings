@@ -1,9 +1,15 @@
 /**
- *  GoControl Multifunction Siren v 1.2.2
+ *  GoControl Multifunction Siren v 1.2.3
  *  
  *  Capabilities:
  *      Alarm, Tone, Switch, Battery, Polling
- *      Speech Synthesis, Music Player
+ *   
+ *   ********************************************* 
+ *   ** The Speech Synthesis and Music Player   **
+ *   ** capabilities can ONLY be used to send   **
+ *   ** specific commands to the device through **
+ *   ** using any SmartApp.                     ** 
+ *   *********************************************
  *
  *  Author: 
  *     Kevin LaFramboise (krlaframboise)
@@ -13,7 +19,7 @@
  *
  *  Changelog:
  *
- *    1.2.1 & 1.2.2 (06/12/2016)
+ *    1.2.1, 1.2.2, 1.2.3 (06/12/2016)
  *      - Improved beep performance. 
  *      - Fixed UI issue caused by latest android update.
  *        (unable to completely fix, but the buttons no longer
@@ -147,10 +153,9 @@ metadata {
 		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2) {
 			state "battery", label:'Battery ${currentValue}%', unit:"", defaultState: true
 		}		
-		standardTile("testBeep", "device.tone", width: 2, height: 2) {
-			state "off", label:' Beep ', action:"beep", icon:"st.Entertainment.entertainment2", backgroundColor: "#99ff99", defaultState: true
-			state "beep", label:'Beeping', action: "off", nextState: "turningOnOff", icon:"st.Entertainment.entertainment2", backgroundColor: "#99c2ff"
-			state "turningOnOff", label:' Wait ', action: "off", nextState: "off", icon:"st.Entertainment.entertainment2", backgroundColor: "#99c2ff"
+		standardTile("testBeep", "device.status", width: 2, height: 2) {
+			state "off", label:' Beep ', action:"beep", nextState: "beep", icon:"st.Entertainment.entertainment2", backgroundColor: "#99ff99", defaultState: true
+			state "beep", label:'Beeping', action: "off", nextState: "off", icon:"st.Entertainment.entertainment2", backgroundColor: "#99c2ff"			
 		}					
 		standardTile("testSiren", "device.alarm", width: 2, height: 2) {
 			state "off", label:'Siren ', action: "alarm.siren", nextState: "turningOnOff", backgroundColor: "#ff9999", icon:"st.alarm.alarm.alarm", defaultState: true
