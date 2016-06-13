@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.2.1
+ *  GoControl Multifunction Siren v 1.2.2
  *  
  *  Capabilities:
  *      Alarm, Tone, Switch, Battery, Polling
@@ -13,12 +13,13 @@
  *
  *  Changelog:
  *
- *    1.2.1 (06/12/2016)
+ *    1.2.1 & 1.2.2 (06/12/2016)
  *      - Improved beep performance. 
  *      - Fixed UI issue caused by latest android update.
  *        (unable to completely fix, but the buttons no longer
  *         completely disapear)
  *      - Fixed icons and colors in activity log.
+ *      - Added always set alarm type setting.
  *
  *    1.2 (06/11/2016)
  *      - *** BREAKING CHANGES ***
@@ -112,6 +113,11 @@ metadata {
 			title: "Strobe during alarm delay?", 
 			defaultValue: false, 
 			displayDuringSetup: true, 
+			required: false
+		input "alwaysSetAlarmType", "bool", 
+			title: "Always set Alarm Type?", 
+			defaultValue: false, 
+			displayDuringSetup: false, 
 			required: false
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
@@ -302,9 +308,9 @@ def turnOn(alarmType, delaySeconds, autoOffSeconds, useStrobe) {
 	if (delaySeconds > 0 && !useStrobe) {
 		result += startDelayedAlarm()
 	}
-	// else if (validateBoolean(settings.alwaysSetAlarmType, false)) {
-		// result += turnOn(null)
-	// }
+	else if (validateBoolean(settings.alwaysSetAlarmType, false)) {
+		result += turnOn(null)
+	}
 	else {
 		result << alarmTypeGetCmd()
 	}
