@@ -124,9 +124,8 @@ I don't think SmartThings developers should charge for the things they create, b
 <li>Those buttons can really come in handy if you're locked out of your house or your alarm won't disarm because your phone gets stuck on "not present".</li>
 </ul>
 
-
 <hr />
-<h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/gocontrol-contact-sensor.src">GoControl/Linear Door/Window Sensor</a></h3>
+<h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/gocontrol-contact-sensor.src/gocontrol-contact-sensor.groovy">GoControl/Linear Door/Window Sensor</a></h3>
 
 <ul>
 <li>DTH for the GoControl Linear Door/Window Sensor, Model: WADWAZ-1<br /></li>
@@ -136,7 +135,7 @@ Supports the Tamper Alert Capability.<br /></li>
 </ul>
 
 <hr />
-<h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/gocontrol-motion-sensor.src">GoControl/Linear Motion Sensor</a></h3>
+<h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/gocontrol-motion-sensor.src/gocontrol-motion-sensor.groovy">GoControl/Linear Motion Sensor</a></h3>
 
 <ul>
 <li>DTH for the GoControl/Linear Motion Sensor, Model: WAPIRZ-1<br /></li>
@@ -150,7 +149,7 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
-<h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/gocontrol-multifunction-siren.src">GoControl/Linear Multifunction Siren</a></h3>
+<h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/gocontrol-multifunction-siren.src/gocontrol-multifunction-siren.groovy">GoControl/Linear Multifunction Siren</a></h3>
 
 <ul>
 <li>DTH for the GoControl Siren, Linear Siren and possibly some other generic sirens. Models: ZM1601US / WA105DBZ-1<br /></li>
