@@ -1,13 +1,17 @@
 /**
- *  GoControl Contact Sensor v1.4.2
+ *  GoControl Contact Sensor v1.4.3
+ *  (WADWAZ-1)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  URL to documentation:
- *    n/a
+ *    https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.4.3 (06/17/2016)
+ *      -  Fixed issue with battery level being debug logged.
  *
  *    1.4.2 (05/21/2016)
  *      -  Fixing polling so that it doesn't require forcing
@@ -129,7 +133,7 @@ def parse(String description) {
 		result << createEvent(descriptionText:description, displayed:true)
 	} 
 	else {		
-		def cmd = zwave.parse(description, [0x20: 1, 0x25: 1, 0x30: 1, 0x31: 5, 0x80: 1, 0x84: 1, 0x71: 3, 0x9C: 1])
+		def cmd = zwave.parse(description, [0x20: 1, 0x25: 1, 0x30: 1, 0x31: 5, 0x80: 1, 0x84: 1, 0x71: 3])
 		if (cmd) {
 			result += zwaveEvent(cmd)
 		}
@@ -176,7 +180,7 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 		map.displayed = false
 	}
 	
-	logDebug "${map.descriptionText}"
+	logDebug "Battery: ${cmd.batteryLevel}"
 	state.lastBatteryReport = new Date().time	
 	[createEvent(map)]
 }
