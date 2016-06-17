@@ -138,7 +138,7 @@ Supports the Tamper Capability.</li>
 <h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/gocontrol-motion-sensor.src">GoControl/Linear Motion Sensor</a></h3>
 
 <ul>
-<li>DTH for the GoControl/Linear Motion Sensor, Model: WAPIRZ-1<br /><br /></li>
+<li>DTH for the GoControl/Linear Motion Sensor, Model: WAPIRZ-1<br /></li>
 <li>Automatically sets polling attribute so it can be monitored by SmartApps like the Simple Device Viewer to ensure it's stil online.<br /></li>
 <li>Supports the Tamper Capability.<br /></li>
 <li>Provides offset so you can adjust the temperature<br /></li>
