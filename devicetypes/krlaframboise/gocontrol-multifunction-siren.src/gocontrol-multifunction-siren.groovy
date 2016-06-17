@@ -1,5 +1,6 @@
 /**
- *  GoControl Multifunction Siren v 1.2.3
+ *  GoControl Multifunction Siren v 1.3
+ *    (Models: ZM1601US / WA105DBZ-1)
  *  
  *  Capabilities:
  *      Alarm, Tone, Switch, Battery, Polling
@@ -18,6 +19,15 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.3 (06/17/2016)
+ *      - Fixed delayed alarm with strobe bug.
+ *      - Numbered settings to make it easier to explain things.
+ *      - Added "Allow Siren Only Light" setting that allows you
+ *        to display a solid red light while the siren is on.
+ *      - Added parameters delaySeconds and useStrobe to the
+ *        custom beep command that allow you to delay a beep
+ *        and display the strobe during that delay.
  *
  *    1.2.1, 1.2.2, 1.2.3 (06/12/2016)
  *      - Improved beep performance. 
@@ -72,7 +82,7 @@ metadata {
 		
 		attribute "lastPoll", "number"
 
-		command "customBeep" // beepLengthMS
+		command "customBeep" // beepLengthMS, delaySeconds, useStobe
 		command "customBoth" // delaySeconds, autoOffSeconds, useStrobe
 		command "customSiren" // delaySeconds, autoOffSeconds, useStrobe
 		command "customStrobe" // delaySeconds, autoOffSeconds
@@ -94,39 +104,44 @@ metadata {
 
 	preferences {
 		input "autoOffTime", "enum", 
-			title: "Automatically turn off after:\n(You should disable this feature while testing)", 
+			title: "1. Automatically turn off after:\n(You should disable this feature while testing)", 
 			defaultValue: "30 Seconds",
 			displayDuringSetup: true, 
 			required: false,
-			options: ["30 Seconds", "60 Seconds", "120 Seconds", "Disable Auto Off"]
-		input "beepLength", "number", 
-			title: "Length of Beep in Milliseconds", 
-			defaultValue: 0, 
-			displayDuringSetup: true, 
-			required: false
+			options: ["30 Seconds", "60 Seconds", "120 Seconds", "Disable Auto Off"]		
 		input "bothAlarmTypeOverride", "enum",
-			title: "What should the 'both' and 'on' commands turn on?\n(Some SmartApps like Smart Home Monitor use the both command so you can't use just the siren or the strobe.  This setting allows you to override the default action of those commands.)",
+			title: "2. What should the 'both' and 'on' commands turn on?\n(Some SmartApps like Smart Home Monitor use the both command so you can't use just the siren or the strobe.  This setting allows you to override the default action of those commands.)",
 			defaultValue: "Siren and Strobe",
 			displayDuringSetup: true,
 			required: false,
 			options: ["Siren and Strobe", "Siren Only", "Strobe Only"]
-		input "alarmDelaySeconds", "number", 
-			title: "Alarm Delay in Seconds", 
-			defaultValue: 0, 
-			displayDuringSetup: true, 
-			required: false
-		input "alarmDelayStrobe", "bool", 
-			title: "Strobe during alarm delay?", 
-			defaultValue: false, 
-			displayDuringSetup: true, 
-			required: false
 		input "alwaysSetAlarmType", "bool", 
-			title: "Always set Alarm Type?", 
+			title: "3. Always Set Alarm Type?\n(Enabling this option will make the device turn on quicker, but the strobe will always flash once before turning on.)", 
 			defaultValue: false, 
 			displayDuringSetup: false, 
 			required: false
+		input "allowSirenOnlyLight", "bool",
+			title: "4. Allow Siren Only Light?\n(When this option is enabled, the strobe light will stay on solid when using the siren command.)",
+			defaultValue: false,
+			displayDuringSetup: false,
+			required: false
+		input "alarmDelayStrobe", "bool", 
+			title: "5. Default Use Strobe During Alarm Delay?", 
+			defaultValue: false, 
+			displayDuringSetup: true, 
+			required: false
+		input "alarmDelaySeconds", "number", 
+			title: "6. Default Alarm Delay (seconds):", 
+			defaultValue: 0, 
+			displayDuringSetup: true, 
+			required: false		
+		input "beepLength", "number", 
+			title: "7. Default Length of Beep (milliseconds):", 
+			defaultValue: 0, 
+			displayDuringSetup: true, 
+			required: false
 		input "debugOutput", "bool", 
-			title: "Enable debug logging?", 
+			title: "8. Enable debug logging?", 
 			defaultValue: true, 
 			displayDuringSetup: true, 
 			required: false
@@ -207,7 +222,7 @@ private getAutoOffTimeValue() {
 			result = 2
 			break
 		case "Disable Auto Off":
-			state.autoOffSeconds = null
+			state.autoOffSeconds = 0
 			result = 3
 			break
 		default:
@@ -241,26 +256,44 @@ def on() {
 }
 
 def beep() {
-	customBeep(settings.beepLength)
+	customBeep(settings.beepLength, 0, false)
 }
 
 // Turns on and then off after specified milliseconds.
-def customBeep(beepLengthMS) {	
+def customBeep(beepLengthMS, delaySeconds=0, useStrobe=false) {	
 	beepLengthMS = validateRange(beepLengthMS, 0, 0, Integer.MAX_VALUE, "Beep Length")
+	delaySeconds = validateRange(delaySeconds, 0, 0, 3600, "Beep Delay")
+	useStrobe = validateBoolean(useStrobe, false)
 	
-	logDebug "Executing ${beepLengthMS} Millisecond Beep"
-
 	state.activeAlarm = null
 	sendEvent(getStatusEventMap("beep"))
 	
 	def result = []	
-	result += alarmTypeSetCmds(getSirenOnlyAlarmType())
+	def delayMsg = ""
+	if (delaySeconds > 0) {
+		delayMsg = " with ${delaySeconds} Second${useStrobe ? ' Strobe ' : ' '}Delay"
+		
+		if (useStrobe) {
+			result << alarmTypeSetCmd(getStrobeOnlyAlarmType())
+			result << switchOnSetCmd()
+			result << "delay ${delaySeconds * 1000}"
+			result << switchOffSetCmd()
+			result << alarmTypeSetCmd(getSirenOnlyAlarmType())
+		}
+		else {
+			result << "delay ${delaySeconds * 1000}"
+		}
+	}	
+	
+	result << alarmTypeSetCmd(getSirenOnlyAlarmType())
 	result << switchOnSetCmd()
 	
 	if (beepLengthMS > 0) {
 		result << "delay $beepLengthMS"
 	}
 	result += switchOffSetCmds()
+	
+	logDebug "Executing ${beepLengthMS} Millisecond Beep$delayMsg"
 	
 	return result	
 }
@@ -311,12 +344,15 @@ def turnOn(alarmType, delaySeconds, autoOffSeconds, useStrobe) {
 	
 	def result = []
 	if (delaySeconds > 0 && !useStrobe) {
-		result += startDelayedAlarm()
+		logDebug "Alarm delayed by ${delaySeconds} seconds"
+		result += startDelayedAlarm(null)
 	}
-	else if (validateBoolean(settings.alwaysSetAlarmType, false)) {
+	else if (validateBoolean(settings.alwaysSetAlarmType, false) || validateBoolean(settings.allowSirenOnlyLight, false)) {
+		// Not checking current alarm type so turn on with null to make sure the alarm type gets set.
 		result += turnOn(null)
 	}
 	else {
+		// Check the device's current alarm type and when it responds, the handler will turn the device on.
 		result << alarmTypeGetCmd()
 	}
 	return result
@@ -327,23 +363,15 @@ def turnOn(currentAlarmType) {
 	def activeAlarm = state.activeAlarm
 	
 	if (activeAlarm) {	
-		if (activeAlarm.delaySeconds > 2 && activeAlarm.useStrobe) {			
-			logDebug "Turning on strobe for ${activeAlarm.delaySeconds} seconds"
-			
-			if (getStrobeOnlyAlarmType() != currentAlarmType) {
-				result += alarmTypeSetCmds(getStrobeOnlyAlarmType())
-			}
-			result << switchOnSetCmd()
-			result += startDelayedAlarm()
-			result << zwave.basicV1.basicSet(value: 0x00).format()
+		if (activeAlarm.delaySeconds > 2 && activeAlarm.useStrobe) {
+			logDebug "Alarm delayed with strobe for ${activeAlarm.delaySeconds} seconds."
+			result += startDelayedAlarm(currentAlarmType)
 		}
 		else {
-			state.activeAlarm.alarmPending = false
-			
+			state.activeAlarm.alarmPending = false			
 			if (activeAlarm.alarmType != currentAlarmType) {
 				result += alarmTypeSetCmds(activeAlarm.alarmType)
-			}
-			
+			}			
 			result << switchOnSetCmd()
 			result << switchGetCmd()
 
@@ -360,14 +388,26 @@ def turnOn(currentAlarmType) {
 	return delayBetween(result, 100)
 }
 
-private startDelayedAlarm() {
-	def result = []
-	def delaySeconds = state.activeAlarm.delaySeconds
+private startDelayedAlarm(currentAlarmType) {
+	def result = []	
+	def useStrobe = state.activeAlarm?.useStrobe
 	
-	result << "delay ${delaySeconds * 1000}"
+	if (useStrobe) {
+		if (getStrobeOnlyAlarmType() != currentAlarmType) {
+			result << alarmTypeSetCmd(getStrobeOnlyAlarmType())
+		}
+		result << switchOnSetCmd()
+	}
+	result << "delay ${state.activeAlarm.delaySeconds * 1000}"
+	
+	result << switchOffSetCmd()
+	
+	if (useStrobe && state.activeAlarm.alarmType != getStrobeOnlyAlarmType()) {
+		result << alarmTypeSetCmd(getSirenOnlyAlarmType())
+	}
+	
 	result << alarmTypeGetCmd()
-	
-	logDebug "Alarm delayed by ${delaySeconds} seconds"
+			
 	sendEvent(getStatusEventMap("alarmPending"))
 	
 	state.activeAlarm.delaySeconds = null
@@ -403,7 +443,7 @@ private getSirenAndStrobeAlarmType() {
 	}
 	if (overriding) {
 		logDebug "Overriding \"both\" command with \"${settings.bothAlarmTypeOverride}\""
-	}
+	}	
 	return result
 }
 
@@ -416,24 +456,28 @@ private getStrobeOnlyAlarmType() {
 }
 
 private alarmTypeSetCmds(alarmType) {
-	alarmType = validateRange(alarmType, 0, 0, 2, "Alarm Type")
+	def result = []
 	
-	def result = [
-		configSetCmd(0, 1, alarmType)
-	]
-
-	if (alarmType == 1  && state.activeAlarm) {
+	result << alarmTypeSetCmd(alarmType)
+	
+	if (alarmType == 1  && state.activeAlarm && !validateBoolean(settings.allowSirenOnlyLight, false)) {
 		// Prevents strobe light from staying on when setting to Siren Only.
 		result << switchBinaryGetCmd()
 	}	
 	return result	
 }
 
+private alarmTypeSetCmd(alarmType) {
+	alarmType = validateRange(alarmType, 0, 0, 2, "Alarm Type")
+	
+	configSetCmd(0, 1, alarmType)	
+}
+
 private alarmTypeGetCmd() {
 	configGetCmd(0)
 }
 
-private autoOffSetCmd(autoOff) {	
+private autoOffSetCmd(autoOff) {
 	configSetCmd(1, 1, validateRange(autoOff, 0, 0, 3, "Auto Off"))
 }
 
@@ -442,7 +486,7 @@ private configSetCmd(paramNumber, paramSize, paramValue) {
 }
 
 private configGetCmd(paramNumber) {
-	zwave.configurationV2.configurationGet(parameterNumber: paramNumber).format()
+	zwave.configurationV1.configurationGet(parameterNumber: paramNumber).format()
 }
 
 private switchOnSetCmd() {
@@ -450,10 +494,18 @@ private switchOnSetCmd() {
 }
 
 private switchOffSetCmds() {
-	return delayBetween([
-		zwave.basicV1.basicSet(value: 0x00).format(),
+	// return delayBetween([
+		// switchOffSetCmd(),
+		// switchGetCmd()
+	// ], 50)
+	return [
+		switchOffSetCmd(),
 		switchGetCmd()
-	], 50)
+	]
+}
+
+private switchOffSetCmd() {
+	zwave.basicV1.basicSet(value: 0x00).format()
 }
 
 private switchGetCmd() {	
@@ -475,7 +527,7 @@ def parse(String description) {
 		log.error "Unknown Error: $description"		
 	}
 	else if (description != null && description != "updated") {
-		def cmd = zwave.parse(description, [0x20: 1, 0x25: 1, 0x80: 1, 0x70: 2, 0x72: 2, 0x86: 1])		
+		def cmd = zwave.parse(description, [0x20: 1, 0x25: 1, 0x80: 1, 0x70: 1, 0x72: 2, 0x86: 1])		
 		if (cmd) {
 			result += zwaveEvent(cmd)
 		}
@@ -488,7 +540,7 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 	//logDebug "BinaryReport: $cmd"
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {
+def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {
 	if (cmd.parameterNumber == 0) {		
 		return response(turnOn(cmd.configurationValue[0]))		
 	}
@@ -669,9 +721,18 @@ def cleanTextCmd(text) {
 
 def parseComplexCommand(text) {	
 	def cmds = []
+	
 	def args = getComplexCmdArgs(text)
-	if (text.contains("beep")) {		
-		cmds += (args?.size() == 1) ? customBeep(args[0]) : beep()
+	if (text.contains("beep")) {	
+		if (!args || args?.size() == 0) {
+			cmds += beep()
+		}
+		else if (args?.size() == 3) {
+			cmds += customBeep(args[0], args[1], args[2])
+		}
+		else {			
+			cmds += customBeep(args[0], 0, false)
+		}		
 	}	
 	else if (text.contains("strobe")) {	
 		cmds += (args?.size() == 2) ? customStrobe(args[0], args[1]) : strobe()
@@ -761,7 +822,7 @@ private logDebug(msg) {
 
 def describeCommands() {
 	return [
-		"customBeep": [ display: "Custom Beep", description: "{0} Beep Length in Milliseconds", parameters:["number"]], // beepLengthMS
+		"customBeep": [ display: "Custom Beep", description: "{0} Beep Length in Milliseconds", parameters:["number", "number", "bool"]], // beepLengthMS, delaySeconds, useStrobe
 		"customBoth": [ display: "Custom Strobe and Siren", description: "(delaySeconds: {0}, autoOffSeconds: {1}, useStrobe: {2})", parameters:["number", "number", "bool"]],
 		"customSiren": [ display: "Custom Siren", description: "", parameters:["number", "number", "bool"]], // delaySeconds, autoOffSeconds, useStrobe
 		"customStrobe": [ display: "Custom Strobe", description: "", parameters:["number", "number"]] // delaySeconds, autoOffSeconds
