@@ -131,7 +131,8 @@ I don't think SmartThings developers should charge for the things they create, b
 <ul>
 <li>DTH for the GoControl Linear Door/Window Sensor, Model: WADWAZ-1<br /></li>
 <li>Automatically sets polling attribute so it can be monitored by SmartApps like the Simple Device Viewer to ensure it's stil online.
-Supports the Tamper Capability.</li>
+Supports the Tamper Alert Capability.<br /></li>
+<li><a href="https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 </ul>
 
 <hr />
@@ -140,10 +141,11 @@ Supports the Tamper Capability.</li>
 <ul>
 <li>DTH for the GoControl/Linear Motion Sensor, Model: WAPIRZ-1<br /></li>
 <li>Automatically sets polling attribute so it can be monitored by SmartApps like the Simple Device Viewer to ensure it's stil online.<br /></li>
-<li>Supports the Tamper Capability.<br /></li>
+<li>Supports the Tamper Alert Capability.<br /></li>
 <li>Provides offset so you can adjust the temperature<br /></li>
 <li>Provides threshold so you can prevent it from bouncing back and forth between the same 2 temperatures.<br /></li>
-<li>Allows you to set the frequency that it checks the battery</li>
+<li>Allows you to set the frequency that it checks the battery<br /></li>
+<li><a href="https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 </ul>
 
 <hr />
