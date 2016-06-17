@@ -135,11 +135,23 @@ Supports the Tamper Capability.</li>
 </ul>
 
 <hr />
+<h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/gocontrol-motion-sensor.src">GoControl/Linear Motion Sensor</a></h3>
+
+<ul>
+<li>DTH for the GoControl/Linear Motion Sensor, Model: WAPIRZ-1<br /><br /></li>
+<li>Automatically sets polling attribute so it can be monitored by SmartApps like the Simple Device Viewer to ensure it's stil online.<br /></li>
+<li>Supports the Tamper Capability.<br /></li>
+<li>Provides offset so you can adjust the temperature<br /></li>
+<li>Provides threshold so you can prevent it from bouncing back and forth between the same 2 temperatures.<br /></li>
+<li>Allows you to set the frequency that it checks the battery</li>
+</ul>
+
+<hr />
 
 <h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/gocontrol-multifunction-siren.src">GoControl/Linear Multifunction Siren</a></h3>
 
 <ul>
-<li>This is a new device handler for the GoControl Siren, Linear Siren and possibly some other generic sirens. Model: WA105DBZ-1<br /></li>
+<li>DTH for the GoControl Siren, Linear Siren and possibly some other generic sirens. Models: ZM1601US / WA105DBZ-1<br /></li>
 
 <li>It allows you to make the alarm turn off automatically, switch between siren/strobe/both on the fly, have it automatically turn off after a specified amount of time and it also allows you to make the device beep.  The custom commands can be sent to the device using he speaktext and playtext commands of the Music Player capability.<br /></li>
 <li><a href="https://community.smartthings.com/t/release-gocontrol-siren-linear-siren/47024?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
