@@ -1,14 +1,17 @@
 /**
- *  GoControl Motion Sensor v1.0
+ *  GoControl Motion Sensor v1.1
  *    (Model: WAPIRZ-1)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  URL to documentation:
- *    n/a
+ *    https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.1 (06/17/2016)
+ *      - Fixed tamper detection
  *
  *    1.0 (06/17/2016)
  *      - Initial Release 
@@ -138,7 +141,7 @@ private batteryGetCmd() {
 def parse(String description) {	
 	def result = []
 	
-	def cmd = zwave.parse(description, [0x71: 1, 0x80: 1, 0x30: 1, 0x31: 2, 0x70: 1, 0x84: 1])
+	def cmd = zwave.parse(description, [0x71: 2, 0x80: 1, 0x30: 1, 0x31: 2, 0x70: 1, 0x84: 1])
 	if (cmd) {
 		result += zwaveEvent(cmd)
 	}
@@ -152,7 +155,7 @@ def parse(String description) {
 
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv1.WakeUpNotification cmd)
 {
-	logDebug "${device.displayName} Woke Up"
+	logDebug "Woke Up"
 
 	def result = []
 
@@ -222,23 +225,13 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	return result
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.alarmv1.AlarmReport cmd) {
-	if (cmd.alarmType == 7) {
-		if (cmd.alarmLevel == 0xFF) {
-			runIn(5, verifyTamper)
-		}
-	}
-	else {
-		logDebug "Unknown Alarm Report: $cmd"
-	}
-	return []
-}
-
-def verifyTamper() {
-	if (device.currentValue("motion") != "active") {
+def zwaveEvent(physicalgraph.zwave.commands.alarmv2.AlarmReport cmd) {
+	def result = []
+	if (cmd.alarmType == 7 && cmd.alarmLevel == 0xFF && cmd.zwaveAlarmEvent == 3) {
 		logDebug "Tampering Detected"
-		sendEvent(getTamperEventMap("detected"))
-	}
+		result << createEvent(getTamperEventMap("detected"))
+	}	
+	return result
 }
 
 def getTamperEventMap(val) {
