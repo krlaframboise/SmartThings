@@ -1,5 +1,5 @@
 /**
- *  GoControl Contact Sensor v1.4.3
+ *  GoControl Contact Sensor v1.5
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.5 (06/19/2016)
+ *      -  Bug with initial battery reporting.
  *
  *    1.4.3 (06/17/2016)
  *      -  Fixed issue with battery level being debug logged.
@@ -72,13 +75,7 @@ metadata {
 	
 	// UI tile definitions
 	tiles(scale: 2) {
-		multiAttributeTile(
-			name:"contact", 
-			type: "generic", 
-			width: 6, 
-			height: 4, 
-			canChangeIcon: true
-		){
+		multiAttributeTile(name:"contact", type: "generic", width: 6, height: 4, canChangeIcon: true){
 			tileAttribute ("device.contact", key: "PRIMARY_CONTROL") {
 				attributeState "closed", 
 					label:'closed', 
@@ -91,8 +88,7 @@ metadata {
 			}
 		}
 		
-		valueTile("battery", "device.battery", 
-			inactiveLabel: false, 
+		valueTile("battery", "device.battery", inactiveLabel: false, 
 			decoration: "flat", 
 			width: 2, 
 			height: 2
@@ -102,39 +98,31 @@ metadata {
 			unit:""
 		}
 		
-		valueTile("tampering", "device.tamper", label: 'Tamper', width: 2, height: 2) {
-			state "clear", label:'Tamper\nClear', backgroundColor: "#CCCCCC", nextState: "detected"
-			state "detected", label:'Tamper Detected', backgroundColor: "#FF0000", nextState: "clear"			
+		valueTile("tamperAlert", "device.tamper", width: 2, height: 2) {
+			state "default", label: "", backgroundColor: "#FFFFFF"
+			state "clear", label:"Tamper Clear", backgroundColor: "#CCCCCC"
+			state "detected", label:"Tamper Detected", backgroundColor: "#FF0000"
 		}
-		standardTile("refresh", "device.refresh", 
-			width: 2, 
-			height: 2
-		) {
+		standardTile("refresh", "device.refresh", width: 2, height: 2) {
 			state "default", 
-				label:'Reset', 
+				label: "Refresh", 
 				action: "refresh", 
 				icon:""
 		}
 		
 		main("contact")
-		details(["contact", "battery", "tampering", "refresh"])
+		details(["contact", "battery", "tamperAlert", "refresh"])
 	}
 }
 
-def updated() {
-	if (!device.currentValue("tamper")) {
-		sendEvent(getTamperEventMap("clear"))
-	}
-}
-
-def parse(String description) {
+def parse(String description) {	
 	def result = []
 	if (description.startsWith("Err")) {
 		result << createEvent(descriptionText:description, displayed:true)
 	} 
 	else {		
-		def cmd = zwave.parse(description, [0x20: 1, 0x25: 1, 0x30: 1, 0x31: 5, 0x80: 1, 0x84: 1, 0x71: 3])
-		if (cmd) {
+		def cmd = zwave.parse(description, [0x20: 1, 0x30: 2, 0x80: 1, 0x84: 2, 0x71: 3, 0x86: 1, 0x85: 2, 0x72: 2])
+		if (cmd) {		
 			result += zwaveEvent(cmd)
 		}
 	}
@@ -142,22 +130,19 @@ def parse(String description) {
 	return result
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd)
+def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 {
-	logDebug "BasicReport: $cmd"
-}
-
-def zwaveEvent(physicalgraph.zwave.commands.wakeupv1.WakeUpNotification cmd)
-{
-	logDebug "Woke Up"
-	
-	def reportEveryHours = settings.reportBatteryEvery ? settings.reportBatteryEvery : 4
+	def reportEveryHours = settings.reportBatteryEvery ?: 4
 	def reportEveryMS = (reportEveryHours * 60 * 60 * 1000)
-	
+
 	def result = []
 	if (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) {
+		logDebug "Requesting battery level"
 		result << response(zwave.batteryV1.batteryGet().format())
 		result << response("delay 3000")  
+	}
+	else {
+		logDebug "Skipping battery check because it was already checked within the last $reportEveryHours hours."
 	}
 	result << response(zwave.wakeUpV1.wakeUpNoMoreInformation().format())
 	
@@ -173,64 +158,93 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	if (cmd.batteryLevel == 0xFF) {
 		map.value = 1
 		map.descriptionText = "Battery is low"
-		map.displayed = true
+		map.isStateChange = true
 	}
-	else {
+	else {		
 		map.value = cmd.batteryLevel
 		map.displayed = false
-	}
+		logDebug "Battery is ${cmd.batteryLevel}%"
+	}	
 	
-	logDebug "Battery: ${cmd.batteryLevel}"
 	state.lastBatteryReport = new Date().time	
-	[createEvent(map)]
+	[
+		createEvent(map)
+	]
 }
 
-def zwaveEvent(physicalgraph.zwave.Command cmd) {
-	log.info "Unhandled Command: $cmd"
+def installed() {
+	return response([
+		zwave.batteryV1.batteryGet().format(),
+		zwave.basicV1.basicGet().format()
+	])
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd)
+{	
+	return handleContactReport(cmd.value)
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd)
 {	
-	def contactVal = (cmd.value == 255) ? "open" : "closed"	
+	return handleContactReport(cmd.value)
+}
+
+private handleContactReport(val) {
+	def contactVal = (val == 0xFF) ? "open" : "closed"	
 	
 	logDebug "Contact is $contactVal"
 	
-	[createEvent(name: "contact", 
-		value: contactVal, 
-		isStateChange: true, 
-		displayed: true, 
-		descriptionText: "Contact is $contactVal")]
+	def result = []	
+	result << createEvent(name: "contact", value: contactVal, 
+		isStateChange: true, descriptionText: "Contact is $contactVal")
+		
+	if (device.currentValue("tamper") != "clear") {
+		logDebug "Tamper is clear"
+		result << createEvent(getTamperEventMap("clear"))
+	}
+	return result	
 }
 
-// Sets tamper attribute to detected when the device is opened.
-def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd)
-{
+def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
 	def result = []	
-	if (!state.tamperingActive && (cmd.event == 3)) {
-		logDebug "Tamper detected"
-		state.tamperingActive = true	
+
+	if (cmd.notificationType == 7 && cmd.event == 3 && cmd.notificationStatus == 0xFF) {
+		logDebug "Tamper is detected"
+		state.lastBatteryReport = null
 		result << createEvent(getTamperEventMap("detected"))
 	}
+		
 	return result
 }
 
-// Resets the tamper attribute to clear.
-def refresh() {
-	if (state.tamperingActive || (device.currentValue("tamper") == "detected")) {
-		logDebug "Tamper clear"
-		state.tamperingActive = false
-		sendEvent(getTamperEventMap("clear"))		
-	}	
+def zwaveEvent(physicalgraph.zwave.Command cmd) {
+	logDebug "Unhandled Command: $cmd"
 }
 
-def getTamperEventMap(val) {
+// Resets the tamper attribute to clear.
+def refresh() {	
+	state.lastBatteryReport = null
+	
+	if (device.currentValue("tamper") != "clear") {
+		sendEvent(getTamperEventMap("clear"))		
+	}
+	
+	logDebug "The Battery level will be refreshed the next time the device wakes up.  If you want this change to happen immediately, open the back cover of the device, wait until the red light turns solid, and then put the cover back on."
+	return [zwave.batteryV1.batteryGet().format()]
+}
+
+def getTamperEventMap(val) {	
+	def isNew = currentTamper() != val
 	[
 		name: "tamper", 
 		value: val, 
-		isStateChange: true, 
-		displayed: true,
+		displayed: isNew,
 		descriptionText: "Tamper is $val"
 	]
+}
+
+private currentTamper() {
+	return device.currentValue("tamper")
 }
 
 def logDebug(msg) {
