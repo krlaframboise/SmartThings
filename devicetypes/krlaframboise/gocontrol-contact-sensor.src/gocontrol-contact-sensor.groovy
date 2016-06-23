@@ -1,5 +1,5 @@
 /**
- *  GoControl Contact Sensor v1.5
+ *  GoControl Contact Sensor v1.6
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -9,6 +9,12 @@
  *    https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.6 (06/22/2016)
+ *      - Added support for the external contact.
+ *      - Added attributes for internal and external contact
+ *        so you can use them independently, but the main
+ *        contact reflects the last state of either contact.
  *
  *    1.5 (06/19/2016)
  *      -  Bug with initial battery reporting.
@@ -47,6 +53,8 @@ metadata {
 		capability "Tamper Alert"
 		capability "Refresh"
 		
+		attribute "internalContact", "enum", ["open", "close"]
+		attribute "externalContact", "enum", ["open", "close"]
 		attribute "lastPoll", "number"
 
 		fingerprint deviceId: "0x2001", 
@@ -115,13 +123,13 @@ metadata {
 	}
 }
 
-def parse(String description) {	
+def parse(String description) {		
 	def result = []
 	if (description.startsWith("Err")) {
 		result << createEvent(descriptionText:description, displayed:true)
 	} 
 	else {		
-		def cmd = zwave.parse(description, [0x20: 1, 0x30: 2, 0x80: 1, 0x84: 2, 0x71: 3, 0x86: 1, 0x85: 2, 0x72: 2])
+		def cmd = zwave.parse(description, [0x20: 1, 0x30: 2, 0x80: 1, 0x84: 2, 0x71: 3, 0x86: 1, 0x85: 2, 0x72: 2])		
 		if (cmd) {		
 			result += zwaveEvent(cmd)
 		}
@@ -160,9 +168,11 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 		map.descriptionText = "Battery is low"
 		map.isStateChange = true
 	}
-	else {		
+	else {	
+		def isNew = (device.currentValue("battery") != cmd.batteryLevel)
 		map.value = cmd.batteryLevel
-		map.displayed = false
+		map.displayed = isNew
+		map.isStateChange = isNew
 		logDebug "Battery is ${cmd.batteryLevel}%"
 	}	
 	
@@ -181,40 +191,58 @@ def installed() {
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd)
 {	
-	return handleContactReport(cmd.value)
+	return createContactEvents(cmd.value, null)
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd)
 {	
-	return handleContactReport(cmd.value)
+	
 }
 
-private handleContactReport(val) {
-	def contactVal = (val == 0xFF) ? "open" : "closed"	
-	
-	logDebug "Contact is $contactVal"
-	
+def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
 	def result = []	
-	result << createEvent(name: "contact", value: contactVal, 
-		isStateChange: true, descriptionText: "Contact is $contactVal")
+
+	if (cmd.notificationType == 7) {
+		switch (cmd.event) {
+			case 3:
+				if (cmd.notificationStatus == 0xFF) {
+					logDebug "Tamper is detected"
+					state.lastBatteryReport = null
+					result << createEvent(getTamperEventMap("detected"))		
+				}
+				break
+			case 2:
+				result += createContactEvents(cmd.v1AlarmLevel, "internalContact")
+				break
+			case 0xFE:
+				result += createContactEvents(cmd.v1AlarmLevel, "externalContact")
+				break
+		}
+	}	
+	return result
+}
+
+private createContactEvents(val, contactType) {
+	def contactVal = (val == 0xFF) ? "open" : "closed"
+	def desc = "Contact is $contactVal"
+
+	def result = []	
+	
+	result << createEvent(name: "contact", value: contactVal, isStateChange: true, descriptionText: desc)
+	
+	if (contactType) {
+		logDebug "$desc ($contactType)"
+		result << createEvent(name: contactType, value: contactVal, isStateChange: true, descriptionText: desc, displayed: false)
+	}
+	else {
+		logDebug desc
+	}
 		
 	if (device.currentValue("tamper") != "clear") {
 		logDebug "Tamper is clear"
 		result << createEvent(getTamperEventMap("clear"))
 	}
 	return result	
-}
-
-def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
-	def result = []	
-
-	if (cmd.notificationType == 7 && cmd.event == 3 && cmd.notificationStatus == 0xFF) {
-		logDebug "Tamper is detected"
-		state.lastBatteryReport = null
-		result << createEvent(getTamperEventMap("detected"))
-	}
-		
-	return result
 }
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
