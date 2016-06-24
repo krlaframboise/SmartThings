@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.8.4
+ *  Aeon Labs Multifunction Doorbell v 1.8.7
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-multifunction-doorbell/36586?u=krlaframboise)
  *
  *  Capabilities:
@@ -11,6 +11,9 @@
  *					(Based off of the "Aeon Doorbell" device type)
  *
  *	Changelog:
+ *
+ *	1.8.7 (06/23/2016)
+ *		- Attempt to fix stuck status on Things screen.
  *
  *	1.8.4 (05/12/2016)
  *		- Added lastPoll attribute and improved functionality.
@@ -170,25 +173,25 @@ metadata {
 		standardTile("playAlarm", "device.alarm", label: 'Alarm', width: 2, height: 2) {
 			state "default", label:'Alarm', action: "both", icon:"st.alarm.alarm.alarm", backgroundColor: "#ff9999"
 		}
-		valueTile("previous", "device.musicPlayer", label: 'Previous Track', width: 2, height: 2) {
+		standardTile("previous", "device.musicPlayer", label: 'Previous Track', width: 2, height: 2) {
 			state "default", label:'<<', action:"previousTrack", backgroundColor: "#694489"
 		}
-		valueTile("trackDescription", "device.trackDescription", label: 'Play Track', wordWrap: true, width: 2, height: 2) {
+		standardTile("trackDescription", "device.trackDescription", label: 'Play Track', wordWrap: true, width: 2, height: 2) {
 			state "trackDescription", label:'PLAY\n${currentValue}', action: "play", backgroundColor: "#694489"
 		}		
-		valueTile("next", "device.musicPlayer", label: 'Next Track', width: 2, height: 2) {
+		standardTile("next", "device.musicPlayer", label: 'Next Track', width: 2, height: 2) {
 			state "default", label:'>>', action:"nextTrack", backgroundColor: "#694489"
 		}
 		standardTile("refresh", "device.refresh", label: 'Refresh', width: 2, height: 2) {
-			state "default", label:'', action: "refresh", icon:"st.secondary.refresh"
+			state "default", label:'REFRESH', action: "refresh"
 		}
 		valueTile("battery", "device.battery",  width: 2, height: 2) {
 			state "battery", label:'BATTERY\n${currentValue}%', unit:"", backgroundColor: "#000000"
 		}
-		valueTile("onlineStatus", "device.presence",  width: 2, height: 2) {
-			state "present", label: 'Online', unit: "", backgroundColor: "#00FF00"
-			state "not present", label: 'Offline', unit: "", backgroundColor: "#FF0000"
-			state "default", label: 'Unknown', unit: "", defaultState: true
+		valueTile("onlineStatus", "device.presence",  wordWrap: true, width: 2, height: 2) {
+			state "present", label: 'ONLINE ', backgroundColor: "#00FF00"
+			state "not present", label: 'OFFLINE', backgroundColor: "#FF0000"
+			state "default", label: 'UNKNOWN', defaultState: true
 		}
 		main "status"
 		details(["status", "playBell", "playTone", "playAlarm", "previous", "trackDescription", "next", "refresh", "battery", "onlineStatus"])
@@ -347,7 +350,7 @@ def playTrack(track, status, desc) {
 		logDebug("Playing Track $track ($status: $desc)")
 		
 		if (status == "alarm") {
-			sendEvent(name: "alarm", value: "both")
+			sendEvent(name: "alarm", value: "both", displayed: false)
 			sendEvent(name: "switch", value: "on", displayed: false)
 		}
 		
@@ -453,11 +456,11 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	if (cmd.value == 0) {
 		clearPlayingStatus()		
 		
-		result << createEvent(name:"status", value: "off", displayed: false)
+		result << createEvent(name:"status", value: "off", displayed: true, isStateChange: true)
 		
-		result << createEvent(name:"alarm", value: "off", descriptionText: "$device.displayName alarm is off")
+		result << createEvent(name:"alarm", value: "off", descriptionText: "$device.displayName alarm is off", displayed: false, isStateChange: true)
 		
-		result << createEvent(name:"switch", value: "off", descriptionText: "$device.displayName switch is off", displayed: false)		
+		result << createEvent(name:"switch", value: "off", descriptionText: "$device.displayName switch is off", displayed: false, isStateChange: true)		
 	
 	} 
 	else if (cmd.value == 255) {		
