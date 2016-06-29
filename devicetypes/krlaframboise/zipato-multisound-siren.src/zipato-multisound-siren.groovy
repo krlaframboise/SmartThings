@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v0.0.1 (Alpha)
+ *  Zipato Multisound Siren v0.0.2 (Alpha)
  *  (PH-PSE02.US)
  *
  *  Author: 
@@ -10,8 +10,8 @@
  *
  *  Changelog:
  *
- *    0.0.1 (06/27/2016)
- *      - Alpha Test
+ *    0.0.2
+ *      - Testing
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -35,8 +35,7 @@ metadata {
 		attribute "status", "enum", ["off", "on", "alarm", "beep"]
 		
 		command "killSound"		
-		command "test"
-
+		
 		fingerprint deviceId: "0x1005", inClusters: "0x71,0x20,0x25,0x85,0x70,0x72,0x86,0x30,0x59,0x73,0x5A,0x98,0x7A"
 	}
 
@@ -186,12 +185,8 @@ metadata {
 			state "default", label:'Kill', action:"killSound", icon:""
 		}
 		
-		standardTile("test", "generic", width: 2, height: 2) {
-			state "default", label:'Test', action:"test", icon:""
-		}
-
 		main "status"
-		details(["status", "playSiren", "playStrobe", "playBoth", "playOn", "playBeep", "killSound", "test"])
+		details(["status", "playSiren", "playStrobe", "playBoth", "playOn", "playBeep", "killSound"])
 	}
 }
 
@@ -484,25 +479,15 @@ def createStatusEvents(val) {
 	logDebug "\nPlay Status: ${currentPlayStatus}\nCurrent State: [alarm:${device.currentValue('alarm')}, status:${device.currentValue('status')}, switch:${device.currentValue('switch')}]\nNew State: [alarm:$newAlarm, status:$newStatus, switch:$newSwitch]"
 	
 	if (newStatus) {
-		result << createEvent(name: "status", value: newStatus, displayed: (device.currentValue("status") != newStatus), isStateChange: true)
-		/*****test****/
-		sendEvent(name: "status", value: newStatus, displayed: (device.currentValue("status") != newStatus), isStateChange: true)
-		/*****test****/
-		
+		result << createEvent(name: "status", value: newStatus, displayed: (device.currentValue("status") != newStatus), isStateChange: true)		
 	}
 	
 	if (newAlarm) {
 		result << createEvent(name: "alarm", value: newAlarm, displayed: false, isStateChange: true)
-		/*****test****/
-		sendEvent(name: "alarm", value: newAlarm, displayed: false, isStateChange: true)
-		/*****test****/		
 	}
 	
 	if (newSwitch) {
 		result << createEvent(name: "switch", value: newSwitch, displayed: false, isStateChange: true)
-		/*****test****/
-		sendEvent(name: "switch", value: newSwitch, displayed: false, isStateChange: true)
-		/*****test****/		
 	}
 	
 	return result
@@ -594,15 +579,6 @@ private switchMultilevelSetCmd(val) {
 	// 0: means stop the sound.
 	val = validateRange(val, 1, 0, 99)
 	secureCmd(zwave.switchMultilevelV1.switchMultilevelSet(value: val))
-	
-	/****test***/
-	if (val == 0) {
-		test(0x00)
-	}
-	else {
-		test(0xFF)
-	}
-	/****test***/
 }
 
 private secureCmd(physicalgraph.zwave.Command cmd) {
@@ -657,25 +633,3 @@ private logDebug(msg) {
 private logInfo(msg) {
 	log.info "${device.displayName} $msg"
 }
-
-
-def test(val) {
-	def result = sensorBinaryTest([sensorType: 0x01, sensorValue: val])
-	log.debug "$result"
-}
-
-private  sensorBinaryTest(cmd) {
-	def result = null
-	switch(cmd.sensorType) {
-		case 1:
-			result = createStatusEvents(cmd.sensorValue)
-			break
-		case 8:
-			result = createTamperEvent(cmd.sensorValue)
-			break
-		default:
-			logDebug "SensorBinaryReport: $cmd"
-	}
-	return result
-}
-
