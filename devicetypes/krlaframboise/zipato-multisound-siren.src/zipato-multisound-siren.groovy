@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v0.0.2 (Alpha)
+ *  Zipato Multisound Siren v0.0.3 (Alpha)
  *  (PH-PSE02.US)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    0.0.2
+ *    0.0.3
  *      - Testing
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -212,8 +212,10 @@ def updated() {
 		
 		return response(delayBetween([
 			alarmDurationSetCmd(getAlarmDurationNumber(settings.alarmDuration)),
+			alarmDurationGetCmd(),
 			supportedSecurityGetCmd(),
-			versionGetCmd()
+			switchMultilevelGetCmd(),
+			versionGetCmd()			
 		], 250))
 	}
 }
@@ -384,7 +386,7 @@ private playSound(soundNumber) {
 	else {
 		logInfo "Playing Sound #$soundNumber"
 	}	
-	return switchMultilevelSetCmd(soundNumber)
+	return [switchMultilevelSetCmd(soundNumber)]
 }
 
 def parse(String description) {	
@@ -392,8 +394,8 @@ def parse(String description) {
 	def cmd = zwave.parse(description, [0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])
 	
 	if (cmd) {
-		result = zwaveEvent(cmd)
-		logDebug "Parse returned ${result?.inspect()}"
+		logDebug "$cmd"
+		result = zwaveEvent(cmd)		
 	}
 	else {
 		logDebug "Unknown Description: $description"
@@ -403,9 +405,9 @@ def parse(String description) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
-	def encapsulatedCmd = cmd.encapsulatedCommand([0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1])	
+	def encapsulatedCmd = cmd.encapsulatedCommand([0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])	
 	if (encapsulatedCmd) {
-		logDebug "encapsulated: $encapsulatedCommand"
+		logDebug "encapsulated: $encapsulatedCmd"
 		zwaveEvent(encapsulatedCmd)
 	}
 }
@@ -579,6 +581,14 @@ private switchMultilevelSetCmd(val) {
 	// 0: means stop the sound.
 	val = validateRange(val, 1, 0, 99)
 	secureCmd(zwave.switchMultilevelV1.switchMultilevelSet(value: val))
+}
+
+private switchMultilevelGetCmd() {
+	secureCmd(zwave.switchMultilevelV1.switchMultilevelGet())
+}
+
+private switchGetCmd() {
+	zwave.switchBinaryV1.switchBinaryGet()
 }
 
 private secureCmd(physicalgraph.zwave.Command cmd) {
