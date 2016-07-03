@@ -1,11 +1,14 @@
 /**
- *  Blink Wireless Camera v 1.4
+ *  Blink Wireless Camera v 1.5
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.5 (7/03/2016)
+ *      - Added updatedAt attribute
  *
  *    1.4 (5/18/2016)
  *      - Fixed word wrap issues caused by last mobile app update.
@@ -61,6 +64,7 @@ metadata {
 		attribute "actionStatus", "enum", ["ready", "arming", "disabling", "disarming", "enabling", "loading", "refreshing", "taking"]
 		attribute "systemStatus", "enum", ["armed", "disarmed", "offline"]
 		attribute "description", "String"
+		attribute "updatedAt", "String"
 		attribute "syncModuleSignal", "number"
 		attribute "wifiSignal", "number"
 		attribute "activeEventNumber", "number"
@@ -341,6 +345,7 @@ def refreshDetails(details) {
 	generateEvent(getSignalEventData("wifiSignal",details.wifiSignal))	
 	generateEvent(getSwitchEventData(details.status))	
 	generateEvent(getDescriptionEventData(details))	
+	generateEvent(getUpdatedAtEventData(details))	
 	refreshHomescreenImage(details.photoUrl)
 }
 
@@ -408,6 +413,13 @@ private getDescriptionEventData(camera) {
 	return [
 		name: "description",
 		value: getDescription(camera)
+	]
+}
+
+private getUpdatedAtEventData(camera) {
+	return [
+		name: "updatedAt",
+		value: "${camera.updatedAt}"
 	]
 }
 
