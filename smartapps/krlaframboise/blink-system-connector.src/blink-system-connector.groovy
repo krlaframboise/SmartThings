@@ -1,11 +1,16 @@
 /**
- *  Blink System Connector v 1.4
+ *  Blink System Connector v 1.5
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.5 (7/3/2016)
+ *      - Added Web Dashboard
+ *      - Added SHM preferences for stay and away so you 
+ *        can specify which cameras should be armed.
  *
  *    1.4 (5/18/2016)
  *      - Fixed the way the settings are displayed
@@ -55,24 +60,33 @@ definition(
 )
 
 preferences {
-	page(name:"mainPage")
-  page(name:"blinkSetupPage")
-	page(name:"optionsPage")
+	page(name:"mainPage")	
+  page(name:"blinkAccountSettingsPage")
+	page(name:"otherSettingsPage")
+	page(name:"shmSettingsPage")
+	page(name:"dashboardSettingsPage")
+	page(name:"enableDashboardPage")
+	page(name:"disableDashboardPage")
 	page(name:"toggleArmedPage")
 	page(name:"addCamerasPage")
 	page(name:"refreshCamerasPage")
-	page(name:"cameraPage")
 }
 
 def mainPage() {
-	dynamicPage(name:"mainPage", uninstall:true, install:true) {				
+	dynamicPage(name:"mainPage", uninstall:true, install:true) {
 		if (state.completedSetup) {
-			state.lastCameraViewed = null				
+	
+			section() {
+				getDashboardHref()
+				getToggleArmedPageLink()
+			}
+					
 			section("System Status") {
 				getSystemStatusParagraph()
 			}
-			section() {
-				getToggleArmedPageLink()
+			
+			section("Cameras") {
+				getCameraList()
 				getPageLink("addCamerasPageLink", 
 					"Add Cameras", 
 					"addCamerasPage")
@@ -80,24 +94,36 @@ def mainPage() {
 					"Refresh Cameras", 
 					"refreshCamerasPage")
 			}
-			section("Cameras") {
-				getCameraPageLinks()
-			}
-			section("Settings") {
-				if(state.completedSetup) {
-					getPageLink("optionsPageLink",
-						"Options",
-						"optionsPage")
-				}
-				getPageLink("blinkSetupPageLink",
+			section("Settings") {				
+				getPageLink("blinkAccountSettingsPageLink",
 					"Blink Acount Settings",
-					"blinkSetupPage")
+					"blinkAccountSettingsPage")
+				getPageLink("dashboardSettingsPageLink",
+					"Dashboard Settings",
+					"dashboardSettingsPage")
+				getPageLink("shmSettingsPageLink",
+					"Smart Home Monitor Settings",
+					"shmSettingsPage")
+				getPageLink("otherSettingsPageLink",
+					"Other Settings",
+					"otherSettingsPage")
 			}	
 		}
 		else {
-			getBlinkSetupPageContents()
-			getOptionsPageContents()
+			getBlinkAccountSettingsPageContents()
+			getDashboardSettingPageContents()
+			getSHMSettingsPageContents()
+			getOtherSettingsPageContents()
 		}
+	}
+}
+
+private getDashboardHref() {
+	if (!state.endpoint) {
+		href "enableDashboardPage", title: "Enable Dashboard", description: ""
+	} 
+	else {
+		href "", title: "View Dashboard", style: "external", url: api_dashboardUrl()
 	}
 }
 
@@ -108,17 +134,15 @@ private getSystemStatusParagraph() {
 		def devices = data?.devices
 		def syncModule = devices?.find { it.device_type == "sync_module" }
 		def cameraCount = devices?.count { it.device_type == "camera" }
-		def disabledCount = devices?.count { it.device_type == "camera" && !it.enabled}
-
-		state.systemArmed = network?.armed ? true : false
+		def disabledCount = devices?.count { it.device_type == "camera" && (it.currentStatus == "disabled")}
 
 		paragraph "System Armed: ${network?.armed}\n" +
-			"System Status: ${network?.status}\n" +
-			"Notifications: ${network?.notifications}\n" +
-			"Sync Module Status: ${syncModule?.status}\n" +
-			"Sync Module Response: ${getFormattedLocalTime(syncModule?.last_hb)}\n" +
-			"Cameras: ${cameraCount}\n" +
-			"Disabled Cameras: ${disabledCount}"
+		"System Status: ${network?.status}\n" +
+		"Notifications: ${network?.notifications}\n" +
+		"Sync Module Status: ${syncModule?.status}\n" +
+		"Sync Module Response: ${getFormattedLocalTime(syncModule?.last_hb)}\n" +
+		"Cameras: ${cameraCount}\n" +
+		"Disabled Cameras: ${disabledCount}"
 	}
 	catch (e) {
 		def msg = "Unable to connect to Blink.  This is usually caused by either an invalid username/password or the Blink service being temporarily down."
@@ -145,7 +169,7 @@ def toggleArmedPage() {
 				result = arm()
 			}
 			if (result) {				
-				paragraph "The system is now ${newStatus}ed"
+				paragraph "The system is now ${newStatus}ed\n\nPlease wait a few seconds and then press Done"
 			}
 			else {
 				paragraph "Unable to $newStatus System"
@@ -212,45 +236,53 @@ def refreshCamerasPage() {
 	}
 }
 
-private getCameraPageLinks() {
-	try {
-		getChildDevices().sort{it.displayName}.each {
-			def dni = it.deviceNetworkId
-			def cameraId = getCameraIdFromDNI(dni)
-			if (cameraId) {
-				getPageLink("camera${cameraId}PageLink",
-					"${it.displayName} (${it.currentStatus})",
-					"cameraPage",
-					[dni: "${dni}"])
-			}		
-		}
-	}
-	catch (e) {
-		log.error "Unable to list camera links: $e"
+private getCameraList() {
+	getSortedDevices().each {
+		paragraph image: "${getCameraStatusImageUrl(it.currentStatus)}",	"${it.displayName}"
 	}
 }
 
-def cameraPage() {
-	dynamicPage(name:"cameraPage") {		
-		def dni = "${params.dni}"
-		section ("Camera $dni") {
-			paragraph "This feature is not available yet."
-		}
+private getSortedDevices() {
+	return getChildDevices().sort{it.displayName}
+}
+
+def shmSettingsPage() {
+	dynamicPage(name:"shmSettingsPage") {		
+		getSHMSettingsPageContents()
 	}
 }
 
-def optionsPage() {
-	dynamicPage(name:"optionsPage") {		
-		getOptionsPageContents()
+private getSHMSettingsPageContents() {
+	section ("Smart Home Monitor Settings") {
+		input "shmArmedAwayCameras", "enum",
+			title: "Arm these cameras when SHM is Armed(Away)",
+			multiple: true,
+			required: false,			
+			options: getCameraOptions() 
+		input "shmArmedStayCameras", "enum",
+			title: "Arm these cameras when SHM is Armed(Stay)",
+			multiple: true,
+			required: false,
+			options: getCameraOptions()
 	}
 }
 
-private getOptionsPageContents() {
-	section ("Options") {
-		input "shmEnabled", "bool", 
-			title: "Integrate with Smart Home Monitor?",
-			required: false, 
-			defaultValue: false
+private getCameraOptions() {
+	def options = []
+	getChildDevices().each {
+		options << it.displayName
+	}	
+	return options
+}
+
+def otherSettingsPage() {
+	dynamicPage(name:"otherSettingsPage") {		
+		getOtherSettingsPageContents()
+	}
+}
+
+private getOtherSettingsPageContents() {
+	section ("Other Settings") {
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true,
@@ -258,20 +290,84 @@ private getOptionsPageContents() {
 	}
 }
 
-def blinkSetupPage() {
-	dynamicPage(name:"blinkSetupPage") {		
-		getBlinkSetupPageContents()
+def dashboardSettingsPage() {
+	dynamicPage(name:"dashboardSettingsPage") {		
+		getDashboardSettingPageContents()
 	}
 }
 
-private getBlinkSetupPageContents() {
-	section () {
+def getDashboardSettingPageContents() {
+	section ("Dashboard Settings") {
+		if (state.endpoint) {
+			log.info "Dashboard Url: ${api_dashboardUrl()}"
+			input "dashboardRefreshInterval", "number", 
+				title: "Dashboard Refresh Interval: (seconds)",
+				defaultValue: 300,
+				required: false
+			input "dashboardMenuPosition", "enum", 
+				title: "Menu Position:", 
+				defaultValue: "Top of Page",
+				required: false,
+				options: ["Top of Page", "Bottom of Page"]
+			input "dashboardShowCameraDetails", "bool", 
+				title: "Show Camera Details?", 
+				defaultValue: true,
+				required: false
+			paragraph ""
+			getPageLink("disableDashboardPageLink",
+				"Disable Dashboard",
+				"disableDashboardPage")
+		}
+		else {
+			getPageLink("enableDashboardPageLink",
+				"Enable Dashboard",
+				"enableDashboardPage")
+		}
+	}
+}
+
+private disableDashboardPage() {	
+	dynamicPage(name: "disableDashboardPage", title: "") {
+		section() {
+			if (state.endpoint) {
+				try {
+					revokeAccessToken()
+				}
+				catch (e) {
+					logDebug "Unable to revoke access token: $e"
+				}
+				state.endpoint = null
+			}	
+			paragraph "The Dashboard has been disabled! Tap Done to continue"	
+		}
+	}
+}
+
+private enableDashboardPage() {
+	dynamicPage(name: "enableDashboardPage", title: "") {
+		section() {
+			if (initializeAppEndpoint()) {
+				paragraph "The Dashboard is now enabled. Tap Done to continue"
+			} 
+			else {
+				paragraph "Please go to your SmartThings IDE, select the My SmartApps section, click the 'Edit Properties' button of the Blink System Connector app, open the OAuth section and click the 'Enable OAuth in Smart App' button. Click the Update button to finish.\n\nOnce finished, tap Done and try again.", title: "Please enable OAuth for Blink System Connector", required: true, state: null
+			}
+		}
+	}
+}
+
+def blinkAccountSettingsPage() {
+	dynamicPage(name:"blinkAccountSettingsPage") {		
+		getBlinkAccountSettingsPageContents()
+	}
+}
+
+private getBlinkAccountSettingsPageContents() {
+	section ("Blink Account Settings") {
 		input "hostHub", "hub", 
 			title: "Select SmartThings Hub",
 			multiple: false, 
 			required: true		
-	}
-	section ("Blink Account Settings") {
 		input "blinkUser", "text", 
 			title: "Blink Account Email",
 			required: true
@@ -301,7 +397,7 @@ def installed() {
 def updated() {
 	unsubscribe()
 	unschedule()
-	initialize()
+	initialize()	
 }
 
 private initialize() {
@@ -309,8 +405,8 @@ private initialize() {
 		state.completedSetup = true
 		logDebug "${addCameras()}"
 	}
-	if (state.completedSetup) {
-		if (settings.shmEnabled) {
+	if (state.completedSetup) {		
+		if (shmEnabled()) {
 			subscribe(location, "alarmSystemStatus", shmHandler)
 		}		
 		runEvery5Minutes(refreshAllCameraDetails)	
@@ -443,9 +539,7 @@ private setCameraStatus(dni, status) {
 	def data = postToBlink(request)?.data
 	if (!data) {
 		log.error "Failed to set status of camera $cameraId to $status"
-	}
-	//log.debug "camera status response: $data}"
-	//refreshCamera(dni)
+	}	
 }
 
 private getCameraRequestPath(dni) {
@@ -523,9 +617,16 @@ private getCamera(networkId, device) {
 	]
 }
 
+private systemArmed() {
+	getHomeScreenData() // Updates state.systemArmed
+	return state.systemArmed	
+}
+
 private getHomeScreenData() {
 	def request = buildRequest("/homescreen")
-	return getFromBlink(request)?.data
+	def data = getFromBlink(request)?.data
+	state.systemArmed = data?.network?.armed ? true : false
+	return data
 }
 
 def refreshAllCameraEvents() {
@@ -692,16 +793,68 @@ private canRetryRequest(errorMsg) {
 }
 
 def shmHandler(evt) {
-	if (settings.shmEnabled && state.shmStatus != evt.value) {		
-		state.shmStatus = evt.value
-		def status = getSystemStatus()		
-		if (evt.value == "away" && status != "armed") {
-			arm()
+	handleSHM()
+}
+
+def handleSHM() {	
+	def status = location.currentState("alarmSystemStatus")?.value ?: ""
+	
+	if (systemArmed() && !state.refreshDetails) {
+		state.refreshDetails = true
+		logDebug "Disarming cameras because SHM is ${status}"
+		disarm()
+		
+		if (status != "off") {
+			runIn(3, handleSHM)
 		}
-		else if (status != "disarmed") {
-			disarm()
-		}		
-	}	
+	}
+	else {
+		try {
+			state.refreshDetails = true
+			if (status == "away") {
+				shmArmCameras(settings.shmArmedAwayCameras, status)
+			}	
+			else if (status == "stay") {
+				shmArmCameras(settings.shmArmedStayCameras, status)
+			}
+		}
+		catch (e) {
+			log.error "shmHandler Exception: $e"
+		}
+		state.refreshDetails = false
+	}
+}
+
+private shmArmCameras(cameraNames, shmStatus) {	
+	getChildDevices().each {
+		if (it.displayName in cameraNames) {
+			shmArmCamerasDisabledToggle(it, false)
+		}
+		else {
+			shmArmCamerasDisabledToggle(it, true)
+		}
+	}
+
+	logDebug "Arming cameras because SHM is Armed(${shmStatus})"
+	arm()
+}
+
+private shmArmCamerasDisabledToggle(camera, isDisabling) {
+	def isDisabled = (camera.currentStatus == "disabled")
+	if (isDisabled != isDisabling) {		
+		if (isDisabling) {
+			logDebug "Disabling ${camera.displayName}"
+			disableCamera(camera.deviceNetworkId)
+		}
+		else {
+			logDebug "Enabling ${camera.displayName}"
+			enableCamera(camera.deviceNetworkId)			
+		}
+	}
+}
+
+boolean shmEnabled() {
+	return settings.shmArmedAwayCameras || settings.shmArmedStayCameras
 }
 
 def getFormattedLocalTime(utcDateString) {
@@ -749,4 +902,283 @@ private logDebug(msg) {
 	if (settings.debugOutput) {
 		log.debug "$msg"
 	}
+}
+
+
+/********************************************
+*    Dashboard
+********************************************/
+private initializeAppEndpoint() {	
+	if (!state.endpoint) {
+		try {
+			def accessToken = createAccessToken()
+			if (accessToken) {
+				state.endpoint = apiServerUrl("/api/token/${accessToken}/smartapps/installations/${app.id}/")				
+			}
+		} 
+		catch(e) {
+			state.endpoint = null
+		}
+	}
+	return state.endpoint
+}
+
+mappings {
+	path("/dashboard") {action: [GET: "api_dashboard"]}
+	path("/dashboard/:action") {action: [GET: "api_dashboard"]}
+	path("/camera/:index") {action: [GET: "api_camera"]}	
+	path("/camera/:index/:action") {action: [GET: "api_camera"]}	
+}
+
+private api_dashboardUrl() {
+	return "${state.endpoint}dashboard"
+}
+
+private api_cameraUrl(cameraIndex) {
+	return "${state.endpoint}camera/$cameraIndex"
+}
+
+def api_dashboard() {
+	def action = params?.action
+	def msg
+	if (action) {
+		switch (action) {
+			case { it in ["arm", "disarm"]}:
+				msg = !setStatus(action) ? "Unable to ${action} system" : getSuccessMessageHtml("System ${action}ed successfully")
+				break
+			case "update":
+				msg = updateCameras()
+				break;
+			case "take":
+				msg = takePhotos()
+				break
+			default:
+				msg = null
+		}
+	}
+	renderDashboardHtml(msg)
+}
+
+def takePhotos() {
+	def msg = ""
+	def success = 0
+	def failed = 0
+	
+	getChildDevices().each {		
+		logDebug "Taking photo with ${it.displayName}"
+		if (takePhoto(it.deviceNetworkId)) {
+			success += 1
+		}
+		else {
+			failed += 1
+			logDebug "Unable to take photo with ${it.displayName}"
+		}
+	}
+
+	if (success > 0) {
+		msg = getSuccessMessageHtml("${success} of ${success + failed} photos were successfully taken")				
+	}
+	else {
+		msg = "Unable to take photos"
+	}
+	return msg
+}
+
+def updateCameras() {
+	def msg = refreshAllCameraDetails()
+	
+	if (!msg.contains("Refresh Failed:")) {
+		msg = getSuccessMessageHtml("Cameras updated successfully")
+	}
+	return msg
+}
+
+private renderDashboardHtml(msg) {
+	def armed = systemArmed()
+	def status = armed ? "armed" : "disarmed"
+	def action = armed ? "Disarm" : "Arm"
+	def header = getHeaderMessageHtml(msg, status)
+	def nav = getNavHtml([
+		[text: "${action} System", url: "${api_dashboardUrl()}/${action.toLowerCase()}"],
+		[text: "Take Photos", url: "${api_dashboardUrl()}/take"],
+		[text: "Update Cameras", url: "${api_dashboardUrl()}/update"],
+		[text: "Reload Page", url: api_dashboardUrl()]
+	])		
+	def footer = "<footer><textarea rows=\"2\">${api_dashboardUrl()}</textarea></footer>"
+	
+	renderHtmlPage(getBodyHtml(header, getAllCamerasDetailHtml(), nav, footer), getDashboardCss(), api_dashboardUrl())	
+}
+
+def api_camera() {
+	def cameraIndex = safeToInteger(params.index)
+	def camera = getCameraByIndex(cameraIndex)
+	def action = params.action
+	def imageOnly = false
+	def msg
+	
+	if (camera) {
+		switch (action) {
+			case "take":
+				camera.take()
+				msg = "Photo taken"
+				break
+			case "update":
+				camera.refresh()
+				msg = "Camera refreshed"
+				break
+			case "enable":
+				camera.enableCamera()
+				msg = "Camera enabled" 
+				break
+			case "disable":
+				camera.disableCamera()
+				msg = "Camera disabled"
+				break
+			case "image":
+				imageOnly = true
+				break
+			default:
+				msg = null
+		}
+		if (msg) {
+			msg = getSuccessMessageHtml(msg)
+		}
+	}
+	else {
+		msg = (msg ? "${msg}<br><br>" : "") + "Camera ${cameraIndex + 1} Not Found"
+	}
+
+	if (imageOnly) {
+		def imageUrl = "${api_cameraUrl(cameraIndex)}/image"
+		renderHtmlPage("<div>${camera.displayName}<br><a href=\"${imageUrl}\">${getCameraImageHtml(camera.currentImageDataJpeg)}</a></div>", "body{text-align:center;margin:0 0 0 0;}img{width:100%;}", imageUrl)
+	}
+	else {
+		renderCameraHtml(camera, cameraIndex, msg)
+	}
+}
+
+private renderCameraHtml(camera, cameraIndex, msg) {
+	def status = camera?.currentStatus ?: ""
+	def action = (camera?.currentStatus == "disabled") ? "Enable" : "Disable"
+	def header = getHeaderMessageHtml(msg, status)
+	def nav = getNavHtml([
+		[text: "${action} Camera", url: "${api_cameraUrl(cameraIndex)}/${action.toLowerCase()}"],
+		[text: "Take Photo", url: "${api_cameraUrl(cameraIndex)}/take"],
+		[text: "Update Camera", url: "${api_cameraUrl(cameraIndex)}/update"],
+		[text: "Reload Page", url: api_cameraUrl(cameraIndex)],
+		[text: "Go Back to Dashboard", url: api_dashboardUrl()]
+	])
+	
+	def content = ""
+	if (camera) {		
+		content = getCameraSectionHtml(camera, cameraIndex, false, true)
+	}
+		
+	renderHtmlPage(getBodyHtml(header, content, nav, ""), getCameraCss(), api_cameraUrl(cameraIndex))
+}
+
+private getBodyHtml(header, content, nav, footer) {
+	if (settings.dashboardMenuPosition != "Bottom of Page") {
+		return "$header$nav$content$footer"
+	}
+	else {
+		return "$header$content$nav$footer"
+	}
+}
+private getSuccessMessageHtml(partialMessage) {
+	return "${partialMessage}, but you may not see the change until the page is reloaded a couple of times.<br><br>*** If you want to manually refresh the page, use the \"Reload Page\" button below instead of the browser's refresh button ***"
+}
+
+private getNavHtml(menuItems) {
+	def html = ""
+	if (menuItems) {
+		html += "<nav><ul class=\"menu\">"
+		menuItems.each { 
+			html += "<li><a class=\"btn\" href=\"${it.url}\" onclick=\"this.innerText='Please Wait...'\">${it.text}</a></li>"	
+		}
+		html += "</ul></nav>"
+	}
+	return html
+}
+
+private getHeaderMessageHtml(msg, status) {
+	msg = msg ? "<div class=\"message\">$msg</div>" : ""
+	
+	return "<header><div class=\"${status}\">${status.toUpperCase()}</div>${msg}</header>"
+}
+
+private renderHtmlPage(html, css, url) {
+	render contentType: "text/html", 
+		data: "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><meta http-equiv=\"refresh\" content=\"${settings.dashboardRefreshInterval ?: 30}; URL=${url}\"><style type=\"text/css\">${css}</style></head><body>${html}</body></html>"
+}
+
+private int safeToInteger(val, int defaultVal=0) {
+	try {
+		val = "$val"
+		if (val?.isFloat()) {
+			return val.toFloat().round().toInteger()
+		}
+		else if (val?.isInteger()){
+			return val.toInteger()
+		}
+		else {
+			return defaultVal
+		}
+	}
+	catch (e) {
+		logDebug "safeToInteger($val, $defaultVal) failed with error $e"
+		return defaultVal
+	}
+}
+
+private getCameraByIndex(index) {
+	def cameras = getSortedDevices()	
+	if (cameras?.size() > index) {
+		return cameras[index]
+	}	
+}
+
+private getAllCamerasDetailHtml() {
+	def result = ""
+	def index = 0
+	getSortedDevices().each {		
+		result += getCameraSectionHtml(it, index, true, settings.dashboardShowCameraDetails)
+		index += 1
+	}	
+	return result
+}
+
+private getCameraSectionHtml(camera, cameraIndex, useLink, includeDetails) {
+	def sectionHeader = getCameraSectionHeaderHtml(camera, cameraIndex, useLink)
+	def details = (includeDetails == false) ? "" : "<br><strong>DNI: </strong>${camera.deviceNetworkId}<br><strong>Status: </strong>${camera.currentStatus}<br><strong>Battery: </strong>${camera.currentBattery}%<br><strong>Motion: </strong>${camera.currentMotion}<br><strong>Temperature: </strong>${camera.currentTemperature}°<br><strong>WiFi Signal: </strong>${camera.currentWifiSignal}%<br><strong>Sync Module Signal: </strong>${camera.currentSyncModuleSignal}%<br><strong>Updated: </strong>${camera.currentUpdatedAt}"
+	
+	return "<section class=\"camera-details ${camera.currentStatus}\">${sectionHeader}<p>${getCameraImageHtml(camera.currentImageDataJpeg)}${details}</p></section>"
+}
+
+private getCameraSectionHeaderHtml(camera, cameraIndex, useLink) {
+	def tag = useLink ? "a" : "span"
+	def attr = useLink ? " href=\"${api_cameraUrl(cameraIndex)}\"" : ""
+	def style = "style=\"background-image:url('${getCameraStatusImageUrl(camera.currentStatus)}');\""
+	return "<h1><${tag} ${style}${attr}>${camera.displayName}</${tag}></h1>"
+}
+
+private getCameraImageHtml(imageData) {
+	return "<img src=\"data:image/jpeg;base64,${imageData}\">"
+}
+
+private getDashboardCss() {
+	return "${getCommonCss()}img{max-width:100%;}textarea{display:block;width:100%;margin-top:50px;}.camera-details{border-top:1px solid #000000;}@media (max-width: 639px){.camera-details{width:100%;}}@media (min-width:640px){.camera-details{width:292px;display:inline-block;margin:10px 10px 10px 10px;}header .message{width:75%;margin-left:auto;margin-right:auto;}}"
+}
+
+
+private getCameraCss() {
+	return "${getCommonCss()}img{max-width:95%;}"
+}
+
+private getCommonCss() {
+	return "body{text-align:center;font-family:Helvetica,arial,sans-serif;margin:0 0 10px 0;}section, footer{margin: 8px 8px 8px 8px;}p{width:auto;margin-left:auto;margin-right:auto;line-height:1.5;}img{margin-bottom:10px;}a,a:link,a:hover,a:visited{color:#0000EE;}h1{font-size:120%;line-height:1.3;}h1 a, h1 span{background:no-repeat left center;background-size:contain; padding: 12px 0px 12px 75px;display:inline-block;min-height:50px;vertical-align:middle;}ul.menu{margin:0 0 0 0;padding:0 0 0 0;text-align:center;background-image:none;} a.btn{width:75%;margin:3px 10px 3px 10px; background:#3498db; background-image:linear-gradient(to bottom, #3498db, #2980b9); border-radius: 10px; color: #ffffff; font-size: 125%;padding: 10px 20px 10px 20px; text-decoration:none;display:inline-block;}.btn:hover{background: #3cb0fd; background-image: linear-gradient(to bottom, #3cb0fd, #3498db); text-decoration: none;}header .message{font-size:125%;color:#FF0000;padding-bottom:15px;margin: 15px 15px 15px 15px;}header .armed, header .disarmed, header .disabled {width:100%;margin:0 0 8px 0;padding:8px 0 8px 0;color:#000000;font-weight:bold;font-size:150%;}header .armed{background-color: #ff9999;}header .disarmed{background-color: #99c2ff;}header .disabled {background-color: #9ca1a4;}"
+}
+
+private getCameraStatusImageUrl(status) {
+	return "https://raw.githubusercontent.com/krlaframboise/Resources/master/blink-camera-${status}.png"
 }
