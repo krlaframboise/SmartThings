@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v0.0.3 (Alpha)
+ *  Zipato Multisound Siren v0.0.4
  *  (PH-PSE02.US)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    0.0.4
+ *      - testing optional security and basicset instead of multiswitch.
  *
  *    0.0.3
  *      - Testing
@@ -184,6 +187,7 @@ metadata {
 		standardTile("killSound", "generic", width: 2, height: 2) {
 			state "default", label:'Kill', action:"killSound", icon:""
 		}
+
 		
 		main "status"
 		details(["status", "playSiren", "playStrobe", "playBoth", "playOn", "playBeep", "killSound"])
@@ -267,7 +271,11 @@ private getAlarmDurationNumber(val) {
 def on() {
 	setPlayStatus("on", "off", "on")
 	logDebug "Executing on()"		
-	playSound(getSoundNumber(settings.switchOnSound))
+	//playSound(getSoundNumber(settings.switchOnSound))
+	return [
+		basicSetCmd(0xFF),
+		basicGetCmd()
+	]
 }
 
 def off() {
@@ -386,7 +394,11 @@ private playSound(soundNumber) {
 	else {
 		logInfo "Playing Sound #$soundNumber"
 	}	
-	return [switchMultilevelSetCmd(soundNumber)]
+	//return [switchMultilevelSetCmd(soundNumber)]
+	return [
+		basicSetCmd(soundNumber),
+		basicGetCmd()
+	]
 }
 
 def parse(String description) {	
@@ -407,6 +419,10 @@ def parse(String description) {
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
 	def encapsulatedCmd = cmd.encapsulatedCommand([0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])	
 	if (encapsulatedCmd) {
+		if (!state.useSecureCommands) {
+			state.useSecureCommands = true
+			logDebug "Secure Commands Enabled"
+		}
 		logDebug "encapsulated: $encapsulatedCmd"
 		zwaveEvent(encapsulatedCmd)
 	}
@@ -541,6 +557,10 @@ private basicSetCmd(val) {
 	secureCmd(zwave.basicV1.basicSet(value: val))
 }
 
+private basicGetCmd() {
+	secureCmd(zwave.basicV1.basicGet())
+}
+
 private supportedSecurityGetCmd() {
 	secureCmd(zwave.securityV1.securityCommandsSupportedGet())
 }
@@ -592,7 +612,12 @@ private switchGetCmd() {
 }
 
 private secureCmd(physicalgraph.zwave.Command cmd) {
-	zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
+	if (state.useSecureCommands) {
+		zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
+	}
+	else {
+		cmd.format()
+	}
 }
 
 int validateRange(val, int defaultVal, int minVal, int maxVal) {
@@ -635,9 +660,9 @@ private int safeToInteger(val, int defaultVal=0) {
 }
 
 private logDebug(msg) {
-	if (settings.debugOutput || settings.debugOutput == null) {
+	//if (settings.debugOutput || settings.debugOutput == null) {
 		log.debug "$msg"
-	}
+	//}
 }
 
 private logInfo(msg) {
