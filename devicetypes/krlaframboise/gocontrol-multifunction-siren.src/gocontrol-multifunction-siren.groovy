@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.3
+ *  GoControl Multifunction Siren v 1.4
  *    (Models: ZM1601US / WA105DBZ-1)
  *  
  *  Capabilities:
@@ -19,6 +19,9 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.4 (07/14/2016)
+ *      - Added secure command support.
  *
  *    1.3 (06/17/2016)
  *      - Fixed delayed alarm with strobe bug.
@@ -203,9 +206,11 @@ def updated() {
 		logDebug "Updating"
 
 		def cmds = []		
+		cmds << supportedSecurityGetCmd()
 		cmds << autoOffSetCmd(getAutoOffTimeValue())
 		cmds << batteryGetCmd()
 		cmds += turnOff()		
+		cmds << versionGetCmd()
 		response(delayBetween(cmds, 20))
 	}
 }
@@ -482,15 +487,15 @@ private autoOffSetCmd(autoOff) {
 }
 
 private configSetCmd(paramNumber, paramSize, paramValue) {
-	zwave.configurationV1.configurationSet(parameterNumber: paramNumber, size: paramSize, scaledConfigurationValue: paramValue).format()
+	secureCmd(zwave.configurationV1.configurationSet(parameterNumber: paramNumber, size: paramSize, scaledConfigurationValue: paramValue))
 }
 
 private configGetCmd(paramNumber) {
-	zwave.configurationV1.configurationGet(parameterNumber: paramNumber).format()
+	secureCmd(zwave.configurationV1.configurationGet(parameterNumber: paramNumber))
 }
 
 private switchOnSetCmd() {
-	zwave.basicV1.basicSet(value: 0xFF).format()
+	secureCmd(zwave.basicV1.basicSet(value: 0xFF))
 }
 
 private switchOffSetCmds() {
@@ -505,19 +510,32 @@ private switchOffSetCmds() {
 }
 
 private switchOffSetCmd() {
-	zwave.basicV1.basicSet(value: 0x00).format()
+	secureCmd(zwave.basicV1.basicSet(value: 0x00))
 }
 
 private switchGetCmd() {	
-	zwave.basicV1.basicGet().format()
+	secureCmd(zwave.basicV1.basicGet())
 }
 
 private switchBinaryGetCmd() {
-	zwave.switchBinaryV1.switchBinaryGet().format()
+	secureCmd(zwave.switchBinaryV1.switchBinaryGet())
 }
 
 private batteryGetCmd() {
-	zwave.batteryV1.batteryGet().format()
+	secureCmd(zwave.batteryV1.batteryGet())
+}
+
+private supportedSecurityGetCmd() {	
+	secureCmd(zwave.securityV1.securityCommandsSupportedGet())
+}
+
+private secureCmd(physicalgraph.zwave.Command cmd) {
+	if (state.useSecureCommands) {
+		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
+	}
+	else {
+		return cmd.format()
+	}
 }
 
 // Parses incoming message
@@ -534,6 +552,22 @@ def parse(String description) {
 	}
 	result << createEvent(name:"lastPoll", value: new Date().time, displayed: false, isStateChange: true)
 	return result
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
+	def encapsulatedCmd = cmd.encapsulatedCommand([0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])	
+	if (encapsulatedCmd) {	
+		if (!state.useSecureCommands) {
+			state.useSecureCommands = true
+			logDebug "Secure Commands Enabled"
+		}
+		logDebug "encapsulated: $encapsulatedCmd"
+		zwaveEvent(encapsulatedCmd)
+	}
+}
+
+private versionGetCmd() {
+	secureCmd(zwave.versionV1.versionGet())
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
