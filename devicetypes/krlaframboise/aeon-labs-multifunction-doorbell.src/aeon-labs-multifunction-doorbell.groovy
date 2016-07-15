@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.8.7
+ *  Aeon Labs Multifunction Doorbell v 1.8.8
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-multifunction-doorbell/36586?u=krlaframboise)
  *
  *  Capabilities:
@@ -11,6 +11,11 @@
  *					(Based off of the "Aeon Doorbell" device type)
  *
  *	Changelog:
+ *
+ *	1.8.8 (07/14/2016)
+ *		- Changed skip play interval from 25 to 10 so that
+ *      overlapping tracks can be used to extend beyond
+ *      the 20 second maximum.
  *
  *	1.8.7 (06/23/2016)
  *		- Attempt to fix stuck status on Things screen.
@@ -388,7 +393,7 @@ private isStuckPlaying() {
 	def result = false
 	def currentTime = new Date().time
 	
-	if (state.lastPlay == null || (state.lastPlay + (25 * 1000)) < currentTime) {		
+	if (state.lastPlay == null || (state.lastPlay + (10 * 1000)) < currentTime) {		
 		result = true
 	} else if (state.playSkipCount == null) {
 		state.playSkipCount = 1
