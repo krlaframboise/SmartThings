@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v0.0.4
+ *  Zipato Multisound Siren v0.0.5
  *  (PH-PSE02.US)
  *
  *  Author: 
@@ -10,8 +10,12 @@
  *
  *  Changelog:
  *
+ *    0.0.5
+ *      - 
+ *
  *    0.0.4
- *      - testing optional security and basicset instead of multiswitch.
+ *      - testing optional security and basicset instead of
+ *        multiswitch.
  *
  *    0.0.3
  *      - Testing
@@ -86,6 +90,11 @@ metadata {
 			displayDuringSetup: true, 
 			required: false,
 			options: ["30 Seconds", "1 Minute", "2 Minutes", "3 Minutes", "5 Minutes", "10 Minutes", "15 Minutes", "30 Minutes", "45 Minutes", "1 Hour", "Unlimited"]			
+		input "forceSecureCommands", "bool", 
+			title: "Force Secure Commands?", 
+			defaultValue: true, 
+			displayDuringSetup: false, 
+			required: false			
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -106,57 +115,57 @@ metadata {
 					action: "off", 
 					icon:"st.alarm.alarm.alarm", 					
 					backgroundColor: "#99c2ff"					
-				attributeState "alarm", 
-					label:'Alarm!', 
-					action: "off", 
-					icon:"st.alarm.alarm.alarm", 
-					backgroundColor:"#ff9999"
-				attributeState "beep", 
-					label:'Beeping!', 
-					action: "off", 
-					icon:"st.Entertainment.entertainment2", 
-					backgroundColor:"#99FF99"
+				// attributeState "alarm", 
+					// label:'Alarm!', 
+					// action: "off", 
+					// icon:"st.alarm.alarm.alarm", 
+					// backgroundColor:"#ff9999"
+				// attributeState "beep", 
+					// label:'Beeping!', 
+					// action: "off", 
+					// icon:"st.Entertainment.entertainment2", 
+					// backgroundColor:"#99FF99"
 			}
 		}
 		
-		standardTile("playSiren", "device.alarm", width: 2, height: 2) {
-			state "default", 
-				label:'Siren', 
-				action:"alarm.siren", 
-				icon:"st.alarm.alarm.alarm", 
-				backgroundColor:"#ff9999"
-			state "siren",
-				label:'Off',
-				action:"alarm.off",
-				icon:"",
-				background: "#ffffff"	
-		}
+		// standardTile("playSiren", "device.alarm", width: 2, height: 2) {
+			// state "default", 
+				// label:'Siren', 
+				// action:"alarm.siren", 
+				// icon:"st.alarm.alarm.alarm", 
+				// backgroundColor:"#ff9999"
+			// state "siren",
+				// label:'Off',
+				// action:"alarm.off",
+				// icon:"",
+				// background: "#ffffff"	
+		// }
 		
-		standardTile("playStrobe", "device.alarm", width: 2, height: 2){
-			state "default", 
-				label:'Strobe', 
-				action:"alarm.strobe", 
-				icon:"st.alarm.alarm.alarm", 
-				backgroundColor:"#ff9999"
-			state "strobe",
-				label:'Off',
-				action:"alarm.off",
-				icon:"",
-				background: "#ffffff"	
-		}
+		// standardTile("playStrobe", "device.alarm", width: 2, height: 2){
+			// state "default", 
+				// label:'Strobe', 
+				// action:"alarm.strobe", 
+				// icon:"st.alarm.alarm.alarm", 
+				// backgroundColor:"#ff9999"
+			// state "strobe",
+				// label:'Off',
+				// action:"alarm.off",
+				// icon:"",
+				// background: "#ffffff"	
+		// }
 		
-		standardTile("playBoth", "device.alarm", width: 2, height: 2) {
-			state "default", 
-				label:'Both', 
-				action:"alarm.both", 
-				icon:"st.alarm.alarm.alarm", 
-				backgroundColor:"#ff9999"
-			state "both",
-				label:'Off',
-				action:"alarm.off",
-				icon:"",
-				background: "#ffffff"	
-		}
+		// standardTile("playBoth", "device.alarm", width: 2, height: 2) {
+			// state "default", 
+				// label:'Both', 
+				// action:"alarm.both", 
+				// icon:"st.alarm.alarm.alarm", 
+				// backgroundColor:"#ff9999"
+			// state "both",
+				// label:'Off',
+				// action:"alarm.off",
+				// icon:"",
+				// background: "#ffffff"	
+		// }
 		
 		standardTile("playOn", "device.switch", width: 2, height: 2) {
 			state "default", 
@@ -171,26 +180,29 @@ metadata {
 				background: "#ffffff"	
 		}
 		
-		standardTile("playBeep", "device.status", width: 2, height: 2) {
-			state "default", 
-				label:'Beep', 
-				action:"tone.beep", 
-				icon:"st.Entertainment.entertainment2", 
-				backgroundColor: "#99FF99"
-			state "beep",
-				label:'Off',
-				action:"off",
-				icon:"st.Entertainment.entertainment2", 
-				background: "#ffffff"	
-		}
+		// standardTile("playBeep", "device.status", width: 2, height: 2) {
+			// state "default", 
+				// label:'Beep', 
+				// action:"tone.beep", 
+				// icon:"st.Entertainment.entertainment2", 
+				// backgroundColor: "#99FF99"
+			// state "beep",
+				// label:'Off',
+				// action:"off",
+				// icon:"st.Entertainment.entertainment2", 
+				// background: "#ffffff"	
+		// }
 		
-		standardTile("killSound", "generic", width: 2, height: 2) {
-			state "default", label:'Kill', action:"killSound", icon:""
+		// standardTile("killSound", "generic", width: 2, height: 2) {
+			// state "default", label:'Kill', action:"killSound", icon:""
+		// }
+		standardTile("off", "generic", width: 2, height: 2) {
+			state "default", label:'Off', action:"switch.off", icon:""
 		}
-
 		
 		main "status"
-		details(["status", "playSiren", "playStrobe", "playBoth", "playOn", "playBeep", "killSound"])
+		// details(["status", "playSiren", "playStrobe", "playBoth", "playOn", "playBeep", "killSound"])
+		details(["status", "playOn", "off"])
 	}
 }
 
@@ -281,14 +293,18 @@ def on() {
 def off() {
 	setPlayStatus("off", "off", "off")
 	logDebug "Executing off()"
-	playSound(0x00)
+	//playSound(0x00)
+	[
+		basicSetCmd(0x00),
+		basicGetCmd()
+	]
 }
 
-def killSound() {
-	setPlayStatus("off", "off", "off")
-	logDebug "Killing sound with basic off command"
-	basicSetCmd(0x00)
-}
+// def killSound() {
+	// setPlayStatus("off", "off", "off")
+	// logDebug "Killing sound with basic off command"
+	// basicSetCmd(0x00)
+// }
 
 def strobe() {
 	playAlarm(settings.strobeSound, "strobe")
@@ -553,7 +569,7 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	logDebug "zwaveEvent: $cmd"
 }
 
-private basicSetCmd(val) {
+private basicSetCmd(val) {	
 	secureCmd(zwave.basicV1.basicSet(value: val))
 }
 
@@ -612,10 +628,12 @@ private switchGetCmd() {
 }
 
 private secureCmd(physicalgraph.zwave.Command cmd) {
-	if (state.useSecureCommands) {
+	if (state.useSecureCommands || settings.forceSecureCommands) {
+		logDebug "sending secure: $cmd"
 		zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
 	}
 	else {
+		logDebug "sending normal: $cmd"
 		cmd.format()
 	}
 }
