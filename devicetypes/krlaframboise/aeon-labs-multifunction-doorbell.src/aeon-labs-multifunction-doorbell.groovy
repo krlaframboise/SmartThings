@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.8.8
+ *  Aeon Labs Multifunction Doorbell v 1.8.9
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-multifunction-doorbell/36586?u=krlaframboise)
  *
  *  Capabilities:
@@ -11,6 +11,11 @@
  *					(Based off of the "Aeon Doorbell" device type)
  *
  *	Changelog:
+ *
+ *	1.8.9 (07/17/2016)
+ *		- Added new fingerprint format for specific product
+ *      because some devices aren't coming across with
+ *      the security command class in the raw description.
  *
  *	1.8.8 (07/14/2016)
  *		- Changed skip play interval from 25 to 10 so that
@@ -126,7 +131,9 @@ metadata {
 		command "playTrackAndResume"
 		command "playTextAndResume"
 		command "playTextAndRestore"
-				
+		
+		fingerprint mfr: "0086", prod: "0104", model: "0038"		
+		
 		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98,0x25,0x70,0x72,0x59,0x85,0x73,0x7A,0x5A", outClusters: "0x82"
 	}
 
