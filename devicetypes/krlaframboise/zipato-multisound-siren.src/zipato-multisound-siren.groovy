@@ -450,7 +450,7 @@ def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {
 	def parameterName
-	def configVal = cmd.configurationValue
+	def configVal = cmd.configurationValue ? cmd.configurationValue[0] : null
 	
 	switch (cmd.parameterNumber) {
 		case 7:
