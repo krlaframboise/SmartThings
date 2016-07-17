@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v0.0.6
+ *  Zipato Multisound Siren v0.0.7
  *  (PH-PSE02.US)
  *
  *  Author: 
@@ -10,8 +10,17 @@
  *
  *  Changelog:
  *
+ *    0.0.7
+ *      - Used playSound method with number
+ *      - changed check for secure commands
+ *      - Removed basicget commands since it's automatically
+ *        responding with sensorybinaryreport
+ *
  *    0.0.6
- *      - 
+ *      - Used hex sound #
+ *
+ *    0.0.5
+ *      - Used basic on and off hex
  *
  *    0.0.4
  *      - testing optional security and basicset instead of
@@ -90,11 +99,6 @@ metadata {
 			displayDuringSetup: true, 
 			required: false,
 			options: ["30 Seconds", "1 Minute", "2 Minutes", "3 Minutes", "5 Minutes", "10 Minutes", "15 Minutes", "30 Minutes", "45 Minutes", "1 Hour", "Unlimited"]			
-		input "forceSecureCommands", "bool", 
-			title: "Force Secure Commands?", 
-			defaultValue: true, 
-			displayDuringSetup: false, 
-			required: false			
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -224,15 +228,20 @@ def updated() {
 		// that occur within 3 seconds
 		state.lastUpdated = new Date().time
 		
-		logDebug "Updating Alarm Duration"	
+		def result = []
+		if (!state.useSecureCommands) {
+			logDebug "Checking for Secure Command Support"
+			state.useSecureCommands = null
+			result << supportedSecurityGetCmd()
+		}
 		
-		return response(delayBetween([
+		logDebug "Updating Alarm Duration"	
+		result += [
 			alarmDurationSetCmd(getAlarmDurationNumber(settings.alarmDuration)),
-			alarmDurationGetCmd(),
-			supportedSecurityGetCmd(),
-			switchMultilevelGetCmd(),
-			versionGetCmd()			
-		], 250))
+			alarmDurationGetCmd()
+		]
+		
+		return response(delayBetween(result, 250))			
 	}
 }
 
@@ -284,10 +293,11 @@ def on() {
 	setPlayStatus("on", "off", "on")
 	logDebug "Executing on()"		
 	//playSound(getSoundNumber(settings.switchOnSound))
-	return [
-		basicSetCmd(0x02),
-		basicGetCmd()
-	]
+	// return [
+		// basicSetCmd(3),
+		// basicGetCmd()
+	// ]
+	return playSound(3)
 }
 
 def off() {
@@ -412,9 +422,9 @@ private playSound(soundNumber) {
 	}	
 	//return [switchMultilevelSetCmd(soundNumber)]
 	return [
-		basicSetCmd(soundNumber),
-		basicGetCmd()
+		basicSetCmd(soundNumber)
 	]
+	//,basicGetCmd()
 }
 
 def parse(String description) {	
@@ -422,7 +432,7 @@ def parse(String description) {
 	def cmd = zwave.parse(description, [0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])
 	
 	if (cmd) {
-		logDebug "$cmd"
+		logDebug "Parse Cmd: $cmd"
 		result = zwaveEvent(cmd)		
 	}
 	else {
@@ -435,18 +445,14 @@ def parse(String description) {
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
 	def encapsulatedCmd = cmd.encapsulatedCommand([0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])	
 	if (encapsulatedCmd) {
-		if (!state.useSecureCommands) {
-			state.useSecureCommands = true
-			logDebug "Secure Commands Enabled"
-		}
 		logDebug "encapsulated: $encapsulatedCmd"
 		zwaveEvent(encapsulatedCmd)
 	}
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
-	logDebug "Version: $cmd"
-}
+// def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
+	// logDebug "Version: $cmd"
+// }
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {
 	def parameterName
@@ -473,8 +479,13 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	} 
 }
 
+def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
+	state.useSecureCommands = true
+	logDebug("Secure Commands Supported")
+}
 
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
+	logDebug "SensoryBinaryReport: $cmd"
 	def result = null
 	switch(cmd.sensorType) {
 		case 1:
@@ -549,6 +560,7 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 
 def createTamperEvent(val) {
 	def tamperState = (val == 0xFF) ? "detected" : "clear"
+	logDebug "createTamperEvent($tamperState)"
 	if (device.currentValue("tamper") != tamperState) {
 		logDebug "Tamper is $tamperState"
 		return createEvent(getTamperEventMap(tamperState))
@@ -581,9 +593,9 @@ private supportedSecurityGetCmd() {
 	secureCmd(zwave.securityV1.securityCommandsSupportedGet())
 }
 
-private versionGetCmd() {
-	secureCmd(zwave.versionV1.versionGet())
-}
+// private versionGetCmd() {
+	// secureCmd(zwave.versionV1.versionGet())
+// }
 
 private alarmDurationSetCmd(val) {	
 	//(0 - 127)
@@ -607,28 +619,28 @@ private configGetCmd(paramNumber) {
 	secureCmd(zwave.configurationV1.configurationGet(parameterNumber: paramNumber))
 }
 
-private switchMultilevelSetCmd(val) {
-	// 1 or 255: Emergency sound.
-	// 2: Fire alert.
-	// 3: Ambulance sound.
-	// 4: Police car sound.
-	// 5: Door chime.
-	// 6~99: Beep Beep.
-	// 0: means stop the sound.
-	val = validateRange(val, 1, 0, 99)
-	secureCmd(zwave.switchMultilevelV1.switchMultilevelSet(value: val))
-}
+// private switchMultilevelSetCmd(val) {
+	// // 1 or 255: Emergency sound.
+	// // 2: Fire alert.
+	// // 3: Ambulance sound.
+	// // 4: Police car sound.
+	// // 5: Door chime.
+	// // 6~99: Beep Beep.
+	// // 0: means stop the sound.
+	// val = validateRange(val, 1, 0, 99)
+	// secureCmd(zwave.switchMultilevelV1.switchMultilevelSet(value: val))
+// }
 
-private switchMultilevelGetCmd() {
-	secureCmd(zwave.switchMultilevelV1.switchMultilevelGet())
-}
+// private switchMultilevelGetCmd() {
+	// secureCmd(zwave.switchMultilevelV1.switchMultilevelGet())
+// }
 
 private switchGetCmd() {
 	zwave.switchBinaryV1.switchBinaryGet()
 }
 
 private secureCmd(physicalgraph.zwave.Command cmd) {
-	if (state.useSecureCommands || settings.forceSecureCommands) {
+	if (state.useSecureCommands == null || state.useSecureCommands) {
 		logDebug "sending secure: $cmd"
 		zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
 	}
@@ -678,9 +690,9 @@ private int safeToInteger(val, int defaultVal=0) {
 }
 
 private logDebug(msg) {
-	//if (settings.debugOutput || settings.debugOutput == null) {
+	if (settings.debugOutput || settings.debugOutput == null) {
 		log.debug "$msg"
-	//}
+	}
 }
 
 private logInfo(msg) {
