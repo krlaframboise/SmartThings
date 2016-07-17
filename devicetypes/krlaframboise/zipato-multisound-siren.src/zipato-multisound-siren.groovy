@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v0.0.5
+ *  Zipato Multisound Siren v0.0.6
  *  (PH-PSE02.US)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    0.0.5
+ *    0.0.6
  *      - 
  *
  *    0.0.4
@@ -285,7 +285,7 @@ def on() {
 	logDebug "Executing on()"		
 	//playSound(getSoundNumber(settings.switchOnSound))
 	return [
-		basicSetCmd(0xFF),
+		basicSetCmd(0x02),
 		basicGetCmd()
 	]
 }
