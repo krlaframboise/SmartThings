@@ -1,7 +1,11 @@
 /**
- *  GoControl Multifunction Siren v 1.4
- *    (Models: ZM1601US / WA105DBZ-1)
- *  
+ *  GoControl Multifunction Siren v 1.5
+ *
+ *  Devices:
+ *    GoControl/Linear (Model#: WA105DBZ-1)
+ *    Vision Home Security (Model#: ZM1601US-5)
+ *  	LinearLinc Z-Wave Siren/Strobe (Model#: 1LIWA105DBZ-2)
+ *
  *  Capabilities:
  *      Alarm, Tone, Switch, Battery, Polling
  *   
@@ -19,6 +23,11 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.5 (07/20/2016)
+ *      - Added support for Vision version of siren because
+ *        it's the same device, but the configuration uses
+ *        different parameter numbers.
  *
  *    1.4 (07/14/2016)
  *      - Added secure command support.
@@ -97,6 +106,8 @@ metadata {
 		command "playTextAndResume"
 		command "playTextAndRestore"
 
+		fingerprint mfr: "0109", prod: "2005", model: "0508" //Vision
+		fingerprint mfr: "014F", prod: "2005", model: "0503" //Linear/GoControl
 		fingerprint deviceId: "0x1000", inClusters: "0x25,0x80,0x70,0x72,0x86"
 	}
 
@@ -198,7 +209,7 @@ metadata {
 
 // Stores preferences and displays device settings.
 def updated() {
-	if (!isDuplicateCommand(state.lastUpdated, 2000)) {
+	if (!isDuplicateCommand(state.lastUpdated, 5000)) {
 		state.lastUpdated = new Date().time
 		state.debugOutput = validateBoolean(settings.debugOutput, true)
 		state.alarmDelaySeconds = validateRange(settings.alarmDelaySeconds, 0, 0, Integer.MAX_VALUE, "alarmDelaySeconds") 
@@ -206,12 +217,21 @@ def updated() {
 		logDebug "Updating"
 
 		def cmds = []		
-		cmds << supportedSecurityGetCmd()
-		cmds << autoOffSetCmd(getAutoOffTimeValue())
+		
+		if (!state.useSecureCommands) {
+			logDebug "Checking for Secure Command Support"
+			cmds << supportedSecurityGetCmd()
+		}
+		
+		if (state.isGoControl == null) {
+			cmds << manufacturerGetCmd()
+			cmds << "delay 5000"
+		}
+		
+		cmds << autoOffSetCmd(getAutoOffTimeValue())		
 		cmds << batteryGetCmd()
-		cmds += turnOff()		
-		cmds << versionGetCmd()
-		response(delayBetween(cmds, 20))
+		
+		response(delayBetween(cmds, 200))
 	}
 }
 
@@ -474,25 +494,37 @@ private alarmTypeSetCmds(alarmType) {
 
 private alarmTypeSetCmd(alarmType) {
 	alarmType = validateRange(alarmType, 0, 0, 2, "Alarm Type")
-	
-	configSetCmd(0, 1, alarmType)	
+	configSetCmd(getAlarmTypeParamNumber(), 1, alarmType)	
 }
 
 private alarmTypeGetCmd() {
-	configGetCmd(0)
+	configGetCmd(getAlarmTypeParamNumber())
+}
+
+private getAlarmTypeParamNumber() {
+	return state.isGoControl ? 0 : 1
 }
 
 private autoOffSetCmd(autoOff) {
-	configSetCmd(1, 1, validateRange(autoOff, 0, 0, 3, "Auto Off"))
+	configSetCmd(getAutoOffParamNumber(), 1, validateRange(autoOff, 0, 0, 3, "Auto Off"))
+}
+
+private getAutoOffParamNumber() {
+	return state.isGoControl ? 1 : 2
 }
 
 private configSetCmd(paramNumber, paramSize, paramValue) {
-	secureCmd(zwave.configurationV1.configurationSet(parameterNumber: paramNumber, size: paramSize, scaledConfigurationValue: paramValue))
+	secureCmd(zwave.configurationV2.configurationSet(parameterNumber: paramNumber, size: paramSize, configurationValue: [paramValue]))
 }
 
 private configGetCmd(paramNumber) {
-	secureCmd(zwave.configurationV1.configurationGet(parameterNumber: paramNumber))
+	secureCmd(zwave.configurationV2.configurationGet(parameterNumber: paramNumber))
 }
+
+private manufacturerGetCmd() {
+	secureCmd(zwave.manufacturerSpecificV2.manufacturerSpecificGet())
+}
+
 
 private switchOnSetCmd() {
 	secureCmd(zwave.basicV1.basicSet(value: 0xFF))
@@ -531,10 +563,10 @@ private supportedSecurityGetCmd() {
 
 private secureCmd(physicalgraph.zwave.Command cmd) {
 	if (state.useSecureCommands) {
-		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
+		zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
 	}
 	else {
-		return cmd.format()
+		cmd.format()
 	}
 }
 
@@ -545,9 +577,12 @@ def parse(String description) {
 		log.error "Unknown Error: $description"		
 	}
 	else if (description != null && description != "updated") {
-		def cmd = zwave.parse(description, [0x20: 1, 0x25: 1, 0x80: 1, 0x70: 1, 0x72: 2, 0x86: 1])		
+		def cmd = zwave.parse(description, [0x71: 3, 0x85: 2, 0x70: 2, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x80: 1, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])		
 		if (cmd) {
 			result += zwaveEvent(cmd)
+		}
+		else {
+			logDebug "Unable to parse: $cmd"
 		}
 	}
 	result << createEvent(name:"lastPoll", value: new Date().time, displayed: false, isStateChange: true)
@@ -555,12 +590,8 @@ def parse(String description) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
-	def encapsulatedCmd = cmd.encapsulatedCommand([0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])	
+	def encapsulatedCmd = cmd.encapsulatedCommand([0x71: 3, 0x85: 2, 0x70: 2, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x80: 1, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])	
 	if (encapsulatedCmd) {	
-		if (!state.useSecureCommands) {
-			state.useSecureCommands = true
-			logDebug "Secure Commands Enabled"
-		}
 		logDebug "encapsulated: $encapsulatedCmd"
 		zwaveEvent(encapsulatedCmd)
 	}
@@ -574,13 +605,17 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 	//logDebug "BinaryReport: $cmd"
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {
-	if (cmd.parameterNumber == 0) {		
-		return response(turnOn(cmd.configurationValue[0]))		
-	}
-	else {
-		logDebug "$cmd"
-	}
+def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {
+	if (cmd?.parameterNumber == getAlarmTypeParamNumber()) {		
+		def val = cmd.configurationValue[0]
+		logDebug "Current Alarm Type: ${val}"
+		return response(turnOn(val))
+	}	
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerSpecificReport cmd) {
+	//The Linear/GoControl product uses different parameter numbers than the Vision product.
+	state.isGoControl = (cmd.manufacturerId != 265)	
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
@@ -666,6 +701,11 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 		map.displayed = false
 	}	
 	[createEvent(map)]
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
+	state.useSecureCommands = true
+	logDebug("Secure Commands Supported")
 }
 
 // Writes unexpected commands to debug log
