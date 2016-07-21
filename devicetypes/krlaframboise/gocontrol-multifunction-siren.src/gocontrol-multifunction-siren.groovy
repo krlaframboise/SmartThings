@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.5
+ *  GoControl Multifunction Siren v 1.5.1
  *
  *  Devices:
  *    GoControl/Linear (Model#: WA105DBZ-1)
@@ -24,7 +24,7 @@
  *
  *  Changelog:
  *
- *    1.5 (07/20/2016)
+ *    1.5.1 (07/20/2016)
  *      - Added support for Vision version of siren because
  *        it's the same device, but the configuration uses
  *        different parameter numbers.
@@ -514,11 +514,11 @@ private getAutoOffParamNumber() {
 }
 
 private configSetCmd(paramNumber, paramSize, paramValue) {
-	secureCmd(zwave.configurationV2.configurationSet(parameterNumber: paramNumber, size: paramSize, configurationValue: [paramValue]))
+	secureCmd(zwave.configurationV1.configurationSet(parameterNumber: paramNumber, size: paramSize, configurationValue: [paramValue]))
 }
 
 private configGetCmd(paramNumber) {
-	secureCmd(zwave.configurationV2.configurationGet(parameterNumber: paramNumber))
+	secureCmd(zwave.configurationV1.configurationGet(parameterNumber: paramNumber))
 }
 
 private manufacturerGetCmd() {
@@ -577,7 +577,7 @@ def parse(String description) {
 		log.error "Unknown Error: $description"		
 	}
 	else if (description != null && description != "updated") {
-		def cmd = zwave.parse(description, [0x71: 3, 0x85: 2, 0x70: 2, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x80: 1, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])		
+		def cmd = zwave.parse(description, [0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x80: 1, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])		
 		if (cmd) {
 			result += zwaveEvent(cmd)
 		}
@@ -590,7 +590,7 @@ def parse(String description) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
-	def encapsulatedCmd = cmd.encapsulatedCommand([0x71: 3, 0x85: 2, 0x70: 2, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x80: 1, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])	
+	def encapsulatedCmd = cmd.encapsulatedCommand([0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x80: 1, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])	
 	if (encapsulatedCmd) {	
 		logDebug "encapsulated: $encapsulatedCmd"
 		zwaveEvent(encapsulatedCmd)
@@ -605,7 +605,7 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 	//logDebug "BinaryReport: $cmd"
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {
+def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {
 	if (cmd?.parameterNumber == getAlarmTypeParamNumber()) {		
 		def val = cmd.configurationValue[0]
 		logDebug "Current Alarm Type: ${val}"
