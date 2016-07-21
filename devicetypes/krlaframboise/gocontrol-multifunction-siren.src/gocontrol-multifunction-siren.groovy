@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.5.1
+ *  GoControl Multifunction Siren v 1.5.2
  *
  *  Devices:
  *    GoControl/Linear (Model#: WA105DBZ-1)
@@ -24,7 +24,7 @@
  *
  *  Changelog:
  *
- *    1.5.1 (07/20/2016)
+ *    1.5.2 (07/20/2016)
  *      - Added support for Vision version of siren because
  *        it's the same device, but the configuration uses
  *        different parameter numbers.
@@ -220,19 +220,29 @@ def updated() {
 		
 		if (!state.useSecureCommands) {
 			logDebug "Checking for Secure Command Support"
+			state.useSecureCommands = true
 			cmds << supportedSecurityGetCmd()
+			state.useSecureCommands = false
 		}
 		
-		if (state.isVisionMfr == null) {
-			cmds << manufacturerGetCmd()
-			cmds << "delay 5000"
-		}
-		
-		cmds << autoOffSetCmd(getAutoOffTimeValue())		
-		cmds << batteryGetCmd()
+		cmds += configure()
 		
 		response(delayBetween(cmds, 200))
 	}
+}
+
+private configure() {
+	def cmds = []
+	
+	if (state.isVisionMfr == null) {
+		cmds << manufacturerGetCmd()
+		cmds << "delay 5000"
+	}
+	
+	cmds << autoOffSetCmd(getAutoOffTimeValue())		
+	cmds << batteryGetCmd()
+	
+	return cmds
 }
 
 private getAutoOffTimeValue() {
@@ -705,7 +715,8 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
 	state.useSecureCommands = true
-	logDebug("Secure Commands Supported")
+	logDebug("Secure Commands Supported")	
+	response(delayBetween(configure(), 200))
 }
 
 // Writes unexpected commands to debug log
