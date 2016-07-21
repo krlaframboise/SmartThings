@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.8.9
+ *  Aeon Labs Multifunction Doorbell v 1.8.10
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-multifunction-doorbell/36586?u=krlaframboise)
  *
  *  Capabilities:
@@ -11,6 +11,9 @@
  *					(Based off of the "Aeon Doorbell" device type)
  *
  *	Changelog:
+ *
+ *	1.8.10 (07/21/2016)
+ *		- Fixed fingerprintf or v1 hubs.
  *
  *	1.8.9 (07/17/2016)
  *		- Added new fingerprint format for specific product
@@ -133,9 +136,10 @@ metadata {
 		command "playTextAndRestore"
 		
 		fingerprint mfr: "0086", prod: "0104", model: "0038"		
-		
+
 		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x25,0x70,0x72,0x59,0x85,0x73,0x7A,0x5A", outClusters: "0x82"
-        fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98,0x25,0x70,0x72,0x59,0x85,0x73,0x7A,0x5A", outClusters: "0x82"
+
+		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98,0x25,0x70,0x72,0x59,0x85,0x73,0x7A,0x5A", outClusters: "0x82"
 	}
 
 	simulator {
@@ -157,14 +161,10 @@ metadata {
 		input "soundLevel", "number", title: "Sound Level (1-10)", defaultValue: 10, displayDuringSetup: true,  required: false
 		
 		input "soundRepeat", "number", title: "Sound Repeat: (1-100)", defaultValue: 1, displayDuringSetup: true, required: false		
-
-		input "useSecureCommands", "bool", title: "Use Secure Commands?\n(If you're unable to connect the device securely the buttons in the mobile app won't do anything, but turning off this setting should fix that.", defaultValue: true, displayDuringSetup: true, required: false
 		
 		input "debugOutput", "bool", title: "Enable debug logging?", defaultValue: true, displayDuringSetup: true, required: false
 		
 		input "silentButton", "bool", title: "Enable Silent Button?\n(If you want to use the button for something other than a doorbell, you need to also set the Doorbell Track to a track that doesn't have a corresponding sound file.)", defaultValue: false, required: false
-		
-		input "logConfiguration", "bool", title: "Log Configuration on Refresh?\n(If this setting is on, the configuration settings will be displayed in the IDE Live Logging when the Refresh button is pressed.)", defaultValue: false, required: false
 	}	
 	
 	tiles(scale: 2) {
@@ -420,22 +420,21 @@ def setLevel(level) {
 	return [secureCommand(soundLevelSetCommand(level))]	
 }
 
-def refresh() {
+def refresh() {	
+	writeToInfoLog("Current Track: ${state.currentTrack}")
+	writeToInfoLog("Alarm Track: ${state.alarmTrack}")
+	writeToInfoLog("Beep Track: ${state.toneTrack}")
+	writeToInfoLog("Silent Button Enabled: ${state.silentButton}")
+	writeToInfoLog("Debug Logging Enabled: ${state.debugOutput}")
+	writeToInfoLog("Use Secure Commands: ${state.useSecureCommands}")				
+	
+	sendEvent(getPresenceEventMap(""))
+
 	def result = []			
-	if (state.logConfiguration) {	
-		writeToInfoLog("Current Track: ${state.currentTrack}")
-		writeToInfoLog("Alarm Track: ${state.alarmTrack}")
-		writeToInfoLog("Beep Track: ${state.toneTrack}")
-		writeToInfoLog("Silent Button Enabled: ${state.silentButton}")
-		writeToInfoLog("Debug Logging Enabled: ${state.debugOutput}")
-		writeToInfoLog("Use Secure Commands: ${state.useSecureCommands}")				
-		result += secureDelayBetween(reportCommands())
-	}
-	else {
-		sendEvent(getPresenceEventMap(""))
-		result += off()
-		result += poll()	
-	}	
+	result += off()
+	result += poll()	
+	result += secureDelayBetween(reportCommands())
+
 	return result	
 }
 
@@ -503,6 +502,17 @@ private clearPlayingStatus() {
 	state.isPlaying = false
 	state.pushingButton = false
 	state.lastPlay = null
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
+	state.useSecureCommands = true
+	logDebug("Secure Commands Supported")	
+	
+	def cmds = []
+	cmds << "delay 2000"
+	cmds += configure()
+	
+	return response(cmds)
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
@@ -590,10 +600,6 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	createEvent(descriptionText: cmd.toString(), isStateChange: false)
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
-	response(configure())
-}
-
 def parse(String description) {	
 	def result = null
 	if (description.startsWith("Err 106")) {
@@ -627,9 +633,20 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 
 def updated() {
 	if (!isDuplicateCall(state.lastUpdated, 1)) {
-		
 		state.lastUpdated = new Date().time		
-		return response(configure())
+		
+		def cmds = []
+		
+		if (!state.useSecureCommands) {
+			logDebug "Checking for Secure Command Support"
+			state.useSecureCommands = true
+			cmds << secureCommand(supportedSecurityGetCmd())
+			state.useSecureCommands = false			
+		}
+		
+		cmds += configure()
+		
+		return response(cmds)
 	}
 }
 
@@ -640,12 +657,14 @@ def configure() {
 	initializePreferences()
 
 	def request = []
-	request << associationSetCommand()
+	
+	request << associationSetCommand()	
 	request << deviceNotificationTypeSetCommand()
 	request << sendLowBatteryNotificationsSetCommand()	
 	request << defaultTrackSetCommand(state.bellTrack)
 	request << soundRepeatSetCommand(state.soundRepeat)
-	request << soundLevelSetCommand(state.soundLevel)		
+	request << soundLevelSetCommand(state.soundLevel)	
+	
 	return secureDelayBetween(request)
 }
 
@@ -671,6 +690,10 @@ private reportAssociationCommands() {
 		zwave.associationV1.associationGet(groupingIdentifier:1),		
 		zwave.associationV1.associationGet(groupingIdentifier:2)
 	]
+}
+
+private supportedSecurityGetCmd() {	
+	return zwave.securityV1.securityCommandsSupportedGet()
 }
 
 private reportFirmwareCommand() {
@@ -736,10 +759,8 @@ private initializePreferences() {
 	state.toneTrack = validateTrackNumber(toneTrack)
 	state.soundLevel = validateSoundLevel(soundLevel)
 	state.soundRepeat = validateSoundRepeat(soundRepeat)	
-	state.logConfiguration = validateBooleanPref(logConfiguration)
 	state.silentButton = validateBooleanPref(silentButton, false)
 	state.debugOutput = validateBooleanPref(debugOutput)
-	state.useSecureCommands = validateBooleanPref(useSecureCommands)
 }
 
 int validateSoundRepeat(soundRepeat) {
@@ -791,7 +812,7 @@ private validateBooleanPref(pref, defaultVal=true) {
 }
 
 
-private secureDelayBetween(commands, delay=500) {
+private secureDelayBetween(commands, delay=200) {
 	delayBetween(commands.collect{ secureCommand(it) }, delay)
 }
 
