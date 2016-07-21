@@ -223,7 +223,7 @@ def updated() {
 			cmds << supportedSecurityGetCmd()
 		}
 		
-		if (state.isGoControl == null) {
+		if (state.isVisionMfr == null) {
 			cmds << manufacturerGetCmd()
 			cmds << "delay 5000"
 		}
@@ -502,7 +502,7 @@ private alarmTypeGetCmd() {
 }
 
 private getAlarmTypeParamNumber() {
-	return state.isGoControl ? 0 : 1
+	return state.isVisionMfr ? 1 : 0
 }
 
 private autoOffSetCmd(autoOff) {
@@ -510,7 +510,7 @@ private autoOffSetCmd(autoOff) {
 }
 
 private getAutoOffParamNumber() {
-	return state.isGoControl ? 1 : 2
+	return state.isVisionMfr ? 2 : 1
 }
 
 private configSetCmd(paramNumber, paramSize, paramValue) {
@@ -615,7 +615,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport 
 
 def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerSpecificReport cmd) {
 	//The Linear/GoControl product uses different parameter numbers than the Vision product.
-	state.isGoControl = (cmd.manufacturerId != 265)	
+	state.isVisionMfr = (cmd.manufacturerId == 265)	
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
