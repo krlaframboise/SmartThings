@@ -1,19 +1,26 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.6
- *  (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
+ *  Aeon Labs Multifunction Siren v 1.7
+ *      (Aeon Labs Siren - Model:ZW080-A17)
+ * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
  *
  *  Capabilities:
- *      Switch, Alarm, Tone, Music Player, Speech Synthesis, Polling
+ *      Switch, Alarm, Tone, Music Player, Polling
  *
  *	Author: 
  *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
  *
+ *	1.7 (07/22/2016)
+ *    - Fixed fingerprint for non-secure hub v2
+ *    - Fixed secure command check so that it accurately
+ *      detects if its paired securely and works either way.
+ *    - Code cleanup and additional validation.
+ *
  *	1.6 (05/21/2016)
  *    - Removed poll check.
- *    - Moved lastPoll event creation into parse method so that
- *      it gets raised every time the device responds.
+ *    - Moved lastPoll event creation into parse method 
+ *      so that it gets raised every time the device responds.
  *    - Modified the poll command so that it only polls if the
  *      lastPoll event is old.
  *
@@ -90,6 +97,8 @@ metadata {
 		command "playTextAndResume"
 		command "playTextAndRestore"
 
+		fingerprint mfr: "0086", prod: "0104", model: "0050", deviceJoinName: "Aeon Labs Siren"
+		
 		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98,0x25,0x70,0x85,0x59,0x72,0x2B,0x2C,0x86,0x7A,0x73", outClusters: "0x5A,0x82"
 	}
 
@@ -112,7 +121,7 @@ metadata {
 			displayDuringSetup: true, 
 			required: false
 		input "alarmDuration", "number", 
-			title: "Turn siren off after: (seconds)", 
+			title: "Turn siren off after: (seconds)\n(0=unlimited)", 
 			defaultValue: 0, 
 			displayDuringSetup: true, 
 			required: false
@@ -120,49 +129,49 @@ metadata {
 			title: "Beep Sound (1-5)", 
 			defaultValue: 3, 
 			range: "1..5",
-			displayDuringSetup: false, 
+			displayDuringSetup: true, 
 			required: false
 		input "beepVolume", "number", 
 			title: "Beep Volume (1-3)", 
 			defaultValue: 1, 
 			range: "1..3",
-			displayDuringSetup: false, 
+			displayDuringSetup: true, 
 			required: false
 		input "beepRepeat", "number", 
 			title: "Beep Repeat (1-100)", 
 			defaultValue: 1, 
 			range: "1..100",
-			displayDuringSetup: false, 
+			displayDuringSetup: true, 
 			required: false
 		input "beepRepeatDelay", "number", 
 			title: "Time Between Beeps in Milliseconds", 
 			defaultValue: 1000, 
-			displayDuringSetup: false, 
+			displayDuringSetup: true, 
 			required: false
 		input "beepLength", "number", 
 			title: "Length of Beep in Milliseconds", 
 			defaultValue: 100, 
-			displayDuringSetup: false, 
+			displayDuringSetup: true, 
 			required: false
 		input "beepEvery", "number", 
 			title: "Scheduled Beep Every (seconds)", 
 			defaultValue: 10,
-			displayDuringSetup: false,
+			displayDuringSetup: true,
 			required: false
 		input "beepStopAfter", "number", 
 			title: "Stop Scheduled Beep After (seconds)", 
 			defaultValue: 60,
-			displayDuringSetup: false,
+			displayDuringSetup: true,
 			required: false
 		input "useBeepDelayedAlarm", "bool",
 			title: "Play Beep Schedule Before Sounding Alarm?",
 			defaultValue: false,
-			displayDuringSetup: false,
+			displayDuringSetup: true,
 			required: false
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
-			displayDuringSetup: false, 
+			displayDuringSetup: true, 
 			required: false		
 	}
 
@@ -215,15 +224,17 @@ metadata {
 }
 
 def poll() {
+	def result = []
 	def minimumPollMinutes = 60
 	def lastPoll = device.currentValue("lastPoll")
 	if ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000)) {
 		logDebug "Poll: Refreshing because lastPoll was more than ${minimumPollMinutes} minutes ago."
-		secureCmd(zwave.versionV1.versionGet())
+		result << versionGetCmd()
 	}
 	else {
 		logDebug "Poll: Skipped because lastPoll was within ${minimumPollMinutes} minutes"
 	}
+	return result
 }
 
 def speak(text) {
@@ -373,7 +384,7 @@ private getComplexCmdArgs(text) {
 	}
 	
 	def args = text.tokenize("_")
-	if (args.every { node -> isNumeric(node) }) {
+	if (args.every { node -> isInt(node) }) {
 		return args
 	}
 	else {
@@ -403,10 +414,10 @@ def off() {
 }
 
 private turnOff() {	
-	secureDelayBetween([
+	delayBetween([
 		switchOffSetCmd(),
 		switchGetCmd()
-	])
+	], 100)
 }
 
 // Turns on siren and strobe
@@ -476,7 +487,7 @@ private playAlarm(sound, volume, duration) {
 	}
 	
 	def cmds = []
-	cmds << secureCmd(sirenSoundVolumeSetCmd(sound, volume))
+	cmds << sirenSoundVolumeSetCmd(sound, volume)
 
 	if (duration > 0) {
 		cmds << "delay ${duration * 1000}"
@@ -501,10 +512,11 @@ private startDelayedAlarm(sound, volume, duration, delay) {
 	delay = validateRange(delay, 3, 1, Integer.MAX_VALUE, "delay")
 	
 	logDebug "Starting ${currentStatus()} [sound: $sound, volume: $volume, duration: $duration, delay: $delay]"
-	[
-		"delay ${delay * 1000}",
-		secureCmd(zwave.basicV1.basicGet())
-	]
+	
+	def result = []
+	result << "delay ${delay * 1000}"
+	result << basicGetCmd()		
+	return result
 }
 
 // Plays the default beep.
@@ -613,7 +625,7 @@ private playScheduledBeep() {
 		if (beepSchedule.beepEvery > 0) {
 			cmds << "delay ${beepSchedule.beepEvery * 1000}"
 		}		
-		cmds << secureCmd(zwave.basicV1.basicGet())
+		cmds << basicGetCmd()
 	}
 	else {		
 		state.beepSchedule = null
@@ -669,13 +681,13 @@ private playBeep(sound, volume, repeat, repeatDelayMS, beepLengthMS) {
 
 	def cmds = []
 	for (int repeatIndex = 1; repeatIndex <= repeat; repeatIndex++) {
-		cmds << secureCmd(sirenSoundVolumeSetCmd(sound, volume))
+		cmds << sirenSoundVolumeSetCmd(sound, volume)
 		
 		if (beepLengthMS > 0) {
 			cmds << "delay $beepLengthMS"
 		}
 		
-		cmds << secureCmd(switchOffSetCmd())
+		cmds << switchOffSetCmd()
 		
 		if (repeat > 1 && repeatDelayMS > 0) {
 			cmds << "delay $repeatDelayMS"
@@ -729,36 +741,19 @@ private finalizeOldStatus(oldStatus, newStatus) {
 	state.beepSchedule = null
 }
 
-// Checks if the device supports security commands.
-def configure() {
-	logDebug "Checking for secure inclusion"
-	state.useSecureCommands = null
-
-	def cmds = secureDelayBetween([
-		supportedSecurityGetCmd(),
-		sendNotificationsSetCmd()
-	])
-
-	state.useSecureCommands = false
-	response(cmds)
-}
-
 // Stores preferences and displays device settings.
 def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 1000)) {
 		state.lastUpdated = new Date().time
-		state.debugOutput = validateBool(debugOutput, true)
-		logDebug "Updating"
-
-		def cmds = []
+		
+		def cmds = []		
 		if (!state.useSecureCommands) {
-			logDebug "Checking for Secure Command Support"
-			state.useSecureCommands = null
-			cmds << secureCmd(supportedSecurityGetCmd())
+			cmds << supportedSecurityGetCmd()	
 		}
-		cmds << secureCmd(zwave.firmwareUpdateMdV2.firmwareMdGet())
-		cmds += turnOff()
-		response(cmds)
+		
+		cmds += configure()
+		
+		return response(delayBetween(cmds, 200))
 	}
 }
 
@@ -766,71 +761,79 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
 }
 
-private sirenSoundVolumeSetCmd(int sound, int volume) {
-	zwave.configurationV1.configurationSet(parameterNumber: 37, size: 2, configurationValue: [validateSound(sound), validateVolume(volume)])
-}
-
-private sendNotificationsSetCmd() {
-	zwave.configurationV1.configurationSet(parameterNumber: 80, size: 1, scaledConfigurationValue: 0)
-}
-
-private switchOffSetCmd() {
-	zwave.switchBinaryV1.switchBinarySet(switchValue: 0)
-}
-
-private switchGetCmd() {
-	zwave.switchBinaryV1.switchBinaryGet()
-}
-
-private supportedSecurityGetCmd() {
-	zwave.securityV1.securityCommandsSupportedGet()
+def configure() {
+	def cmds = []	
+	if (state.useSecureCommands != null) {
+		logDebug "Secure Commands ${state.useSecureCommands ? 'Enabled' : 'Disabled'}"
+		cmds << sendNotificationsSetCmd()
+		cmds << manufacturerGetCmd()
+		cmds << versionGetCmd()
+		cmds << switchGetCmd()		
+	}
+	else {
+		cmds << response(supportedSecurityGetCmd())
+	}
+	return cmds
 }
 
 // Parses incoming message warns if not paired securely
-def parse(String description) {
-	if (description.startsWith("Err 106")) {
-		state.useSecureCommands = false
-		def msg = "Secure Inclusion Failed.  You may need to remove and add the device again while pushing the action button repeatedly during the Inclusion process."
-		log.warn "$msg"
-		return createEvent( name: "secureInclusion", value: "failed", isStateChange: true, descriptionText: "$msg")
-	}
-	else if (description != null && description != "updated") {
-		def cmd = zwave.parse(description, [0x98: 1, 0x20: 1, 0x70: 1, 0x7A: 2, 0x25: 1])
+def parse(String description) {		
+	if (description != null && description != "updated") {
+		def cmd = zwave.parse(description, [0x25:1, 0x59:1, 0x70:1, 0x72:2, 0x85:2, 0x86:1, 0x98:1])
 
-		if (cmd != null) {
-			sendEvent(name: "lastPoll", value: new Date().time, displayed: false, isStateChange: true)
+		if (cmd) {
+			def result = zwaveEvent(cmd)
 			
-			return zwaveEvent(cmd)
-		} 
+			result << createEvent(name: "lastPoll", value: new Date().time, displayed: false, isStateChange: true)
+			
+			return result
+		}
+		else {
+			logDebug "Unable to parse: $description"
+		}
 	}
 }
 
 // Unencapsulates the secure command.
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
-	if (cmd != null) {
-		def encapCmd = cmd.encapsulatedCommand([0x20: 1, 0x85: 2, 0x70: 1, 0x7A: 2, 0x25: 1])
+	def result = []
+	if (cmd) {
+		def encapCmd = cmd.encapsulatedCommand([0x25:1, 0x59:1, 0x70:1, 0x72:2, 0x85:2, 0x86:1, 0x98:1])
 
-		if (encapCmd) {
-			zwaveEvent(encapCmd)
+		if (encapCmd) {	
+			result = zwaveEvent(encapCmd)
+		}
+		else {
+			log.debug "Unable to encapsulate: $cmd"
 		}
 	}
+	return result
 }
 
-// Enables secure command setting.
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
 	state.useSecureCommands = true
-	logInfo "Secure Commands Supported"
+	
+	def cmds = []
+	cmds << response("delay 2000")
+	cmds += response(configure())
+	
+	return cmds
 }
 
-// Writes firmware to the Info Log.
-def zwaveEvent(physicalgraph.zwave.commands.firmwareupdatemdv2.FirmwareMdReport cmd) {
-	logInfo "Firmware: $cmd"
+def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerSpecificReport cmd) {
+	logDebug("$cmd")
+	return []
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
+	logDebug("$cmd")
+	return []
 }   
 
 // Handles device reporting off and alarm turning on.
 def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
-	if (cmd.value == 0) {
-		
+	def result = []
+	if (cmd.value == 0) {		
 		changeStatus("off")
 				
 		def alarmDisplayed = (device.currentValue("alarm") == "both")	
@@ -838,39 +841,76 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 			logDebug "Alarm is off"
 		}
 		
-		[
-			createEvent(name:"alarm", value: "off", isStateChange: true, displayed: alarmDisplayed),
-			createEvent(name:"switch", value: "off", isStateChange: true, displayed: false)
-		]
+		result << createEvent(name:"alarm", value: "off", isStateChange: true, displayed: alarmDisplayed)
+			
+		result << createEvent(name:"switch", value: "off", isStateChange: true, displayed: false)		
 	}
+	return result
 }
 
 // Handles the scheduling of beeps.
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
-	[
-		response(playScheduledBeep())
-	]	
-}
-
-def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
-	logDebug("Version: $cmd")		
+	def result = []
+	result << response(playScheduledBeep())
+	return result
 }
 
 // Writes unexpected commands to debug log
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
-	logDebug("$cmd")
-	createEvent(descriptionText: cmd.toString(), isStateChange: false)
+	logDebug("Unexpected Command: $cmd")
+	def result = []
+	result << createEvent(descriptionText: cmd.toString(), isStateChange: false)
+	return result
 }
 
-private secureDelayBetween(cmds, delay=100) {
-	delayBetween(cmds.collect{ secureCmd(it) }, delay)
+private sirenSoundVolumeSetCmd(int sound, int volume) {
+	//zwave.configurationV1.configurationSet(parameterNumber: 37, size: 2, configurationValue: [validateSound(sound), validateVolume(volume)])
+	return configSetCmd(37, 2, [validateSound(sound), validateVolume(volume)])
+}
+
+private sendNotificationsSetCmd() {
+	//return secureCmd(zwave.configurationV1.configurationSet(parameterNumber: 80, size: 1, scaledConfigurationValue: 0))
+	return configSetCmd(80, 1, [0])
+}
+
+private configSetCmd(paramNumber, valSize, val) {
+	return secureCmd(zwave.configurationV1.configurationSet(parameterNumber: paramNumber, size: valSize, configurationValue: val))
+}
+
+private switchOffSetCmd() {
+	return secureCmd(zwave.switchBinaryV1.switchBinarySet(switchValue: 0))
+}
+
+private switchGetCmd() {
+	return secureCmd(zwave.switchBinaryV1.switchBinaryGet())
+}
+
+private basicGetCmd() {
+	return secureCmd(zwave.basicV1.basicGet())
+}
+
+private supportedSecurityGetCmd() {
+	logDebug "Checking for Secure Command Support"
+	
+	state.useSecureCommands = true // force secure cmd			
+	def cmd = secureCmd(zwave.securityV1.securityCommandsSupportedGet())
+	state.useSecureCommands = false // reset secure cmd
+	
+	return cmd
+}
+
+private versionGetCmd() {
+	return secureCmd(zwave.versionV1.versionGet())
+}
+
+private manufacturerGetCmd() {
+	secureCmd(zwave.manufacturerSpecificV2.manufacturerSpecificGet())
 }
 
 private secureCmd(physicalgraph.zwave.Command cmd) {
-	if (state.useSecureCommands == null || state.useSecureCommands) {
+	if (state.useSecureCommands) {		
 		zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
-	}
-	else {
+	} else {		
 		cmd.format()
 	}
 }
@@ -905,8 +945,8 @@ private int validateBeepStopAfter(seconds) {
 private int validateRange(val, defaultVal, minVal, maxVal, desc) {
 	def result
 	def errorType = null
-	if (isNumeric(val)) {
-		result = val.toInteger()
+	if (isInt(val)) {
+		result = val.toString().toInteger()
 	}
 	else {
 		errorType = "invalid"
@@ -924,20 +964,11 @@ private int validateRange(val, defaultVal, minVal, maxVal, desc) {
 	if (errorType) {
 		logDebug("$desc: $val is $errorType, using $result instead.")
 	}
-	result
+	return result
 }
 
-private isNumeric(val) {
-	return val?.toString()?.isNumber()
-}
-
-private validateBool(val, defaulVal) {
-	if (val == null) {
-		defaultVal
-	}
-	else {
-		(val == true || val == "true")
-	}
+private isInt(val) {
+	return val?.toString()?.isInteger() ? true : false
 }
 
 private currentStatus() {
@@ -949,11 +980,7 @@ private handleUnsupportedCmd(cmd) {
 }
 
 private logDebug(msg) {
-	if (state.debugOutput || state.debugOutput == null) {
+	if (settings.debugOutput != false) {
 		log.debug "$msg"
 	}
-}
-
-private logInfo(msg) {
-	log.info "${device.displayName} - $msg"
 }
