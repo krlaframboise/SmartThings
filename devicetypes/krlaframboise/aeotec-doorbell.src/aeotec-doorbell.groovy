@@ -737,7 +737,7 @@ private volumeGetCmd() {
 }
 
 private volumeSetCmd(volume) {
-	volume = validateRange(volume, 5, 1, 10, "Volume")
+	volume = validateRange(volume, 5, 0, 10, "Volume")
 	return configSetCmd(8, volume)
 }
 
