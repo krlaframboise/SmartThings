@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell v 1.7
+ *  Aeotec Doorbell v 1.7.1
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
@@ -12,7 +12,7 @@
  *
  *  Changelog:
  *
- *  1.7 (07/24/2016)
+ *  1.7.1 (07/24/2016)
  *    - Added commands playRepeatTrack, playTrackAtVolume,
  *      playRepeatTrackAtVolume, volumeUp, volumeDown,
  *      repeatUp, and repeatDown
@@ -20,7 +20,8 @@
  *      parse.
  *    - Made device work with or without secure inclusion.
  *    - Added fingerprints for hub v2 and non-secure
- *    - 
+ *    - Volume 0 allows you to mute the doorbell, but
+ *      still receive the notifications.
  *
  *  1.6 (06/23/2016)
  *    - Bug fix for implicit int to string cast
@@ -198,7 +199,7 @@ metadata {
 		valueTile("volume", "device.volume", decoration: "flat", height:2, width:2) {
 			state "volume", label: 'VOLUME ${currentValue}', defaultState: true
 		}
-		controlTile("volumeSlider", "device.volume", "slider", height: 1, width: 4, range: "(1..10)") {
+		controlTile("volumeSlider", "device.volume", "slider", height: 1, width: 4, range: "(0..10)") {
 			state "volume", action:"setVolume"
 		}
 		standardTile("volumeUp", "device.volume", width: 2, height: 1, decoration: "flat") {
