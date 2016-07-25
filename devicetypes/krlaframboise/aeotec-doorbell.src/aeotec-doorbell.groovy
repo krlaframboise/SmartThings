@@ -3,7 +3,7 @@
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
- *
+ * 
  *  Capabilities:
  *	  Switch, Alarm, Tone, Battery, Configuration, Refresh
  *
