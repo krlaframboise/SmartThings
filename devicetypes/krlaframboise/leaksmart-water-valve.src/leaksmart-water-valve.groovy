@@ -1,5 +1,5 @@
 /**
- *  LeakSmart Water Valve v 1.1.3
+ *  LeakSmart Water Valve v 1.1.3 a
  *  
  *  Capabilities:
  *      Configuration, Refresh, Switch, Valve, Polling
@@ -14,7 +14,7 @@
  *
  *    1.1.3 (05/23/2016)
  *      - Changed lower battery limit to 5.5
- *
+ * 
  *    1.1.2 (05/22/2016)
  *      - Added battery capability and tile
  *      - Added debug logging for battery map.
