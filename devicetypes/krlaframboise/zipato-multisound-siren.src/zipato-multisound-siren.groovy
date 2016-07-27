@@ -1,6 +1,7 @@
 /**
- *  Zipato Multisound Siren v0.0.7
+ *  Zipato Multisound Siren v1.0 (Alpha)
  *  (PH-PSE02.US)
+ *  Zipato Z-Wave Indoor Multi-Sound Siren (PH-PSE02.US)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -10,24 +11,8 @@
  *
  *  Changelog:
  *
- *    0.0.7
- *      - Used playSound method with number
- *      - changed check for secure commands
- *      - Removed basicget commands since it's automatically
- *        responding with sensorybinaryreport
- *
- *    0.0.6
- *      - Used hex sound #
- *
- *    0.0.5
- *      - Used basic on and off hex
- *
- *    0.0.4
- *      - testing optional security and basicset instead of
- *        multiswitch.
- *
- *    0.0.3
- *      - Testing
+ *  1.0.0 (07/27/2016)
+ *    - Alpha Release
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -43,14 +28,15 @@ metadata {
 	definition (name: "Zipato Multisound Siren", namespace: "krlaframboise", author: "Kevin LaFramboise") {
 		capability "Actuator"
 		capability "Alarm"
-		capability "Speech Synthesis"
+		capability "Audio Notification"
 		capability "Switch"
 		capability "Tone"
 		capability "Tamper Alert"
+		capability "Refresh"
 
 		attribute "status", "enum", ["off", "on", "alarm", "beep"]
-		
-		command "killSound"		
+				
+		fingerprint mfr: "013C", prod: "0004", model: "000A"
 		
 		fingerprint deviceId: "0x1005", inClusters: "0x71,0x20,0x25,0x85,0x70,0x72,0x86,0x30,0x59,0x73,0x5A,0x98,0x7A"
 	}
@@ -119,57 +105,57 @@ metadata {
 					action: "off", 
 					icon:"st.alarm.alarm.alarm", 					
 					backgroundColor: "#99c2ff"					
-				// attributeState "alarm", 
-					// label:'Alarm!', 
-					// action: "off", 
-					// icon:"st.alarm.alarm.alarm", 
-					// backgroundColor:"#ff9999"
-				// attributeState "beep", 
-					// label:'Beeping!', 
-					// action: "off", 
-					// icon:"st.Entertainment.entertainment2", 
-					// backgroundColor:"#99FF99"
+				attributeState "alarm", 
+					label:'Alarm!', 
+					action: "off", 
+					icon:"st.alarm.alarm.alarm", 
+					backgroundColor:"#ff9999"
+				attributeState "beep", 
+					label:'Beeping!', 
+					action: "off", 
+					icon:"st.Entertainment.entertainment2", 
+					backgroundColor:"#99FF99"
 			}
 		}
 		
-		// standardTile("playSiren", "device.alarm", width: 2, height: 2) {
-			// state "default", 
-				// label:'Siren', 
-				// action:"alarm.siren", 
-				// icon:"st.alarm.alarm.alarm", 
-				// backgroundColor:"#ff9999"
-			// state "siren",
-				// label:'Off',
-				// action:"alarm.off",
-				// icon:"",
-				// background: "#ffffff"	
-		// }
+		standardTile("playSiren", "device.alarm", width: 2, height: 2) {
+			state "default", 
+				label:'Siren', 
+				action:"alarm.siren", 
+				icon:"st.alarm.alarm.alarm", 
+				backgroundColor:"#ff9999"
+			state "siren",
+				label:'Off',
+				action:"alarm.off",
+				icon:"",
+				background: "#ffffff"	
+		}
 		
-		// standardTile("playStrobe", "device.alarm", width: 2, height: 2){
-			// state "default", 
-				// label:'Strobe', 
-				// action:"alarm.strobe", 
-				// icon:"st.alarm.alarm.alarm", 
-				// backgroundColor:"#ff9999"
-			// state "strobe",
-				// label:'Off',
-				// action:"alarm.off",
-				// icon:"",
-				// background: "#ffffff"	
-		// }
+		standardTile("playStrobe", "device.alarm", width: 2, height: 2){
+			state "default", 
+				label:'Strobe', 
+				action:"alarm.strobe", 
+				icon:"st.alarm.alarm.alarm", 
+				backgroundColor:"#ff9999"
+			state "strobe",
+				label:'Off',
+				action:"alarm.off",
+				icon:"",
+				background: "#ffffff"	
+		}
 		
-		// standardTile("playBoth", "device.alarm", width: 2, height: 2) {
-			// state "default", 
-				// label:'Both', 
-				// action:"alarm.both", 
-				// icon:"st.alarm.alarm.alarm", 
-				// backgroundColor:"#ff9999"
-			// state "both",
-				// label:'Off',
-				// action:"alarm.off",
-				// icon:"",
-				// background: "#ffffff"	
-		// }
+		standardTile("playBoth", "device.alarm", width: 2, height: 2) {
+			state "default", 
+				label:'Both', 
+				action:"alarm.both", 
+				icon:"st.alarm.alarm.alarm", 
+				backgroundColor:"#ff9999"
+			state "both",
+				label:'Off',
+				action:"alarm.off",
+				icon:"",
+				background: "#ffffff"	
+		}
 		
 		standardTile("playOn", "device.switch", width: 2, height: 2) {
 			state "default", 
@@ -184,29 +170,29 @@ metadata {
 				background: "#ffffff"	
 		}
 		
-		// standardTile("playBeep", "device.status", width: 2, height: 2) {
-			// state "default", 
-				// label:'Beep', 
-				// action:"tone.beep", 
-				// icon:"st.Entertainment.entertainment2", 
-				// backgroundColor: "#99FF99"
-			// state "beep",
-				// label:'Off',
-				// action:"off",
-				// icon:"st.Entertainment.entertainment2", 
-				// background: "#ffffff"	
-		// }
+		standardTile("playBeep", "device.status", width: 2, height: 2) {
+			state "default", 
+				label:'Beep', 
+				action:"tone.beep", 
+				icon:"st.Entertainment.entertainment2", 
+				backgroundColor: "#99FF99"
+			state "beep",
+				label:'Off',
+				action:"off",
+				icon:"st.Entertainment.entertainment2", 
+				background: "#ffffff"	
+		}
 		
-		// standardTile("killSound", "generic", width: 2, height: 2) {
-			// state "default", label:'Kill', action:"killSound", icon:""
-		// }
-		standardTile("off", "generic", width: 2, height: 2) {
+		standardTile("turnOff", "device.off", width: 2, height: 2) {
 			state "default", label:'Off', action:"switch.off", icon:""
 		}
 		
+		standardTile("refresh", "device.refresh", width: 2, height: 2) {
+			state "refresh", label:'', action: "refresh", icon:"st.secondary.refresh"
+		}
+				
 		main "status"
-		// details(["status", "playSiren", "playStrobe", "playBoth", "playOn", "playBeep", "killSound"])
-		details(["status", "playOn", "off"])
+		details(["status", "playSiren", "playStrobe", "playBoth", "playOn", "playBeep", "turnOff", "refresh"])		
 	}
 }
 
@@ -223,25 +209,21 @@ private getSoundNames() {
 
 def updated() {	
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
-		// Update method usually executes twice so it stores
-		// the last time it was run and skips additional executions
-		// that occur within 3 seconds
 		state.lastUpdated = new Date().time
-		
-		def result = []
-		if (!state.useSecureCommands) {
-			logDebug "Checking for Secure Command Support"
-			state.useSecureCommands = null
-			result << supportedSecurityGetCmd()
+
+		def cmds = []
+		if (!state.isConfigured) {
+			state.useSecureCmds = false
+			cmds += configure()			
 		}
-		
-		logDebug "Updating Alarm Duration"	
-		result += [
-			alarmDurationSetCmd(getAlarmDurationNumber(settings.alarmDuration)),
-			alarmDurationGetCmd()
-		]
-		
-		return response(delayBetween(result, 250))			
+		else {
+			logDebug "Secure Commands ${state.useSecureCmds ? 'Enabled' : 'Disabled'}"
+			
+			cmds << alarmDurationSetCmd()
+			
+			cmds += refresh()
+		}		
+		return response(cmds)
 	}
 }
 
@@ -249,97 +231,67 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
 }
 
-private getAlarmDurationNumber(val) {
-	switch(val) {
-		case "Unlimited":
-			return 0
-			break
-		case "30 Seconds":
-			return 1
-			break
-		case "1 Minute":
-			return 2
-			break
-		case "2 Minutes":
-			return 4
-			break
-		case "3 Minutes":
-			return 6
-			break
-		case "5 Minutes":
-			return 10
-			break
-		case "10 Minutes":
-			return 20
-			break
-		case "15 Minutes":
-			return 30
-			break
-		case "30 Minutes":
-			return 60
-			break
-		case "45 Minutes":
-			return 90
-			break
-		case "1 Hour":
-			return 120
-			break
-		default:
-			return 6 // 3 Minutes
-	}	
-}
-
-def on() {
-	setPlayStatus("on", "off", "on")
-	logDebug "Executing on()"		
-	//playSound(getSoundNumber(settings.switchOnSound))
-	// return [
-		// basicSetCmd(3),
-		// basicGetCmd()
-	// ]
-	return playSound(3)
-}
-
-def off() {
-	setPlayStatus("off", "off", "off")
-	logDebug "Executing off()"
-	//playSound(0x00)
-	[
-		basicSetCmd(0x00),
+// Initializes variables and sends settings to device
+def configure() {
+	def cmds = []
+	
+	logDebug "Configuring ${state.useSecureCmds ? 'Secure' : 'Non-Secure'} Device"		
+	
+	cmds += delayBetween([
+		alarmDurationSetCmd(),
+		alarmDurationGetCmd(),
+		alarmEnabledGetCmd(),
+		notificationTypeGetCmd(),
 		basicGetCmd()
-	]
+	], 200)
+	
+	if (!state.useSecureCmds) {
+		cmds << supportedSecurityGetCmd()
+	}
+	
+	return cmds
 }
 
-// def killSound() {
-	// setPlayStatus("off", "off", "off")
-	// logDebug "Killing sound with basic off command"
-	// basicSetCmd(0x00)
-// }
-
-def strobe() {
-	playAlarm(settings.strobeSound, "strobe")
+def refresh() {
+	logDebug "Executing refresh()"
+	
+	logDebug "\nStrobe Sound: ${settings.strobeSound}\nSiren Sound: ${settings.sirenSound}\nBoth Sound: ${settings.bothSound}\nOn Sound: ${settings.switchOnSound}\nBeep Repeat: ${settings.beepRepeat}"
+	
+	delayBetween([
+		alarmDurationGetCmd(),
+		alarmEnabledGetCmd(),
+		notificationTypeGetCmd(),
+		basicGetCmd()
+	], 100)
 }
 
-def siren() {
-	playAlarm(settings.sirenSound, "siren")
+// Audio Notification Capability Commands
+def playSoundAndTrack(String URI, Number duration=0, String track, Number volume=0) {
+	speak(URI)
+}
+def playText(String message, Number volume=0) {
+	speak(message)
+}
+def playTextAndResume(String message, Number volume=0) {
+	speak(message)
+}	
+def playTextAndRestore(String message, Number volume=0) {
+	speak(message)
+}
+def playTrack(String URI, Number volume=0) {
+	speak(URI)
+}	
+def playTrackAndResume(String URI, Number volume=0) {
+	speak(URI)
+}	
+def playTrackAndRestore(String URI, Number volume=0) {
+	speak(URI)
+}	
+def playTrackAtVolume(String URI, Number volume) {
+	speak(URI)
 }
 
-def both() {	
-	playAlarm(settings.bothSound, "both")
-}
-
-private playAlarm(soundName, alarmType) {
-	setPlayStatus("alarm", alarmType, "off")
-	logDebug "Executing ${alarmType}()"	
-	playSound(getSoundNumber(soundName))
-}
-
-def beep() {
-	setPlayStatus("beep", "off", "off")	
-	logDebug "Executing beep()"	
-	playSound(getSoundNumber("beep"))
-}
-
+// Speech Synthesis Commands
 def speak(text) {	
 	def status
 	def soundNumber = getSoundNumber(text)
@@ -358,6 +310,48 @@ def speak(text) {
 	setPlayStatus(status, "off", "off")
 	logDebug "Executing speakText($text)"
 	playSound(soundNumber)
+}
+	
+def on() {
+	logDebug "Executing on()"
+	setPlayStatus("on", "off", "on")	
+	return playSound(getSoundNumber(settings.switchOnSound))
+}
+
+def off() {
+	logDebug "Executing off()"
+	setPlayStatus("off", "off", "off")	
+	[
+		basicSetCmd(0x00),
+		basicGetCmd()
+	]
+}
+
+def strobe() {
+	logDebug "Executing strobe()"
+	playAlarm(settings.strobeSound, "strobe")
+}
+
+def siren() {
+	logDebug "Executing siren()"
+	playAlarm(settings.sirenSound, "siren")
+}
+
+def both() {	
+	logDebug "Executing both()"
+	playAlarm(settings.bothSound, "both")
+}
+
+private playAlarm(soundName, alarmType) {
+	setPlayStatus("alarm", alarmType, "off")
+	logDebug "Executing ${alarmType}()"	
+	playSound(getSoundNumber(soundName))
+}
+
+def beep() {
+	logDebug "Executing beep()"	
+	setPlayStatus("beep", "off", "off")	
+	playSound(getSoundNumber("beep"))
 }
 
 private setPlayStatus(statusVal, alarmVal, switchVal) {
@@ -419,12 +413,10 @@ private playSound(soundNumber) {
 	}
 	else {
 		logInfo "Playing Sound #$soundNumber"
-	}	
-	//return [switchMultilevelSetCmd(soundNumber)]
+	}		
 	return [
 		basicSetCmd(soundNumber)
-	]
-	//,basicGetCmd()
+	]	
 }
 
 def parse(String description) {	
@@ -432,31 +424,29 @@ def parse(String description) {
 	def cmd = zwave.parse(description, [0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])
 	
 	if (cmd) {
-		logDebug "Parse Cmd: $cmd"
 		result = zwaveEvent(cmd)		
 	}
 	else {
 		logDebug "Unknown Description: $description"
-	}
-	
+	}	
 	return result
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
 	def encapsulatedCmd = cmd.encapsulatedCommand([0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])	
 	if (encapsulatedCmd) {
-		logDebug "encapsulated: $encapsulatedCmd"
-		zwaveEvent(encapsulatedCmd)
+		return zwaveEvent(encapsulatedCmd)
+	}
+	else {
+		log.warn "Unable to extract encapsulated cmd from $cmd"
 	}
 }
-
-// def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
-	// logDebug "Version: $cmd"
-// }
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {
 	def parameterName
 	def configVal = cmd.configurationValue ? cmd.configurationValue[0] : null
+	
+	state.isConfigured = true
 	
 	switch (cmd.parameterNumber) {
 		case 7:
@@ -479,13 +469,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	} 
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
-	state.useSecureCommands = true
-	logDebug("Secure Commands Supported")
-}
-
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
-	logDebug "SensoryBinaryReport: $cmd"
 	def result = null
 	switch(cmd.sensorType) {
 		case 1:
@@ -521,7 +505,7 @@ def createStatusEvents(val) {
 		newSwitch = (device.currentValue("switch") != currentPlayStatus.switch) ? currentPlayStatus.switch : null
 	}
 	
-	logDebug "\nPlay Status: ${currentPlayStatus}\nCurrent State: [alarm:${device.currentValue('alarm')}, status:${device.currentValue('status')}, switch:${device.currentValue('switch')}]\nNew State: [alarm:$newAlarm, status:$newStatus, switch:$newSwitch]"
+	// logDebug "\nPlay Status: ${currentPlayStatus}\nCurrent State: [alarm:${device.currentValue('alarm')}, status:${device.currentValue('status')}, switch:${device.currentValue('switch')}]\nNew State: [alarm:$newAlarm, status:$newStatus, switch:$newSwitch]"
 	
 	if (newStatus) {
 		result << createEvent(name: "status", value: newStatus, displayed: (device.currentValue("status") != newStatus), isStateChange: true)		
@@ -539,23 +523,13 @@ def createStatusEvents(val) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
-	def result	
-	
-	logDebug "NotificationReport: $cmd"
-	
-	if (cmd.notificationType == 7) {
-		switch (cmd.event) {
-			case 3:
-				result = createTamperEvent(cmd.notificationStatus)				
-				break
-			default:
-				result = createTamperEvent(0x00)
-		}		
+	logDebug "NotificationReport: $cmd"	
+	if (cmd.notificationType == 7 && cmd.event == 3) {
+		return createTamperEvent(cmd.notificationStatus)
 	}
 	else {
-		result = createTamperEvent(0x00)
+		return createTamperEvent(0x00)
 	}
-	return result
 }
 
 def createTamperEvent(val) {
@@ -578,75 +552,108 @@ def getTamperEventMap(val) {
 }
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
-	logDebug "zwaveEvent: $cmd"
+	logDebug "Unhandled zwaveEvent: $cmd"
 }
 
 private basicSetCmd(val) {	
-	secureCmd(zwave.basicV1.basicSet(value: val))
+	// 1 or 255: Emergency sound.
+	// 2: Fire alert.
+	// 3: Ambulance sound.
+	// 4: Police car sound.
+	// 5: Door chime.
+	// 6~99: Beep Beep.
+	// 0: means stop the sound.
+	return secureCmd(zwave.basicV1.basicSet(value: val))
 }
 
 private basicGetCmd() {
-	secureCmd(zwave.basicV1.basicGet())
+	return secureCmd(zwave.basicV1.basicGet())
 }
 
-private supportedSecurityGetCmd() {
-	secureCmd(zwave.securityV1.securityCommandsSupportedGet())
-}
-
-// private versionGetCmd() {
-	// secureCmd(zwave.versionV1.versionGet())
-// }
-
-private alarmDurationSetCmd(val) {	
+private alarmDurationSetCmd() {	
 	//(0 - 127)
 	//0: disabled
 	//1: 30 seconds
 	//6: 3 Minutes (default)
-	//127: 63.5 Minutes (max)
-	val = validateRange(val, 6, 0, 127)
-	configSetCmd(31, val)
+	//127: 63.5 Minutes (max)	
+	def val = validateRange(getAlarmDurationNumber(settings.alarmDuration), 6, 0, 127)
+	return configSetCmd(31, val)
+}
+
+private getAlarmDurationNumber(val) {
+	switch(val) {
+		case "Unlimited":
+			return 0
+			break
+		case "30 Seconds":
+			return 1
+			break
+		case "1 Minute":
+			return 2
+			break
+		case "2 Minutes":
+			return 4
+			break
+		case "3 Minutes":
+			return 6
+			break
+		case "5 Minutes":
+			return 10
+			break
+		case "10 Minutes":
+			return 20
+			break
+		case "15 Minutes":
+			return 30
+			break
+		case "30 Minutes":
+			return 60
+			break
+		case "45 Minutes":
+			return 90
+			break
+		case "1 Hour":
+			return 120
+			break
+		default:
+			return 6 // 3 Minutes
+	}	
 }
 
 private alarmDurationGetCmd() {
-	configGetCmd(31)
+	return configGetCmd(31)
+}
+
+private alarmEnabledGetCmd() {
+	return configGetCmd(29)
+}
+
+private notificationTypeGetCmd() {
+	return configGetCmd(7)
 }
 
 private configSetCmd(paramNumber, configValue) {
-	secureCmd(zwave.configurationV1.configurationSet(parameterNumber: paramNumber, size: 1, scaledConfigurationValue: configValue))
+	return secureCmd(zwave.configurationV1.configurationSet(parameterNumber: paramNumber, size: 1, scaledConfigurationValue: configValue))
 }
 
 private configGetCmd(paramNumber) {
-	secureCmd(zwave.configurationV1.configurationGet(parameterNumber: paramNumber))
+	return secureCmd(zwave.configurationV1.configurationGet(parameterNumber: paramNumber))
 }
 
-// private switchMultilevelSetCmd(val) {
-	// // 1 or 255: Emergency sound.
-	// // 2: Fire alert.
-	// // 3: Ambulance sound.
-	// // 4: Police car sound.
-	// // 5: Door chime.
-	// // 6~99: Beep Beep.
-	// // 0: means stop the sound.
-	// val = validateRange(val, 1, 0, 99)
-	// secureCmd(zwave.switchMultilevelV1.switchMultilevelSet(value: val))
-// }
-
-// private switchMultilevelGetCmd() {
-	// secureCmd(zwave.switchMultilevelV1.switchMultilevelGet())
-// }
-
-private switchGetCmd() {
-	zwave.switchBinaryV1.switchBinaryGet()
+private supportedSecurityGetCmd() {
+	logDebug "Checking for Secure Command Support"	
+	state.useSecureCmds = true // force secure cmd	
+	def cmd = secureCmd(zwave.securityV1.securityCommandsSupportedGet())	
+	state.useSecureCmds = false // reset secure cmd	
+	return cmd
 }
 
 private secureCmd(physicalgraph.zwave.Command cmd) {
-	if (state.useSecureCommands == null || state.useSecureCommands) {
-		logDebug "sending secure: $cmd"
-		zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
-	}
-	else {
-		logDebug "sending normal: $cmd"
-		cmd.format()
+	if (state.useSecureCmds) {		
+		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
+	} 
+	else {		
+		return cmd.format()
 	}
 }
 
@@ -690,7 +697,7 @@ private int safeToInteger(val, int defaultVal=0) {
 }
 
 private logDebug(msg) {
-	if (settings.debugOutput || settings.debugOutput == null) {
+	if (settings?.debugOutput || settings?.debugOutput == null) {
 		log.debug "$msg"
 	}
 }
