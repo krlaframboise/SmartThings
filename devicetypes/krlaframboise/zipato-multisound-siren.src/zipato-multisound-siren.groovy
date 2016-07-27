@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.0.1 (Alpha)
+ *  Zipato Multisound Siren v1.0.2 (Alpha)
  *  (PH-PSE02.US)
  *  Zipato Z-Wave Indoor Multi-Sound Siren (PH-PSE02.US)
  *
@@ -10,6 +10,9 @@
  *    
  *
  *  Changelog:
+ *
+ *  1.0.2 (07/27/2016)
+ *    - Added extra logging.
  *
  *  1.0.1 (07/27/2016)
  *    - Added the security event handler.
@@ -483,6 +486,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
 	def result = null
+    log.debug "SensorBinaryReport: $cmd"
 	switch(cmd.sensorType) {
 		case 1:
 			result = createStatusEvents(cmd.sensorValue)
@@ -535,7 +539,7 @@ def createStatusEvents(val) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
-	logDebug "NotificationReport: $cmd"	
+	log.debug "NotificationReport: $cmd"	
 	if (cmd.notificationType == 7 && cmd.event == 3) {
 		return createTamperEvent(cmd.notificationStatus)
 	}
