@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.0 (Alpha)
+ *  Zipato Multisound Siren v1.0.1 (Alpha)
  *  (PH-PSE02.US)
  *  Zipato Z-Wave Indoor Multi-Sound Siren (PH-PSE02.US)
  *
@@ -10,6 +10,9 @@
  *    
  *
  *  Changelog:
+ *
+ *  1.0.1 (07/27/2016)
+ *    - Added the security event handler.
  *
  *  1.0.0 (07/27/2016)
  *    - Alpha Release
@@ -440,6 +443,15 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 	else {
 		log.warn "Unable to extract encapsulated cmd from $cmd"
 	}
+}
+
+// Acknowledges secure commands and configures device using secure commands.
+def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
+	state.useSecureCmds = true
+	logDebug "Secure Inclusion Detected"
+	def result = []
+	result += response(configure())
+	return result	
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {
