@@ -1,17 +1,11 @@
 /**
- *  Blink Wireless Camera v 1.6
+ *  Blink Wireless Camera v 1.5
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
- *
- *    1.6 (7/??/2016)
- *      - Added attributes and preferences for: 
- *       motionSensitivity, videoLength,
- *        recordAudio, illuminatorIntensity,
- *        IlluminatorEnabled and 
  *
  *    1.5 (7/03/2016)
  *      - Added updatedAt attribute
@@ -325,16 +319,14 @@ def poll() {
 
 def refresh() {
 	state.homescreenImageSource = ""
-	state.updateCamera = true
 	refreshDetails()
 	runIn(5, refreshEvents)
 }
 
 def refreshDetails() {
-	generateEvent(getActionStatusEventData("refreshing", "Refreshing Camera Details", true))	
-	def details = parent.getCameraDetails(device.deviceNetworkId, state.updateCamera)
+	generateEvent(getActionStatusEventData("refreshing", "Refreshing Camera Details", true))
+	def details = parent.getCameraDetails(device.deviceNetworkId)
 	if (details) {
-		state.updateCamera = false
 		refreshDetails(details)
 		generateEvent(getActionStatusEventData("", "Camera Details Refreshed", true))
 	}
