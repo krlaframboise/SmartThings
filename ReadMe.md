@@ -194,3 +194,12 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>It can also be used for scheduling in SmartApps so that you don't have to rely on SmartThings Scheduler.  You basically tell it to push a certain button number in a certain amount of time and then subscribe to its button pushed event and in the event handler method, you check to see if the button number pushed was the one you scheduled.<br /> </li>
 <li>I created this because of all the problems SmartThings had with their scheduler, but the new version of their scheduler has been stable for a while so it's probably no longer needed.</li>
 </ul>
+
+<hr />
+
+<h3><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zipato-multisound-siren.src/zipato-multisound-siren.groovy">Zipato Multisound Siren</a></h3>
+
+<ul>
+<li>This is a device handler for the Zipato Z-Wave Indoor Multi-Sound Siren (PH-PSE02.US).  It's been tested on the US version, but it should work with the EU version.<br /></li>
+<li><a href="https://community.smartthings.com/t/release-zipato-phileo-multisound-siren-ph-pse02-us/53748?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
+</ul>
