@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.2
+ *  Zipato Multisound Siren v1.3
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02.US)
  *  
@@ -13,6 +13,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.3 (07/28/2016)
+ *    - Bug fixes
  *
  *  1.2 (07/28/2016)
  *    - Initial Release
@@ -130,14 +133,8 @@ metadata {
 			state "default", 
 				label:'Siren', 
 				action:"alarm.siren", 
-				nextState:"startSiren",
 				icon:"st.alarm.alarm.alarm", 
 				backgroundColor:"#ff9999"
-			state "startSiren",
-				label:'Turn Off',
-				action:"alarm.off",
-				icon:"st.alarm.alarm.alarm", 
-				background: "#ffffff"
 			state "siren",
 				label:'Turn Off',
 				action:"alarm.off",
@@ -149,14 +146,8 @@ metadata {
 			state "default", 
 				label:'Strobe', 
 				action:"alarm.strobe", 
-				nextState: "startStrobe",
 				icon:"st.alarm.alarm.alarm", 
 				backgroundColor:"#ff9999"
-			state "startStrobe",
-				label:'Turn Off',
-				action:"alarm.off",
-				icon:"st.alarm.alarm.alarm", 
-				background: "#ffffff"
 			state "strobe",
 				label:'Turn Off',
 				action:"alarm.off",
@@ -168,14 +159,8 @@ metadata {
 			state "default", 
 				label:'Both', 
 				action:"alarm.both", 
-				nextState: "startBoth",
 				icon:"st.alarm.alarm.alarm", 
 				backgroundColor:"#ff9999"
-			state "startBoth",
-				label:'Turn Off',
-				action:"alarm.off",
-				icon:"st.alarm.alarm.alarm", 
-				background: "#ffffff"
 			state "both",
 				label:'Turn Off',
 				action:"alarm.off",
@@ -187,14 +172,8 @@ metadata {
 			state "default", 
 				label:'Turn On', 
 				action:"switch.on", 
-				nextState: "startOn",
 				icon:"st.alarm.alarm.alarm", 
 				backgroundColor:"#99c2ff"
-			state "startOn",
-				label:'Turn Off',
-				action:"switch.off",
-				icon:"st.alarm.alarm.alarm", 
-				background: "#ffffff"	
 			state "on",
 				label:'Turn Off',
 				action:"switch.off",
@@ -206,14 +185,8 @@ metadata {
 			state "default", 
 				label:'Beep', 
 				action:"tone.beep", 
-				nextState: "startBeep",
 				icon:"st.Entertainment.entertainment2", 
 				backgroundColor: "#99FF99"
-			state "startBeep",
-				label: 'Stop',
-				action: "off",
-				icon:"st.Entertainment.entertainment2", 
-				background: "#ffffff"		
 			state "beep",
 				label:'Stop',
 				action:"off",
@@ -539,6 +512,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	if (parameterName) {
 		logDebug "${parameterName}: ${configVal}"
 	} 
+	return result
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {	
