@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.0.3 (Alpha)
+ *  Zipato Multisound Siren v1.0.4 (Alpha)
  *  (PH-PSE02.US)
  *  Zipato Z-Wave Indoor Multi-Sound Siren (PH-PSE02.US)
  *
@@ -10,6 +10,11 @@
  *    
  *
  *  Changelog:
+ *
+ *  1.0.4 (07/27/2016)
+ *    - added nextState items to tiles
+ *    = added enable/disable feature.
+ *    - fixed bug with create event status.
  *
  *  1.0.3 (07/27/2016)
  *    - Add Chirp sound, removed beep repeat, switched to basicget for responses, added speech synthesis capability
@@ -45,7 +50,11 @@ metadata {
 		capability "Refresh"
 
 		attribute "status", "enum", ["off", "on", "alarm", "beep"]
-				
+		attribute "alarmState", "enum", ["enabled", "disabled"]
+
+		command "enableAlarm"
+		command "disableAlarm"
+		
 		fingerprint mfr: "013C", prod: "0004", model: "000A"
 		
 		fingerprint deviceId: "0x1005", inClusters: "0x71,0x20,0x25,0x85,0x70,0x72,0x86,0x30,0x59,0x73,0x5A,0x98,0x7A"
@@ -83,18 +92,12 @@ metadata {
 			displayDuringSetup: true,
 			required: false,
 			options: getSoundNames()
-		// input "beepSound", "enum", 
-			// title: "Beep Sound:", 
-			// defaultValue: "Emergency", 
-			// displayDuringSetup: true,
-			// required: false,
-			// options: getSoundNames()
-		// input "beepRepeat", "number", 
-			// title: "Beep Repeat:", 
-			// defaultValue: 1, 
-			// range: "1..93",
-			// displayDuringSetup: true, 
-			// required: false
+		input "beepSound", "enum", 
+			title: "Beep Sound:", 
+			defaultValue: "Emergency", 
+			displayDuringSetup: true,
+			required: false,
+			options: getSoundNames()
 		input "alarmDuration", "enum", 
 			title: "Alarm Duration:", 
 			defaultValue: "3 Minutes",
@@ -138,12 +141,18 @@ metadata {
 			state "default", 
 				label:'Siren', 
 				action:"alarm.siren", 
+				nextState:"startSiren",
 				icon:"st.alarm.alarm.alarm", 
 				backgroundColor:"#ff9999"
-			state "siren",
-				label:'Off',
+			state "startSiren",
+				label:'Turn Off',
 				action:"alarm.off",
-				icon:"",
+				icon:"st.alarm.alarm.alarm", 
+				background: "#ffffff"
+			state "siren",
+				label:'Turn Off',
+				action:"alarm.off",
+				icon:"st.alarm.alarm.alarm", 
 				background: "#ffffff"	
 		}
 		
@@ -151,12 +160,18 @@ metadata {
 			state "default", 
 				label:'Strobe', 
 				action:"alarm.strobe", 
+				nextState: "startStrobe",
 				icon:"st.alarm.alarm.alarm", 
 				backgroundColor:"#ff9999"
-			state "strobe",
-				label:'Off',
+			state "startStrobe",
+				label:'Turn Off',
 				action:"alarm.off",
-				icon:"",
+				icon:"st.alarm.alarm.alarm", 
+				background: "#ffffff"
+			state "strobe",
+				label:'Turn Off',
+				action:"alarm.off",
+				icon:"st.alarm.alarm.alarm", 
 				background: "#ffffff"	
 		}
 		
@@ -164,25 +179,37 @@ metadata {
 			state "default", 
 				label:'Both', 
 				action:"alarm.both", 
+				nextState: "startBoth",
 				icon:"st.alarm.alarm.alarm", 
 				backgroundColor:"#ff9999"
-			state "both",
-				label:'Off',
+			state "startBoth",
+				label:'Turn Off',
 				action:"alarm.off",
-				icon:"",
+				icon:"st.alarm.alarm.alarm", 
+				background: "#ffffff"
+			state "both",
+				label:'Turn Off',
+				action:"alarm.off",
+				icon:"st.alarm.alarm.alarm", 
 				background: "#ffffff"	
 		}
 		
 		standardTile("playOn", "device.switch", width: 2, height: 2) {
 			state "default", 
-				label:'On', 
+				label:'Turn On', 
 				action:"switch.on", 
+				nextState: "startOn",
 				icon:"st.alarm.alarm.alarm", 
 				backgroundColor:"#99c2ff"
-			state "on",
-				label:'Off',
+			state "startOn",
+				label:'Turn Off',
 				action:"switch.off",
-				icon:"",
+				icon:"st.alarm.alarm.alarm", 
+				background: "#ffffff"	
+			state "on",
+				label:'Turn Off',
+				action:"switch.off",
+				icon:"st.alarm.alarm.alarm", 
 				background: "#ffffff"	
 		}
 		
@@ -190,10 +217,16 @@ metadata {
 			state "default", 
 				label:'Beep', 
 				action:"tone.beep", 
+				nextState: "startBeep",
 				icon:"st.Entertainment.entertainment2", 
 				backgroundColor: "#99FF99"
+			state "startBeep",
+				label: 'Stop',
+				action: "off",
+				icon:"st.Entertainment.entertainment2", 
+				background: "#ffffff"		
 			state "beep",
-				label:'Off',
+				label:'Stop',
 				action:"off",
 				icon:"st.Entertainment.entertainment2", 
 				background: "#ffffff"	
@@ -206,9 +239,14 @@ metadata {
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
 			state "refresh", label:'', action: "refresh", icon:"st.secondary.refresh"
 		}
+		
+		valueTile("alarmState", "device.alarmState", width: 2, height: 2) {
+			state "enabled", label:'Enabled', action: "disableAlarm", icon:"", backgroundColor: "#00FF00"
+			state "disabled", label:'Disabled', action: "enableAlarm", icon:"", backgroundColor: "#FF0000"
+		}
 				
 		main "status"
-		details(["status", "playSiren", "playStrobe", "playBoth", "playOn", "playBeep", "turnOff", "refresh"])		
+		details(["status", "playSiren", "playStrobe", "playBoth", "playOn", "playBeep", "turnOff", "refresh", "alarmState"])
 	}
 }
 
@@ -257,7 +295,7 @@ def configure() {
 	cmds += delayBetween([
 		alarmDurationSetCmd(),
 		alarmDurationGetCmd(),
-		disableAlarmSetCmd(true),
+		disableAlarmSetCmd(false),
 		disableAlarmGetCmd(),
 		notificationTypeGetCmd(),
 		basicGetCmd()
@@ -333,7 +371,23 @@ def speak(text) {
 	logDebug "Executing speakText($text)"
 	playSound(soundNumber)
 }
-	
+
+def enableAlarm() {
+	logDebug "Executing enableAlarm()"	
+	[
+		disableAlarmSetCmd(false),
+		disableAlarmGetCmd()
+	]
+}
+
+def disableAlarm() {
+	logDebug "Executing disableAlarm()"
+	[
+		disableAlarmSetCmd(true),
+		disableAlarmGetCmd()
+	]
+}
+
 def on() {
 	logDebug "Executing on()"
 	setPlayStatus("on", "off", "on")	
@@ -350,30 +404,27 @@ def off() {
 }
 
 def strobe() {
-	logDebug "Executing strobe()"
 	playAlarm(settings.strobeSound, "strobe")
 }
 
 def siren() {
-	logDebug "Executing siren()"
 	playAlarm(settings.sirenSound, "siren")
 }
 
 def both() {	
-	logDebug "Executing both()"
 	playAlarm(settings.bothSound, "both")
 }
 
 private playAlarm(soundName, alarmType) {
-	setPlayStatus("alarm", alarmType, "off")
 	logDebug "Executing ${alarmType}()"	
+	setPlayStatus("alarm", alarmType, "off")	
 	playSound(getSoundNumber(soundName))
 }
 
 def beep() {
 	logDebug "Executing beep()"	
 	setPlayStatus("beep", "off", "off")	
-	playSound(getSoundNumber("beep"))
+	playSound(getSoundNumber(settings.beepSound))
 }
 
 private setPlayStatus(statusVal, alarmVal, switchVal) {
@@ -416,20 +467,6 @@ private getSoundNumber(soundName) {
 			return 1
 	}
 }
-
-// private getBeepSoundNumber(soundName) {
-	// def beepRepeat = 1
-	
-	// soundName = soundName?.toLowerCase()
-	// if (soundName == "beep") {
-		// beepRepeat = validateRange(settings.beepRepeat, 1, 1, 94)
-	// }
-	// else if (soundName?.startsWith("beep ")) {
-		// beepRepeat = validateRange(soundName.replace("beep ", ""), 1, 1, 94)		
-	// }
-	
-	// return (beepRepeat + 5) // beep sound number range (6-99)
-// }
 
 private playSound(soundNumber) {
 	def result = []
@@ -483,6 +520,7 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupported
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {
+	def result = []
 	def parameterName
 	def configVal = cmd.configurationValue ? cmd.configurationValue[0] : null
 	
@@ -494,8 +532,9 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 			configVal = (configVal == 0) ? "Notification Report" : "Sensor Binary Report"						
 			break
 		case 29:
-			parameterName = "Alarm Enabled"
-			configVal = (configVal == 0) ? "Yes" : "No"			
+			parameterName = "Alarm State"
+			configVal = (configVal == 0) ? "enabled" : "disabled"
+			result << createEvent(name: "alarmState", value: configVal, displayed: (device.currentValue("alarmState") != configVal), descriptionText: "Alarm is $configVal")
 			break
 		case 31:
 			parameterName = "Alarm Duration"
@@ -509,9 +548,8 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	} 
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
-	log.debug "BasicReport: $cmd"
-	return createStatusEvents(cmd.sensorValue)
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {	
+	return createStatusEvents(cmd.value)
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
@@ -526,11 +564,13 @@ def createStatusEvents(val) {
 	def result = []
 	
 	if (val == 0x00) {
+		logDebug "${device.displayName} turned off"
 		newStatus = (device.currentValue("status") != "off") ? "off" : null 
 		newAlarm = (device.currentValue("alarm") != "off") ? "off" : null
 		newSwitch = (device.currentValue("switch") != "off") ? "off" : null
 	}
 	else {
+		logDebug "${device.displayName} turned on"		
 		if (!currentPlayStatus) {
 			currentPlayStatus = [status: "alarm", alarm: "off",switch: "off"]
 		}
@@ -555,7 +595,7 @@ def createStatusEvents(val) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
-	log.debug "NotificationReport: $cmd"	
+	logDebug "NotificationReport: $cmd"	
 	if (cmd.notificationType == 7 && cmd.event == 3) {
 		return createTamperEvent(cmd.notificationStatus)
 	}	
