@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.1
+ *  Zipato Multisound Siren v1.2
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02.US)
  *  
@@ -14,7 +14,7 @@
  *
  *  Changelog:
  *
- *  1.1 (07/28/2016)
+ *  1.2 (07/28/2016)
  *    - Initial Release
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -33,7 +33,6 @@ metadata {
 		capability "Configuration"
 		capability "Alarm"
 		capability "Audio Notification"
-		capability "Speech Synthesis"
 		capability "Switch"
 		capability "Tone"
 		capability "Tamper Alert"
@@ -341,7 +340,6 @@ def playTrackAtVolume(String URI, Number volume) {
 	speak(URI)
 }
 
-// Speech Synthesis Commands
 def speak(text) {	
 	def status
 	def soundNumber = getSoundNumber(text)
