@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.0.2 (Alpha)
+ *  Zipato Multisound Siren v1.0.3 (Alpha)
  *  (PH-PSE02.US)
  *  Zipato Z-Wave Indoor Multi-Sound Siren (PH-PSE02.US)
  *
@@ -10,6 +10,9 @@
  *    
  *
  *  Changelog:
+ *
+ *  1.0.3 (07/27/2016)
+ *    - Add Chirp sound, removed beep repeat, switched to basicget for responses, added speech synthesis capability
  *
  *  1.0.2 (07/27/2016)
  *    - Added extra logging.
@@ -35,6 +38,7 @@ metadata {
 		capability "Actuator"
 		capability "Alarm"
 		capability "Audio Notification"
+		capability "Speech Synthesis"
 		capability "Switch"
 		capability "Tone"
 		capability "Tamper Alert"
@@ -79,12 +83,18 @@ metadata {
 			displayDuringSetup: true,
 			required: false,
 			options: getSoundNames()
-		input "beepRepeat", "number", 
-			title: "Beep Repeat:", 
-			defaultValue: 1, 
-			range: "1..93",
-			displayDuringSetup: true, 
-			required: false
+		// input "beepSound", "enum", 
+			// title: "Beep Sound:", 
+			// defaultValue: "Emergency", 
+			// displayDuringSetup: true,
+			// required: false,
+			// options: getSoundNames()
+		// input "beepRepeat", "number", 
+			// title: "Beep Repeat:", 
+			// defaultValue: 1, 
+			// range: "1..93",
+			// displayDuringSetup: true, 
+			// required: false
 		input "alarmDuration", "enum", 
 			title: "Alarm Duration:", 
 			defaultValue: "3 Minutes",
@@ -206,6 +216,7 @@ private getSoundNames() {
 	[
 		"Ambulance",
 		"Beep",
+		"Chirp",
 		"Door",
 		"Emergency",
 		"Fire",
@@ -246,7 +257,8 @@ def configure() {
 	cmds += delayBetween([
 		alarmDurationSetCmd(),
 		alarmDurationGetCmd(),
-		alarmEnabledGetCmd(),
+		disableAlarmSetCmd(true),
+		disableAlarmGetCmd(),
 		notificationTypeGetCmd(),
 		basicGetCmd()
 	], 200)
@@ -261,7 +273,11 @@ def configure() {
 def refresh() {
 	logDebug "Executing refresh()"
 	
-	logDebug "\nStrobe Sound: ${settings.strobeSound}\nSiren Sound: ${settings.sirenSound}\nBoth Sound: ${settings.bothSound}\nOn Sound: ${settings.switchOnSound}\nBeep Repeat: ${settings.beepRepeat}"
+	logDebug "\nStrobe Sound: ${settings.strobeSound}\nSiren Sound: ${settings.sirenSound}\nBoth Sound: ${settings.bothSound}\nOn Sound: ${settings.switchOnSound}"
+	
+	if (device.currentValue("tamper") != "clear") {
+		sendEvent(getTamperEventMap("detected"))
+	}
 	
 	delayBetween([
 		alarmDurationGetCmd(),
@@ -306,9 +322,9 @@ def speak(text) {
 		case 1..5:
 			status = "alarm"
 			break
-		case 6..99:
+		case 6..7:
 			status = "beep"
-			break
+			break			
 		default:
 			status = "off"
 	}
@@ -390,39 +406,48 @@ private getSoundNumber(soundName) {
 		case ["door", "5"]:
 			return 5
 			break
-		case { it?.startsWith("beep") }:
-			return getBeepSoundNumber(soundName)
+		case ["beep", "6"]:
+			return 6
+			break
+		case ["chirp", "7"]:
+			return 7
 			break
 		default:
 			return 1
 	}
 }
 
-private getBeepSoundNumber(soundName) {
-	def beepRepeat = 1
+// private getBeepSoundNumber(soundName) {
+	// def beepRepeat = 1
 	
-	soundName = soundName?.toLowerCase()
-	if (soundName == "beep") {
-		beepRepeat = validateRange(settings.beepRepeat, 1, 1, 94)
-	}
-	else if (soundName?.startsWith("beep ")) {
-		beepRepeat = validateRange(soundName.replace("beep ", ""), 1, 1, 94)		
-	}
+	// soundName = soundName?.toLowerCase()
+	// if (soundName == "beep") {
+		// beepRepeat = validateRange(settings.beepRepeat, 1, 1, 94)
+	// }
+	// else if (soundName?.startsWith("beep ")) {
+		// beepRepeat = validateRange(soundName.replace("beep ", ""), 1, 1, 94)		
+	// }
 	
-	return (beepRepeat + 5) // beep sound number range (6-99)
-}
+	// return (beepRepeat + 5) // beep sound number range (6-99)
+// }
 
 private playSound(soundNumber) {
-	soundNumber = validateRange(soundNumber, 1, 0, 99)	
-	if (soundNumber == 0) {
-		logInfo "Stopping Sound"
+	def result = []
+	
+	soundNumber = validateRange(soundNumber, 1, 1, 7)	
+	if (soundNumber == 7) {
+		logInfo "Chirping"
+		result << basicSetCmd(1)
+		result << "delay 50"
+		result << basicSetCmd(0x00)
 	}
 	else {
 		logInfo "Playing Sound #$soundNumber"
-	}		
-	return [
-		basicSetCmd(soundNumber)
-	]	
+		result << basicSetCmd(soundNumber)
+	}
+	result << "delay 50"
+	result << basicGetCmd()
+	return result
 }
 
 def parse(String description) {	
@@ -484,20 +509,13 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	} 
 }
 
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
+	log.debug "BasicReport: $cmd"
+	return createStatusEvents(cmd.sensorValue)
+}
+
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
-	def result = null
-    log.debug "SensorBinaryReport: $cmd"
-	switch(cmd.sensorType) {
-		case 1:
-			result = createStatusEvents(cmd.sensorValue)
-			break
-		case 8:
-			result = createTamperEvent(cmd.sensorValue)
-			break
-		default:
-			logDebug "SensorBinaryReport: $cmd"
-	}
-	return result
+	// This doesn't get called for the sounds "beep" or "door" so ignoring these events and using basic report instead.	
 }
 
 def createStatusEvents(val) {
@@ -520,9 +538,7 @@ def createStatusEvents(val) {
 		newAlarm = (device.currentValue("alarm") != currentPlayStatus.alarm) ? currentPlayStatus.alarm : null
 		newSwitch = (device.currentValue("switch") != currentPlayStatus.switch) ? currentPlayStatus.switch : null
 	}
-	
-	// logDebug "\nPlay Status: ${currentPlayStatus}\nCurrent State: [alarm:${device.currentValue('alarm')}, status:${device.currentValue('status')}, switch:${device.currentValue('switch')}]\nNew State: [alarm:$newAlarm, status:$newStatus, switch:$newSwitch]"
-	
+		
 	if (newStatus) {
 		result << createEvent(name: "status", value: newStatus, displayed: (device.currentValue("status") != newStatus), isStateChange: true)		
 	}
@@ -542,15 +558,11 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 	log.debug "NotificationReport: $cmd"	
 	if (cmd.notificationType == 7 && cmd.event == 3) {
 		return createTamperEvent(cmd.notificationStatus)
-	}
-	else {
-		return createTamperEvent(0x00)
-	}
+	}	
 }
 
 def createTamperEvent(val) {
 	def tamperState = (val == 0xFF) ? "detected" : "clear"
-	logDebug "createTamperEvent($tamperState)"
 	if (device.currentValue("tamper") != tamperState) {
 		logDebug "Tamper is $tamperState"
 		return createEvent(getTamperEventMap(tamperState))
@@ -640,8 +652,12 @@ private alarmDurationGetCmd() {
 	return configGetCmd(31)
 }
 
-private alarmEnabledGetCmd() {
+private disableAlarmGetCmd() {
 	return configGetCmd(29)
+}
+
+private disableAlarmSetCmd(disable) {
+	return configSetCmd(29, disable ? 1 : 0)
 }
 
 private notificationTypeGetCmd() {
