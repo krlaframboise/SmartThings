@@ -1,32 +1,21 @@
 /**
- *  Zipato Multisound Siren v1.0.4 (Alpha)
- *  (PH-PSE02.US)
- *  Zipato Z-Wave Indoor Multi-Sound Siren (PH-PSE02.US)
+ *  Zipato Multisound Siren v1.1
+ *     (Zipato Z-Wave Indoor Multi-Sound Siren -
+ *        Model:PH-PSE02.US)
+ *  
+ *
+ *
+ *  Capabilities:
+ *	  Configuration, Alarm, Audio Notification, 
+ *    Switch, Tone, Tamper Alert, Refresh
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:
- *    
- *
  *  Changelog:
  *
- *  1.0.4 (07/27/2016)
- *    - added nextState items to tiles
- *    = added enable/disable feature.
- *    - fixed bug with create event status.
- *
- *  1.0.3 (07/27/2016)
- *    - Add Chirp sound, removed beep repeat, switched to basicget for responses, added speech synthesis capability
- *
- *  1.0.2 (07/27/2016)
- *    - Added extra logging.
- *
- *  1.0.1 (07/27/2016)
- *    - Added the security event handler.
- *
- *  1.0.0 (07/27/2016)
- *    - Alpha Release
+ *  1.1 (07/28/2016)
+ *    - Initial Release
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -41,6 +30,7 @@
 metadata {
 	definition (name: "Zipato Multisound Siren", namespace: "krlaframboise", author: "Kevin LaFramboise") {
 		capability "Actuator"
+		capability "Configuration"
 		capability "Alarm"
 		capability "Audio Notification"
 		capability "Speech Synthesis"
@@ -436,7 +426,12 @@ private setPlayStatus(statusVal, alarmVal, switchVal) {
 }
 
 private getSoundNumber(soundName) {
+	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
 	soundName = (soundName == null) ? "" : soundName?.toString()?.toLowerCase()
+	
+	if (soundName?.contains(urlPrefix)) {
+		soundName = soundName?.replace(urlPrefix,"").replace(".mp3","")
+	}
 	
 	switch (soundName?.toString()?.toLowerCase()) {
 		case ["stop", "off", "0"]:
