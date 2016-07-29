@@ -1,9 +1,9 @@
 /**
- *  Zipato Multisound Siren v1.3
+ *  Zipato Multisound Siren v1.3.1
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02.US)
  *  
- *
+ *https://community.smartthings.com/t/release-zipato-phileo-multisound-siren-ph-pse02-us/53748?u=krlaframboise
  *
  *  Capabilities:
  *	  Configuration, Alarm, Audio Notification, 
@@ -281,7 +281,7 @@ def refresh() {
 	
 	delayBetween([
 		alarmDurationGetCmd(),
-		alarmEnabledGetCmd(),
+		disableAlarmGetCmd(),
 		notificationTypeGetCmd(),
 		basicGetCmd()
 	], 100)
@@ -337,6 +337,7 @@ def enableAlarm() {
 	logDebug "Executing enableAlarm()"	
 	[
 		disableAlarmSetCmd(false),
+		"delay 200",
 		disableAlarmGetCmd()
 	]
 }
@@ -345,6 +346,7 @@ def disableAlarm() {
 	logDebug "Executing disableAlarm()"
 	[
 		disableAlarmSetCmd(true),
+		"delay 200",
 		disableAlarmGetCmd()
 	]
 }
@@ -489,7 +491,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	def result = []
 	def parameterName
 	def configVal = cmd.configurationValue ? cmd.configurationValue[0] : null
-	
+	log.debug "configurationReport: $cmd"
 	state.isConfigured = true
 	
 	switch (cmd.parameterNumber) {
@@ -516,10 +518,12 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {	
+	log.debug "basicReport: $cmd"
 	return createStatusEvents(cmd.value)
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
+	log.debug "sensorBinaryReport: $cmd"
 	// This doesn't get called for the sounds "beep" or "door" so ignoring these events and using basic report instead.	
 }
 
@@ -664,6 +668,7 @@ private disableAlarmGetCmd() {
 }
 
 private disableAlarmSetCmd(disable) {
+	log.debug "disableAlarmSetCmd: [disable: ${disable}, val: ${disable ? 1 : 0}]"
 	return configSetCmd(29, disable ? 1 : 0)
 }
 
