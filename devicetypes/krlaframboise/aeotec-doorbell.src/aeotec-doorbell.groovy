@@ -1,9 +1,9 @@
 /**
- *  Aeotec Doorbell v 1.7.1
+ *  Aeotec Doorbell v 1.7.2
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
- * 
+ *
  *  Capabilities:
  *	  Switch, Alarm, Tone, Battery, Configuration, Refresh
  *
@@ -11,6 +11,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.7.2 (07/30/2016)
+ *    - Removed duplicate hub v1 fingerprint.
  *
  *  1.7.1 (07/24/2016)
  *    - Added commands playRepeatTrack, playTrackAtVolume,
@@ -96,8 +99,6 @@ metadata {
 		command "volumeDown"
 
 		fingerprint mfr: "0086", prod: "0104", model: "0038"		
-
-		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x25,0x70,0x72,0x59,0x85,0x73,0x7A,0x5A", outClusters: "0x82"
 
 		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98,0x25,0x70,0x72,0x59,0x85,0x73,0x7A,0x5A", outClusters: "0x82"
 	}
