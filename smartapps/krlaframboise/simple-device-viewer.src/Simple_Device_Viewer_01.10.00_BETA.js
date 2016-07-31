@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.10 (BETA)
+ *  Simple Device Viewer v 1.10.1 (BETA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,9 @@
  *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.10.1 (07/31/2016)
+ *      - Fixed sorting.
  *
  *    1.10 (07/31/2016)
  *      - Added Dashboard
@@ -1732,6 +1735,7 @@ private api_getToggleItemsHtml(currentUrl, listItems) {
 
 private api_getItemsHtml(listItems) {
 	def html = ""		
+	listItems.sort { it.sortValue }
 	listItems.unique().each {			
 		html += api_getItemHtml(it.title, it.image, null)
 	}
