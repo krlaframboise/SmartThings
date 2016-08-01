@@ -1,5 +1,5 @@
 /**
- *  GoControl Motion Sensor v1.2
+ *  GoControl Motion Sensor v1.2.1
  *    (Model: WAPIRZ-1)
  *
  *  Author: 
@@ -10,8 +10,9 @@
  *
  *  Changelog:
  *
- *    1.2 (07/31/2016)
+ *    1.2.1 (07/31/2016)
  *      - Fix iOS UI bug with tamper tile.
+ *      - Removed secondary tile.
  *
  *    1.1 (06/17/2016)
  *      - Fixed tamper detection
@@ -81,11 +82,7 @@ metadata {
 			tileAttribute ("device.motion", key: "PRIMARY_CONTROL") {
 				attributeState "active", label:'motion', icon:"st.motion.motion.active", backgroundColor:"#53a7c0"
 				attributeState "inactive", label:'no motion', icon:"st.motion.motion.inactive", backgroundColor:"#ffffff"
-			}
-			tileAttribute ("device.tamper", key: "SECONDARY_CONTROL") {
-				attributeState "clear", label:'Tamper Clear', icon:"", backgroundColor:"#cccccc"
-				attributeState "detected", label:'Tampering Detected', icon:"", backgroundColor:"#ff0000"
-			}
+			}			
 		}
 		valueTile("temperature", "device.temperature", width: 2, height: 2) {
 			state("temperature", label:'${currentValue}°',
