@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.9.2
+ *  Simple Device Viewer v 1.9.2 
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
