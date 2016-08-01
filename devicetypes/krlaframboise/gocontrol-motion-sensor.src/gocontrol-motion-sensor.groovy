@@ -1,5 +1,5 @@
 /**
- *  GoControl Motion Sensor v1.1
+ *  GoControl Motion Sensor v1.2
  *    (Model: WAPIRZ-1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.2 (07/31/2016)
+ *      - Fix iOS UI bug with tamper tile.
  *
  *    1.1 (06/17/2016)
  *      - Fixed tamper detection
@@ -79,6 +82,10 @@ metadata {
 				attributeState "active", label:'motion', icon:"st.motion.motion.active", backgroundColor:"#53a7c0"
 				attributeState "inactive", label:'no motion', icon:"st.motion.motion.inactive", backgroundColor:"#ffffff"
 			}
+			tileAttribute ("device.tamper", key: "SECONDARY_CONTROL") {
+				attributeState "clear", label:'Tamper Clear', icon:"", backgroundColor:"#cccccc"
+				attributeState "detected", label:'Tampering Detected', icon:"", backgroundColor:"#ff0000"
+			}
 		}
 		valueTile("temperature", "device.temperature", width: 2, height: 2) {
 			state("temperature", label:'${currentValue}°',
@@ -95,9 +102,9 @@ metadata {
 		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2) {
 			state "battery", label:'${currentValue}% battery', unit:"%"
 		}
-		valueTile("tampering", "device.tamper", width: 2, height: 2) {
-			state "detected", label:"Tamper\nDetected", backgroundColor: "#ff0000"
-			state "clear", label:"Tamper\nClear", backgroundColor: "#cccccc"			
+		standardTile("tampering", "device.tamper", width: 2, height: 2, decoration: "flat") {
+			state "detected", label:"Tamper", backgroundColor: "#ff0000"
+			state "clear", label:"No Tamper", backgroundColor: "#cccccc"			
 		}
 		standardTile("refresh", "command.refresh", width: 2, height: 2) {
 			state "default", label:"Reset", action: "refresh", icon:""
