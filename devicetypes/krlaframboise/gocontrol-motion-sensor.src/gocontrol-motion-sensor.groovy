@@ -102,7 +102,7 @@ metadata {
 		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2) {
 			state "battery", label:'${currentValue}% battery', unit:"%"
 		}
-		standardTile("tampering", "device.tamper", width: 2, height: 2, decoration: "flat") {
+		standardTile("tampering", "device.tamper", width: 2, height: 2) {
 			state "detected", label:"Tamper", backgroundColor: "#ff0000"
 			state "clear", label:"No Tamper", backgroundColor: "#cccccc"			
 		}
