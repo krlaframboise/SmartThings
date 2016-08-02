@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.3.1
+ *  Zipato Multisound Siren v1.3.2
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02.US)
  *  
@@ -13,6 +13,10 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.3.2 (08/01/2016)
+ *    - Fix iOS value tile issue for enabled button
+ *      and possible casting issue in the configreport method.
  *
  *  1.3 (07/28/2016)
  *    - Bug fixes
@@ -202,7 +206,7 @@ metadata {
 			state "refresh", label:'', action: "refresh", icon:"st.secondary.refresh"
 		}
 		
-		valueTile("alarmState", "device.alarmState", width: 2, height: 2) {
+		standardTile("alarmState", "device.alarmState", width: 2, height: 2) {
 			state "enabled", label:'Enabled', action: "disableAlarm", icon:"", backgroundColor: "#00FF00"
 			state "disabled", label:'Disabled', action: "enableAlarm", icon:"", backgroundColor: "#FF0000"
 		}
@@ -491,28 +495,30 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	def result = []
 	def parameterName
 	def configVal = cmd.configurationValue ? cmd.configurationValue[0] : null
+	def displayVal = "$configVal"
+	
 	log.debug "configurationReport: $cmd"
 	state.isConfigured = true
 	
 	switch (cmd.parameterNumber) {
 		case 7:
 			parameterName = "Notification Type"
-			configVal = (configVal == 0) ? "Notification Report" : "Sensor Binary Report"						
+			displayVal = (configVal == 0) ? "Notification Report" : "Sensor Binary Report"						
 			break
 		case 29:
 			parameterName = "Alarm State"
-			configVal = (configVal == 0) ? "enabled" : "disabled"
-			result << createEvent(name: "alarmState", value: configVal, displayed: (device.currentValue("alarmState") != configVal), descriptionText: "Alarm is $configVal")
+			displayVal = (configVal == 0) ? "enabled" : "disabled"
+			result << createEvent(name: "alarmState", value: displayVal, displayed: (device.currentValue("alarmState") != displayVal), descriptionText: "Alarm is $displayVal")
 			break
 		case 31:
 			parameterName = "Alarm Duration"
-			configVal = (configVal == 0) ? "Unlimited" : "${configVal * 30} Seconds"			
+			displayVal = (configVal == 0) ? "Unlimited" : "${configVal * 30} Seconds"			
 			break
 		default:	
 			parameterName = "Parameter #${cmd.parameterNumber}"
 	}		
 	if (parameterName) {
-		logDebug "${parameterName}: ${configVal}"
+		logDebug "${parameterName}: ${displayVal}"
 	} 
 	return result
 }
