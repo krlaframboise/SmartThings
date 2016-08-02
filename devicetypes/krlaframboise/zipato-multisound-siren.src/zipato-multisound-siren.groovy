@@ -1,32 +1,28 @@
 /**
- *  Zipato Multisound Siren v1.0.4 (Alpha)
- *  (PH-PSE02.US)
- *  Zipato Z-Wave Indoor Multi-Sound Siren (PH-PSE02.US)
+ *  Zipato Multisound Siren v1.3.2
+ *     (Zipato Z-Wave Indoor Multi-Sound Siren -
+ *        Model:PH-PSE02.US)
+ *  
+ *https://community.smartthings.com/t/release-zipato-phileo-multisound-siren-ph-pse02-us/53748?u=krlaframboise
+ *
+ *  Capabilities:
+ *	  Configuration, Alarm, Audio Notification, 
+ *    Switch, Tone, Tamper Alert, Refresh
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:
- *    
- *
  *  Changelog:
  *
- *  1.0.4 (07/27/2016)
- *    - added nextState items to tiles
- *    = added enable/disable feature.
- *    - fixed bug with create event status.
+ *  1.3.2 (08/01/2016)
+ *    - Fix iOS value tile issue for enabled button
+ *      and possible casting issue in the configreport method.
  *
- *  1.0.3 (07/27/2016)
- *    - Add Chirp sound, removed beep repeat, switched to basicget for responses, added speech synthesis capability
+ *  1.3 (07/28/2016)
+ *    - Bug fixes
  *
- *  1.0.2 (07/27/2016)
- *    - Added extra logging.
- *
- *  1.0.1 (07/27/2016)
- *    - Added the security event handler.
- *
- *  1.0.0 (07/27/2016)
- *    - Alpha Release
+ *  1.2 (07/28/2016)
+ *    - Initial Release
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -41,9 +37,9 @@
 metadata {
 	definition (name: "Zipato Multisound Siren", namespace: "krlaframboise", author: "Kevin LaFramboise") {
 		capability "Actuator"
+		capability "Configuration"
 		capability "Alarm"
 		capability "Audio Notification"
-		capability "Speech Synthesis"
 		capability "Switch"
 		capability "Tone"
 		capability "Tamper Alert"
@@ -141,14 +137,8 @@ metadata {
 			state "default", 
 				label:'Siren', 
 				action:"alarm.siren", 
-				nextState:"startSiren",
 				icon:"st.alarm.alarm.alarm", 
 				backgroundColor:"#ff9999"
-			state "startSiren",
-				label:'Turn Off',
-				action:"alarm.off",
-				icon:"st.alarm.alarm.alarm", 
-				background: "#ffffff"
 			state "siren",
 				label:'Turn Off',
 				action:"alarm.off",
@@ -160,14 +150,8 @@ metadata {
 			state "default", 
 				label:'Strobe', 
 				action:"alarm.strobe", 
-				nextState: "startStrobe",
 				icon:"st.alarm.alarm.alarm", 
 				backgroundColor:"#ff9999"
-			state "startStrobe",
-				label:'Turn Off',
-				action:"alarm.off",
-				icon:"st.alarm.alarm.alarm", 
-				background: "#ffffff"
 			state "strobe",
 				label:'Turn Off',
 				action:"alarm.off",
@@ -179,14 +163,8 @@ metadata {
 			state "default", 
 				label:'Both', 
 				action:"alarm.both", 
-				nextState: "startBoth",
 				icon:"st.alarm.alarm.alarm", 
 				backgroundColor:"#ff9999"
-			state "startBoth",
-				label:'Turn Off',
-				action:"alarm.off",
-				icon:"st.alarm.alarm.alarm", 
-				background: "#ffffff"
 			state "both",
 				label:'Turn Off',
 				action:"alarm.off",
@@ -198,14 +176,8 @@ metadata {
 			state "default", 
 				label:'Turn On', 
 				action:"switch.on", 
-				nextState: "startOn",
 				icon:"st.alarm.alarm.alarm", 
 				backgroundColor:"#99c2ff"
-			state "startOn",
-				label:'Turn Off',
-				action:"switch.off",
-				icon:"st.alarm.alarm.alarm", 
-				background: "#ffffff"	
 			state "on",
 				label:'Turn Off',
 				action:"switch.off",
@@ -217,14 +189,8 @@ metadata {
 			state "default", 
 				label:'Beep', 
 				action:"tone.beep", 
-				nextState: "startBeep",
 				icon:"st.Entertainment.entertainment2", 
 				backgroundColor: "#99FF99"
-			state "startBeep",
-				label: 'Stop',
-				action: "off",
-				icon:"st.Entertainment.entertainment2", 
-				background: "#ffffff"		
 			state "beep",
 				label:'Stop',
 				action:"off",
@@ -240,7 +206,7 @@ metadata {
 			state "refresh", label:'', action: "refresh", icon:"st.secondary.refresh"
 		}
 		
-		valueTile("alarmState", "device.alarmState", width: 2, height: 2) {
+		standardTile("alarmState", "device.alarmState", width: 2, height: 2) {
 			state "enabled", label:'Enabled', action: "disableAlarm", icon:"", backgroundColor: "#00FF00"
 			state "disabled", label:'Disabled', action: "enableAlarm", icon:"", backgroundColor: "#FF0000"
 		}
@@ -319,7 +285,7 @@ def refresh() {
 	
 	delayBetween([
 		alarmDurationGetCmd(),
-		alarmEnabledGetCmd(),
+		disableAlarmGetCmd(),
 		notificationTypeGetCmd(),
 		basicGetCmd()
 	], 100)
@@ -351,7 +317,6 @@ def playTrackAtVolume(String URI, Number volume) {
 	speak(URI)
 }
 
-// Speech Synthesis Commands
 def speak(text) {	
 	def status
 	def soundNumber = getSoundNumber(text)
@@ -376,6 +341,7 @@ def enableAlarm() {
 	logDebug "Executing enableAlarm()"	
 	[
 		disableAlarmSetCmd(false),
+		"delay 200",
 		disableAlarmGetCmd()
 	]
 }
@@ -384,6 +350,7 @@ def disableAlarm() {
 	logDebug "Executing disableAlarm()"
 	[
 		disableAlarmSetCmd(true),
+		"delay 200",
 		disableAlarmGetCmd()
 	]
 }
@@ -436,7 +403,12 @@ private setPlayStatus(statusVal, alarmVal, switchVal) {
 }
 
 private getSoundNumber(soundName) {
+	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
 	soundName = (soundName == null) ? "" : soundName?.toString()?.toLowerCase()
+	
+	if (soundName?.contains(urlPrefix)) {
+		soundName = soundName?.replace(urlPrefix,"").replace(".mp3","")
+	}
 	
 	switch (soundName?.toString()?.toLowerCase()) {
 		case ["stop", "off", "0"]:
@@ -523,36 +495,41 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	def result = []
 	def parameterName
 	def configVal = cmd.configurationValue ? cmd.configurationValue[0] : null
+	def displayVal = "$configVal"
 	
+	log.debug "configurationReport: $cmd"
 	state.isConfigured = true
 	
 	switch (cmd.parameterNumber) {
 		case 7:
 			parameterName = "Notification Type"
-			configVal = (configVal == 0) ? "Notification Report" : "Sensor Binary Report"						
+			displayVal = (configVal == 0) ? "Notification Report" : "Sensor Binary Report"						
 			break
 		case 29:
 			parameterName = "Alarm State"
-			configVal = (configVal == 0) ? "enabled" : "disabled"
-			result << createEvent(name: "alarmState", value: configVal, displayed: (device.currentValue("alarmState") != configVal), descriptionText: "Alarm is $configVal")
+			displayVal = (configVal == 0) ? "enabled" : "disabled"
+			result << createEvent(name: "alarmState", value: displayVal, displayed: (device.currentValue("alarmState") != displayVal), descriptionText: "Alarm is $displayVal")
 			break
 		case 31:
 			parameterName = "Alarm Duration"
-			configVal = (configVal == 0) ? "Unlimited" : "${configVal * 30} Seconds"			
+			displayVal = (configVal == 0) ? "Unlimited" : "${configVal * 30} Seconds"			
 			break
 		default:	
 			parameterName = "Parameter #${cmd.parameterNumber}"
 	}		
 	if (parameterName) {
-		logDebug "${parameterName}: ${configVal}"
+		logDebug "${parameterName}: ${displayVal}"
 	} 
+	return result
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {	
+	log.debug "basicReport: $cmd"
 	return createStatusEvents(cmd.value)
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
+	log.debug "sensorBinaryReport: $cmd"
 	// This doesn't get called for the sounds "beep" or "door" so ignoring these events and using basic report instead.	
 }
 
@@ -697,6 +674,7 @@ private disableAlarmGetCmd() {
 }
 
 private disableAlarmSetCmd(disable) {
+	log.debug "disableAlarmSetCmd: [disable: ${disable}, val: ${disable ? 1 : 0}]"
 	return configSetCmd(29, disable ? 1 : 0)
 }
 
