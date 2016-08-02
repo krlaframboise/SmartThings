@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.3.2
+ *  Zipato Multisound Siren v1.3.3
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02.US)
  *  
@@ -14,7 +14,7 @@
  *
  *  Changelog:
  *
- *  1.3.2 (08/01/2016)
+ *  1.3.3 (08/01/2016)
  *    - Fix iOS value tile issue for enabled button
  *      and possible casting issue in the configreport method.
  *
@@ -231,7 +231,11 @@ private getSoundNames() {
 def updated() {	
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
 		state.lastUpdated = new Date().time
-
+		
+		if (!state.version) { 
+			state.version = "1.3.3"
+			state.isConfigured = false
+		}
 		def cmds = []
 		if (!state.isConfigured) {
 			state.useSecureCmds = false
