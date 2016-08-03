@@ -1,5 +1,5 @@
 /**
- *  GoControl Contact Sensor v1.6
+ *  GoControl Contact Sensor v1.6.1
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -9,6 +9,10 @@
  *    https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.6.1 (08/02/2016)
+ *      - Fixed iOS UI issue caused by using multiple states
+ *        with a value tile.
  *
  *    1.6 (06/22/2016)
  *      - Added support for the external contact.
@@ -96,30 +100,19 @@ metadata {
 			}
 		}
 		
-		valueTile("battery", "device.battery", inactiveLabel: false, 
-			decoration: "flat", 
-			width: 2, 
-			height: 2
-		){
-			state "battery", 
-			label:'${currentValue}% battery', 
-			unit:""
-		}
-		
-		valueTile("tamperAlert", "device.tamper", width: 2, height: 2) {
-			state "default", label: "", backgroundColor: "#FFFFFF"
-			state "clear", label:"Tamper Clear", backgroundColor: "#CCCCCC"
-			state "detected", label:"Tamper Detected", backgroundColor: "#FF0000"
+		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2){
+			state "battery", label:'${currentValue}% battery', unit:""
+		}		
+		standardTile("tampering", "device.tamper", width: 2, height: 2) {
+			state "detected", label:"Tamper", backgroundColor: "#ff0000"
+			state "clear", label:"No Tamper", backgroundColor: "#cccccc"			
 		}
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
-			state "default", 
-				label: "Refresh", 
-				action: "refresh", 
-				icon:""
+			state "default", label: "Refresh", action: "refresh", icon:""
 		}
 		
 		main("contact")
-		details(["contact", "battery", "tamperAlert", "refresh"])
+		details(["contact", "battery", "tampering", "refresh"])
 	}
 }
 
