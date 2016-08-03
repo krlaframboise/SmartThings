@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.7
+ *  Aeon Labs Multifunction Siren v 1.7.1
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -11,6 +11,9 @@
  *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *	1.7.1 (08/02/2016)
+ *    - Fixed UI issue on iOS
  *
  *	1.7 (07/22/2016)
  *    - Fixed fingerprint for non-secure hub v2
@@ -183,41 +186,41 @@ metadata {
 				attributeState "alarm", label:'Alarm Sounding!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
 				attributeState "customAlarm", label:'Custom Alarm Sounding!', action: "off", icon:"", backgroundColor:"#ff9999"
 				attributeState "delayedAlarm", label:'Delayed Alarm Active!', action: "off", icon:"", backgroundColor:"#ff9999"
-				attributeState "beepDelayedAlarm", label:'Beep Delayed Alarm Active!', action: "off", icon:"", backgroundColor:"#ff9999"
-				attributeState "beep", label:'Beeping!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#99FF99"
+				attributeState "beepDelayedAlarm", label:'Beep Delayed Alarm Active!', action: "off", icon:"", backgroundColor:"#ff9999"				
+				attributeState "beep", label:'Beeping!', action: "off", icon:"", backgroundColor:"#99FF99"
 				attributeState "beepSchedule", label:'Scheduled\nBeeping!', action: "off", icon:"", backgroundColor:"#99FF99"
 				attributeState "customBeep", label:'Custom Beeping!', action: "off", icon:"", backgroundColor:"#694489"
 				attributeState "customBeepSchedule", label:'Scheduled Custom Beeping!', action: "off", icon:"", backgroundColor:"#694489"				
 			}
 		}
-		standardTile("playAlarm", "device.alarm", label: 'Alarm', width: 2, height: 2) {
+		standardTile("playAlarm", "device.alarm", width: 2, height: 2) {
 			state "default", label:'Alarm', action: "both", icon:"st.alarm.alarm.alarm", backgroundColor: "#ff9999"
 			state "both", label:'Stop', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor: "#ffffff"
 		}
-		standardTile("playBeep", "device.status", label: 'Beep', width: 2, height: 2) {
+		standardTile("playBeep", "device.status", width: 2, height: 2) {
 			state "default", label:'Beep', action:"beep", icon:"st.Entertainment.entertainment2", backgroundColor: "#99FF99"
 		}
-		valueTile("playBeepSchedule", "device.status", label: 'Scheduled Beep', width: 2, height: 2) {
-			state "default", label:'Start\nBeep', action:"startBeep",backgroundColor: "#99FF99"
-			state "beepSchedule", label:'Stop\nBeep', action:"off", icon: "", backgroundColor: "#ffffff"
+		standardTile("playBeepSchedule", "device.status", width: 2, height: 2) {
+			state "default", label:'Start', action:"startBeep",backgroundColor: "#99FF99"
+			state "beepSchedule", label:'Stop', action:"off", icon: "", backgroundColor: "#ffffff"
 		}
-		valueTile("playCustomBeep1", "device.status", label: 'Custom Beep 1', width: 2, height: 2, wordWrap: true) {
-			state "default", label:'Beep\n1', action:"customBeep1",backgroundColor: "#694489"
+		standardTile("playCustomBeep1", "device.status", width: 2, height: 2) {
+			state "default", label:'Beep 1', action:"customBeep1",backgroundColor: "#694489"
 		}
-		valueTile("playCustomBeep2", "device.status", label: 'Custom Beep 2', width: 2, height: 2, wordWrap: true) {
-			state "default", label:'Beep\n2', action:"customBeep2",backgroundColor: "#694489"
+		standardTile("playCustomBeep2", "device.status", width: 2, height: 2) {
+			state "default", label:'Beep 2', action:"customBeep2",backgroundColor: "#694489"
 		}
-		valueTile("playCustomBeep3", "device.status", label: 'Custom Beep 3', width: 2, height: 2, wordWrap: true) {
-			state "default", label:'Beep\n3', action:"customBeep3",backgroundColor: "#694489"
+		standardTile("playCustomBeep3", "device.status", width: 2, height: 2) {
+			state "default", label:'Beep 3', action:"customBeep3",backgroundColor: "#694489"
 		}
-		valueTile("playCustomBeep4", "device.status", label: 'Custom Beep 4', width: 2, height: 2, wordWrap: true) {
-			state "default", label:'Beep\n4', action:"customBeep4",backgroundColor: "#694489"
+		standardTile("playCustomBeep4", "device.status", width: 2, height: 2) {
+			state "default", label:'Beep 4', action:"customBeep4",backgroundColor: "#694489"
 		}
-		valueTile("playCustomBeep5", "device.status", label: 'Custom Beep 5', width: 2, height: 2, wordWrap: true) {
-			state "default", label:'Beep\n5', action:"customBeep5",backgroundColor: "#694489"
+		standardTile("playCustomBeep5", "device.status", width: 2, height: 2) {
+			state "default", label:'Beep 5', action:"customBeep5",backgroundColor: "#694489"
 		}
-		valueTile("playCustomBeep6", "device.status", label: 'Custom Beep 6', width: 2, height: 2, wordWrap: true) {
-			state "default", label:'Beep\n6', action:"customBeep6",backgroundColor: "#694489"
+		standardTile("playCustomBeep6", "device.status", width: 2, height: 2) {
+			state "default", label:'Beep 6', action:"customBeep6",backgroundColor: "#694489"
 		}
 		main "status"
 		details(["status", "playAlarm", "playBeep", "playBeepSchedule", "playCustomBeep1", "playCustomBeep2", "playCustomBeep3", "playCustomBeep4", "playCustomBeep5", "playCustomBeep6"])
@@ -226,11 +229,12 @@ metadata {
 
 def poll() {
 	def result = []
-	def minimumPollMinutes = 60
+	def minimumPollMinutes = 5
 	def lastPoll = device.currentValue("lastPoll")
 	if ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000)) {
 		logDebug "Poll: Refreshing because lastPoll was more than ${minimumPollMinutes} minutes ago."
 		result << versionGetCmd()
+		result << response(versionGetCmd())
 	}
 	else {
 		logDebug "Poll: Skipped because lastPoll was within ${minimumPollMinutes} minutes"
