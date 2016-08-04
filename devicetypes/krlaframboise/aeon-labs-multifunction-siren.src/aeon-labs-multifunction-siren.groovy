@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.7.1
+ *  Aeon Labs Multifunction Siren v 1.7.2
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -11,6 +11,9 @@
  *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *	1.7.2 (08/03/2016)
+ *    - Fixed UI issue on iOS
  *
  *	1.7.1 (08/02/2016)
  *    - Fixed UI issue on iOS
@@ -184,13 +187,13 @@ metadata {
 			tileAttribute ("status", key: "PRIMARY_CONTROL") {
 				attributeState "off", label:'off', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
 				attributeState "alarm", label:'Alarm Sounding!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
-				attributeState "customAlarm", label:'Custom Alarm Sounding!', action: "off", icon:"", backgroundColor:"#ff9999"
-				attributeState "delayedAlarm", label:'Delayed Alarm Active!', action: "off", icon:"", backgroundColor:"#ff9999"
-				attributeState "beepDelayedAlarm", label:'Beep Delayed Alarm Active!', action: "off", icon:"", backgroundColor:"#ff9999"				
-				attributeState "beep", label:'Beeping!', action: "off", icon:"", backgroundColor:"#99FF99"
-				attributeState "beepSchedule", label:'Scheduled\nBeeping!', action: "off", icon:"", backgroundColor:"#99FF99"
-				attributeState "customBeep", label:'Custom Beeping!', action: "off", icon:"", backgroundColor:"#694489"
-				attributeState "customBeepSchedule", label:'Scheduled Custom Beeping!', action: "off", icon:"", backgroundColor:"#694489"				
+				attributeState "customAlarm", label:'Custom Alarm Sounding!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "delayedAlarm", label:'Delayed Alarm Active!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "beepDelayedAlarm", label:'Beep Delayed Alarm Active!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"		
+				attributeState "beep", label:'Beeping!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#99FF99"
+				attributeState "beepSchedule", label:'Scheduled\nBeeping!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#99FF99"
+				attributeState "customBeep", label:'Custom Beeping!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#CC99CC"
+				attributeState "customBeepSchedule", label:'Scheduled Custom Beeping!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#CC99CC"				
 			}
 		}
 		standardTile("playAlarm", "device.alarm", width: 2, height: 2) {
@@ -201,26 +204,26 @@ metadata {
 			state "default", label:'Beep', action:"beep", icon:"st.Entertainment.entertainment2", backgroundColor: "#99FF99"
 		}
 		standardTile("playBeepSchedule", "device.status", width: 2, height: 2) {
-			state "default", label:'Start', action:"startBeep",backgroundColor: "#99FF99"
-			state "beepSchedule", label:'Stop', action:"off", icon: "", backgroundColor: "#ffffff"
+			state "default", label:'Start', action:"startBeep", icon: "st.Entertainment.entertainment2",backgroundColor: "#99FF99"
+			state "beepSchedule", label:'Stop', action:"off", icon: "st.Entertainment.entertainment2", backgroundColor: "#ffffff"
 		}
 		standardTile("playCustomBeep1", "device.status", width: 2, height: 2) {
-			state "default", label:'Beep 1', action:"customBeep1",backgroundColor: "#694489"
+			state "default", label:'Beep 1', action:"customBeep1", icon:"st.Entertainment.entertainment2",backgroundColor: "#CC99CC"
 		}
 		standardTile("playCustomBeep2", "device.status", width: 2, height: 2) {
-			state "default", label:'Beep 2', action:"customBeep2",backgroundColor: "#694489"
+			state "default", label:'Beep 2', action:"customBeep2", icon:"st.Entertainment.entertainment2",backgroundColor: "#CC99CC"
 		}
 		standardTile("playCustomBeep3", "device.status", width: 2, height: 2) {
-			state "default", label:'Beep 3', action:"customBeep3",backgroundColor: "#694489"
+			state "default", label:'Beep 3', action:"customBeep3", icon:"st.Entertainment.entertainment2",backgroundColor: "#CC99CC"
 		}
 		standardTile("playCustomBeep4", "device.status", width: 2, height: 2) {
-			state "default", label:'Beep 4', action:"customBeep4",backgroundColor: "#694489"
+			state "default", label:'Beep 4', action:"customBeep4", icon:"st.Entertainment.entertainment2",backgroundColor: "#CC99CC"
 		}
 		standardTile("playCustomBeep5", "device.status", width: 2, height: 2) {
-			state "default", label:'Beep 5', action:"customBeep5",backgroundColor: "#694489"
+			state "default", label:'Beep 5', action:"customBeep5", icon:"st.Entertainment.entertainment2",backgroundColor: "#CC99CC"
 		}
 		standardTile("playCustomBeep6", "device.status", width: 2, height: 2) {
-			state "default", label:'Beep 6', action:"customBeep6",backgroundColor: "#694489"
+			state "default", label:'Beep 6', action:"customBeep6", icon:"st.Entertainment.entertainment2",backgroundColor: "#CC99CC"
 		}
 		main "status"
 		details(["status", "playAlarm", "playBeep", "playBeepSchedule", "playCustomBeep1", "playCustomBeep2", "playCustomBeep3", "playCustomBeep4", "playCustomBeep5", "playCustomBeep6"])
