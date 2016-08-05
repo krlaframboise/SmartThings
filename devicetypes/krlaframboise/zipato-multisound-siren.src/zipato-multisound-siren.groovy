@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.3.3
+ *  Zipato Multisound Siren v1.4
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02.US)
  *  
@@ -13,6 +13,12 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.4 (08/05/2016)
+ *    - Fixed UI issue with buttons sticking.
+ *    - Added Beep Repeat and Beep Repeat Delay fields
+ *      so that the Door and Beep sound can be played
+ *      one or more times when beep button is pressed.
  *
  *  1.3.3 (08/01/2016)
  *    - Fix iOS value tile issue for enabled button
@@ -88,18 +94,29 @@ metadata {
 			displayDuringSetup: true,
 			required: false,
 			options: getSoundNames()
-		input "beepSound", "enum", 
-			title: "Beep Sound:", 
-			defaultValue: "Emergency", 
-			displayDuringSetup: true,
-			required: false,
-			options: getSoundNames()
 		input "alarmDuration", "enum", 
 			title: "Alarm Duration:", 
 			defaultValue: "3 Minutes",
 			displayDuringSetup: true, 
 			required: false,
-			options: ["30 Seconds", "1 Minute", "2 Minutes", "3 Minutes", "5 Minutes", "10 Minutes", "15 Minutes", "30 Minutes", "45 Minutes", "1 Hour", "Unlimited"]			
+			options: ["30 Seconds", "1 Minute", "2 Minutes", "3 Minutes", "5 Minutes", "10 Minutes", "15 Minutes", "30 Minutes", "45 Minutes", "1 Hour", "Unlimited"]		
+		input "beepSound", "enum", 
+			title: "Beep Sound:", 
+			defaultValue: "Beep", 
+			displayDuringSetup: true,
+			required: false,
+			options: ["Beep","Door"]
+		input "repeatBeepSound", "number", 
+			title: "Repeat Beep Sound (0-20):", 
+			defaultValue: "0",
+			range: "0..20",
+			displayDuringSetup: true, 
+			required: false
+		input "repeatBeepDelay", "number", 
+			title: "Beep Delay in Milliseconds:", 
+			defaultValue: "2000",
+			displayDuringSetup: true, 
+			required: false		
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -113,7 +130,7 @@ metadata {
 				attributeState "off", 
 					label:'Off', 
 					action: "off", 
-					icon:"st.alarm.alarm.alarm", 
+					icon:"st.security.alarm.clear", 
 					backgroundColor:"#ffffff"
 				attributeState "on", 
 					label:'On!', 
@@ -137,7 +154,7 @@ metadata {
 			state "default", 
 				label:'Siren', 
 				action:"alarm.siren", 
-				icon:"st.alarm.alarm.alarm", 
+				icon:"st.security.alarm.clear", 
 				backgroundColor:"#ff9999"
 			state "siren",
 				label:'Turn Off',
@@ -150,7 +167,7 @@ metadata {
 			state "default", 
 				label:'Strobe', 
 				action:"alarm.strobe", 
-				icon:"st.alarm.alarm.alarm", 
+				icon:"st.security.alarm.clear", 
 				backgroundColor:"#ff9999"
 			state "strobe",
 				label:'Turn Off',
@@ -163,7 +180,7 @@ metadata {
 			state "default", 
 				label:'Both', 
 				action:"alarm.both", 
-				icon:"st.alarm.alarm.alarm", 
+				icon:"st.security.alarm.clear", 
 				backgroundColor:"#ff9999"
 			state "both",
 				label:'Turn Off',
@@ -176,7 +193,7 @@ metadata {
 			state "default", 
 				label:'Turn On', 
 				action:"switch.on", 
-				icon:"st.alarm.alarm.alarm", 
+				icon:"st.security.alarm.clear", 
 				backgroundColor:"#99c2ff"
 			state "on",
 				label:'Turn Off',
@@ -198,21 +215,17 @@ metadata {
 				background: "#ffffff"	
 		}
 		
-		standardTile("turnOff", "device.off", width: 2, height: 2) {
-			state "default", label:'Off', action:"switch.off", icon:""
-		}
-		
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
-			state "refresh", label:'', action: "refresh", icon:"st.secondary.refresh"
+			state "refresh", label:'Refresh', action: "refresh", icon:"st.secondary.refresh-icon"
 		}
 		
 		standardTile("alarmState", "device.alarmState", width: 2, height: 2) {
-			state "enabled", label:'Enabled', action: "disableAlarm", icon:"", backgroundColor: "#00FF00"
-			state "disabled", label:'Disabled', action: "enableAlarm", icon:"", backgroundColor: "#FF0000"
+			state "enabled", label:'Disable', action: "disableAlarm", icon:"st.custom.sonos.unmuted", backgroundColor: "#FFFFFF"
+			state "disabled", label:'Enable', action: "enableAlarm", icon:"st.custom.sonos.muted", backgroundColor: "#cccccc"
 		}
 				
 		main "status"
-		details(["status", "playSiren", "playStrobe", "playBoth", "playOn", "playBeep", "turnOff", "refresh", "alarmState"])
+		details(["status", "playSiren", "playStrobe", "playBoth", "playOn", "playBeep", "alarmState", "refresh"])
 	}
 }
 
@@ -232,10 +245,6 @@ def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
 		state.lastUpdated = new Date().time
 		
-		if (!state.version) { 
-			state.version = "1.3.3"
-			state.isConfigured = false
-		}
 		def cmds = []
 		if (!state.isConfigured) {
 			state.useSecureCmds = false
@@ -281,7 +290,7 @@ def configure() {
 def refresh() {
 	logDebug "Executing refresh()"
 	
-	logDebug "\nStrobe Sound: ${settings.strobeSound}\nSiren Sound: ${settings.sirenSound}\nBoth Sound: ${settings.bothSound}\nOn Sound: ${settings.switchOnSound}"
+	logDebug "\nStrobe Sound: ${settings.strobeSound}\nSiren Sound: ${settings.sirenSound}\nBoth Sound: ${settings.bothSound}\nOn Sound: ${settings.switchOnSound}\nBeep Sound: ${settings.beepSound}"
 	
 	if (device.currentValue("tamper") != "clear") {
 		sendEvent(getTamperEventMap("detected"))
@@ -454,11 +463,20 @@ private playSound(soundNumber) {
 		result << "delay 50"
 		result << basicSetCmd(0x00)
 	}
+	else if (state.playStatus?.status == "beep") {
+		def beepCount = safeToInteger(settings.repeatBeepSound, 0)
+		def repeatDelay = safeToInteger(settings.repeatBeepDelay, 2000)
+		logInfo "Playing sound #$soundNumber $beepCount time(s)"
+		for (int beep = 0; beep <= beepCount; beep++) {
+			result << basicSetCmd(soundNumber)
+			result << "delay $repeatDelay"
+		}
+	}
 	else {
 		logInfo "Playing Sound #$soundNumber"
 		result << basicSetCmd(soundNumber)
 	}
-	result << "delay 50"
+	state.lastSound = soundNumber	
 	result << basicGetCmd()
 	return result
 }
@@ -478,6 +496,7 @@ def parse(String description) {
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
 	def encapsulatedCmd = cmd.encapsulatedCommand([0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])	
+	
 	if (encapsulatedCmd) {
 		return zwaveEvent(encapsulatedCmd)
 	}
@@ -501,7 +520,6 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	def configVal = cmd.configurationValue ? cmd.configurationValue[0] : null
 	def displayVal = "$configVal"
 	
-	log.debug "configurationReport: $cmd"
 	state.isConfigured = true
 	
 	switch (cmd.parameterNumber) {
@@ -528,16 +546,26 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {	
-	log.debug "basicReport: $cmd"
-	return createStatusEvents(cmd.value)
+	def result = []
+	def forceEvent = false
+	
+	if (cmd.value == 0 && device.currentValue("status") == "off" && state.lastSound >= 5) {
+		// Door Sound or Beep Sound played and they don't
+		// turn on the device so force the on event.
+		state.lastSound = null
+		result += createStatusEvents(0xFF, false)
+		forceEvent = true
+	}
+	result += createStatusEvents(cmd.value, forceEvent)
+	
+	return result
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
-	log.debug "sensorBinaryReport: $cmd"
 	// This doesn't get called for the sounds "beep" or "door" so ignoring these events and using basic report instead.	
 }
 
-def createStatusEvents(val) {
+def createStatusEvents(val, forceEvent) {
 	def newSwitch
 	def newAlarm
 	def newStatus = val
@@ -546,9 +574,12 @@ def createStatusEvents(val) {
 	
 	if (val == 0x00) {
 		logDebug "${device.displayName} turned off"
-		newStatus = (device.currentValue("status") != "off") ? "off" : null 
-		newAlarm = (device.currentValue("alarm") != "off") ? "off" : null
-		newSwitch = (device.currentValue("switch") != "off") ? "off" : null
+		
+		newStatus = (device.currentValue("status") != "off" || canForceOffEvent(forceEvent, currentPlayStatus?.status)) ? "off" : null 
+		
+		newAlarm = (device.currentValue("alarm") != "off" || canForceOffEvent(forceEvent, currentPlayStatus?.alarm)) ? "off" : null
+		
+		newSwitch = (device.currentValue("switch") != "off" || canForceOffEvent(forceEvent, currentPlayStatus?.switch)) ? "off" : null		
 	}
 	else {
 		logDebug "${device.displayName} turned on"		
@@ -573,6 +604,10 @@ def createStatusEvents(val) {
 	}
 	
 	return result
+}
+
+private canForceOffEvent(forceEvent, playStatusVal) {
+	return (forceEvent && playStatusVal != null && playStatusVal != "off")
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
@@ -678,7 +713,6 @@ private disableAlarmGetCmd() {
 }
 
 private disableAlarmSetCmd(disable) {
-	log.debug "disableAlarmSetCmd: [disable: ${disable}, val: ${disable ? 1 : 0}]"
 	return configSetCmd(29, disable ? 1 : 0)
 }
 
