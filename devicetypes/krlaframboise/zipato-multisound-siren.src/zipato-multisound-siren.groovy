@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.4
+ *  Zipato Multisound Siren v1.4.1
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02.US)
  *  
@@ -13,6 +13,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.4.1 (08/06/2016)
+ *    - Adjusted chirp timing resulting in 97% accuracy.
  *
  *  1.4 (08/05/2016)
  *    - Fixed UI issue with buttons sticking.
@@ -46,6 +49,7 @@ metadata {
 		capability "Configuration"
 		capability "Alarm"
 		capability "Audio Notification"
+		capability "Speech Synthesis"
 		capability "Switch"
 		capability "Tone"
 		capability "Tamper Alert"
@@ -460,7 +464,7 @@ private playSound(soundNumber) {
 	if (soundNumber == 7) {
 		logInfo "Chirping"
 		result << basicSetCmd(1)
-		result << "delay 50"
+		result << "delay 100"
 		result << basicSetCmd(0x00)
 	}
 	else if (state.playStatus?.status == "beep") {
