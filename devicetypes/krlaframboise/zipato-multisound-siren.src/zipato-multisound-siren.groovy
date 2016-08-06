@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.4.1
+ *  Zipato Multisound Siren v1.4.2
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02.US)
  *  
@@ -14,7 +14,7 @@
  *
  *  Changelog:
  *
- *  1.4.1 (08/06/2016)
+ *  1.4.2 (08/06/2016)
  *    - Adjusted chirp timing resulting in 97% accuracy.
  *
  *  1.4 (08/05/2016)
@@ -58,6 +58,7 @@ metadata {
 		attribute "status", "enum", ["off", "on", "alarm", "beep"]
 		attribute "alarmState", "enum", ["enabled", "disabled"]
 
+		command "playTrackAtVolume"
 		command "enableAlarm"
 		command "disableAlarm"
 		
@@ -330,6 +331,9 @@ def playTrackAndResume(String URI, Number volume=0) {
 def playTrackAndRestore(String URI, Number volume=0) {
 	speak(URI)
 }	
+
+// Documented as part of the Audio Notification capability
+// but not actually part of it so it must be declared.
 def playTrackAtVolume(String URI, Number volume) {
 	speak(URI)
 }
