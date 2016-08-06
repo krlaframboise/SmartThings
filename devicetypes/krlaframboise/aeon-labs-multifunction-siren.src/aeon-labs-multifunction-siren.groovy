@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.8
+ *  Aeon Labs Multifunction Siren v 1.8.1
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -13,7 +13,7 @@
  *
  *	Changelog:
  *
- *	1.8 (08/06/2016)
+ *	1.8.1 (08/06/2016)
  *    - Added Audio Notification capability.
  *    - Removed commands that have been removed from
  *      from the music player capability.
@@ -87,6 +87,8 @@ metadata {
 		
 		attribute "lastPoll", "number"
 
+		command "playTrackAtVolume" 
+		
 		command "customAlarm", ["number", "number", "number"]
 		command "delayedAlarm", ["number", "number", "number", "number"]
 		command "customBeep", ["number", "number", "number", "number", "number"]
