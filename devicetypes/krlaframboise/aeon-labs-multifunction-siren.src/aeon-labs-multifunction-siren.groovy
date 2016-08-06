@@ -1,19 +1,22 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.7.2
+ *  Aeon Labs Multifunction Siren v 1.8
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
  *
  *  Capabilities:
- *      Switch, Alarm, Tone, Music Player, Polling
+ *      Switch, Alarm, Tone, Audio Notification, 
+ *      Music Player, Polling
  *
  *	Author: 
  *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
  *
- *	1.7.2 (08/03/2016)
- *    - Fixed UI issue on iOS
+ *	1.8 (08/06/2016)
+ *    - Added Audio Notification capability.
+ *    - Removed commands that have been removed from
+ *      from the music player capability.
  *
  *	1.7.1 (08/02/2016)
  *    - Fixed UI issue on iOS
@@ -76,6 +79,7 @@ metadata {
 		capability "Tone"
 		capability "Configuration"
 		capability "Music Player"
+		capability "Audio Notification"
 		capability "Speech Synthesis"
 		capability "Polling"
 
@@ -96,13 +100,6 @@ metadata {
 		command "customBeep4"
 		command "customBeep5"
 		command "customBeep6"
-
-		// Music and Sonos Related Commands
-		command "playSoundAndTrack"
-		command "playTrackAndRestore"
-		command "playTrackAndResume"
-		command "playTextAndResume"
-		command "playTextAndRestore"
 
 		fingerprint mfr: "0086", prod: "0104", model: "0050", deviceJoinName: "Aeon Labs Siren"
 		
@@ -189,7 +186,7 @@ metadata {
 				attributeState "alarm", label:'Alarm Sounding!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
 				attributeState "customAlarm", label:'Custom Alarm Sounding!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
 				attributeState "delayedAlarm", label:'Delayed Alarm Active!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
-				attributeState "beepDelayedAlarm", label:'Beep Delayed Alarm Active!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"		
+				attributeState "beepDelayedAlarm", label:'Beep Delayed Alarm Active!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"				
 				attributeState "beep", label:'Beeping!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#99FF99"
 				attributeState "beepSchedule", label:'Scheduled\nBeeping!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#99FF99"
 				attributeState "customBeep", label:'Custom Beeping!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#CC99CC"
@@ -231,6 +228,7 @@ metadata {
 }
 
 def poll() {
+	logTrace "poll()"
 	def result = []
 	def minimumPollMinutes = 5
 	def lastPoll = device.currentValue("lastPoll")
@@ -246,37 +244,62 @@ def poll() {
 }
 
 def speak(text) {
+	logTrace "speak($text)"
 	playText(text)
 }
 
 // Unsuported Music Player commands
-def unmute() { handleUnsupportedCommand("unmute") }
-def resumeTrack(map) { handleUnsupportedCommand("resumeTrack") }
-def restoreTrack(map) { handleUnsupportedCommand("restoreTrack") }
 def nextTrack() { handleUnsupportedCommand("nextTrack") }
 def setLevel(number) { handleUnsupportedCommand("setLevel") }
 def previousTrack() { handleUnsupportedCommand("previousTrack") }
-def setTrack(string) { handleUnsupportedCommand("setTrack") }
+def unmute() { handleUnsupportedCommand("unmute") }
 
 // Turns siren off
-def pause() { off() }
-def stop() { off() }
-def mute() { off() }
+def pause() { 
+	off() 
+}
+
+def stop() { 
+	off() 
+}
+
+def mute() { 
+	off() 
+}
 
 // Turns siren on
-def play() { both() }
+def play() { 
+	both() 
+}
 
-// Commands necessary for SHM, Notify w/ Sound, and Rule Machine TTS functionality.
-def playSoundAndTrack(text, other, other2, other3) {
-	playTrackAndResume(text, other, other2) 
+// Audio Notification Commands
+def playTrackAtVolume(String URI, Number volume) {
+	logTrace "playTrackAtVolume($URI, $volume)"
+	playTrack(URI, volume)
 }
-def playTrackAndRestore(text, other, other2) {
-	playTrackAndResume(text, other, other2) 
+
+def playSoundAndTrack(String URI, Number duration=null, String track, Number volume=null) {
+	logTrace "playSoundAndTrack($URI, $duration, $track, $volume)"
+	playTrack(URI, volume)
 }
-def playTrackAndResume(text, other, other2) {
-	playText(getTextFromTTSUrl(text))
+
+def playTrackAndRestore(String URI, Number volume=null) {
+	logTrace "playTrackAndRestore($URI, $volume)"
+	playTrack(URI, volume) 
 }
-def getTextFromTTSUrl(ttsUrl) {
+
+def playTrackAndResume(String URI, Number volume=null) {
+	logTrace "playTrackAndResume($URI, $volume)"
+	playTrack(URI, volume)
+}
+
+def playTrack(String URI, Number volume=null) {
+	logTrace "playTrack($URI, $volume)"
+	playText(getTextFromTTSUrl(URI), volume)
+}
+
+private getTextFromTTSUrl(String ttsUrl) {
+	logTrace "getTextFromTTSUrl($ttsUrl)"
 	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
 	if (ttsUrl?.toString()?.toLowerCase()?.contains(urlPrefix)) {
 		return ttsUrl.replace(urlPrefix,"").replace(".mp3","")
@@ -284,14 +307,24 @@ def getTextFromTTSUrl(ttsUrl) {
 	return ttsUrl
 }
 
-def playTextAndResume(text, other) { playText(text) }
-def playTextAndRestore(text, other) { playText(text) }
-def playTrack(text) { playText(text) }
+def playTextAndResume(String message, Number volume=null) {
+	logTrace "playTextAndResume($message, $volume)"
+	playText(message, volume) 
+}
 
-def playText(text) {
-	text = cleanTextCmd(text)
+def playTextAndRestore(String message, Number volume=null) {
+	logTrace "playTextAndRestore($message, $volume)"
+	playText(message, volume=null) 
+}
+
+def playText(String message, Number volume=null) {
+	logTrace "playText($message, $volume)"
+	message = cleanMessage(message)
 	def cmds
-	switch (text) {
+	switch (message) {
+		case ["1", "2", "3", "4", "5"]:
+			cmds = playAlarm(message, volume, settings.alarmDuration)
+			break
 		case ["siren", "strobe", "both", "on", "play"]:
 			cmds = both()
 			break
@@ -308,38 +341,38 @@ def playText(text) {
 			cmds = startBeepDelayedAlarm()
 			break
 		case "custombeep1":
-			cmds = customBeep1()
+			cmds = customBeep1(volume)
 			break
 		case "custombeep2":
-			cmds = customBeep2()
+			cmds = customBeep2(volume)
 			break
 		case "custombeep3":
-			cmds = customBeep3()
+			cmds = customBeep3(volume)
 			break
 		case "custombeep4":
-			cmds = customBeep4()
+			cmds = customBeep4(volume)
 			break
 		case "custombeep5":
-			cmds = customBeep5()
+			cmds = customBeep5(volume)
 			break
 		case "custombeep6":
-			cmds = customBeep6()
+			cmds = customBeep6(volume)
 			break			
 		default:
-			if (text) {
-				cmds = parseComplexCommand(text)
+			if (message) {
+				cmds = parseComplexCommand(message)
 			}
 	}
 	if (!cmds) {
-		logDebug "'$text' is not a valid command."
+		logDebug "'$message' is not a valid command."
 	}
 	else {
 		return cmds
 	}
 }
 
-def cleanTextCmd(text) {
-	return "$text".
+private cleanMessage(message) {
+	return "$message".
 		toLowerCase().
 		replace(",", "_").
 		replace(" ", "").
@@ -347,9 +380,11 @@ def cleanTextCmd(text) {
 		replace(")", "")
 }
 
-def parseComplexCommand(text) {	
+private parseComplexCommand(text) {	
+	logTrace "parseComplexCommand($text)"
 	def cmds = []
 	def args = getComplexCmdArgs(text)
+	logTrace "complex command args: $args"
 	switch (args?.size()) {
 		case 3:
 			cmds += customAlarm(
@@ -422,6 +457,7 @@ def off() {
 }
 
 private turnOff() {	
+	logTrace "turnOff()"
 	delayBetween([
 		switchOffSetCmd(),
 		switchGetCmd()
@@ -453,11 +489,13 @@ def both() {
 
 // Repeatedly plays the default beep based on the beepEvery and beepStopAfter settings and then turns on alarm.
 def startBeepDelayedAlarm() {
+	logTrace "startBeepDelayedAlarm()"
 	changeStatus("beepDelayedAlarm")
 	startDefaultBeepSchedule()	
 }
 
 private playPendingAlarm() {
+	logTrace "playPendingAlarm()"
 	state.alarmPending = false
 	if (state.scheduledAlarm) {
 		def sound = state.scheduledAlarm?.sound
@@ -472,16 +510,19 @@ private playPendingAlarm() {
 }
 
 private playDefaultAlarm() {
+	logTrace "playDefaultAlarm()"
 	playAlarm(settings.sirenSound, settings.sirenVolume, settings.alarmDuration)
 }
 
 // Plays sound at volume for duration.
 def customAlarm(sound, volume, duration) {
+	logTrace "customAlarm($sound, $volume, $duration)"
 	changeStatus("customAlarm")
 	playAlarm(sound, volume, duration)
 }
 
 private playAlarm(sound, volume, duration) {
+	logTrace "playAlarm($sound, $volume, $duration)"
 	def durationMsg = (duration && duration > 0) ? ", duration: $duration" : ""
 	logDebug "Sounding Alarm: [sound: $sound, volume: $volume$durationMsg]"
 	
@@ -506,11 +547,14 @@ private playAlarm(sound, volume, duration) {
 }
 
 def delayedAlarm(sound, volume, duration, delay) {
+	logTrace "delayedAlarm($sound, $volume, $duration, $delay)"
 	changeStatus("delayedAlarm")
 	startDelayedAlarm(sound, volume, duration, delay)	
 }
 
 private startDelayedAlarm(sound, volume, duration, delay) {
+	logTrace "startDelayedAlarm($sound, $volume, $duration, $delay)"
+	
 	state.scheduledAlarm = [
 		"sound": sound,
 		"volume": volume,
@@ -529,11 +573,13 @@ private startDelayedAlarm(sound, volume, duration, delay) {
 
 // Plays the default beep.
 def beep() {
+	logTrace "beep()"
 	changeStatus("beep")
 	playDefaultBeep()	
 }
 
 private playDefaultBeep() {
+	logTrace "playDefaultBeep()"
 	playBeep(
 		settings.beepSound,
 		settings.beepVolume,
@@ -544,42 +590,44 @@ private playDefaultBeep() {
 }
 
 // Plays short beep.
-def customBeep1() {
-	customBeep(3, 1, 1, 0, 50)
+def customBeep1(volume=null) {
+	customBeep(3, volume, 1, 0, 50)
 }
 
 // Plays medium beep
-def customBeep2() {
-	customBeep(3, 1, 1, 0, 100)
+def customBeep2(volume=null) {
+	customBeep(3, volume, 1, 0, 100)
 }
 
 // Plays long beep
-def customBeep3() {
-	customBeep(3, 1, 1, 0, 250)
+def customBeep3(volume=null) {
+	customBeep(3, volume, 1, 0, 250)
 }
 
 // Plays 3 short beeps
-def customBeep4() {
-	customBeep(3, 1, 3, 0, 50)
+def customBeep4(volume=null) {
+	customBeep(3, volume, 3, 0, 50)
 }
 
 // Plays 3 medium beeps
-def customBeep5() {
-	customBeep(3, 1, 3, 100 , 100)
+def customBeep5(volume=null) {
+	customBeep(3, volume, 3, 100 , 100)
 }
 
 // Plays 3 long beeps
-def customBeep6() {
-	customBeep(3, 1, 3, 150, 200)
+def customBeep6(volume=null) {
+	customBeep(3, volume, 3, 150, 200)
 }
 
 // Repeatedly plays the default beep based on the beepEvery and beepStopAfter settings.
 def startBeep() {
+	logTrace "startBeep()"
 	changeStatus("beepSchedule")
 	startDefaultBeepSchedule()	
 }
 
 private startDefaultBeepSchedule() {
+	logTrace "startBeepSchedule()"
 	startBeepSchedule(
 		settings.beepEvery,
 		settings.beepStopAfter,
@@ -593,12 +641,14 @@ private startDefaultBeepSchedule() {
 
 // Repeatedly plays specified beep at specified in specified intervals.
 def startCustomBeep(beepEverySeconds, stopAfterSeconds, sound, volume, repeat=1, repeatDelayMS=1000, beepLengthMS=100) {	
+	logTrace "startCustomBeep($beepEverySeconds, $stopAfterSeconds, $sound, $volume, $repeat, $repeatDelayMS, $beepLengthMS)"
 	changeStatus("customBeepSchedule")
 	
 	startBeepSchedule(beepEverySeconds, stopAfterSeconds, sound, volume, repeat, repeatDelayMS, beepLengthMS)	
 }
 
 private startBeepSchedule(beepEverySeconds, stopAfterSeconds, sound, volume, repeat, repeatDelayMS, beepLengthMS) {
+	logTrace "startBeepSchedule($beepEverySeconds, $stopAfterSeconds, $sound, $volume, $repeat, $repeatDelayMS, $beepLengthMS)"
 	logDebug "Starting ${currentStatus()} [beepEverySeconds: $beepEverySeconds, stopAfterSeconds: $stopAfterSeconds]"
 	
 	state.beepSchedule = [
@@ -616,6 +666,7 @@ private startBeepSchedule(beepEverySeconds, stopAfterSeconds, sound, volume, rep
 }
 
 private playScheduledBeep() {
+	logTrace "playScheduledBeep()"
 	def beepSchedule = state.beepSchedule
 
 	def cmds = []
@@ -673,13 +724,14 @@ private beepScheduleStillActive(startTime, stopAfter) {
 
 // Plays specified beep.
 def customBeep(sound, volume, repeat=1, repeatDelayMS=1000, beepLengthMS=100) {
+	logTrace "customBeep($sound, $volume, $repeat, $repeatDelayMS, $beepLengthMS)"
 	changeStatus("customBeep")
 	playBeep(sound, volume, repeat, repeatDelayMS, beepLengthMS)
 }
 
 private playBeep(sound, volume, repeat, repeatDelayMS, beepLengthMS) {
-	logDebug "${currentStatus()} [sound: $sound, volume: $volume, repeat: $repeat, repeatDelayMS: $repeatDelayMS, beepLengthMS: $beepLengthMS]"
-
+	logTrace "playBeep($sound, $volume, $repeat, $repeatDelayMS, $beepLengthMS)"
+	
 	int maxMS = 18000
 	sound = validateSound(sound, 3)
 	volume = validateVolume(volume)
@@ -688,7 +740,7 @@ private playBeep(sound, volume, repeat, repeatDelayMS, beepLengthMS) {
 	repeat = validateRepeat(repeat, beepLengthMS, repeatDelayMS, maxMS)
 
 	def cmds = []
-	for (int repeatIndex = 1; repeatIndex <= repeat; repeatIndex++) {
+	for (int repeatIndex = 1; repeatIndex <= repeat; repeatIndex++) {	
 		cmds << sirenSoundVolumeSetCmd(sound, volume)
 		
 		if (beepLengthMS > 0) {
@@ -751,6 +803,7 @@ private finalizeOldStatus(oldStatus, newStatus) {
 
 // Stores preferences and displays device settings.
 def updated() {
+	logTrace "updated()"
 	if (!isDuplicateCommand(state.lastUpdated, 1000)) {
 		state.lastUpdated = new Date().time
 		
@@ -770,6 +823,7 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 }
 
 def configure() {
+	logTrace "configure()"
 	def cmds = []	
 	if (state.useSecureCommands != null) {
 		logDebug "Secure Commands ${state.useSecureCommands ? 'Enabled' : 'Disabled'}"
@@ -871,17 +925,15 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	return result
 }
 
-private sirenSoundVolumeSetCmd(int sound, int volume) {
-	//zwave.configurationV1.configurationSet(parameterNumber: 37, size: 2, configurationValue: [validateSound(sound), validateVolume(volume)])
+private sirenSoundVolumeSetCmd(int sound, int volume) {	
 	return configSetCmd(37, 2, [validateSound(sound), validateVolume(volume)])
 }
 
 private sendNotificationsSetCmd() {
-	//return secureCmd(zwave.configurationV1.configurationSet(parameterNumber: 80, size: 1, scaledConfigurationValue: 0))
 	return configSetCmd(80, 1, [0])
 }
 
-private configSetCmd(paramNumber, valSize, val) {
+private configSetCmd(paramNumber, valSize, val) {	
 	return secureCmd(zwave.configurationV1.configurationSet(parameterNumber: paramNumber, size: valSize, configurationValue: val))
 }
 
@@ -991,4 +1043,8 @@ private logDebug(msg) {
 	if (settings.debugOutput != false) {
 		log.debug "$msg"
 	}
+}
+
+private logTrace(msg) {
+	//log.trace "$msg"
 }
