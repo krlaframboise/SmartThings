@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.10.1 (BETA)
+ *  Simple Device Viewer v 1.10.2 (BETA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,11 @@
  *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.10.2 (08/06/2016)
+ *      - Changed look of dashboard and cleaned up most
+ *        of the cosmetic issues.
+ *      - Added status above icons on dashboard.
  *
  *    1.10.1 (07/31/2016)
  *      - Fixed sorting.
@@ -828,7 +833,12 @@ private String getDeviceStatusTitle(device, status) {
 	if (!status || status == "null") {
 		status = "N/A"
 	}
-	return "${status?.toUpperCase()} -- ${device.displayName}"
+	if (state.refreshingDashboard) {
+		return device.displayName
+	}
+	else {
+		return "${status?.toUpperCase()} -- ${device.displayName}"
+	}	
 }
 
 private getDeviceCapabilityStatusItem(device, cap) {
@@ -855,7 +865,7 @@ private getCapabilityStatusItem(cap, sortValue, value) {
 	item.status = item.value
 	if ("${item.status}" != "null") {
 	
-		if (item.status == getActiveState(cap)) {
+		if (item.status == getActiveState(cap) && !state.refreshingDashboard) {
 			item.status = "*${item.status}"
 		}
 		
@@ -1663,7 +1673,7 @@ private api_getMenuHtml(currentUrl) {
 }
 
 private api_getMenuItemHtml(linkText, className, url) {	
-	return "<div class=\"${className}\"><a href=\"$url\" ${api_getWaitOnClickAttr()}><span>${linkText}</span></a></div>"
+	return "<div class=\"menu-item\"><a href=\"$url\" ${api_getWaitOnClickAttr()} class=\"item-image $className\"><span>${linkText}</span></a></div>"
 }
 
 private api_toggleSwitches(cap, cmd) {
@@ -1714,7 +1724,7 @@ private api_getToggleItemsHtml(currentUrl, listItems) {
 	def html = ""
 			
 	listItems.unique().each {		
-		html += api_getItemHtml(it.title, it.image, "${currentUrl}/toggle/${it.deviceId}")
+		html += api_getItemHtml(it.title, it.image, "${currentUrl}/toggle/${it.deviceId}", it.deviceId, it.status)
 	}
 	
 	def pluralName
@@ -1726,9 +1736,9 @@ private api_getToggleItemsHtml(currentUrl, listItems) {
 	}	
 	
 	if (imageName in ["light", "switch"]) {
-		html += api_getItemHtml("Turn All Off", "${imageName}-off all-command", "${currentUrl}/off")	
+		html += api_getItemHtml("Turn All Off", "${imageName}-off all-command", "${currentUrl}/off", "", "")	
 		
-		html += api_getItemHtml("Turn All On", "${imageName}-on all-command", "${currentUrl}/on")
+		html += api_getItemHtml("Turn All On", "${imageName}-on all-command", "${currentUrl}/on", "", "")
 	}
 	return html
 }
@@ -1736,25 +1746,27 @@ private api_getToggleItemsHtml(currentUrl, listItems) {
 private api_getItemsHtml(listItems) {
 	def html = ""		
 	listItems.sort { it.sortValue }
-	listItems.unique().each {			
-		html += api_getItemHtml(it.title, it.image, null)
+	listItems.unique().each {				
+		html += api_getItemHtml(it.title, it.image, null, it.deviceId, it.status)
 	}
 	return html
 }
 
-private api_getItemHtml(text, imageName, url) {
+private api_getItemHtml(text, imageName, url, deviceId, status) {
 	def imageClass = imageName ? imageName?.replace(".png", "") : ""
+	def deviceClass = deviceId ? deviceId?.replace(" ", "-") : "none"
 	def html 
+	log.debug "value: $status"
 	if (url) {
-		html = "<a class=\"label\" href=\"$url\" ${api_getWaitOnClickAttr()}>$text</a>"
+		html = "<a class=\"item-text\" href=\"$url\" ${api_getWaitOnClickAttr()}><span class=\"label\">$text</span></a>"
 	}
 	else {
-		html = "<span class=\"label\">$text</span>"
+		html = "<div class=\"item-text\"><span class=\"label\">$text</span></div>"		
 	}
 	
-	html = "<div class=\"$imageClass\">$html</div>"
+	html = "<div class=\"item-image-text\"><div class=\"item-image $imageClass\"><span class=\"item-status\">$status</span></div>$html</div>"
 	
-	return "<div class=\"device-item\">$html</div>"
+	return "<div class=\"device-item device-id-$deviceClass\">$html</div>"
 }
 
 private api_getWaitOnClickAttr() {
@@ -1795,12 +1807,12 @@ private api_renderHtmlPage(html, url, refreshInterval) {
 }
 
 private api_getJS() {	
-	return "<script>function displayWaitMsg(link) { link.innerText=\"Please Wait...\";link.style.backgroundColor=\"#ffffff\";link.style.height=\"auto\"; window.location.href = link.href;}</script>"
+	return "<script>function displayWaitMsg(link) { link.className += \" wait\"; window.location.href = link.href;}</script>"
 }
 
 private api_getCSS() {
 	// return "<link rel=\"stylesheet\" href=\"${getResourcesUrl()}/dashboard.css\">"
-	def css = "body {	font-size: 100%;	text-align:center;	font-family:Helvetica,arial,sans-serif;	margin:0 0 10px 0;	background-color: #000000;}header, nav, section, footer { 	display: block;	text-align:center;}header {	margin: 0 0 0 0;	padding: 4px 0 4px 0;	width: 100%;	color: #000000;	font-weight: bold;	font-size: 100%;	background-color: #99c2ff;}nav {	background-color: #99c2ff;}nav.top{	padding-top: 0;	}nav.bottom{	padding: 20px 20px 20px;}nav div {	display:inline-block;  height: 75px;   position: relative;	margin: 1px 1px 1px 1px;	background-color: #cccccc;	border: 1px solid #000000;	border-radius: 5px;		width: 95px; }nav div a {   position: absolute;   left: 0;   top: 3px;   height: 72px;   display: table; 	text-decoration: none;	width: 95px; }nav div a span {  display: table-cell;   text-align: center; 	color: #000000;	vertical-align: bottom; 	font-weight: bold;	font-size:75%;	padding:0 3px 3px 3px;}section {	padding: 20px 20px 20px 20px;	}.command-results {		background-color: #d6e9c6;		margin: 0 20px 10px 20px;	padding: 0 20px 5px 20px;	border-radius: 100px;}.dashboard-url {	display:block;	width:100%;	font-size: 80%;}.device-item {	display:inline-block;  height: 125px;   position: relative;	margin: 1px 1px 1px 1px;	background-color: #ffffff;	border: 1px solid #cccccc;	border-radius: 5px;		width: 125px; }.device-item div {   position: absolute;   left: 0;   top: 3px;   height: 122px;   display: table; 	text-decoration: none;	width: 125px; }.device-item div .label {  display: table-cell;   text-align: center; 	color: #000000;	vertical-align: bottom; 	font-size:90%;	padding:0 3px 3px 3px;	text-decoration: none !important;}.refresh { 	background-image: url('refresh.png');	}.alarm, .alarm-both { background-image: url('alarm-both.png'); }.alarm-siren { background-image: url('alarm-siren.png'); }.alarm-strobe { background-image: url('alarm-strobe.png'); }.alarm-off { background-image: url('alarm-off.png'); }.battery, .normal-battery {	background-image: url('normal-battery.png'); }.low-battery {	background-image: url('low-battery.png'); }.open { background-image: url('open.png'); }.contactSensor, .closed { background-image: url('closed.png'); }.light, .light-on {	background-image: url('light-on.png');}.light-off {	background-image: url('light-off.png');}.lock, .lock-locked{	background-image: url('locked.png');}.lock-unlocked {	background-image: url('unlocked.png');}.motionSensor, .motion {	background-image: url('motion.png');}.no-motion {	background-image: url('no-motion.png');}.presenceSensor, .present {	background-image: url('present.png');}.not-present {	background-image: url('not-present.png');}.smokeDetector, .smoke-detected {	background-image: url('smoke-detected.png');}.smoke-clear {	background-image: url('smoke-clear.png');}.switch, .switch-on {	background-image: url('switch-on.png');}.switch-off {	background-image: url('switch-off.png');}.temperatureMeasurement, .normal-temp {	background-image: url('normal-temp.png');}.low-temp {	background-image: url('low-temp.png');}.high-temp {	background-image: url('high-temp.png');}.waterSensor, .dry {	background-image: url('dry.png');}.wet {	background-image: url('wet.png');}.contactSensor,.open,.closed,.motionSensor ,.motion,.no-motion ,.presenceSensor,.present,.not-present,.smokeDetector,.smoke-detected,.smoke-clear,.temperatureMeasurement,.low-temp,.normal-temp,.high-temp,.waterSensor,.wet,.dry {	background-size: auto 45%;	background-repeat: no-repeat;	background-position: top;}.refresh ,.alarm ,.alarm-siren,.alarm-both,.alarm-strobe,.alarm-off,.battery ,.low-battery,.normal-battery,.switch,.switch-on,.switch-off,.light,.light-on,.light-off ,.lock,.locked,.unlocked {	background-size: auto 65%;	background-repeat: no-repeat;	background-position: top;}section .device-item div {	background-size: auto auto !important;}.all-command {	background-color: pink;}"
+	def css = "body {	font-size: 100%;	text-align:center;	font-family:Helvetica,arial,sans-serif;	margin:0 0 10px 0;	background-color: #000000;}header, nav, section, footer {	display: block;	text-align:center;}header {	margin: 0 0 0 0;	padding: 4px 0 4px 0;	width: 100%;		font-weight: bold;	font-size: 100%;	background-color:#808080;	color:#ffffff;}nav.top{	padding-top: 0;}nav.bottom{	padding: 4px 4px 4px 4px;}section {	padding: 20px 20px 20px 20px;}.command-results {	background-color: #d6e9c6;	margin: 0 20px 10px 20px;	padding: 0 20px 5px 20px;	border-radius: 100px;}.dashboard-url {	display:block;	width:100%;	font-size: 80%;}.refresh {	background-image: url('refresh.png');}.alarm, .alarm-both {	background-image: url('alarm-both.png');}.alarm-siren {	background-image: url('alarm-siren.png');}.alarm-strobe {	background-image: url('alarm-strobe.png');}.alarm-off {	background-image: url('alarm-off.png');}.battery, .normal-battery {	background-image: url('normal-battery.png');}.low-battery {	background-image: url('low-battery.png');}.open {	background-image: url('open.png');}.contactSensor, .closed {	background-image: url('closed.png');}.light, .light-on {	background-image: url('light-on.png');}.light-off {	background-image: url('light-off.png');}.lock, .locked{	background-image: url('locked.png');}.unlocked {	background-image: url('unlocked.png');}.motionSensor, .motion {	background-image: url('motion.png');}.no-motion {	background-image: url('no-motion.png');}.presenceSensor, .present {	background-image: url('present.png');}.not-present {	background-image: url('not-present.png');}.smokeDetector, .smoke-detected {	background-image: url('smoke-detected.png');}.smoke-clear {	background-image: url('smoke-clear.png');}.switch, .switch-on {	background-image: url('switch-on.png');}.switch-off {	background-image: url('switch-off.png');}.temperatureMeasurement, .normal-temp {	background-image: url('normal-temp.png');}.low-temp {	background-image: url('low-temp.png');}.high-temp {	background-image: url('high-temp.png');}.waterSensor, .dry {	background-image: url('dry.png');}.wet {	background-image: url('wet.png');}.device-item {	width: 200px;	display: inline-block;	background-color: #ffffff;	margin: 2px 2px 2px 2px;	padding: 4px 4px 4px 4px;	border-radius: 5px;}.item-image-text {	position: relative;	height: 75px;	width:100%;	display: table;}.item-image {	display: table-cell;	position: relative;	width: 35%;	border: 1px solid #cccccc;	border-radius: 5px;	background-repeat:no-repeat;	background-size:auto 70%;	background-position: center bottom;}.item-status {	width: 100%;	font-size:75%;	display:inline-block;}.item-text {	display: table-cell;	width: 65%;	position: relative;	vertical-align: middle;	}.item-text.wait, .menu-item a.wait{	color:#ffffff;	background-image:url('wait.gif');	background-repeat:no-repeat;	background-position: center bottom;}.item-text.wait{	background-size:auto 100%;}.label {	display:inline-block;	vertical-align: middle;	line-height:1.4;	font-weight: bold;	padding-left:4px;}.menu-item {	display: inline-block;	background-color:#808080;	padding:4px 4px 4px 4px;	border:1px solid #000000;	border-radius: 5px;	font-weight:bold;}.menu-item .item-image{	display:table-cell;	background-size:auto 45%;	height:50px;	width:75px;	border:0;	border-radius:0;}.menu-item .item-image.switch,.menu-item .item-image.light,.menu-item .item-image.battery,.menu-item .item-image.alarm,.menu-item .item-image.refresh {	background-size:auto 60%;}.menu-item a, .menu-item a:link, .menu-item a:hover, .menu-item a:active,.menu-item a:visited {	color: #ffffff;		text-decoration:none;}.menu-item:hover,.menu-item a:hover { 	background-color:#ffffff;	color:#000000;}.menu-item span {	width: 100%;	font-size:75%;	display:inline-block;}"
 	
 	css = css.replace("url('", "url('${getResourcesUrl()}/")
 	return "<style>$css</style>"
