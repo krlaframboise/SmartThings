@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.8.12
+ *  Aeon Labs Multifunction Doorbell v 1.8.13
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-multifunction-doorbell/36586?u=krlaframboise)
  *
  *  Capabilities:
@@ -12,13 +12,14 @@
  *
  *	Changelog:
  *
- *	1.8.12 (08/06/2016)
+ *	1.8.13 (08/06/2016)
  *		- Added Audio notification capability and fixed
  *      parameters of all music related commands to
  *			match documentation.
+ *    - Removed debugging data
  *      
  *	1.8.10 (07/21/2016)
- *		- Fixed fingerprintf or v1 hubs.
+ *		- Fixed fingerprint or v1 hubs.
  *
  *	1.8.9 (07/17/2016)
  *		- Added new fingerprint format for specific product
@@ -133,14 +134,6 @@ metadata {
 		attribute "lastPoll", "number"
 		
 		command "pushButton"
-		
-		// Music and Sonos Related Commands
-		//command "playSoundAndTrack"
-		//command "playTrackAndRestore"
-		//command "playTrackAndResume"
-		//command "playTextAndResume"
-		//command "playTextAndRestore"
-		
 		command "playTrackAtVolume"
 		
 		fingerprint mfr: "0086", prod: "0104", model: "0038"		
@@ -281,27 +274,11 @@ def playTrackAtVolume(String URI, Number volume) {
 }
 
 def playTrack(String URI, Number volume=0) {
-	log.debug "playTrack($URI, $volume)"
 	def text = getTextFromTTSUrl(URI)
 	playText(!text ? URI : text, volume)	
 }
 
-// // Commands necessary for SHM, Notify w/ Sound, and Rule Machine TTS functionality.
-// def playSoundAndTrack(track, other, other2, other3) {
-	// playTrackAndResume(track, other, other2)
-// }
-
-// def playTrackAndRestore(track, other, other2) {
-	// playTrackAndResume(track, other, other2)
-// }
-
-// def playTrackAndResume(track, other, other2) {
-	// def text = getTextFromTTSUrl(track)
-	// playText(!text ? track : text)	
-// }
-
 def getTextFromTTSUrl(ttsUrl) {
-	log.debug "getTextFromTTSUrl($ttsUrl)"
 	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
 	if (ttsUrl?.toString()?.toLowerCase()?.contains(urlPrefix)) {
 		return ttsUrl.replace(urlPrefix,"").replace(".mp3","")
@@ -309,12 +286,6 @@ def getTextFromTTSUrl(ttsUrl) {
 	return null
 }
 
-// def playTextAndResume(trackNumber, other) {
-	// playText(trackNumber)
-// }
-// def playTextAndRestore(trackNumber, other) {
-	// playText(trackNumber)
-// }
 def playTextAndResume(String message, Number volume=0) {
 	playText(message, volume)
 }	
@@ -322,7 +293,6 @@ def playTextAndRestore(String message, Number volume=0) {
 	playText(message, volume)
 }
 def playText(String message, Number volume=0) {
-	log.debug "playText($message, $volume)"
 	if (!isDuplicateCall(state.lastPlayText, 1)) {		
 		state.lastPlayText = new Date().time
 		
@@ -351,7 +321,6 @@ def playText(String message, Number volume=0) {
 					logDebug "'$message' is not a valid command or track number."
 			}
 		}
-		log.debug "playText result cmds: $cmds"
 		return cmds
 	}
 }
@@ -392,10 +361,6 @@ def stop() {
 def play() {
 	playTrackNumber(state.currentTrack)
 }
-
-// def playTrack(track) {
-	// playTrack(track, "play", "Playing track $track")	
-// }
 
 def playTrackNumber(track, volume=null) {
 	startPlayingTrack(track, "play", "Playing track $track")	
