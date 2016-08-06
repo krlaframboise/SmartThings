@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Doorbell v 1.8.10
+ *  Aeon Labs Multifunction Doorbell v 1.8.12
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-multifunction-doorbell/36586?u=krlaframboise)
  *
  *  Capabilities:
@@ -12,6 +12,11 @@
  *
  *	Changelog:
  *
+ *	1.8.12 (08/06/2016)
+ *		- Added Audio notification capability and fixed
+ *      parameters of all music related commands to
+ *			match documentation.
+ *      
  *	1.8.10 (07/21/2016)
  *		- Fixed fingerprintf or v1 hubs.
  *
@@ -117,6 +122,7 @@ metadata {
 		capability "Switch"
 		capability "Alarm"	
 		capability "Music Player"
+		capability "Audio Notification"
 		capability "Tone"		
 		capability "Battery"
 		capability "Button"
@@ -129,11 +135,13 @@ metadata {
 		command "pushButton"
 		
 		// Music and Sonos Related Commands
-		command "playSoundAndTrack"
-		command "playTrackAndRestore"
-		command "playTrackAndResume"
-		command "playTextAndResume"
-		command "playTextAndRestore"
+		//command "playSoundAndTrack"
+		//command "playTrackAndRestore"
+		//command "playTrackAndResume"
+		//command "playTextAndResume"
+		//command "playTextAndRestore"
+		
+		command "playTrackAtVolume"
 		
 		fingerprint mfr: "0086", prod: "0104", model: "0038"		
 
@@ -240,12 +248,12 @@ def siren() {
 	both()
 }
 def both() {		
-	return playTrack(state.alarmTrack, "alarm", "$device.displayName alarm is on")	
+	return startPlayingTrack(state.alarmTrack, "alarm", "$device.displayName alarm is on")	
 }
 
 // Tone Commands.beep
 def beep() {	
-	playTrack(state.toneTrack, "beep", "Beeping!")
+	startPlayingTrack(state.toneTrack, "beep", "Beeping!")
 }
 
 // Music Player Commands
@@ -254,21 +262,46 @@ def unmute() { handleUnsupportedCommand("unmute") }
 def resumeTrack(map) { handleUnsupportedCommand("resumeTrack") }
 def restoreTrack(map) { handleUnsupportedCommand("restoreTrack") }
 
-// Commands necessary for SHM, Notify w/ Sound, and Rule Machine TTS functionality.
-def playSoundAndTrack(track, other, other2, other3) {
-	playTrackAndResume(track, other, other2)
+
+// Audio Notification Capability Commands
+def playSoundAndTrack(String URI, Number duration=0, String track, Number volume=0) {
+	playTrack(URI, volume)
+}
+def playTrackAndResume(String URI, Number volume=0) {
+	playTrack(URI, volume)
+}	
+def playTrackAndRestore(String URI, Number volume=0) {
+	playTrack(URI, volume)
+}	
+
+// Documented as part of the Audio Notification capability
+// but not actually part of it so it must be declared.
+def playTrackAtVolume(String URI, Number volume) {
+	playTrack(URI, volume)
 }
 
-def playTrackAndRestore(track, other, other2) {
-	playTrackAndResume(track, other, other2)
+def playTrack(String URI, Number volume=0) {
+	log.debug "playTrack($URI, $volume)"
+	def text = getTextFromTTSUrl(URI)
+	playText(!text ? URI : text, volume)	
 }
 
-def playTrackAndResume(track, other, other2) {
-	def text = getTextFromTTSUrl(track)
-	playText(!text ? track : text)	
-}
+// // Commands necessary for SHM, Notify w/ Sound, and Rule Machine TTS functionality.
+// def playSoundAndTrack(track, other, other2, other3) {
+	// playTrackAndResume(track, other, other2)
+// }
+
+// def playTrackAndRestore(track, other, other2) {
+	// playTrackAndResume(track, other, other2)
+// }
+
+// def playTrackAndResume(track, other, other2) {
+	// def text = getTextFromTTSUrl(track)
+	// playText(!text ? track : text)	
+// }
 
 def getTextFromTTSUrl(ttsUrl) {
+	log.debug "getTextFromTTSUrl($ttsUrl)"
 	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
 	if (ttsUrl?.toString()?.toLowerCase()?.contains(urlPrefix)) {
 		return ttsUrl.replace(urlPrefix,"").replace(".mp3","")
@@ -276,22 +309,29 @@ def getTextFromTTSUrl(ttsUrl) {
 	return null
 }
 
-def playTextAndResume(trackNumber, other) {
-	playText(trackNumber)
+// def playTextAndResume(trackNumber, other) {
+	// playText(trackNumber)
+// }
+// def playTextAndRestore(trackNumber, other) {
+	// playText(trackNumber)
+// }
+def playTextAndResume(String message, Number volume=0) {
+	playText(message, volume)
+}	
+def playTextAndRestore(String message, Number volume=0) {
+	playText(message, volume)
 }
-def playTextAndRestore(trackNumber, other) {
-	playText(trackNumber)
-}
-def playText(text) {
+def playText(String message, Number volume=0) {
+	log.debug "playText($message, $volume)"
 	if (!isDuplicateCall(state.lastPlayText, 1)) {		
 		state.lastPlayText = new Date().time
 		
 		def cmds = []
-		if (isNumeric(text)) {
-			cmds += playTrack(text)
+		if (isNumeric(message)) {
+			cmds += playTrackNumber(message, volume)
 		}
 		else {
-			switch (text?.toLowerCase()) {
+			switch (message?.toLowerCase()) {
 				case "beep":
 					cmds += beep()
 					break
@@ -308,9 +348,10 @@ def playText(text) {
 					cmds += play()
 					break
 				default:
-					logDebug "'$text' is not a valid command or track number."
+					logDebug "'$message' is not a valid command or track number."
 			}
 		}
+		log.debug "playText result cmds: $cmds"
 		return cmds
 	}
 }
@@ -349,14 +390,18 @@ def stop() {
 }
 
 def play() {
-	playTrack(state.currentTrack)
+	playTrackNumber(state.currentTrack)
 }
 
-def playTrack(track) {
-	playTrack(track, "play", "Playing track $track")	
+// def playTrack(track) {
+	// playTrack(track, "play", "Playing track $track")	
+// }
+
+def playTrackNumber(track, volume=null) {
+	startPlayingTrack(track, "play", "Playing track $track")	
 }
 
-def playTrack(track, status, desc) {
+private startPlayingTrack(track, status, desc) {
 	def result = []
 	
 	if (canPlay()) {
