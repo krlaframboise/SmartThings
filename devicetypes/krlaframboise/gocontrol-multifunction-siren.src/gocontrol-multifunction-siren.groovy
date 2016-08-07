@@ -930,5 +930,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	log.trace "$msg"
+	//log.trace "$msg"
 }
