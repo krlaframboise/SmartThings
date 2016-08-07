@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.5.2
+ *  GoControl Multifunction Siren v 1.6
  *
  *  Devices:
  *    GoControl/Linear (Model#: WA105DBZ-1)
@@ -7,7 +7,8 @@
  *  	LinearLinc Z-Wave Siren/Strobe (Model#: 1LIWA105DBZ-2)
  *
  *  Capabilities:
- *      Alarm, Tone, Switch, Battery, Polling
+ *      Alarm, Tone, Audio Notification, Switch
+ *      Battery, Polling
  *   
  *   ********************************************* 
  *   ** The Speech Synthesis and Music Player   **
@@ -23,6 +24,9 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.6 (08/06/2016)
+ *      - Added support for Audio Notification capability
  *
  *    1.5.2 (07/20/2016)
  *      - Added support for Vision version of siren because
@@ -87,8 +91,9 @@ metadata {
 		capability "Alarm"
 		capability "Battery"
 		capability "Music Player"
-		capability "Polling"
+		capability "Audio Notification"
 		capability "Speech Synthesis"
+		capability "Polling"		
 		capability "Switch"
 		capability "Tone"
 		
@@ -99,13 +104,11 @@ metadata {
 		command "customSiren" // delaySeconds, autoOffSeconds, useStrobe
 		command "customStrobe" // delaySeconds, autoOffSeconds
 		
-		// Music and Sonos Related Commands
+		// Audio Notification commands that are in documentation,
+		// but not in the capability code.
+		command "playTrackAtVolume"
 		command "playSoundAndTrack"
-		command "playTrackAndRestore"
-		command "playTrackAndResume"
-		command "playTextAndResume"
-		command "playTextAndRestore"
-
+		
 		fingerprint mfr: "0109", prod: "2005", model: "0508" //Vision
 		fingerprint mfr: "014F", prod: "2005", model: "0503" //Linear/GoControl
 		fingerprint deviceId: "0x1000", inClusters: "0x25,0x80,0x70,0x72,0x86"
@@ -165,41 +168,36 @@ metadata {
 		multiAttributeTile(name:"status", type: "generic", width: 6, height: 3, canChangeIcon: true){
 			tileAttribute ("device.status", key: "PRIMARY_CONTROL") {
 				attributeState "off", label:'Off', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
-				attributeState "turningOff", label:'Turning Off', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
-				attributeState "alarmPending", label:'Alarm Pending!', action: "off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
-				attributeState "siren", label:'Siren On!', action: "off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
-				attributeState "strobe", label:'Strobe On!', action: "off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
-				attributeState "both", label:'Siren/Strobe On!', action: "off", nextState: "turningOff", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
-				attributeState "beep", label:'Beeping!', action: "off", nextState: "turningOff", icon:"st.Entertainment.entertainment2", backgroundColor:"#99ff99"							
+				attributeState "alarmPending", label:'Alarm Pending!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "siren", label:'Siren On!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "strobe", label:'Strobe On!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "both", label:'Siren/Strobe On!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
+				attributeState "beep", label:'Beeping!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#99ff99"							
 			}
 		}
 		standardTile("turnOff", "device.alarm", width: 2, height: 2) {
 			state "default", label:'Off', action: "off", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm", defaultState: true
 			state "off", label:'Off', action: "off", backgroundColor: "#ffffff", icon:"st.alarm.alarm.alarm"
-			state "turningOff", label:'Wait', action: "off", nextState: "off", backgroundColor: "#ffffff", icon:"st.alarm.alarm.alarm"
-			state "alarmPending", label:'Cancel', action: "off", nextState: "turningOff", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm"
+			state "alarmPending", label:'Cancel', action: "off", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm"
 		}	
+		standardTile("testBeep", "device.status", width: 2, height: 2) {
+			state "default", label:' Beep ', action:"beep", icon:"st.Entertainment.entertainment2", backgroundColor: "#99ff99"
+			state "beep", label:'Beeping', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor: "#99c2ff"			
+		}					
 		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2) {
 			state "battery", label:'Battery ${currentValue}%', unit:"", defaultState: true
 		}		
-		standardTile("testBeep", "device.status", width: 2, height: 2) {
-			state "off", label:' Beep ', action:"beep", nextState: "beep", icon:"st.Entertainment.entertainment2", backgroundColor: "#99ff99", defaultState: true
-			state "beep", label:'Beeping', action: "off", nextState: "off", icon:"st.Entertainment.entertainment2", backgroundColor: "#99c2ff"			
-		}					
 		standardTile("testSiren", "device.alarm", width: 2, height: 2) {
-			state "off", label:'Siren ', action: "alarm.siren", nextState: "turningOnOff", backgroundColor: "#ff9999", icon:"st.alarm.alarm.alarm", defaultState: true
-			state "turningOnOff", label:' Wait ', action: "alarm.off", nextState: "off", icon:"st.alarm.alarm.alarm", backgroundColor: "#99c2ff"
-			state "siren", label:' Siren', action: "alarm.off", nextState: "turningOnOff", icon:"st.alarm.alarm.alarm", backgroundColor: "#99c2ff"		
+			state "default", label:'Siren ', action: "alarm.siren", backgroundColor: "#ff9999", icon:"st.alarm.alarm.alarm", defaultState: true			
+			state "siren", label:' Siren', action: "alarm.off", icon:"st.alarm.alarm.alarm", backgroundColor: "#99c2ff"		
 		}
 		standardTile("testStrobe", "device.alarm", width: 2, height: 2) {
-			state "off", label:'Strobe', action: "alarm.strobe", nextState: "turningOnOff", backgroundColor: "#ff9999", icon:"st.alarm.alarm.alarm", defaultState: true
-			state "turningOnOff", label:' Wait ', action: "alarm.off", nextState: "off", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm"
-			state "strobe", label:'Strobe', action: "alarm.off", nextState: "turningOnOff", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm"
+			state "default", label:'Strobe', action: "alarm.strobe", backgroundColor: "#ff9999", icon:"st.alarm.alarm.alarm", defaultState: true			
+			state "strobe", label:'Strobe', action: "alarm.off", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm"
 		}
 		standardTile("testBoth", "device.alarm", width: 2, height: 2) {
-			state "off", label:' Both ', action: "alarm.both", nextState: "turningOnOff", backgroundColor: "#ff9999", icon:"st.alarm.alarm.alarm", defaultState: true
-			state "turningOnOff", label:' Wait ', action: "alarm.off", nextState: "off", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm"
-			state "both", label:' Both ', action: "alarm.off", nextState: "turningOnOff", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm"
+			state "default", label:' Both ', action: "alarm.both", backgroundColor: "#ff9999", icon:"st.alarm.alarm.alarm", defaultState: true
+			state "both", label:' Both ', action: "alarm.off", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm"
 		}		
 				
 		main "status"
@@ -541,10 +539,6 @@ private switchOnSetCmd() {
 }
 
 private switchOffSetCmds() {
-	// return delayBetween([
-		// switchOffSetCmd(),
-		// switchGetCmd()
-	// ], 50)
 	return [
 		switchOffSetCmd(),
 		switchGetCmd()
@@ -730,12 +724,10 @@ def speak(text) {
 
 // Unsuported Music Player commands
 def unmute() { handleUnsupportedCommand("unmute") }
-def resumeTrack(map) { handleUnsupportedCommand("resumeTrack") }
-def restoreTrack(map) { handleUnsupportedCommand("restoreTrack") }
 def nextTrack() { handleUnsupportedCommand("nextTrack") }
 def setLevel(number) { handleUnsupportedCommand("setLevel") }
 def previousTrack() { handleUnsupportedCommand("previousTrack") }
-def setTrack(string) { handleUnsupportedCommand("setTrack") }
+
 
 private handleUnsupportedCommand(cmd) {
 	log.info "Command $cmd is not supported"
@@ -749,16 +741,32 @@ def mute() { off() }
 // Turns siren on
 def play() { both() }
 
-// Commands necessary for SHM, Notify w/ Sound, and Rule Machine TTS functionality.
-def playSoundAndTrack(text, other, other2, other3) {
-	playTrackAndResume(text, other, other2) 
+// Audio Notification commands
+def playTrackAtVolume(String URI, Number volume) {
+	logTrace "playTrackAtVolume($URI, $volume)"
+	playTrack(URI, volume)
 }
-def playTrackAndRestore(text, other, other2) {
-	playTrackAndResume(text, other, other2) 
+
+def playSoundAndTrack(String URI, Number duration=null, String track, Number volume=null) {
+	logTrace "playSoundAndTrack($URI, $duration, $track, $volume)"
+	playTrack(URI, volume)
 }
-def playTrackAndResume(text, other, other2) {
-	playText(getTextFromTTSUrl(text))
+
+def playTrackAndRestore(String URI, Number volume=null) {
+	logTrace "playTrackAndRestore($URI, $volume)"
+	playTrack(URI, volume) 
 }
+
+def playTrackAndResume(String URI, Number volume=null) {
+	logTrace "playTrackAndResume($URI, $volume)"
+	playTrack(URI, volume)
+}
+
+def playTrack(String URI, Number volume=null) {
+	logTrace "playTrack($URI, $volume)"
+	playText(getTextFromTTSUrl(URI), volume)
+}
+
 def getTextFromTTSUrl(ttsUrl) {
 	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
 	if (ttsUrl?.toString()?.toLowerCase()?.contains(urlPrefix)) {
@@ -767,15 +775,22 @@ def getTextFromTTSUrl(ttsUrl) {
 	return ttsUrl
 }
 
-def playTextAndResume(text, other) { playText(text) }
-def playTextAndRestore(text, other) { playText(text) }
-def playTrack(text) { playText(text) }
+def playTextAndResume(String message, Number volume=null) {
+	logTrace "playTextAndResume($message, $volume)"
+	playText(message, volume) 
+}
 
-def playText(text) {
-	logDebug "Executing playText($text) Command"
-	text = cleanTextCmd(text)
+def playTextAndRestore(String message, Number volume=null) {
+	logTrace "playTextAndRestore($message, $volume)"
+	playText(message, volume=null) 
+}
+
+def playText(String message, Number volume=null) {
+	logTrace "playText($message, $volume)"
+	logDebug "Executing playText($message) Command"
+	message = cleanMessage(message)
 	def cmds
-	switch (text) {
+	switch (message) {
 		case ["on", "play"]:
 			cmds = both()
 			break
@@ -783,20 +798,20 @@ def playText(text) {
 			cmds = off()
 			break
 		default:
-			if (text) {
-				cmds = parseComplexCommand(text)
+			if (message) {
+				cmds = parseComplexCommand(message)
 			}
 	}
 	if (!cmds) {
-		logDebug "'$text' is not a valid command."
+		logDebug "'$message' is not a valid command."
 	}
 	else {
 		return cmds
 	}
 }
 
-def cleanTextCmd(text) {
-	return text?.
+def cleanMessage(message) {
+	return message?.
 		toLowerCase()?.
 		replace(",", "_")?.
 		replace(" ", "")?.
@@ -804,11 +819,11 @@ def cleanTextCmd(text) {
 		replace(")", "")
 }
 
-def parseComplexCommand(text) {	
+def parseComplexCommand(message) {	
 	def cmds = []
 	
-	def args = getComplexCmdArgs(text)
-	if (text.contains("beep")) {	
+	def args = getComplexCmdArgs(message)
+	if (message.contains("beep")) {	
 		if (!args || args?.size() == 0) {
 			cmds += beep()
 		}
@@ -819,20 +834,20 @@ def parseComplexCommand(text) {
 			cmds += customBeep(args[0], 0, false)
 		}		
 	}	
-	else if (text.contains("strobe")) {	
+	else if (message.contains("strobe")) {	
 		cmds += (args?.size() == 2) ? customStrobe(args[0], args[1]) : strobe()
 	}
-	else if (text.contains("both")) {
+	else if (message.contains("both")) {
 		cmds += (args?.size() == 3) ? customBoth(args[0], args[1], args[2]) : both()
 	}
-	else if (text.contains("siren")) {
+	else if (message.contains("siren")) {
 		cmds += (args?.size() == 3) ? customSiren(args[0], args[1], args[2]) : siren()
 	}
 	return cmds
 }
 
-private getComplexCmdArgs(text) {
-	def args = removeCmdPrefix(text).tokenize("_")
+private getComplexCmdArgs(message) {
+	def args = removeCmdPrefix(message).tokenize("_")
 	if (args.every { node -> isNumeric(node) || node in ["true","false"]}) {
 		return args
 	}
@@ -841,13 +856,13 @@ private getComplexCmdArgs(text) {
 	}	
 }
 
-private removeCmdPrefix(text) {
+private removeCmdPrefix(message) {
 	for (prefix in ["custombeep","beep","customboth","both","customsiren","siren","customstrobe","strobe"]) {
-		if (text.startsWith(prefix)) {
-			return text.replace("${prefix}_", "").replace("$prefix", "")
+		if (message.startsWith(prefix)) {
+			return message.replace("${prefix}_", "").replace("$prefix", "")
 		}		
 	}
-	return text	
+	return message
 }
 
 private isNumeric(val) {
@@ -899,12 +914,6 @@ private int validateRange(val, defaultVal, minVal, maxVal, desc) {
 	}
 }
 
-private logDebug(msg) {
-	if (state.debugOutput || state.debugOutput == null) {
-		log.debug "${device.displayName}: $msg"
-	}
-}
-
 def describeCommands() {
 	return [
 		"customBeep": [ display: "Custom Beep", description: "{0} Beep Length in Milliseconds", parameters:["number", "number", "bool"]], // beepLengthMS, delaySeconds, useStrobe
@@ -912,4 +921,14 @@ def describeCommands() {
 		"customSiren": [ display: "Custom Siren", description: "", parameters:["number", "number", "bool"]], // delaySeconds, autoOffSeconds, useStrobe
 		"customStrobe": [ display: "Custom Strobe", description: "", parameters:["number", "number"]] // delaySeconds, autoOffSeconds
 	]
+}
+
+private logDebug(msg) {
+	if (state.debugOutput || state.debugOutput == null) {
+		log.debug "${device.displayName}: $msg"
+	}
+}
+
+private logTrace(msg) {
+	log.trace "$msg"
 }
