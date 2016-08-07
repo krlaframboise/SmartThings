@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.10.2 (BETA)
+ *  Simple Device Viewer v 1.10.3 (BETA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,9 @@
  *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.10.3 (08/07/2016)
+ *      - Added Events Page
  *
  *    1.10.2 (08/06/2016)
  *      - Changed look of dashboard and cleaned up most
@@ -374,22 +377,7 @@ def otherSettingsPage() {
 			input "condensedViewEnabled", "bool",
 				title: "Condensed View Enabled?",
 				defaultValue: false,
-				required: false			
-			input "debugLogEnabled", "bool",
-				title: "Debug Logging Enabled?",
-				defaultValue: false,
-				required: false
-		}
-		section ("Last Event Accuracy") {
-			input "lastEventAccuracy", "number",
-				title: "Accuracy Level (1-25)\n(Setting this to a higher number will improve the accuracy for devices that generate a lot of events, but if you're seeing timeout errors in Live Logging, you should set this to a lower number.)",
-				defaultValue: 15,
-				range: "1..25",
-				required: false		
-			input "lastEventByStateEnabled", "bool",
-				title: "Advanced Last Event Check Enabled?\n(When enabled, the devices events and state changes are used to determine the most recent activity.)",
-				defaultValue: true,
-				required: false
+				required: false				
 		}
 		section ("Sorting") {
 			input "batterySortByValue", "bool",
@@ -405,6 +393,25 @@ def otherSettingsPage() {
 				defaultValue: false,
 				required: false			
 		}	
+		section ("Last Event Accuracy") {
+			input "lastEventAccuracy", "number",
+				title: "Accuracy Level (1-25)\n(Setting this to a higher number will improve the accuracy for devices that generate a lot of events, but if you're seeing timeout errors in Live Logging, you should set this to a lower number.)",
+				defaultValue: 15,
+				range: "1..25",
+				required: false		
+			input "lastEventByStateEnabled", "bool",
+				title: "Advanced Last Event Check Enabled?\n(When enabled, the devices events and state changes are used to determine the most recent activity.)",
+				defaultValue: true,
+				required: false
+		}
+		section ("Logging") {
+			input "logging", "enum",
+				title: "Types of messages to log:",
+				multiple: true,
+				required: false,
+				defaultValue: ["debug", "info"],
+				options: ["debug", "info", "trace"]
+		}
 		section ("Scheduling") {
 			paragraph "Leave this field empty unless you're using an external timer to turn on a switch at regular intervals.  If you select a switch, the application will check to see if notifications need to be sent when its turned on instead of using SmartThings scheduler to check every 5 minutes."
 
@@ -1564,17 +1571,6 @@ private capabilitySettings() {
 	]
 }
 
-private logDebug(msg) {
-	if (debugLogEnabled) {
-		log.debug msg
-	}
-}
-
-private logInfo(msg) {
-	log.info msg
-}
-
-
 
 
 /********************************************
@@ -1596,15 +1592,21 @@ private initializeAppEndpoint() {
 }
 
 mappings {
-	path("/dashboard") {action: [GET: "api_dashboard"]}	
+	path("/dashboard") {action: [GET: "api_dashboard"]}
 	path("/dashboard/:capability") {action: [GET: "api_dashboard"]}	
 	path("/dashboard/:capability/:cmd") {action: [GET: "api_dashboard"]}
 	path("/dashboard/:capability/:cmd/:deviceId") {action: [GET: "api_dashboard"]}	
 }
 
 private api_dashboardUrl(capName=null) {
-	def cap = getCapabilitySettingByName(capName ?: "Light")
-	def prefName = (cap ? getPrefName(cap) : "") ?: "light"
+	def prefName
+	if (capName == "events") {
+		prefName = "events"
+	}
+	else {
+		def cap = getCapabilitySettingByName(capName ?: "Light")
+		prefName = (cap ? getPrefName(cap) : "") ?: "light"
+	}
 	return "${state.endpoint}dashboard/${prefName}"
 }
 
@@ -1620,34 +1622,30 @@ def api_dashboard() {
 	try {
 		state.refreshingDashboard = true
 		header = api_getPageHeader()		
-		cap = params.capability ? getCapabilitySettingByPrefName(params.capability) : null
-		currentUrl = api_dashboardUrl(cap?.name)
+			
+		if (params.capability == "events") {
+			currentUrl = api_dashboardUrl("events")
+			header = api_getPageHeader("Events")
+		}
+		else {			
+			cap = params.capability ? getCapabilitySettingByPrefName(params.capability) : null
+		
+			currentUrl = api_dashboardUrl(cap?.name)
+			header = api_getPageHeader("${getPluralName(cap)}")
+		}
+		
+		refreshInterval = api_getRefreshInterval(params.cmd)
 		menu = api_getMenuHtml(currentUrl)
 		footer = api_getPageFooter(null, currentUrl)
 		
-		refreshInterval = settings.dashboardRefreshInterval ?: 300
-		
-		if (cap) {
-			header = api_getPageHeader("${getPluralName(cap)}")
-			if (params.cmd in ["on", "off", "toggle"]) {		
-				
-				if (params.deviceId) {
-					html = "<h1>${api_toggleSwitch(cap, params.deviceId, params.cmd)}</h1>"
-				}
-				else {
-					html = api_toggleSwitches(cap, params.cmd)
-				}
-				html = "<div class=\"command-results\">$html</div>"
-				refreshInterval = 1
-			}			
-			if (cap.name in ["Switch","Light", "Alarm"]) {
-				html += api_getToggleItemsHtml(currentUrl, getDeviceCapabilityListItems(cap))
-			}
-			else {
-				html += api_getItemsHtml(getDeviceCapabilityListItems(cap))
-			}
-			html = "<section>$html</section>"
+		if (params.capability == "events") {
+			html = api_getEventsHtml()
 		}
+		else if (cap) {
+			html = api_getCapabilityHtml(cap, currentUrl, params.deviceId, params.cmd)
+		}
+		
+		html = "<section>$html</section>"
 	}
 	catch(e) {
 		log.error "Unable to load dashboard:\n$e"
@@ -1657,10 +1655,55 @@ def api_dashboard() {
 	return api_renderHtmlPage(api_getPageBody(header, html, menu, footer), currentUrl, refreshInterval)
 }
 
+private api_getRefreshInterval(cmd) {
+	if (api_isToggleSwitchCmd(cmd)) {
+		return 1
+	}
+	else {
+		return settings.dashboardRefreshInterval ?: 300
+	}
+}
+
+private api_getEventsHtml() {
+	logTrace "api_getEventsHtml()"
+	
+	return api_getItemsHtml(getAllDeviceLastEventListItems()?.unique())	
+}
+
+private api_getCapabilityHtml(cap, currentUrl, deviceId, cmd) {	
+	logTrace "api_getCapabilityHtml($cap, $currentUrl, $deviceId, $cmd)"
+	def html = ""
+	if (api_isToggleSwitchCmd(cmd)) {		
+		if (deviceId) {
+			html = "<h1>${api_toggleSwitch(cap, deviceId, cmd)}</h1>"
+		}
+		else {
+			html = api_toggleSwitches(cap, cmd)
+		}
+	
+		html = "<div class=\"command-results\">$html</div>"		
+	}			
+	
+	if (cap.name in ["Switch","Light", "Alarm"]) {
+		html += api_getToggleItemsHtml(currentUrl, getDeviceCapabilityListItems(cap))
+	}
+	else {
+		html += api_getItemsHtml(getDeviceCapabilityListItems(cap))
+	}
+	return html
+}
+
+private api_isToggleSwitchCmd(cmd) {
+	return (cmd in ["on", "off", "toggle"])
+}
+
 private api_getMenuHtml(currentUrl) {
 	def className = api_menuAtTop() ? "top" : "bottom"
 	def html = "<nav class=\"$className\">"
+	
 	html += api_getMenuItemHtml("Refresh", "refresh", currentUrl)
+	
+	html += api_getMenuItemHtml("Events", "warning", api_dashboardUrl("events"))
 	
 	getSelectedCapabilitySettings().each {
 		if (devicesHaveCapability(getCapabilityName(it))) {
@@ -1672,11 +1715,13 @@ private api_getMenuHtml(currentUrl) {
 	return html
 }
 
-private api_getMenuItemHtml(linkText, className, url) {	
+private api_getMenuItemHtml(linkText, className, url) {
+	logTrace "api_getMenuItemHtml($linkText, $className, $url)"
 	return "<div class=\"menu-item\"><a href=\"$url\" ${api_getWaitOnClickAttr()} class=\"item-image $className\"><span>${linkText}</span></a></div>"
 }
 
 private api_toggleSwitches(cap, cmd) {
+	logTrace "api_toggleSwitches($cap, $cmd)"
 	def html = ""	
 	
 	getDeviceCapabilityListItems(cap).each {
@@ -1684,7 +1729,7 @@ private api_toggleSwitches(cap, cmd) {
 	}
 	
 	if (html) {
-		return "<h3>The following changes were made:</h3><ul>$html</ul>"
+		return "<h1>The following changes were made:</h1><ul>$html</ul>"
 	}
 	else {
 		return "<h1>No Changes Were Made</h1>"
@@ -1692,6 +1737,7 @@ private api_toggleSwitches(cap, cmd) {
 }
 
 private api_toggleSwitch(cap, deviceId, cmd) {
+	logTrace "api_toggleSwitch($cap, $deviceId, $cmd)"
 	def device = deviceId ? getAllDevices().find { it.id == deviceId } : null
 		
 	if (device) {
@@ -1721,6 +1767,7 @@ private api_getNewSwitchState(device, cmd) {
 }
 
 private api_getToggleItemsHtml(currentUrl, listItems) {
+	logTrace "api_getToggleItemsHtml($currentUrl, $listItems)"
 	def html = ""
 			
 	listItems.unique().each {		
@@ -1756,7 +1803,7 @@ private api_getItemHtml(text, imageName, url, deviceId, status) {
 	def imageClass = imageName ? imageName?.replace(".png", "") : ""
 	def deviceClass = deviceId ? deviceId?.replace(" ", "-") : "none"
 	def html 
-	log.debug "value: $status"
+	
 	if (url) {
 		html = "<a class=\"item-text\" href=\"$url\" ${api_getWaitOnClickAttr()}><span class=\"label\">$text</span></a>"
 	}
@@ -1812,8 +1859,30 @@ private api_getJS() {
 
 private api_getCSS() {
 	// return "<link rel=\"stylesheet\" href=\"${getResourcesUrl()}/dashboard.css\">"
-	def css = "body {	font-size: 100%;	text-align:center;	font-family:Helvetica,arial,sans-serif;	margin:0 0 10px 0;	background-color: #000000;}header, nav, section, footer {	display: block;	text-align:center;}header {	margin: 0 0 0 0;	padding: 4px 0 4px 0;	width: 100%;		font-weight: bold;	font-size: 100%;	background-color:#808080;	color:#ffffff;}nav.top{	padding-top: 0;}nav.bottom{	padding: 4px 4px 4px 4px;}section {	padding: 20px 20px 20px 20px;}.command-results {	background-color: #d6e9c6;	margin: 0 20px 10px 20px;	padding: 0 20px 5px 20px;	border-radius: 100px;}.dashboard-url {	display:block;	width:100%;	font-size: 80%;}.refresh {	background-image: url('refresh.png');}.alarm, .alarm-both {	background-image: url('alarm-both.png');}.alarm-siren {	background-image: url('alarm-siren.png');}.alarm-strobe {	background-image: url('alarm-strobe.png');}.alarm-off {	background-image: url('alarm-off.png');}.battery, .normal-battery {	background-image: url('normal-battery.png');}.low-battery {	background-image: url('low-battery.png');}.open {	background-image: url('open.png');}.contactSensor, .closed {	background-image: url('closed.png');}.light, .light-on {	background-image: url('light-on.png');}.light-off {	background-image: url('light-off.png');}.lock, .locked{	background-image: url('locked.png');}.unlocked {	background-image: url('unlocked.png');}.motionSensor, .motion {	background-image: url('motion.png');}.no-motion {	background-image: url('no-motion.png');}.presenceSensor, .present {	background-image: url('present.png');}.not-present {	background-image: url('not-present.png');}.smokeDetector, .smoke-detected {	background-image: url('smoke-detected.png');}.smoke-clear {	background-image: url('smoke-clear.png');}.switch, .switch-on {	background-image: url('switch-on.png');}.switch-off {	background-image: url('switch-off.png');}.temperatureMeasurement, .normal-temp {	background-image: url('normal-temp.png');}.low-temp {	background-image: url('low-temp.png');}.high-temp {	background-image: url('high-temp.png');}.waterSensor, .dry {	background-image: url('dry.png');}.wet {	background-image: url('wet.png');}.device-item {	width: 200px;	display: inline-block;	background-color: #ffffff;	margin: 2px 2px 2px 2px;	padding: 4px 4px 4px 4px;	border-radius: 5px;}.item-image-text {	position: relative;	height: 75px;	width:100%;	display: table;}.item-image {	display: table-cell;	position: relative;	width: 35%;	border: 1px solid #cccccc;	border-radius: 5px;	background-repeat:no-repeat;	background-size:auto 70%;	background-position: center bottom;}.item-status {	width: 100%;	font-size:75%;	display:inline-block;}.item-text {	display: table-cell;	width: 65%;	position: relative;	vertical-align: middle;	}.item-text.wait, .menu-item a.wait{	color:#ffffff;	background-image:url('wait.gif');	background-repeat:no-repeat;	background-position: center bottom;}.item-text.wait{	background-size:auto 100%;}.label {	display:inline-block;	vertical-align: middle;	line-height:1.4;	font-weight: bold;	padding-left:4px;}.menu-item {	display: inline-block;	background-color:#808080;	padding:4px 4px 4px 4px;	border:1px solid #000000;	border-radius: 5px;	font-weight:bold;}.menu-item .item-image{	display:table-cell;	background-size:auto 45%;	height:50px;	width:75px;	border:0;	border-radius:0;}.menu-item .item-image.switch,.menu-item .item-image.light,.menu-item .item-image.battery,.menu-item .item-image.alarm,.menu-item .item-image.refresh {	background-size:auto 60%;}.menu-item a, .menu-item a:link, .menu-item a:hover, .menu-item a:active,.menu-item a:visited {	color: #ffffff;		text-decoration:none;}.menu-item:hover,.menu-item a:hover { 	background-color:#ffffff;	color:#000000;}.menu-item span {	width: 100%;	font-size:75%;	display:inline-block;}a.item-text {color:#000000;}"
+	def css = "body {	font-size: 100%;	text-align:center;	font-family:Helvetica,arial,sans-serif;	margin:0 0 10px 0;	background-color: #000000;}header, nav, section, footer {	display: block;	text-align:center;}header {	margin: 0 0 0 0;	padding: 4px 0 4px 0;	width: 100%;		font-weight: bold;	font-size: 100%;	background-color:#808080;	color:#ffffff;}nav.top{	padding-top: 0;}nav.bottom{	padding: 4px 4px 4px 4px;}section {	padding: 20px 20px 20px 20px;}.command-results {	background-color: #d6e9c6;	margin: 0 20px 20px 20px;	padding: 10px 20px 10px 20px;	border-radius: 100px;}.command-results h1 {	margin: 0 0 0 0;}.command-results ul {	list-style: none;}.command-results li {	line-height: 1.5;	font-size: 120%;}.dashboard-url {	display:block;	width:100%;	font-size: 80%;}.refresh {	background-image: url('refresh.png');}.alarm, .alarm-both {	background-image: url('alarm-both.png');}.alarm-siren {	background-image: url('alarm-siren.png');}.alarm-strobe {	background-image: url('alarm-strobe.png');}.alarm-off {	background-image: url('alarm-off.png');}.battery, .normal-battery {	background-image: url('normal-battery.png');}.low-battery {	background-image: url('low-battery.png');}.open {	background-image: url('open.png');}.contactSensor, .closed {	background-image: url('closed.png');}.light, .light-on {	background-image: url('light-on.png');}.light-off {	background-image: url('light-off.png');}.lock, .locked{	background-image: url('locked.png');}.unlocked {	background-image: url('unlocked.png');}.motionSensor, .motion {	background-image: url('motion.png');}.no-motion {	background-image: url('no-motion.png');}.presenceSensor, .present {	background-image: url('present.png');}.not-present {	background-image: url('not-present.png');}.smokeDetector, .smoke-detected {	background-image: url('smoke-detected.png');}.smoke-clear {	background-image: url('smoke-clear.png');}.switch, .switch-on {	background-image: url('switch-on.png');}.switch-off {	background-image: url('switch-off.png');}.temperatureMeasurement, .normal-temp {	background-image: url('normal-temp.png');}.low-temp {	background-image: url('low-temp.png');}.high-temp {	background-image: url('high-temp.png');}.waterSensor, .dry {	background-image: url('dry.png');}.wet {	background-image: url('wet.png');}.ok {	background-image: url('ok.png');}.warning {	background-image: url('warning.png');}.device-item {	width: 200px;	display: inline-block;	background-color: #ffffff;	margin: 2px 2px 2px 2px;	padding: 4px 4px 4px 4px;	border-radius: 5px;}.item-image-text {	position: relative;	height: 75px;	width:100%;	display: table;}.item-image {	display: table-cell;	position: relative;	width: 35%;	border: 1px solid #cccccc;	border-radius: 5px;	background-repeat:no-repeat;	background-size:auto 70%;	background-position: center bottom;}.item-status {	width: 100%;	font-size:75%;	display:inline-block;}.item-text {	display: table-cell;	width: 65%;	position: relative;	vertical-align: middle;}a.item-text {	color:#000000;}.item-text.wait, .menu-item a.wait{	color:#ffffff;	background-image:url('wait.gif');	background-repeat:no-repeat;	background-position: center bottom;}.item-text.wait{	background-size:auto 100%;}.label {	display:inline-block;	vertical-align: middle;	line-height:1.4;	font-weight: bold;	padding-left:4px;}.menu-item {	display: inline-block;	background-color:#808080;	padding:4px 4px 4px 4px;	border:1px solid #000000;	border-radius: 5px;	font-weight:bold;}.menu-item .item-image{	display:table-cell;	background-size:auto 45%;	height:50px;	width:75px;	border:0;	border-radius:0;}.menu-item .item-image.switch,.menu-item .item-image.light,.menu-item .item-image.battery,.menu-item .item-image.alarm,.menu-item .item-image.refresh {	background-size:auto 60%;}.menu-item a, .menu-item a:link, .menu-item a:hover, .menu-item a:active,.menu-item a:visited {	color: #ffffff;		text-decoration:none;}.menu-item:hover, .menu-item:hover a, .menu-item a:hover { 	background-color:#ffffff;	color:#000000 !important;}.menu-item span {	width: 100%;	font-size:75%;	display:inline-block;}"
 	
 	css = css.replace("url('", "url('${getResourcesUrl()}/")
 	return "<style>$css</style>"
+}
+
+private logDebug(msg) {
+	if (loggingTypeEnabled("debug")) {
+		log.debug msg
+	}
+}
+
+private logTrace(msg) {
+	if (loggingTypeEnabled("trace")) {
+		log.trace msg
+	}
+}
+
+private logInfo(msg) {
+	if (loggingTypeEnabled("info")) {
+		log.info msg
+	}
+}
+
+private loggingTypeEnabled(loggingType) {
+	return (!settings?.logging || settings?.logging?.contains(loggingType))
 }
