@@ -1819,7 +1819,7 @@ private api_getToggleItemsHtml(currentUrl, listItems) {
 
 private api_getItemsHtml(listItems) {
 	def html = ""		
-	log.debug "$listItems"
+	
 	listItems.sort { it.sortValue }
 	listItems.unique().each {				
 		html += api_getItemHtml(it.title, it.image, null, it.deviceId, it.status)
