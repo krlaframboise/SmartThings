@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.8.1
+ *  Aeon Labs Multifunction Siren v 1.8.2
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -13,10 +13,11 @@
  *
  *	Changelog:
  *
- *	1.8.1 (08/06/2016)
+ *	1.8.2 (08/06/2016)
  *    - Added Audio Notification capability.
  *    - Removed commands that have been removed from
  *      from the music player capability.
+ *    - Added declaration for playSoundAndTrack.
  *
  *	1.7.1 (08/02/2016)
  *    - Fixed UI issue on iOS
@@ -87,6 +88,7 @@ metadata {
 		
 		attribute "lastPoll", "number"
 
+		command "playSoundAndTrack"
 		command "playTrackAtVolume" 
 		
 		command "customAlarm", ["number", "number", "number"]
