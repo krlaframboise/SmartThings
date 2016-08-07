@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.10.4 (BETA)
+ *  Simple Device Viewer v 1.10.5 (BETA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,7 +9,7 @@
  *
  *  Changelog:
  *
- *    1.10.4 (08/07/2016)
+ *    1.10.5 (08/07/2016)
  *      - Added Events Page
  *      - Added device exclusion for all pages
  *
@@ -770,7 +770,8 @@ private getDeviceLastEventListItem(device) {
 	
 	def listItem = [
 		value: lastEventTime ? now - lastEventTime : Long.MAX_VALUE,
-		status: lastEventTime ? "${getTimeSinceLastActivity(now - lastEventTime)}" : "N/A"
+		status: lastEventTime ? "${getTimeSinceLastActivity(now - lastEventTime)}" : "N/A",
+		deviceId: device.deviceNetworkId
 	]
 	
 	listItem.title = getDeviceStatusTitle(device, listItem.status)
@@ -1694,7 +1695,7 @@ def api_dashboard() {
 
 private api_getRefreshInterval(cmd) {
 	if (api_isToggleSwitchCmd(cmd)) {
-		return 1
+		return 3
 	}
 	else {
 		return settings.dashboardRefreshInterval ?: 300
@@ -1818,6 +1819,7 @@ private api_getToggleItemsHtml(currentUrl, listItems) {
 
 private api_getItemsHtml(listItems) {
 	def html = ""		
+	log.debug "$listItems"
 	listItems.sort { it.sortValue }
 	listItems.unique().each {				
 		html += api_getItemHtml(it.title, it.image, null, it.deviceId, it.status)
@@ -1880,7 +1882,7 @@ private api_renderHtmlPage(html, url, refreshInterval) {
 }
 
 private api_getJS() {	
-	return "<script>function displayWaitMsg(link) { link.className += \" wait\"; window.location.href = link.href;}</script>"
+	return "<script>function displayWaitMsg(link) { link.className += \" wait\"; }</script>"
 }
 
 private api_getCSS() {
