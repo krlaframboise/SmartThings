@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 1.10.6 (BETA)
+ *  Simple Device Viewer v 1.10.7 (BETA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,9 @@
  *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.10.7 (08/??/2016)
+ *      - Switched everything to plural names.
  *
  *    1.10.6 (08/07/2016)
  *      - Adjusted tile size for mobile
@@ -149,10 +152,12 @@ definition(
 def mainPage() {	
 	dynamicPage(name:"mainPage", uninstall:true, install:true) {			
 	
-		section() {
-			getDashboardHref()
+		if (getAllDevices().size() != 0) {				
+			section() {
+				getDashboardHref()
+			}
 		}
-		
+				
 		section() {				
 			if (getAllDevices().size() != 0) {				
 				state.lastCapabilitySetting = null
@@ -162,14 +167,12 @@ def mainPage() {
 				getCapabilityPageLink(null)			
 			}		
 			getSelectedCapabilitySettings().each {
-				if (devicesHaveCapability(getCapabilityName(it))) {
-					getCapabilityPageLink(it)
-				}
+				getCapabilityPageLink(it)
 			}
 		}
 		section("Settings") {			
 			getPageLink("devicesLink",
-				"Choose Devices & Capabilities",
+				"Choose Devices",
 				"devicesPage")
 			getPageLink("displaySettingsLink",
 				"Display Settings",
@@ -230,10 +233,10 @@ def displaySettingsPage() {
 	dynamicPage(name:"displaySettingsPage") {
 		section ("Display Options") {
 			paragraph "All the capabilities supported by the selected devices are shown on the main screen by default, but this field allows you to limit the list to specific capabilities." 
-			input "selectedCapabilities", "enum",
+			input "enabledCapabilities", "enum",
 				title: "Display Which Capabilities?",
 				multiple: true,
-				options: getCapabilitySettingNames(),
+				options: getCapabilitySettingNames(false),
 				required: false
 		}		
 		section ("Device Capability Exclusions") {
@@ -455,59 +458,56 @@ def otherSettingsPage() {
 				defaultValue: ["debug", "info"],
 				options: ["debug", "info", "trace"]
 		}
+		section ("Resources") {			
+			paragraph "If you want to be able to use different icons, fork krlaframboise's GitHub Resources repository and change this url to the forked path.  If you do change this setting, make sure that the new location contains all the Required Files."
+			href "", title: "View Required Resource List", 
+				style: "external", 
+				url: 			"http://htmlpreview.github.com/?https://github.com/krlaframboise/Resources/blob/master/simple-device-viewer/required-resources.html"
+			input "resourcesUrl", "text",
+				title: "Resources Url:",
+				required: false,
+				defaultValue: getResourcesUrl()
+		}
 		section ("Scheduling") {
 			paragraph "Leave this field empty unless you're using an external timer to turn on a switch at regular intervals.  If you select a switch, the application will check to see if notifications need to be sent when its turned on instead of using SmartThings scheduler to check every 5 minutes."
 
 			input "timerSwitch", "capability.switch",
 				title: "Select timer switch:",
 				required: false
-		}
-		// section ("Resources") {			
-			// paragraph "If you want to be able to use different icons or change the layout of the dashboard, fork the krlaframboise's GitHub Resources repository and change this url to the forked path.  If you do change this setting, make sure that the new location contains all the Required Files."
-			// href "", title: "View Required Resource List", 
-				// style: "external", 
-				// url: 			"http://htmlpreview.github.com/?https://github.com/krlaframboise/Resources/blob/master/simple-device-viewer/required-resources.html"
-			// input "resourcesUrl", "text",
-				// title: "Resources Url:",
-				// required: false,
-				// defaultValue: getResourcesUrl()
-		// }
-		
+		}		
 	}
 }
 
 def dashboardSettingsPage() {
-	dynamicPage(name:"dashboardSettingsPage") {		
-		getDashboardSettingPageContents()
-	}
-}
-
-def getDashboardSettingPageContents() {
-	section ("Dashboard Settings") {
-		if (state.endpoint) {
-			log.info "Dashboard Url: ${api_dashboardUrl()}"
-			input "dashboardRefreshInterval", "number", 
-				title: "Dashboard Refresh Interval: (seconds)",
-				defaultValue: 300,
-				required: false
-			input "dashboardDefaultView", "enum",
-				title: "Dashboard Default Value:",
-				defaultValue: "Lights",
-				required: false,
-				options: getCapabilitySettingNames()
-			input "dashboardMenuPosition", "enum", 
-				title: "Menu Position:", 
-				defaultValue: "Bottom of Page",
-				required: false,
-				options: ["Top of Page", "Bottom of Page"]
-			getPageLink("disableDashboardPageLink",
-				"Disable Dashboard",
-				"disableDashboardPage")
-		}
-		else {
-			getPageLink("enableDashboardPageLink",
-				"Enable Dashboard",
-				"enableDashboardPage")
+	dynamicPage(name:"dashboardSettingsPage") {
+		section ("Dashboard Settings") {
+			if (state.endpoint) {
+				log.info "Dashboard Url: ${api_dashboardUrl()}"
+				input "dashboardRefreshInterval", "number", 
+					title: "Dashboard Refresh Interval: (seconds)",
+					defaultValue: 300,
+					required: false
+				input "dashboardDefaultView", "enum",
+					title: "Default View:",
+					required: false,
+					options: getCapabilitySettingNames(true)
+				input "dashboardMenuPosition", "enum", 
+					title: "Menu Position:", 
+					defaultValue: "Top of Page",
+					required: false,
+					options: ["Top of Page", "Bottom of Page"]
+				input "customCSS", "text",
+					title:"Enter CSS rules that should be appended to the dashboard's CSS file.",
+					required: false
+				getPageLink("disableDashboardPageLink",
+					"Disable Dashboard",
+					"disableDashboardPage")
+			}
+			else {
+				getPageLink("enableDashboardPageLink",
+					"Enable Dashboard",
+					"enableDashboardPage")
+			}
 		}
 	}
 }
@@ -715,9 +715,9 @@ private getDeviceAllCapabilitiesListItem(device) {
 		sortValue: device.displayName
 	]	
 	getSelectedCapabilitySettings().each {
-		if (device.hasCapability(getCapabilityName(it))) {
+		//if (device.hasCapability(getCapabilityName(it))) {
 			listItem.status = (listItem.status ? "${listItem.status}, " : "").concat(getDeviceCapabilityStatusItem(device, it).status)
-		}
+		//}
 	}
 	listItem.title = getDeviceStatusTitle(device, listItem.status)
 	return listItem
@@ -757,6 +757,10 @@ private getDeviceCapabilityListItem(device, cap) {
 
 private getCapabilitySettingByPrefName(prefName) {
 	capabilitySettings().find { getPrefName(it) == prefName }
+}
+
+private getCapabilitySettingByPluralName(pluralName) {
+	capabilitySettings().find { getPluralName(it)?.toLowerCase() == pluralName?.toLowerCase()}
 }
 
 private getCapabilitySettingByName(name) {
@@ -970,12 +974,12 @@ private getCapabilityStatusItem(cap, sortValue, value) {
 	return item
 }
 
-private getSelectedCapabilitySettings() {
-	if (!settings.selectedCapabilities) {
-		return capabilitySettings()
+private getSelectedCapabilitySettings() {	
+	if (!settings.enabledCapabilities) {
+		return capabilitySettings().findAll { devicesHaveCapability(getCapabilityName(it)) }
 	}
 	else {
-		return capabilitySettings().findAll { it.name in settings.selectedCapabilities }
+		return capabilitySettings().findAll {	(getPluralName(it) in settings.enabledCapabilities) && devicesHaveCapability(getCapabilityName(it)) }
 	}
 }
 
@@ -1112,13 +1116,8 @@ private boolean iconsAreEnabled() {
 private getResourcesUrl() {
 	def url = "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-device-viewer"
 
-	try {
-		if (settings.resourcesUrl) {
-			url = settings.resourcesUrl
-		}
-	}
-	catch(e) {
-		// Accessing the settings object may generate an error when the settings screen is loaded for the first time.
+	if (settings?.resourcesUrl) {
+		url = settings.resourcesUrl
 	}
 	
 	return url
@@ -1516,10 +1515,12 @@ private boolean timeElapsed(timeValue, nullResult=false) {
 	}
 }
 
-private getCapabilitySettingNames() {
+private getCapabilitySettingNames(includeEvents) {
 	def items = []
-	items << "Events"
-	items += capabilitySettings().collect { it.name }?.unique()
+	if (includeEvents) {
+		items << "Events"
+	}
+	items += capabilitySettings().collect { getPluralName(it) }?.unique()
 	return items.sort()
 }
 
@@ -1647,6 +1648,7 @@ private initializeAppEndpoint() {
 			state.endpoint = null
 		}
 	}
+	logDebug "Dashboard Url: ${api_dashboardUrl()}"	
 	return state.endpoint
 }
 
@@ -1658,21 +1660,28 @@ mappings {
 }
 
 private api_dashboardUrl(capName=null) {	
-	def prefName
-	
-	capName = capName ?: (settings.dashboardDefaultView ?: "Light")
+	def pageName
+	capName = capName ?: api_getDefaultCapabilityName()
 	if (capName?.toLowerCase() == "events") {
-		prefName = "events"
+		pageName = "events"
 	}
 	else {		
-		def cap = getCapabilitySettingByName(capName)
-		prefName = (cap ? getPrefName(cap) : "") ?: "light"
+		def cap = getCapabilitySettingByPluralName(capName)
+		pageName = (cap ? getPluralName(cap)?.toLowerCase()?.replace(" ", "-") : "") ?: "lights"		
 	}
-	return "${state.endpoint}dashboard/${prefName}"
+	return "${state.endpoint}dashboard/${pageName}"
+}
+
+private api_getDefaultCapabilityName() {
+	if (settings?.dashboardDefaultView) {
+		return settings.dashboardDefaultView
+	}
+	else {
+		return "events"
+	}	
 }
 
 def api_dashboard() {
-	logDebug "Dashboard Url: ${api_dashboardUrl()}"
 	def cap
 	def currentUrl
 	def menu = ""
@@ -1690,9 +1699,9 @@ def api_dashboard() {
 			header = api_getPageHeader("Events")
 		}
 		else if (params.capability) {			
-			cap = params.capability ? getCapabilitySettingByPrefName(params.capability) : null
+			cap = params.capability ? getCapabilitySettingByPluralName(params.capability?.replace("-", " ")) : null
 		
-			currentUrl = api_dashboardUrl(cap?.name)
+			currentUrl = api_dashboardUrl(getPluralName(cap))
 			header = api_getPageHeader("${getPluralName(cap)}")
 		}	
 		
@@ -1771,9 +1780,7 @@ private api_getMenuHtml(currentUrl) {
 	html += api_getMenuItemHtml("Events", "warning", api_dashboardUrl("events"))
 	
 	getSelectedCapabilitySettings().each {
-		if (devicesHaveCapability(getCapabilityName(it))) {
-			html += api_getMenuItemHtml(getPluralName(it), getPrefName(it), api_dashboardUrl(it?.name))
-		}
+		html += api_getMenuItemHtml(getPluralName(it), getPrefName(it), api_dashboardUrl(getPluralName(it)))
 	}
 	
 	html += "</nav>"
@@ -1838,7 +1845,7 @@ private api_getToggleItemsHtml(currentUrl, listItems) {
 	def pluralName
 	def imageName	
 	if (listItems) {
-		pluralName = getPluralName(listItems[0])
+		pluralName = listItems[0] ? getPluralName(listItems[0]) : ""
 		imageName = listItems[0]?.image?.replace(".png","")
 		imageName = imageName?.replace("-on", "")?.replace("-off", "")
 	}	
@@ -1892,7 +1899,7 @@ private api_getPageBody(header, content, menu, footer) {
 }
 
 private api_menuAtTop() {
-	return (settings.dashboardMenuPosition == "Top of Page")
+	return (settings.dashboardMenuPosition != "Bottom of Page")
 }
 
 private api_getPageHeader(html=null) {
@@ -1925,6 +1932,10 @@ private api_getCSS() {
 	def css = "body {	font-size: 100%;	text-align:center;	font-family:Helvetica,arial,sans-serif;	margin:0 0 10px 0;	background-color: #000000;}header, nav, section, footer {	display: block;	text-align:center;}header {	margin: 0 0 0 0;	padding: 4px 0 4px 0;	width: 100%;		font-weight: bold;	font-size: 100%;	background-color:#808080;	color:#ffffff;}nav.top{	padding-top: 0;}nav.bottom{	padding: 4px 4px 4px 4px;}section {	padding: 10px 20px 40px 20px;}.command-results {	background-color: #d6e9c6;	margin: 0 20px 20px 20px;	padding: 10px 20px 10px 20px;	border-radius: 100px;}.command-results h1 {	margin: 0 0 0 0;}.command-results ul {	list-style: none;}.command-results li {	line-height: 1.5;	font-size: 120%;}.dashboard-url {	display:block;	width:100%;	font-size: 80%;}.device-id-none{	background-color: #d6e9c6 !important;}.refresh {	background-image: url('refresh.png');}.alarm, .alarm-both {	background-image: url('alarm-both.png');}.alarm-siren {	background-image: url('alarm-siren.png');}.alarm-strobe {	background-image: url('alarm-strobe.png');}.alarm-off {	background-image: url('alarm-off.png');}.battery, .normal-battery {	background-image: url('normal-battery.png');}.low-battery {	background-image: url('low-battery.png');}.open {	background-image: url('open.png');}.contactSensor, .closed {	background-image: url('closed.png');}.light, .light-on {	background-image: url('light-on.png');}.light-off {	background-image: url('light-off.png');}.lock, .locked{	background-image: url('locked.png');}.unlocked {	background-image: url('unlocked.png');}.motionSensor, .motion {	background-image: url('motion.png');}.no-motion {	background-image: url('no-motion.png');}.presenceSensor, .present {	background-image: url('present.png');}.not-present {	background-image: url('not-present.png');}.smokeDetector, .smoke-detected {	background-image: url('smoke-detected.png');}.smoke-clear {	background-image: url('smoke-clear.png');}.switch, .switch-on {	background-image: url('switch-on.png');}.switch-off {	background-image: url('switch-off.png');}.temperatureMeasurement, .normal-temp {	background-image: url('normal-temp.png');}.low-temp {	background-image: url('low-temp.png');}.high-temp {	background-image: url('high-temp.png');}.waterSensor, .dry {	background-image: url('dry.png');}.wet {	background-image: url('wet.png');}.ok {	background-image: url('ok.png');}.warning {	background-image: url('warning.png');}.device-item {	width: 200px;	display: inline-block;	background-color: #ffffff;	margin: 2px 2px 2px 2px;	padding: 4px 4px 4px 4px;	border-radius: 5px;}.item-image-text {	position: relative;	height: 75px;	width:100%;	display: table;}.item-image {	display: table-cell;	position: relative;	width: 35%;	border: 1px solid #cccccc;	border-radius: 5px;	background-repeat:no-repeat;	background-size:auto 70%;	background-position: center bottom;}.item-status {	width: 100%;	font-size:75%;	display:inline-block;}.item-text {	display: table-cell;	width: 65%;	position: relative;	vertical-align: middle;}a.item-text {	color:#000000;}.item-text.wait, .menu-item a.wait{	color:#ffffff;	background-image:url('wait.gif');	background-repeat:no-repeat;	background-position: center bottom;}.item-text.wait{	background-size:auto 100%;}.label {	display:inline-block;	vertical-align: middle;	line-height:1.4;	font-weight: bold;	padding-left:4px;}.menu-item {	display: inline-block;	background-color:#808080;	padding:4px 4px 4px 4px;	border:1px solid #000000;	border-radius: 5px;	font-weight:bold;}.menu-item .item-image{	display:table-cell;	background-size:auto 45%;	height:50px;	width:75px;	border:0;	border-radius:0;}.menu-item .item-image.switch,.menu-item .item-image.light,.menu-item .item-image.battery,.menu-item .item-image.alarm,.menu-item .item-image.refresh {	background-size:auto 60%;}.menu-item a, .menu-item a:link, .menu-item a:hover, .menu-item a:active,.menu-item a:visited {	color: #ffffff;		text-decoration:none;}.menu-item:hover, .menu-item:hover a, .menu-item a:hover { 	background-color:#ffffff;	color:#000000 !important;}.menu-item span {	width: 100%;	font-size:75%;	display:inline-block;}@media (max-width: 639px){	.device-item {		width:125px;	}	.item-image-text {		height: 65px;	}	.item-image {		background-size: auto 60%;	}	.item-text .label {		font-size: 80%;		line-height: 1.2;	}}"
 	
 	css = css.replace("url('", "url('${getResourcesUrl()}/")
+	
+	if (settings?.customCSS) {
+		css += settings.customCSS
+	}
 	return "<style>$css</style>"
 }
 
