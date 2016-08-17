@@ -1,16 +1,23 @@
 /**
- *  Aeotec Doorbell v 1.7.2
+ *  Aeotec Doorbell v 1.8
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
  *
  *  Capabilities:
- *	  Switch, Alarm, Tone, Battery, Configuration, Refresh
+ *      Switch, Alarm, Tone, Audio Notification, 
+ *      Battery, Configuration, Refresh
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.8 (08/16/2016)
+ *    - Fixed bug that caused switch.on to execute every time a track
+ *      is played when the device isn't paired securely.
+ *    - Implemented Audio Notification capability.
+ *    - Implemented Button capability.
  *
  *  1.7.2 (07/30/2016)
  *    - Removed duplicate hub v1 fingerprint.
@@ -30,7 +37,7 @@
  *    - Bug fix for implicit int to string cast
  *
  *  1.5 (03/24/2016)
- *    - UI Enhancements			
+ *    - UI Enhancements            
  *
  *  1.4 (02/28/2016)
  *    - UI Enhancements and fixed fingerprint so that
@@ -38,16 +45,16 @@
  *      Multifunction Siren.
  *
  *  1.3 (02/21/2016)
- *    -	UI Enhancements/Fixes, added Refresh capability.
+ *    -    UI Enhancements/Fixes, added Refresh capability.
  *
  *  1.2 (02/17/2016)
- *    -	Fixed bug causing error on install.
+ *    -    Fixed bug causing error on install.
  *
  *  1.1 (02/15/2016)
- *    -	Consolidated code.
+ *    -    Consolidated code.
  *
  *  1.0 (02/14/2016)
- *    -	Initial Release
+ *    -    Initial Release
  * 
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -65,8 +72,10 @@ metadata {
 		capability "Actuator"
 		capability "Configuration"
 		capability "Switch"
+		capability "Button"
 		capability "Alarm"
 		capability "Tone"
+		capability "Audio Notification"
 		capability "Battery"
 		capability "Refresh"
 
@@ -78,19 +87,19 @@ metadata {
 		attribute "status", "enum", ["off", "doorbell", "beep", "alarm", "play"]
 		attribute "volume", "number"
 
-		command "playTrack", ["number"]
 		command "playRepeatTrack", ["number", "number"]
-		command "playTrackAtVolume", ["number", "number"]
-		command "playRepeatTrackAtVolume", ["number", "number", "number"]		
+		command "playRepeatTrackAtVolume", ["number", "number", "number"]
+		command "playSoundAndTrack"
+		command "playTrackAtVolume"		
 		command "alarmUp"
 		command "setAlarmTrack", ["number"]
 		command "alarmDown"
 		command "beepUp"
 		command "setBeepTrack", ["number"]
 		command "beepDown"
-		command "doorbellDown"		
+		command "doorbellDown"        
 		command "setDoorbellTrack", ["number"]
-		command "doorbellUp"				
+		command "doorbellUp"                
 		command "setRepeat", ["number"]
 		command "repeatUp"
 		command "repeatDown"
@@ -98,7 +107,7 @@ metadata {
 		command "volumeUp"
 		command "volumeDown"
 
-		fingerprint mfr: "0086", prod: "0104", model: "0038"		
+		fingerprint mfr: "0086", prod: "0104", model: "0038"        
 
 		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98,0x25,0x70,0x72,0x59,0x85,0x73,0x7A,0x5A", outClusters: "0x82"
 	}
@@ -123,7 +132,7 @@ metadata {
 				attributeState "beep", label:'Beeping!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#99FF99"
 				attributeState "play", label:'Playing!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#694489"
 			}
-		}	
+		}    
 		standardTile("playDoorbell", "device.switch", width: 2, height: 2) {
 			state "off", 
 				label:'Doorbell', 
@@ -148,7 +157,7 @@ metadata {
 				action:"off", 
 				icon:"st.Entertainment.entertainment2", 
 				backgroundColor: "#99FF99"
-		}		
+		}        
 		standardTile("playAlarm", "device.alarm", width: 2, height: 2) {
 			state "off", 
 				label:'Alarm', 
@@ -163,13 +172,13 @@ metadata {
 		}
 		valueTile("doorbellTrack", "device.doorbellTrack", decoration: "flat", width:2, height: 2) {
 			state "doorbellTrack", label: 'Doorbell ${currentValue}', defaultState: true
-		}		
+		}        
 		controlTile("doorbellSlider", "device.doorbellTrack", "slider", width: 4, height: 1, range: "(1..100)") {
 			state "doorbellTrack", action:"setDoorbellTrack"
 		}
 		standardTile("doorbellTrackUp", "device.doorbellTrack", width: 2, height: 1, decoration: "flat") {
 			state "doorbellTrack", label:'>', action:"doorbellUp"
-		}		
+		}        
 		standardTile("doorbellTrackDown", "device.doorbellTrack", width: 2, height: 1, decoration: "flat") {
 			state "doorbellTrack", label:'<', action:"doorbellDown"
 		}
@@ -181,10 +190,10 @@ metadata {
 		}
 		standardTile("beepTrackUp", "device.beepTrack", width: 2, height: 1, decoration: "flat") {
 			state "beepTrack", label:'>', action:"beepUp", icon: ""
-		}		
+		}        
 		standardTile("beepTrackDown", "device.beepTrack", width: 2, height: 1, decoration: "flat") {
 			state "beepTrack", label:'<', action:"beepDown", icon: ""
-		}		
+		}        
 		valueTile("alarmTrack", "device.alarmTrack", decoration: "flat", height:2, width:2) {
 			state "alarmTrack", label: 'ALARM ${currentValue}', defaultStatus: true
 		}
@@ -196,7 +205,7 @@ metadata {
 		}
 		standardTile("alarmTrackDown", "device.alarmTrack", width: 2, height: 1, decoration: "flat") {
 			state "alarmTrack", label:'<', action:"alarmDown", icon: ""
-		}		
+		}        
 		valueTile("volume", "device.volume", decoration: "flat", height:2, width:2) {
 			state "volume", label: 'VOLUME ${currentValue}', defaultState: true
 		}
@@ -205,10 +214,10 @@ metadata {
 		}
 		standardTile("volumeUp", "device.volume", width: 2, height: 1, decoration: "flat") {
 			state "volume", label:'>', action:"volumeUp"
-		}		
+		}        
 		standardTile("volumeDown", "device.volume", width: 2, height: 1, decoration: "flat") {
 			state "volume", label:'<', action:"volumeDown"
-		}		
+		}        
 		valueTile("repeat", "device.repeat", decoration: "flat", height:2, width:2) {
 			state "repeat", label: 'REPEAT ${currentValue}', defaultState: true
 		}
@@ -217,7 +226,7 @@ metadata {
 		}
 		standardTile("repeatUp", "device.repeat", width: 2, height: 1, decoration: "flat") {
 			state "repeat", label:'>', action:"repeatUp"
-		}		
+		}        
 		standardTile("repeatDown", "device.repeat", width: 2, height: 1, decoration: "flat") {
 			state "repeat", label:'<', action:"repeatDown"
 		}
@@ -226,7 +235,7 @@ metadata {
 		}
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
 			state "refresh", label:'', action: "refresh", icon:"st.secondary.refresh"
-		}		
+		}        
 		main "statusTile"
 		details(["statusTile", "playDoorbell", "playBeep", "playAlarm", "doorbellTrack", "doorbellSlider", "doorbellTrackDown", "doorbellTrackUp", "beepTrack", "beepSlider", "beepTrackDown", "beepTrackUp", "alarmTrack", "alarmSlider", "alarmTrackDown", "alarmTrackUp", "volume", "volumeSlider", "volumeDown", "volumeUp", "repeat", "repeatSlider", "repeatDown", "repeatUp", "battery", "refresh"])
 	}
@@ -234,18 +243,22 @@ metadata {
 
 // Sends configuration to device
 def updated() {
-	if (!isDuplicateCommand(state.lastUpdated, 3000)) {	
+	if (!isDuplicateCommand(state.lastUpdated, 3000)) {    
 		state.lastUpdated = new Date().time
-			
+		
+		if (device.currentValue("numberOfButtons") != 1) {
+			sendEvent(name: "numberOfButtons", value: 1, displayed: false)
+		}
+				
 		def cmds = []
 		if (!state.isConfigured) {
 			state.useSecureCmds = false
-			cmds += configure()			
+			cmds += configure()            
 		}
 		else {
 			logDebug "Secure Commands ${state.useSecureCmds ? 'Enabled' : 'Disabled'}"
 			cmds += refresh()
-		}		
+		}        
 		return response(cmds)
 	}
 }
@@ -295,7 +308,7 @@ def volumeUp() {
 }
 
 // Sets volume attribute and device setting
-def setVolume(volume) {	
+def setVolume(volume) {    
 	return delayBetween([
 		volumeSetCmd(volume),
 		volumeGetCmd()
@@ -313,7 +326,7 @@ def repeatUp() {
 }
 
 // Sets repeat attribute and device setting
-def setRepeat(repeat) {	
+def setRepeat(repeat) {    
 	return delayBetween([
 		repeatSetCmd(repeat),
 		repeatGetCmd()
@@ -331,7 +344,7 @@ def doorbellDown() {
 }
 
 // Sets doorbellTrack attribute and setting
-def setDoorbellTrack(track) {	
+def setDoorbellTrack(track) {    
 	delayBetween([
 		doorbellSetCmd(track),
 		doorbellGetCmd()
@@ -350,7 +363,7 @@ def beepDown(){
 
 // Sets beepTrack attribute
 void setBeepTrack(track) {
-	sendEvent(getEventMap("beepTrack", validateTrack(track)))	
+	sendEvent(getEventMap("beepTrack", validateTrack(track)))    
 }
 
 // Decrements alarmTrack
@@ -380,6 +393,7 @@ private getEventMap(name, val) {
 
 // Stops playing track and raises events switch.off, alarm.off, status.off
 def off() {
+	logTrace "Executing off()"
 	logDebug "Turning Off"
 	return delayBetween([
 		deviceNotifyTypeSetCmd(true),
@@ -390,6 +404,7 @@ def off() {
 // Plays doorbellTrack and raises switch.on event
 def on() {
 	logDebug "Ringing Doorbell"
+	logTrace "Executing on()"
 	return delayBetween([
 		deviceNotifyTypeSetCmd(true),
 		basicSetCmd(0xFF)
@@ -408,45 +423,78 @@ def siren() {
 
 // Plays alarmTrack and raises alarm.both and status.alarm events
 def both() {
+	logTrace "Executing both()"
 	logDebug "Sounding Alarm"
-	return playTrack(getNumAttr("alarmTrack"), "alarm")
+	return play([track: getNumAttr("alarmTrack"), status: "alarm"])
 }
 
 // Plays beepTrack and raises status.beep event
 def beep() {
+	logTrace "Executing beep()"
 	logDebug "Playing Beep Track"
-	return playTrack(getNumAttr("beepTrack"), "beep")		
+	return play([track: getNumAttr("beepTrack"), status: "beep"])
 }
 
-// Plays specified track and raises status.play event
-def playTrack(track) {
-	return play([track: track])
+
+// Audio Notification Capability Commands
+def playSoundAndTrack(String URI, Number duration=null, String track, Number volume=null) {	
+	playTrack(URI, volume)
+}
+def playTrackAtVolume(String URI, Number volume) {
+	playTrack(URI, volume)
+}
+def playTrackAndResume(String URI, Number volume=null) {
+	playTrack(URI, volume)
+}	
+def playTrackAndRestore(String URI, Number volume=null) {
+	playTrack(URI, volume)
+}	
+def playTextAndResume(String message, Number volume=null) {
+	playText(message, volume)
+}	
+def playTextAndRestore(String message, Number volume=null) {
+	playText(message, volume)
 }
 
-// Plays specified track using default volume/repeat and raises specified status event
-def playTrack(track, status) {
-	return play([track:track, status: status])
+// Extracts the track number from the URI and passes it and
+// the volume to the playText command.
+def playTrack(String URI, Number volume=null) {
+	logTrace "Executing playTrack($URI, $volume)"
+	def text = getTextFromTTSUrl(URI)
+	playText(!text ? URI : text, volume)	
 }
 
-// Plays specified track at specified volume.
-def playTrackAtVolume(track, volume) {
-	return play([track: track, volume: volume])
+private getTextFromTTSUrl(URI) {
+	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
+	if (URI?.toString()?.toLowerCase()?.contains(urlPrefix)) {
+		return URI.replace(urlPrefix,"").replace(".mp3","")
+	}
+	return null
+}
+
+//Plays the track specified as the message at the specified volume.
+def playText(String message, Number volume=null) {
+	logTrace "Executing playText($message, $volume)"
+	return play([track: message, volume: volume])
 }
 
 // Plays specified track for specified repeat
 def playRepeatTrack(track, repeat) {
+	logTrace "Executing playRepeatTrack($track, $repeat)"
 	return play([track: track, repeat: repeat])
 }
 
 // Plays specified track at specified volume and repeat.
 def playRepeatTrackAtVolume(track, repeat, volume) {
+	logTrace "Executing playRepeatTrackAtVolume($track, $repeat, $volume)"
 	return play([track: track, volume: volume, repeat: repeat])
 }
 
 private play(Map data) {
+	logTrace "play($data)"
 	def changingVolumeOrRepeat = false
 	data = data ?: [:]
-	data.status = data.status ?: "play"		
+	data.status = data.status ?: "play"        
 	
 	state.pendingStatus = data.status
 	
@@ -479,10 +527,21 @@ private play(Map data) {
 	}
 	
 	result << deviceNotifyTypeSetCmd(false)
-	result << playTrackSetCmd(data.track)	
-	result << deviceNotifyTypeSetCmd(true)
 		
-	return delayBetween(result, 100)		
+	if (!state.useSecureCmds) {            
+		result << deviceNotifyTypeGetCmd()
+		result << "delay 450"
+	}
+
+	result << playTrackSetCmd(data.track)
+	result << "delay 450"
+	result << deviceNotifyTypeSetCmd(true)
+
+	if (!state.useSecureCmds) {
+		result << deviceNotifyTypeGetCmd()
+	}
+		
+	return delayBetween(result, 50)
 }
 
 // Re-loads attributes from device configuration.
@@ -494,7 +553,7 @@ def refresh() {
 	return delayBetween([
 		doorbellGetCmd(),
 		repeatGetCmd(),
-		volumeGetCmd(),			
+		volumeGetCmd(),            
 		batteryHealthGetCmd()
 	], 100)
 }
@@ -502,13 +561,13 @@ def refresh() {
 
 // Parses incoming message
 def parse(String description) {
-	def result = null	
-	if (description != null && description != "updated") {	
+	def result = null    
+	if (description != null && description != "updated") {    
 		def cmd = zwave.parse(description, [0x20:1,0x25:1,0x59:1,0x70:1,0x72:2,0x82:1,0x85:2,0x86:1,0x98:1])
 		if (cmd) {
 			result = zwaveEvent(cmd)
 			
-			result << createEvent(name: "lastPoll", value: new Date().time, displayed: false, isStateChange: true)			
+			result << createEvent(name: "lastPoll", value: new Date().time, displayed: false, isStateChange: true)            
 		} 
 		else {
 			logDebug("No Command: $cmd")
@@ -538,22 +597,29 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupported
 	logDebug "Secure Inclusion Detected"
 	def result = []
 	result += response(configure())
-	return result	
+	return result    
 }
 
 // Handles device reporting on and off
-def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
-	state.pendingStatus = null
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {    
 	def result = []
-	if (cmd.value == 0) {
-		result += handleDeviceTurningOff()
-	} 
-	else if (cmd.value == 255) {
-		logDebug("Doorbell Ringing")
 
-		result << createEvent(name: "switch", value: "on", descriptionText: "Doorbell Ringing", displayed: true, isStateChange: true)
+	if (state.useSecureCmds || cmd.value == 0 || state.notificationType == 2) {
+		logTrace "BasicReport: $cmd"
+		state.pendingStatus = null
 		
-		result << createEvent(name: "status", value: "doorbell", displayed: false, isStateChange: true)
+		if (cmd.value == 0) {        
+			result += handleDeviceTurningOff()
+		} 
+		else if (cmd.value == 255) {
+			logDebug("Doorbell Ringing")
+			result << createEvent(name: "switch", value: "on", descriptionText: "Doorbell Ringing", displayed: true, isStateChange: true)
+			result << createEvent(name: "button", value: "pushed", data: [buttonNumber: 1], displayed: false, isStateChange: true)
+			result << createEvent(name: "status", value: "doorbell", displayed: false, isStateChange: true)
+		}
+	}
+	else {
+		logTrace "Skipped BasicReport because Notification Type is Hail"
 	}
 	return result
 }
@@ -566,7 +632,7 @@ def handleDeviceTurningOff() {
 	
 	logDebug desc
 	
-	if (device.currentValue("alarm") != "off") {
+	if (device.currentValue("alarm") != "off") {		
 		result << createEvent(name:"alarm", value: "off", descriptionText: desc, isStateChange: true, displayed: true)
 		displayStatus = false
 	}
@@ -583,7 +649,7 @@ def handleDeviceTurningOff() {
 	if (state.pendingVolume) {
 		// Last play changed volume so restore default
 		logDebug "Restoring volume to ${state.pendingVolume}"
-		result << response(volumeSetCmd(state.pendingVolume))		
+		result << response(volumeSetCmd(state.pendingVolume))        
 		state.pendingVolume = null
 	}
 	
@@ -597,22 +663,6 @@ def handleDeviceTurningOff() {
 	return result
 }
 
-// def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
-	// def result = []
-	// def displayStatus = true
-	// if (cmd.value == 0xFF && state.pendingStatus) {
-		
-		// if (state.pendingStatus == "alarm") {
-			// result << createEvent(name: "alarm", value: "both", displayed: true, isStateChange: true)
-			// displayStatus = false
-		// }
-		
-		// result << createEvent(name: "status", value: state.pendingStatus, displayed: displayStatus, isStateChange: true)
-	// }	
-	// state.pendingStatus = null
-	// return result
-// }
-
 // Display the manufacturer info
 def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerSpecificReport cmd) {
 	logDebug("$cmd")
@@ -620,6 +670,7 @@ def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerS
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.hailv1.Hail cmd) {
+	logTrace "Hail: $cmd"
 	def result = []
 	def displayStatus = true
 	if (state.pendingStatus) {
@@ -630,13 +681,13 @@ def zwaveEvent(physicalgraph.zwave.commands.hailv1.Hail cmd) {
 		}
 		
 		result << createEvent(name: "status", value: state.pendingStatus, displayed: displayStatus, isStateChange: true)
-	}	
+	}    
 	state.pendingStatus = null
 	return result
 }
 
 // Writes parameter settings to Info Log
-def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {	 
+def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {     
 	def result = []
 	def name = null
 	state.isConfigured = true
@@ -649,9 +700,10 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 			break
 		case 2:
 			result << createEvent(getEventMap("repeat", cmd.configurationValue[0]))
-			break			
+			break            
 		case 80:
 			name = "Device Notification Type"
+			state.notificationType = cmd.configurationValue[0]
 			break
 		case 81:
 			name = "Send Low Battery Notifications"
@@ -665,7 +717,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	if (name) {
 		logDebug("${name}: ${cmd.configurationValue}")
 	}
-	return result	
+	return result    
 }
 
 private getBatteryEventMap(val) {
@@ -712,6 +764,10 @@ private deviceNotifyTypeSetCmd(useBasicReport) {
 	return configSetCmd(80, (useBasicReport ? 2 : 1))
 }
 
+private deviceNotifyTypeGetCmd() {
+	return configGetCmd(80)
+}
+
 private sendLowBatterySetCmd() {
 	return configSetCmd(81, 1)
 }
@@ -721,7 +777,7 @@ private repeatGetCmd() {
 }
 
 private repeatSetCmd(repeat) {
-	repeat = validateRange(repeat, 1, 1, 300, "Repeat")	
+	repeat = validateRange(repeat, 1, 1, 300, "Repeat")    
 	return configSetCmd(2, repeat)
 }
 
@@ -730,7 +786,7 @@ private doorbellGetCmd() {
 }
 
 private doorbellSetCmd(track) {
-	track = validateTrack(track)	
+	track = validateTrack(track)    
 	return configSetCmd(5, track)
 }
 
@@ -757,18 +813,18 @@ private configSetCmd(int paramNum, int val) {
 }
 
 private supportedSecurityGetCmd() {
-	logDebug "Checking for Secure Command Support"	
-	state.useSecureCmds = true // force secure cmd	
-	def cmd = secureCmd(zwave.securityV1.securityCommandsSupportedGet())	
-	state.useSecureCmds = false // reset secure cmd	
+	logDebug "Checking for Secure Command Support"    
+	state.useSecureCmds = true // force secure cmd    
+	def cmd = secureCmd(zwave.securityV1.securityCommandsSupportedGet())    
+	state.useSecureCmds = false // reset secure cmd    
 	return cmd
 }
 
 private secureCmd(physicalgraph.zwave.Command cmd) {
-	if (state.useSecureCmds) {		
+	if (state.useSecureCmds) {        
 		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
 	} 
-	else {		
+	else {        
 		return cmd.format()
 	}
 }
@@ -818,4 +874,8 @@ private logDebug(msg) {
 	if (settings?.debugOutput == null || settings?.debugOutput) {
 		log.debug "$msg"
 	}
+}
+
+private logTrace(msg) {
+	//log.trace "$msg"
 }
