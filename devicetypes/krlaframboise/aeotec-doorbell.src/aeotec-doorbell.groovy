@@ -1,17 +1,20 @@
 /**
- *  Aeotec Doorbell v 1.8
+ *  Aeotec Doorbell v 1.8.1
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
  *
  *  Capabilities:
  *      Switch, Alarm, Tone, Audio Notification, 
- *      Battery, Configuration, Refresh
+ *      Polling, Battery, Configuration, Refresh
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.8.1 (08/17/2016)
+ *    - Added polling capability.
  *
  *  1.8 (08/16/2016)
  *    - Fixed bug that caused switch.on to execute every time a track
@@ -78,6 +81,7 @@ metadata {
 		capability "Audio Notification"
 		capability "Battery"
 		capability "Refresh"
+		capability "Polling"
 
 		attribute "lastPoll", "number"
 		attribute "alarmTrack", "number"
@@ -544,6 +548,10 @@ private play(Map data) {
 	return delayBetween(result, 50)
 }
 
+def poll() {
+	return batteryHealthGetCmd()
+}
+
 // Re-loads attributes from device configuration.
 def refresh() {
 	logDebug "Executing refresh()"
@@ -557,7 +565,6 @@ def refresh() {
 		batteryHealthGetCmd()
 	], 100)
 }
-
 
 // Parses incoming message
 def parse(String description) {
