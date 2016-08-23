@@ -1,5 +1,5 @@
 /**
- *  Simple Alarm v1.0
+ *  Simple Alarm v1.0 [Alpha]
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,8 +8,7 @@
  *
  *  Changelog:
  *
- *    1.0 (08/??/2016)
- *      - 
+ *    1.0.0_2016-08-22: Example UI
  *
  *  Licensed under the Apache License, Version 2.0 (the
  *  "License"); you may not use this file except in
@@ -752,7 +751,7 @@ def initialize() {
 }
 
 def armZones() {
-	logInfo("Arming Zones (${state?.securityMode?.name})")
+	logInfo("Arming Zones - ${state?.securityMode?.name}")
 	getZones(false).each {
 		if (state.securityMode != "Disarmed" && state.securityMode?.name in settings."${it.settingName}EnabledSecurityModes") {
 			it.armed = true
@@ -812,12 +811,12 @@ private getAllSecurityDevices() {
 
 def securityContactHandler(evt) {
 	logInfo "${evt.displayName}: Contact is ${evt.value}"
-	//handleSecurityNotifications(evt)
+	handleSecurityNotifications("Security", evt)
 }
 
 def securityMotionHandler(evt) {
 	logInfo "${evt.displayName}: Motion is ${evt.value}"
-	//handleSecurityNotifications(evt)
+	handleSecurityNotifications("Security", evt)
 }
 
 
@@ -829,45 +828,122 @@ def modeChangedHandler(evt) {
 
 }
 
-private handleSecurityNotifications(evt) {	
-	def currentZone 
-
-	getZones().each { zone ->
-		if (zone.armed) {
-			def zoneSecurityDeviceNames = settings["${zone.settingName}SecurityDevices"]
-			if (zoneSecurityDeviceNames?.contains(evt?.device?.displayName)) {
-				currentZone = zone
-			}
-		}
-	}
-	
-	log.info "Curent Zone: $currentZone"
-	// getZones(false).each { zone ->
-		// if (zone.armed)
-	// }
-	
-	// getArmedSecurityDevices().each { device ->
-		
-	// }
-	
-	getNotificationSettingNames("Security", state.securityMode?.id).each {
-		def pref = settings[it]
-		if (pref) {
-			if (it.contains("SendPush") && pref) {
-				log.info "Sending Push Message"
-			}
-			else if (it == "awaySecuritySwitchOn") {
-				def x = "on"
+private handleSecurityNotifications(notificationType, evt) {	
+	def currentZone = findZoneByDevice(notificationType, evt?.device?.displayName)
 				
-				pref.each { deviceName ->
-					log.info "Turning $x $deviceName"	
+	log.info "$notificationType Event in Zone ${currentZone?.displayName}"
+	
+	def currentDeviceType = getDeviceType(notificationType, evt.name, evt.value)
+	def namePrefix = "${state.securityMode.id}${notificationType}"	
+	def alarmAutoOffSeconds = settings["${namePrefix}AlarmTurnOffAfter"]
+	def volume = settings["${namePrefix}Volume"] ?: null
+	def message = "${currentZone.displayName}: ${evt.device?.displayName} - ${evt.name} is ${evt.value}"
+		
+	def zoneMessage = settings["${currentZone.settingName}${currentDeviceType?.prefName}Message"]
+		
+	getNotificationSettingNames(notificationType, state.securityMode?.id).each { prefName ->
+		def prefValue = settings[prefName]	
+		
+		if (prefValue) {
+			if (prefName.endsWith("SendPush")) {
+				logTrace "Sending Push message \"$message\""
+				sendPush(message)
+			}
+			else if (prefName.endsWith("SendSMS")) {
+				prefValue.each { phone ->
+					logTrace "Sending SMS message \"$message\" to $phone"
+					sendSms(phone, message)
 				}
 			}
-			else {
-				log.warn "$it: $pref"
-			}			
+			else if (!prefName.endsWith("Volume") && !prefName.endsWith("AlarmTurnOffAfter")) {
+				def devices = findNotificationDevices(prefValue)
+				if (devices) {
+					switch (prefName.replace(namePrefix, "")) {				
+						case { it in ["Siren", "Strobe", "SirenAndStrobe"] }:
+							if (alarmAutoOffSeconds) {
+								logTrace "Scheduling Alarm to turn off in ${alarmAutoOffSeconds} seconds."
+								runIn(alarmAutoOffSeconds, turnOffAlarm)
+							}
+						case "Siren":
+							logTrace "Executing siren() on $prefValue"
+							devices*.siren()
+							break
+						case "Strobe":
+							logTrace "Executing strobe(): $prefValue"
+							devices*.strobe()
+							break
+						case "SirenStrobe":
+							logTrace "Executing both on $prefValue"
+							devices*.both()
+							break
+						case "SwitchOn":
+							logTrace "Turning on $prefValue"
+							devices*.on()
+							break
+						case "SwitchOff":
+							logTrace "Turning off $prefValue"
+							devices*.off()
+							break
+						case "Speak":
+							logTrace "Speak \"${zoneMessage}\" on $prefValue"
+							devices*.speak(zoneMessage)
+							break
+						case "PlayText":
+							logTrace "Playing Text \"${zoneMessage}\" on ${prefValue} at volume ${volume}"
+							devices*.playText(zoneMessage, volume)
+							break
+						case "PlayTrack":
+							logTrace "Playing Track \"${zoneMessage}\" on ${prefValue} at volume ${volume}"
+							devices*.playTrack(zoneMessage, volume)
+							break				
+						case "TakePhoto":
+							logTrace "Taking Photo with ${prefValue}"
+							devices*.take()
+							break
+						default:
+							logDebug "Unknown Notification - $prefName: $prefValue"
+					}
+				}
+				else {
+					logDebug "Unable to find devices for $prefName: $prefValue"
+				}
+			}
 		}
 	}
+}
+
+private findZoneByDevice(notificationType, deviceDisplayName) {
+	getZones().find { zone ->
+		if (zone.armed) {	
+			def zoneDeviceNames = settings["${zone.settingName}${notificationType}Devices"]
+			return (deviceDisplayName in zoneDeviceNames)				
+		}
+		else {
+			return false
+		}
+	}
+}
+
+private getDeviceType(notificationType, eventName, eventVal) {
+	def deviceTypes = (notificationType == "Security") ? getSecurityDeviceTypes() : getAlertDeviceTypes()
+	
+	return deviceTypes.find {		
+		it.alarmAttr == eventName && it.alarmValue == eventVal	
+	}
+}
+
+private findNotificationDevices(deviceNameList) {
+	def devices = []	
+	getNotificationDevices().each { device ->		
+		if (device.displayName in deviceNameList) {
+			devices << device
+		}
+	}
+	return devices
+}
+	
+def turnOffAlarm() {
+	logTrace "Turning Off Alarms"
 }
 
 private getFirstEmptyZoneGroup() {
@@ -1053,17 +1129,6 @@ private getNotificationSettingNames(notificationType, securityModeId) {
 	
 	return ["${prefix}SendPush", "${prefix}SendSMS", "${prefix}Siren", "${prefix}Strobe", "${prefix}SirenStrobe", "${prefix}AlarmTurnOffAfter", "${prefix}SwitchOn", "${prefix}SwitchOff", "${prefix}Speak", "${prefix}PlayText", "${prefix}PlayTrack", "${prefix}Volume", "${prefix}TakePhoto"]	
 }
-
-// private hasNotificationDevices() {
-	// def items
-	// if (requiredCmd) {
-		// items = getNotificationDeviceNames(null, null)
-	// }
-	// else {
-		// items = getNotificationDevices()
-	// }
-	// return items ? true : false
-// }
 
 private getNotificationDeviceNames(cmd, capability) {
 	def names = []
