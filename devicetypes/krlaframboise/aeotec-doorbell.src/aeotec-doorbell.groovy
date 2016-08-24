@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell v 1.8.1
+ *  Aeotec Doorbell v 1.8.2
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
@@ -12,6 +12,10 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.8.2 (08/23/2016)
+ *    - Removed data type from Audio Notification command
+ *      arguments because they are causing problems with CoRE.
  *
  *  1.8.1 (08/17/2016)
  *    - Added polling capability.
@@ -441,28 +445,28 @@ def beep() {
 
 
 // Audio Notification Capability Commands
-def playSoundAndTrack(String URI, Number duration=null, String track, Number volume=null) {	
+def playSoundAndTrack(URI, duration=null, track, volume=null) {	
 	playTrack(URI, volume)
 }
-def playTrackAtVolume(String URI, Number volume) {
+def playTrackAtVolume(URI, volume) {
 	playTrack(URI, volume)
 }
-def playTrackAndResume(String URI, Number volume=null) {
+def playTrackAndResume(URI, volume=null) {
 	playTrack(URI, volume)
 }	
-def playTrackAndRestore(String URI, Number volume=null) {
+def playTrackAndRestore(URI, volume=null) {
 	playTrack(URI, volume)
 }	
-def playTextAndResume(String message, Number volume=null) {
+def playTextAndResume(message, volume=null) {
 	playText(message, volume)
 }	
-def playTextAndRestore(String message, Number volume=null) {
+def playTextAndRestore(message, volume=null) {
 	playText(message, volume)
 }
 
 // Extracts the track number from the URI and passes it and
 // the volume to the playText command.
-def playTrack(String URI, Number volume=null) {
+def playTrack(URI, volume=null) {
 	logTrace "Executing playTrack($URI, $volume)"
 	def text = getTextFromTTSUrl(URI)
 	playText(!text ? URI : text, volume)	
@@ -477,7 +481,7 @@ private getTextFromTTSUrl(URI) {
 }
 
 //Plays the track specified as the message at the specified volume.
-def playText(String message, Number volume=null) {
+def playText(message, volume=null) {
 	logTrace "Executing playText($message, $volume)"
 	return play([track: message, volume: volume])
 }
