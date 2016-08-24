@@ -59,14 +59,17 @@ def mainPage() {
 			state.configSummary = configSummary
 			def unconfiguredDesc = "(unconfigured) "
 			
-			section ("Active Security Mode: ${state.securityMode?.name}") {
+			section ("Security Modes") {
 				if (config.hasAllRequirements) {
 					getSecurityModes(true).each {
 						if (it.name != state.securityMode) {
+							def imageName = (it.name == state.securityMode?.name) ? "selected.png" : "unselected.png"							
 							getPageLink("${it.id}ChangeSecurityModeLink",
-								"Activate ${it.name}",
+								"${it.name}",
 								"changeSecurityModePage",
-								[securityMode: it])
+								[securityMode: it],
+								"",
+								"$imageName")
 						}						
 					}
 				}
@@ -93,21 +96,16 @@ def mainPage() {
 				else {
 					paragraph "Zones can't be setup until at least one \"Alert Device to Monitor\" or \"Security Device to Monitor\" has been chosen."
 				}
-				//if (config.hasNotificationDevices) {					
-					getPageLink("alertNotificationsLink",
-						"Alert Notifications",
-						"alertNotificationsPage",
-						null,
-						config.hasConfiguredAlertNotifications ? "" : (config.hasConfiguredSecurityNotifications ? "(not set)" : "(unconfigured)"))
-					getPageLink("securityNotificationsLink",
-						"Security Notifications",
-						"securityNotificationsPage",
-						null,
-						config.hasConfiguredSecurityNotifications ? "" : (config.hasConfiguredAlertNotifications ? "(not set)" : "(unconfigured)"))
-				// }
-				// else {
-					// paragraph "Notifications can't be setup until at least one \"Notification Device\" has been chosen."
-				// }
+				getPageLink("alertNotificationsLink",
+					"Alert Notifications",
+					"alertNotificationsPage",
+					null,
+					config.hasConfiguredAlertNotifications ? "" : (config.hasConfiguredSecurityNotifications ? "(not set)" : "(unconfigured)"))
+				getPageLink("securityNotificationsLink",
+					"Security Notifications",
+					"securityNotificationsPage",
+					null,
+					config.hasConfiguredSecurityNotifications ? "" : (config.hasConfiguredAlertNotifications ? "(not set)" : "(unconfigured)"))
 				if (config.hasAllRequirements) {
 					getPageLink("armDisarmLink",
 						"Arming/Disarming",
@@ -168,11 +166,15 @@ def getConfigSummary() {
 def changeSecurityModePage(params) {
 	dynamicPage(name:"changeSecurityModePage") {
 		section() {
-			state.securityMode = params.securityMode
-			initialize()
+			changeSecurityMode(params.securityMode)
 			paragraph "Security Mode Changed to ${state.securityMode?.name}"
 		}
 	}
+}
+
+private changeSecurityMode(newSecurityMode) {
+	state.securityMode = newSecurityMode
+	initialize()
 }
 
 def devicesPage() {
@@ -581,6 +583,7 @@ def securityModeArmDisarmPage(params) {
 		}
 		
 		if (hasArmDisarmDevices()) {
+		
 			section ("Switches") {			
 				input "${id}ArmDisarmSwitchesOn", "enum",
 					title: "When Switch Turns On",
@@ -594,32 +597,32 @@ def securityModeArmDisarmPage(params) {
 					options: getArmDisarmDeviceNames("Switch")
 			}
 			
-			section ("Buttons") {				
-				input "${id}ArmDisarmButtons", "enum",
-					title: "When Button",
-					multiple: true,
-					required: false,
-					options: getArmDisarmDeviceNames("Button"),
-					submitOnChange: true
+			// section ("Buttons") {				
+				// input "${id}ArmDisarmButtons", "enum",
+					// title: "When Button",
+					// multiple: true,
+					// required: false,
+					// options: getArmDisarmDeviceNames("Button"),
+					// submitOnChange: true
 				
-				if (settings?."${id}ArmDisarmButtons") {
-					input "${id}ArmDisarmButtonNumber", "number",
-						title: "#",
-						required: true
-					input "${id}ArmDisarmButtonAction", "enum",
-						title: "is",
-						required:true,
-						options: ["pushed", "held"]
-				}
-			}
+				// if (settings?."${id}ArmDisarmButtons") {
+					// input "${id}ArmDisarmButtonNumber", "number",
+						// title: "#",
+						// required: true
+					// input "${id}ArmDisarmButtonAction", "enum",
+						// title: "is",
+						// required:true,
+						// options: ["pushed", "held"]
+				// }
+			// }
 			
 			section ("Presence Sensors") {
-				input "${id}ArmDisarmPresenceArrive", "enum",
+				input "${id}ArmDisarmPresenceSensorsPresent", "enum",
 					title: "When Presence changes to Present:",
 					multiple: true,
 					required: false,
 					options: getArmDisarmDeviceNames("Presence Sensor")
-				input "${id}ArmDisarmPresenceArrive", "enum",
+				input "${id}ArmDisarmPresenceSensorsNotpresent", "enum",
 					title: "When Presence changes to Not Present:",
 					multiple: true,
 					required: false,
@@ -713,21 +716,22 @@ def securityModeAdvancedOptionsPage(params) {
 	}
 }
 
-private getPageLink(linkName, linkText, pageName, args=null, description="") {
+private getPageLink(linkName, linkText, pageName, args=null, description="", imageName="") {
 	def map = [
 		name: "$linkName", 
 		title: "$linkText",
 		description: "$description",
 		page: "$pageName",
 		required: false
-	]
+	]	
 	if (args) {
 		map.params = args
 	}
+	if (imageName) {
+		map.image = "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-alarm/${imageName}"
+	}
 	href(map)
 }
-
-
 
 def installed() {
 	state.securityMode = [id: "disarm", name: "Disarmed"]
@@ -746,12 +750,12 @@ def initialize() {
 	state.params = [:]
 	armZones()
 	initializeMonitoredSecurityDevices()
-	//subscribe(location, "alarmSystemStatus", alarmSystemStatusChangedHandler)
-	//subscribe(location, "mode", modeChangedHandler)
+	initializeArmDisarmTriggers()
+	
 }
 
 def armZones() {
-	logInfo("Arming Zones - ${state?.securityMode?.name}")
+	logDebug "${state?.securityMode?.name} - Arming/Disarming Zones"
 	getZones(false).each {
 		if (state.securityMode != "Disarmed" && state.securityMode?.name in settings."${it.settingName}EnabledSecurityModes") {
 			it.armed = true
@@ -760,8 +764,55 @@ def armZones() {
 			it.armed = false
 		}
 		state."${it.armedStateName}" = it.armed			
-		logTrace("${it.name} ${it.armed ? 'Armed' : 'Disarmed'}")
+		logTrace("Zone ${it.name} ${it.armed ? 'Armed' : 'Disarmed'}")
 	}
+}
+
+private initializeArmDisarmTriggers() {
+	if (getSecurityModeSettings(null, "ArmDisarmAlarmSystemStatuses")) {
+		logTrace "Subscribing to SHM Status"
+		subscribe(location, "alarmSystemStatus", armDisarmAlarmSystemStatusChangedHandler)
+	}
+	
+	if (getSecurityModeSettings(null, "ArmDisarmModes")) {
+		logTrace "Subscribing to Mode Changes"
+		subscribe(location, "mode", armDisarmModeChangedHandler)
+	}
+	
+	getArmDisarmDevices().each { device ->
+		getArmDisarmDeviceTypes().each { type ->
+			def canSubscribe = false
+			
+			type.attrValues.each { attrValue ->				
+				def settingName = "${type.prefName?.capitalize()}${attrValue?.replace(' ', '')?.capitalize()}"
+				//log.info "${device.displayName}\n${type}\n$attrValue\n${type.prefName}${attrValue.replace(' ', '').capitalize()}"				
+				//log.warn "getSecurityModeSettings(null, $settingName) = ${getSecurityModeSettings(null, settingName)}"
+				
+				if (device.displayName in getSecurityModeSettings(null, "$settingName")) {
+					canSubscribe = true
+				}
+			}
+			
+			if (canSubscribe) {
+				logTrace "Subscribing to ${type.attrName} for [${device.displayName}]"
+				subscribe(device, "${type.attrName}", armDisarmDeviceHandler)
+			}
+			
+		}
+	}
+}
+
+private getSecurityModeSettings(securityModeId, partialSettingName) {
+	def result = []	
+	getSecurityModes().each { 
+		if (!securityModeId || it.id == securityModeId) {			
+			def settingName = "${it.id}${partialSettingName}"
+			if (settings[settingName]) {
+				result += settings[settingName]
+			}
+		}
+	}
+	return result
 }
 
 private initializeMonitoredSecurityDevices() {
@@ -819,13 +870,37 @@ def securityMotionHandler(evt) {
 	handleSecurityNotifications("Security", evt)
 }
 
-
-def alarmSystemStatusChangedHandler(evt) {
-	
+def armDisarmAlarmSystemStatusChangedHandler(evt) {	
+	def status = getAlarmSystemStatuses().find { it.id == evt.value }
+	def newSecurityMode = getSecurityModes().find {
+		(status?.name in settings["${it.id}ArmDisarmAlarmSystemStatuses"])
+	}
+	if (newSecurityMode) {
+		logInfo "Changing Security Mode to ${newSecurityMode.name} because SHM changed to ${status?.name}."
+		changeSecurityMode(newSecurityMode)
+	}
+	else {
+		logTrace "SHM changed to ${status?.name}"
+	}
 }
 
-def modeChangedHandler(evt) {
+def armDisarmModeChangedHandler(evt) {
+	def newSecurityMode = getSecurityModes().find {
+		(evt.value in settings["${it.id}ArmDisarmModes"])
+	}
+	if (newSecurityMode) {
+		logInfo "Changing Security Mode to ${newSecurityMode.name} because Location Mode changed to ${evt.value}."
+		changeSecurityMode(newSecurityMode)
+	}
+	else {
+		logTrace "Location Mode changed to ${evt.value}"
+	}
+}
 
+def armDisarmDeviceHandler(evt) {
+	log.info "Arm/Disarm ${evt.displayName}: ${evt.name} is ${evt.value}"
+	
+	
 }
 
 private handleSecurityNotifications(notificationType, evt) {	
@@ -1093,9 +1168,9 @@ private getArmDisarmDevices() {
 
 private getArmDisarmDeviceTypes() {
 	return [
-		[name: "Switches", shortName: "Switch", prefName: "armDisarmSwitches", prefType: "capability.switch"],
-		[name: "Buttons", shortName: "Button", prefName: "armDisarmButtons", prefType: "capability.button"],
-		[name: "Presence Sensors", shortName: "PresenceSensor", prefName: "armDisarmPresenceSensors", prefType: "capability.presenceSensor"]
+		[name: "Switches", shortName: "Switch", prefName: "armDisarmSwitches", prefType: "capability.switch", attrName: "switch", attrValues: ["on", "off"]],
+		[name: "Buttons", shortName: "Button", prefName: "armDisarmButtons", prefType: "capability.button", attrName: "button", attrValues: ["pushed", "held"]],
+		[name: "Presence Sensors", shortName: "PresenceSensor", prefName: "armDisarmPresenceSensors", prefType: "capability.presenceSensor", attrName: "presence", attrValues: ["present", "not present"]]
 	]
 }
 
