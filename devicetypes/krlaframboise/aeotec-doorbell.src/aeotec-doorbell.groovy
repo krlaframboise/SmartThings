@@ -1,5 +1,5 @@
-/** 
- *  Aeotec Doorbell v 1.8.2
+/**
+ *  Aeotec Doorbell v 1.8.3
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
@@ -13,9 +13,8 @@
  *
  *  Changelog:
  *
- *  1.8.2 (08/23/2016)
- *    - Removed data type from Audio Notification command
- *      arguments because they are causing problems with CoRE.
+ *  1.8.3 (08/23/2016)
+ *    - Minor Bug fixes 
  *
  *  1.8.1 (08/17/2016)
  *    - Added polling capability.
