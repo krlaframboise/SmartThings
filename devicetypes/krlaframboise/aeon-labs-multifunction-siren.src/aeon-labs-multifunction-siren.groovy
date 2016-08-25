@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.8.2
+ *  Aeon Labs Multifunction Siren v 1.8.3
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -12,6 +12,9 @@
  *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *	1.8.3 (08/24/2016)
+ *    - Bug Fixes
  *
  *	1.8.2 (08/06/2016)
  *    - Added Audio Notification capability.
@@ -176,11 +179,12 @@ metadata {
 			defaultValue: false,
 			displayDuringSetup: true,
 			required: false
-		input "debugOutput", "bool", 
-			title: "Enable debug logging?", 
-			defaultValue: true, 
-			displayDuringSetup: true, 
-			required: false		
+		input "logging", "enum",
+			title: "Types of messages to log:",
+			multiple: true,
+			required: false,
+			defaultValue: ["debug", "info"],
+			options: ["debug", "info", "trace"]
 	}
 
 	tiles(scale: 2) {
@@ -277,32 +281,40 @@ def play() {
 }
 
 // Audio Notification Commands
-def playTrackAtVolume(String URI, Number volume) {
+def playTrackAtVolume(URI, volume) {
 	logTrace "playTrackAtVolume($URI, $volume)"
 	playTrack(URI, volume)
 }
 
-def playSoundAndTrack(String URI, Number duration=null, String track, Number volume=null) {
+def playSoundAndTrack(URI, duration=null, track, volume=null) {
 	logTrace "playSoundAndTrack($URI, $duration, $track, $volume)"
 	playTrack(URI, volume)
 }
 
-def playTrackAndRestore(String URI, Number volume=null) {
-	logTrace "playTrackAndRestore($URI, $volume)"
+def playTrackAndRestore(URI, volume=null, ignore=null) {
+	if (ignore) {
+		// Fix for Speaker Notify w/ Sound not using command as documented.
+		volume = validateVolume(ignore)
+	}
+	logTrace "playTrackAndRestore($URI, $volume)"	
 	playTrack(URI, volume) 
 }
 
-def playTrackAndResume(String URI, Number volume=null) {
+def playTrackAndResume(URI, volume=null, ignore=null) {
+	if (ignore) {
+		// Fix for Speaker Notify w/ Sound not using command as documented.
+		volume = validateVolume(ignore)
+	}
 	logTrace "playTrackAndResume($URI, $volume)"
 	playTrack(URI, volume)
 }
 
-def playTrack(String URI, Number volume=null) {
+def playTrack(URI, volume=null) {
 	logTrace "playTrack($URI, $volume)"
 	playText(getTextFromTTSUrl(URI), volume)
 }
 
-private getTextFromTTSUrl(String ttsUrl) {
+private getTextFromTTSUrl(ttsUrl) {
 	logTrace "getTextFromTTSUrl($ttsUrl)"
 	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
 	if (ttsUrl?.toString()?.toLowerCase()?.contains(urlPrefix)) {
@@ -311,17 +323,17 @@ private getTextFromTTSUrl(String ttsUrl) {
 	return ttsUrl
 }
 
-def playTextAndResume(String message, Number volume=null) {
+def playTextAndResume(message, volume=null) {
 	logTrace "playTextAndResume($message, $volume)"
 	playText(message, volume) 
 }
 
-def playTextAndRestore(String message, Number volume=null) {
+def playTextAndRestore(message, volume=null) {
 	logTrace "playTextAndRestore($message, $volume)"
 	playText(message, volume=null) 
 }
 
-def playText(String message, Number volume=null) {
+def playText(message, volume=null) {
 	logTrace "playText($message, $volume)"
 	message = cleanMessage(message)
 	def cmds
@@ -728,6 +740,10 @@ private beepScheduleStillActive(startTime, stopAfter) {
 
 // Plays specified beep.
 def customBeep(sound, volume, repeat=1, repeatDelayMS=1000, beepLengthMS=100) {
+	if (!volume) {
+		volume = settings.beepVolume
+	}
+	
 	logTrace "customBeep($sound, $volume, $repeat, $repeatDelayMS, $beepLengthMS)"
 	changeStatus("customBeep")
 	playBeep(sound, volume, repeat, repeatDelayMS, beepLengthMS)
@@ -1044,11 +1060,23 @@ private handleUnsupportedCmd(cmd) {
 }
 
 private logDebug(msg) {
-	if (settings.debugOutput != false) {
-		log.debug "$msg"
+	if (loggingTypeEnabled("debug")) {
+		log.debug msg
 	}
 }
 
 private logTrace(msg) {
-	//log.trace "$msg"
+	if (loggingTypeEnabled("trace")) {
+		log.trace msg
+	}
+}
+
+private logInfo(msg) {
+	if (loggingTypeEnabled("info")) {
+		log.info msg
+	}
+}
+
+private loggingTypeEnabled(loggingType) {
+	return ((!settings?.logging && loggingType != "trace") || settings?.logging?.contains(loggingType))
 }
