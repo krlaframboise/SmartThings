@@ -1,5 +1,5 @@
 /**
- *  Simple Alarm v1.0 [Alpha]
+ *  Simple Alarm v0.0.1 [Alpha]
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,7 +8,8 @@
  *
  *  Changelog:
  *
- *    1.0.0_2016-08-22: Example UI
+ *    0.0.1_2016-08-26: Added summary info to some of the setting pages.
+ *    0.0.0_2016-08-22: Example UI
  *
  *  Licensed under the Apache License, Version 2.0 (the
  *  "License"); you may not use this file except in
@@ -239,11 +240,23 @@ def zoneGroupsPage() {
 				getPageLink("${it.settingName}Link",
 					"${it.name}",
 					"editZoneGroupPage",
-					[zoneGroup: it])
+					[zoneGroup: it],
+					getZoneGroupSummary(it))
 			}
 		}
 	}
 }  
+
+private getZoneGroupSummary(zoneGroup) {
+	def summary = ""
+	getZones(false)?.sort { it.name }?.each { zone ->
+		if (zone?.zoneGroupName == zoneGroup.name) {
+			summary += summary ? "\n" : ""
+			summary += "${zone.name}"
+		}
+	}	
+	return summary ?: "  > (No Zones)"
+}
 
 def editZoneGroupPage(params) {
 	dynamicPage(name:"editZoneGroupPage") {
@@ -273,12 +286,13 @@ def zonesPage() {
 				"Add New Zone",
 				"editZonePage",
 				[zone: null])
-			getZones().each {
+			getZones(false).each {
 				hasZones = true
 				getPageLink("${it.settingName}Link",
-					"(${it.status}) ${it.displayName}",
+					"${it.displayName}",
 					"editZonePage",
-					[zone: it])
+					[zone: it],
+					getZoneSummary(it))
 			}
 		}
 
@@ -291,6 +305,21 @@ def zonesPage() {
 			}
 		}
 	}
+}
+
+private getZoneSummary(zone) {
+	def summary = "(${zone?.status})"
+	settings["${zone.settingName}AlertDevices"]?.each {
+		summary += "\n  > Alert: ${it}"
+	}
+	settings["${zone.settingName}SecurityDevices"]?.each {
+		summary += "\n  > Security: ${it}"
+	}
+	def enabledSecurityModes = settings["${zone.settingName}EnabledSecurityModes"]
+	if (enabledSecurityModes) {
+		summary += "\n  > Enabled Security Modes:\n     ${enabledSecurityModes}"
+	}
+	return summary ?: "  > (not set)"
 }
 
 def refreshZonesPage(params) {
@@ -553,10 +582,38 @@ def armDisarmPage() {
 				getPageLink("${it.id}ArmDisarmLink",
 					"${it.name}",
 					"securityModeArmDisarmPage",
-					[securityMode: it])
+					[securityMode: it],
+					getSecurityModeArmDisarmSummary(it))
 			}
 		}
 	}
+}
+
+private getSecurityModeArmDisarmSummary(securityMode) {
+	def summary = ""
+	def settingValue = getSecurityModeSettings(securityMode.id, "ArmDisarmAlarmSystemStatuses")
+	if (settingValue) {
+		summary = "Smart Home Monitor: $settingValue"
+	}
+	
+	settingValue = getSecurityModeSettings(securityMode.id, "ArmDisarmModes")
+	if (settingValue) {
+		summary += summary ? "\n" : ""
+		summary += "Location Mode: $settingValue"
+	}
+	
+	getArmDisarmDeviceTypes().each { type ->			
+		type.attrValues.each { attrValue ->
+			def settingName = "${type.prefName?.capitalize()}${attrValue?.replace(' ', '')?.capitalize()}"
+			settingValue = getSecurityModeSettings(securityMode.id, "$settingName")
+			
+			if (settingValue) {
+				summary += summary ? "\n" : ""
+				summary += "${type.name.capitalize()} ${attrValue.capitalize()}: $settingValue"
+			}
+		}
+	}	
+	return summary ?: "(not set)"
 }
 
 def securityModeArmDisarmPage(params) {
@@ -745,15 +802,15 @@ def installed() {
 	initialize()
 }
 
-def updated() {
-	unsubscribe()
-	unschedule()
+def updated() {	
 	initialize()
 
 	logDebug("State Used: ${(state.toString().length() / 100000)*100}%")
 }
 
 def initialize() {
+	unsubscribe()
+	unschedule()
 	state.params = [:]
 	armZones()
 	initializeMonitoredSecurityDevices()
@@ -936,9 +993,9 @@ private handleSecurityNotifications(notificationType, evt) {
 	def namePrefix = "${state.securityMode.id}${notificationType}"
 	def alarmAutoOffSeconds = settings["${namePrefix}AlarmTurnOffAfter"]
 	def volume = settings["${namePrefix}Volume"] ?: null
-	def message = "${currentZone.displayName}: ${evt.device?.displayName} - ${evt.name} is ${evt.value}"
+	def message = "${currentZone?.displayName}: ${evt.device?.displayName} - ${evt.name} is ${evt.value}"
 
-	def zoneMessage = settings["${currentZone.settingName}${currentDeviceType?.prefName}Message"]
+	def zoneMessage = settings["${currentZone?.settingName}${currentDeviceType?.prefName}Message"]
 
 	getNotificationSettingNames(notificationType, state.securityMode?.id).each { prefName ->
 		def prefValue = settings[prefName]
@@ -1014,7 +1071,9 @@ private handleSecurityNotifications(notificationType, evt) {
 private findZoneByDevice(notificationType, deviceDisplayName) {
 	getZones().find { zone ->
 		if (zone.armed) {
+			log.debug "zettingName: ${zone.settingName}${notificationType}Devices"
 			def zoneDeviceNames = settings["${zone.settingName}${notificationType}Devices"]
+			log.debug "$deviceDisplayName == $zoneDeviceNames"
 			return (deviceDisplayName in zoneDeviceNames)
 		}
 		else {
@@ -1095,8 +1154,8 @@ private getZones(includeEmpty=false) {
 		def zone = [id: i, settingName: "zone$i", name: settings."zone$i" ?: ""]
 
 		if (includeEmpty || zone.name) {
-			def displayName = settings."${zone.settingName}Group" ?: ""
-			zone.displayName = displayName ? "${displayName} > ${zone.name}" : "${zone.name}"
+			zone.zoneGroupName = settings."${zone.settingName}Group" ?: ""
+			zone.displayName = zone.zoneGroupName ? "${zone.zoneGroupName} > ${zone.name}" : "${zone.name}"
 
 			zone.armedStateName = "${zone.settingName}Armed"
 			zone.armed = state."${zone.armedStateName}" ?: false
