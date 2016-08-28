@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.6
+ *  GoControl Multifunction Siren v 1.6.1
  *
  *  Devices:
  *    GoControl/Linear (Model#: WA105DBZ-1)
@@ -24,6 +24,10 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.6 (08/28/2016)
+ *      - Added support for turning on the alarm while a
+ *        different alarm type is already playing.
  *
  *    1.6 (08/06/2016)
  *      - Added support for Audio Notification capability
@@ -402,9 +406,15 @@ def turnOn(currentAlarmType) {
 		}
 		else {
 			state.activeAlarm.alarmPending = false			
-			if (activeAlarm.alarmType != currentAlarmType) {
+			if (activeAlarm.alarmType != currentAlarmType) {			
+				if (device.currentValue("alarm") != "off") {
+					logDebug "Turning off alarm because it's already on."
+					result << switchOffSetCmd()
+					result << "delay 200"
+				}			
 				result += alarmTypeSetCmds(activeAlarm.alarmType)
-			}			
+			}
+
 			result << switchOnSetCmd()
 			result << switchGetCmd()
 
