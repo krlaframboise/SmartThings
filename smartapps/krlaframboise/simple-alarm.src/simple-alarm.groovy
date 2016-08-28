@@ -705,14 +705,36 @@ def advancedOptionsPage() {
 	dynamicPage(name:"advancedOptionsPage") {
 		section() {
 			paragraph "Exclude Devices, configure Entry/Exit Delays, and Beeping Options for each Security Mode."
-			getSecurityModes(true).each {
+			getSecurityModes(true).each {				
 				getPageLink("${it.id}advancedOptionsLink",
 					"${it.name}",
 					"securityModeAdvancedOptionsPage",
-					[securityMode: it])
+					[securityMode: it],
+					getSecurityModeAdvancedOptionsSummary(it))
 			}
 		}
 	}
+}
+
+private getSecurityModeAdvancedOptionsSummary(securityMode) {
+	def summary = ""
+	
+	summary = appendSecurityModeSettingSummary(summary, securityMode.id, "ExcludedDevices", "Exclude: %")
+		
+	def entryExitDelay = settings["${securityMode.id}EntryExitDelay"]
+	if (entryExitDelay) {
+		summary = appendSecurityModeSettingSummary(summary, securityMode.id, "EntryExitDevices", "Delayed ${entryExitDelay}s: %")
+		
+		summary = appendSecurityModeSettingSummary(summary, securityMode.id, "EntryExitBeepingEnabled", "Entry/Exit Beeping: %")
+		
+		summary = appendSecurityModeSettingSummary(summary, securityMode.id, "EntryExitBeepFrequency", "Beep Frequency: % Seconds")		
+	}
+	
+	summary = appendSecurityModeSettingSummary(summary, securityMode.id, "ConfirmationBeepEnabled", "Beep on Security Mode change: %")
+	
+	summary = appendSecurityModeSettingSummary(summary, securityMode.id, "BeepDevices", "Play beep on %")
+					
+	return summary ?: "(not set)"
 }
 
 def securityModeAdvancedOptionsPage(params) {
@@ -912,6 +934,14 @@ private getSecurityModeSettingName(securityModeId, partialSettingName, attrValue
 	return "${securityModeId}${partialSettingName}"
 }
 
+private appendSecurityModeSettingSummary(summary, securityModeId, partialSettingName, summaryLineFormat) {	
+	getSecurityModeSettings(securityModeId, partialSettingName)?.each {
+		summary += summary ? "\n" : ""
+		summary += summaryLineFormat.replace("%", "${it}")
+	}
+	return summary
+}
+
 private getSecurityModeSettings(securityModeId, partialSettingName) {
 	def result = []
 	partialSettingName = partialSettingName?.capitalize() ?: ""
@@ -942,14 +972,21 @@ private initializeMonitoredSecurityDevices() {
 
 private getArmedSecurityDevices() {
 	def devices = []
+	def excludedDevices = settings["${state.securityMode?.id}ExcludedDevices"]
+	
 	getZones().each { zone ->
 		if (zone.armed) {
 			def zoneSecurityDevices = settings["${zone.settingName}SecurityDevices"]
-
+			
 			if (zoneSecurityDevices) {
-				getAllSecurityDevices().each { device ->
-					if (device.displayName in zoneSecurityDevices) {
-						devices << device
+				getAllSecurityDevices().each { device ->					
+					if (device.displayName in zoneSecurityDevices) {					
+						if (device.displayName in excludedDevices) {
+							logTrace "Ignoring ${device.displayName} because it's in the ${state.securityMode?.name} Exclude List"
+						}
+						else {
+							devices << device
+						}					
 					}
 				}
 			}
