@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 2.0
+ *  Simple Device Viewer v 2.0.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,9 @@
  *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    2.0.1 (09/02/2016)
+ *      - Added Dashboard
  *
  *    2.0 (08/09/2016)
  *      - Added Dashboard
@@ -1373,8 +1376,8 @@ private checkLastEvents() {
 }
 
 private long getLastEventThresholdMS() {
-	def threshold = lastEventThreshold ? lastEventThreshold : 7
-	def unitMS
+	long threshold = lastEventThreshold ? lastEventThreshold : 7
+	long unitMS
 	switch (lastEventThresholdUnit) {
 		case "seconds":
 			unitMS = msSecond()
