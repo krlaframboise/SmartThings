@@ -1373,8 +1373,8 @@ private checkLastEvents() {
 }
 
 private long getLastEventThresholdMS() {
-	def threshold = lastEventThreshold ? lastEventThreshold : 7
-	def unitMS
+	long threshold = lastEventThreshold ? lastEventThreshold : 7
+	long unitMS
 	switch (lastEventThresholdUnit) {
 		case "seconds":
 			unitMS = msSecond()
