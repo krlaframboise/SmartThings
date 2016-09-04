@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell v 1.9
+ *  Aeotec Doorbell v 1.9.1
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
@@ -12,6 +12,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.9.1 (09/04/2016)
+ *    - Bug fix for playing track at volume.
  *
  *  1.9 (08/31/2016)
  *    - !!!!!  BREAKING CHANGES !!!!!
@@ -509,7 +512,7 @@ private startTrack(Map data) {
 	}
 	
 	if (changingVolumeOrRepeat) {
-		result << "delay 300"
+		result << "delay 2000"
 	}
 	
 	result << deviceNotifyTypeSetCmd(false)
@@ -518,7 +521,7 @@ private startTrack(Map data) {
 		result << deviceNotifyTypeGetCmd()
 		result << "delay 450"
 	}
-
+	
 	result << playTrackSetCmd(data.track)
 	result << "delay 450"
 	result << deviceNotifyTypeSetCmd(true)
