@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.0 [ALPHA]
+ *  Simple Zone Monitor v0.0.1 [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -7,6 +7,9 @@
  *  URL to documentation:
  *
  *  Changelog:
+ *
+ *    0.0.1 (09/04/2016)
+ *      - Has basic safety/security monitoring and notifications.
  *
  *  Licensed under the Apache License, Version 2.0 (the
  *  "License"); you may not use this file except in
@@ -56,7 +59,7 @@ definition(
 def mainPage() {
 	dynamicPage(name:"mainPage", uninstall:true, install:true) {
 		if (state.installed) {
-
+					
 			def config = getConfigSummary()
 			if (config.hasAllRequirements) {
 				section("Change Monitoring Status") {
@@ -213,9 +216,6 @@ def getConfigSummary() {
 
 	config.hasAllRequirements = config.hasSafetyOrSecurityDevices && config.hasConfiguredSafetyOrSecurityNotifications && config.hasStatuses && config.hasZones && config.hasStatusZones && config.hasStatuses
 
-	//logTrace("<--- DEVICES --->\n  hasSafetyDevices: ${config.hasSafetyDevices}\n  hasSecurityDevices: ${config.hasSecurityDevices}\n  hasSafetyOrSecurityDevices: ${config.hasSafetyOrSecurityDevices}\n  hasNotificationDevices: ${config.hasNotificationDevices}\n  hasZones: ${config.hasZones}\n  hasRequiredDevices: ${config.hasRequiredDevices}\n  hasAllRequirements: ${config.hasAllRequirements}")
-
-	//logTrace("<--- NOTIFICATIONS --->\n  hasConfiguredSafetyNotifications: ${config.hasConfiguredSafetyNotifications}\n  hasConfiguredSecurityNotifications: ${config.hasConfiguredSecurityNotifications}")
 	state.configSummary = config
 	return config
 }
@@ -237,9 +237,10 @@ private changeStatus(newStatus) {
 
 def statusesPage() {
 	dynamicPage(name:"statusesPage") {
-		section("Choose Monitoring Statuses") {
-			getInfoParagraph("The Monitoring Status determines which zones are armed and which notifications to use when an Intrusion or Safety Alert occurs.")
-									
+		section() {
+			getInfoParagraph("Determines which zones are armed and which notifications to use when an Intrusion or Safety Alert occurs.  The relationships between the Monitoring Statuses and the Armed Zones can be configured from the \"Monitoring Status Zones\" screen.", "What is a Monitoring Status?")
+		}
+		section("Choose Your Monitoring Statuses") {
 			input "selectedStatuses", "enum",
 					title: "Only the Monitoring Statuses you select below will be visible throughout the rest of the SmartApp.",
 					multiple: true,
@@ -248,8 +249,8 @@ def statusesPage() {
 		}
 		section("Required Monitoring Statuses") {
 			getInfoParagraph("Disarmed and Disabled are Monitoring Statuses used throughout the SmartApp, but they're not listed above because they provide additional functionality and can't be hidden.")
-			paragraph "Disarmed: Security Devices won't be monitored, but notifications can still be performed for Safety Devices."
-			paragraph "Disabled: Security and Safety Devices won't be monitored and the Arm/Disarm Triggers are disabled.  When the Monitoring Status is set to Disabled, the only way to change it is through the SmartApp."
+			getInfoParagraph("When the Monitoring Status is set to Disarmed the Security Devices won't be monitored, but notifications can still be performed for the Safety Devices.", "Disarmed Monitoring Status")
+			getInfoParagraph("When the Monitoring Status is set to Disabled, the Security Devices and Safety Devices won't be monitored.  The Arm/Disarm Triggers are also disabled so the only way to change it to a different Status is manually through the SmartApp.", "Disabled Monitoring Status")
 		}
 	}
 }
@@ -520,7 +521,7 @@ def safetyNotificationsPage() {
 					"${it.name}",
 					"statusNotificationsPage",
 					[status: it, notificationType: "Safety"],
-					hasConfiguredNotifications("Safety", it.id) ? "" : "(not set)")
+					getStatusNotificationsSummary("Safety", it?.id))
 			}
 		}
 	}
@@ -539,11 +540,24 @@ def securityNotificationsPage() {
 					"${it.name}",
 					"statusNotificationsPage",
 					[status: it, notificationType: "Security"],
-					hasConfiguredNotifications("Security", it.id) ? "" : "(not set)")
+					getStatusNotificationsSummary("Security", it?.id))
 			}
 		}
 	}
 } 
+
+private getStatusNotificationsSummary(notificationType, statusId) {
+	def summary = ""
+	getStatusNotificationSettings(notificationType, statusId).each {
+		def settingValue = settings["${it.prefName}"]
+		if (settingValue) {
+			summary = summary ? "${summary}\n" : ""
+			summary = "${summary}${it.prefTitle} ${settingValue}"
+		}
+	}				
+	return summary ?: "(not set)"
+}
+
 
 def statusNotificationsPage(params) {
 	dynamicPage(name:"statusNotificationsPage") {
@@ -552,130 +566,37 @@ def statusNotificationsPage(params) {
 			state.params.notificationType = params.notificationType
 		}
 
-		def id = state.params?.status?.id
-		def name = state.params?.status?.name
-		def type = state.params?.notificationType
+		def statusId = state.params?.status?.id
+		def notificationType = state.params?.notificationType
 
-		section("$name - $type Notifications") {
-			getInfoParagraph("Setup $type Notifications for Monitoring Status $name")
-		}
-
-		section("Push Notifications") {
-			input "${id}${type}SendPush", "bool",
-				title: "Send Push Notifications?",
-				defaultValue: false,
-				required: false
-		}
-		section("SMS Notifications") {
-			def smsOptions = getSMSNotificationPhoneNumbers()
-			if (smsOptions) {
-				input "${id}${type}SendSMS", "enum",
-					title: "Send SMS Messages:",
-					multiple: true,
-					required: false,
-					options: smsOptions
+		getStatusNotificationTypeData(notificationType, statusId).each { sect ->
+			section("${sect?.sectionName}") {
+				sect?.subSections.each { subSect ->					
+					if (!subSect?.noOptionsMsg || subSect?.options) {
+						getStatusNotificationSubSectionSettings(subSect)?.each {
+		
+							input "${it.prefName}", "${it.prefType}", 
+								title: "${it.prefTitle}",
+								required: it.required,
+								multiple: it.multiple,
+								submitOnChange: it.submitOnChange,
+								options: it.options
+							
+							it.childPrefs?.each { child ->
+								input "${child.prefName}", "${child.prefType}",
+									title: "${child.prefTitle}",
+									required: child.required,
+									multiple: child.multiple,
+									options: child.options
+							}
+						}
+					}
+					else {
+						paragraph "${subSect?.noOptionsMsg}"
+					}			
+				}
 			}
-			else {
-				getInfoParagraph("You can't use SMS Notifications until you enter at least one \"SMS Phone Number\" into the \"SMS Phone Numbers\" section of the \"Choose Devices\" page.")
-			}
-		}
-		section("Alarm Notifications") {
-			def alarmOptions = getNotificationDeviceNames(null, "Alarm")
-			if (alarmOptions) {
-				input "${id}${type}Siren", "enum",
-					title: "Turn on Siren:",
-					multiple: true,
-					required: false,
-					options: alarmOptions
-				input "${id}${type}Strobe", "enum",
-					title: "Turn on Strobe:",
-					multiple: true,
-					required: false,
-					options: alarmOptions
-				input "${id}${type}SirenStrobe", "enum",
-					title: "Turn on Siren & Strobe:",
-					multiple: true,
-					required: false,
-					options: alarmOptions
-				input "${id}${type}AlarmTurnOffAfter", "number",
-					title: "Turn Off Alarm After: (seconds)",
-					required: false
-			}
-			else {
-				paragraph getNotificationNoDeviceMessage("Alarm Notifications", "Alarm", null)
-			}
-		}
-		section("Switch Notifications") {
-			def switchOptions = getNotificationDeviceNames(null, "Switch")
-			if (switchOptions) {
-				input "${id}${type}SwitchOn", "enum",
-					title: "Turn On:",
-					multiple: true,
-					required: false,
-					options: switchOptions
-				input "${id}${type}SwitchOff", "enum",
-					title: "Turn Off:",
-					multiple: true,
-					required: false,
-					options: switchOptions
-			}
-			else {
-				paragraph getNotificationNoDeviceMessage("Switch Notifications", "Switch", null)
-			}
-		}
-		section("Audio Notifications") {
-			def speakOptions = getNotificationDeviceNames("speak", null)
-			if (speakOptions) {
-				input "${id}${type}Speak", "enum",
-					title: "Speak Zone Message:",
-					multiple: true,
-					required: false,
-					options: speakOptions
-			}
-			else {
-				paragraph getNotificationNoDeviceMessage("Speak Zone Message", "Speech Synthesis", null)
-			}
-			def playTextOptions = getNotificationDeviceNames("playText", null)
-			if (playTextOptions) {
-				input "${id}${type}PlayText", "enum",
-					title: "Play Zone Message as Text:",
-					multiple: true,
-					required: false,
-					options: playTextOptions
-			}
-			else {
-				paragraph getNotificationNoDeviceMessage("Play Zone Message as Text", "Audio Notification or Music Player", "playText")
-			}
-			def playTrackOptions = getNotificationDeviceNames("playTrack", null)
-			if (playTrackOptions) {
-				input "${id}${type}PlayTrack", "enum",
-					title: "Play Zone Message as Track:",
-					multiple: true,
-					required: false,
-					options: playTrackOptions
-			}
-			else {
-				paragraph getNotificationNoDeviceMessage("Play Zone Message as Track", "Audio Notification or Music Player", "playTrack")
-			}
-			if (playTextOptions || playTrackOptions) {
-				input "${id}${type}Volume", "number",
-					title: "Zone Message Volume:",
-					required: false
-			}
-		}
-		section("Photo Notifications") {
-			def photoOptions = getNotificationDeviceNames(null, "Image Capture")
-			if (photoOptions) {
-				input "${id}${type}TakePhoto", "enum",
-					title: "Take Photo:",
-					multiple: true,
-					required: false,
-					options: photoOptions
-			}
-			else {
-				paragraph getNotificationNoDeviceMessage("Photo Notifications", "Image Capture", null)
-			}
-		}
+		}		
 	}
 }
 
@@ -912,16 +833,19 @@ def statusAdvancedOptionsPage(params) {
 	}
 }
 
-private getInfoParagraph(txt) {
-	getParagraph(txt, "info.png")
+private getInfoParagraph(txt, title=null) {
+	getParagraph(txt, "info.png", title)
 }
 
-private getWarningParagraph(txt) {
-	getParagraph(txt, "warning.png")
+private getWarningParagraph(txt, title=null) {
+	getParagraph(txt, "warning.png", title)
 }
 
-private getParagraph(txt, imageName="") {
-	if (imageName) {
+private getParagraph(txt, imageName="", title=null) {
+	if (imageName && title) {
+		paragraph title: "$title", image: getImageUrl(imageName), txt
+	}
+	else if (imageName) {
 		paragraph image: getImageUrl(imageName), txt
 	}
 	else {
@@ -966,6 +890,7 @@ def initialize() {
 	state.params = [:]
 	armZones()
 	initializeMonitoredSecurityDevices()
+	initializeMonitoredSafetyDevices()
 	initializeArmDisarmTriggers()
 }
 
@@ -1035,7 +960,7 @@ def armDisarmSmartHomeMonitorChangedHandler(evt) {
 }
 
 def armDisarmModeChangedHandler(evt) {
-	logInfo("Location Mode changed to ${evt.value}")
+	logDebug("Location Mode changed to ${evt.value}")
 	def newStatus = getStatuses().find {
 		(evt.value in settings["${it.id}ArmDisarmModes"])
 	}
@@ -1045,7 +970,7 @@ def armDisarmModeChangedHandler(evt) {
 }
 
 def armDisarmDeviceEventHandler(evt) {
-	logInfo("${evt.displayName}: ${evt.name} changed to ${evt.value}")
+	logDebug("${evt.displayName}: ${evt.name} changed to ${evt.value}")
 		
 	def type = getArmDisarmDeviceTypes().find { it.attrName == evt.name}
 	if (type) {
@@ -1089,13 +1014,67 @@ private getStatusSettings(statusId, partialSettingName) {
 	return result
 }
 
+private initializeMonitoredSafetyDevices() {
+	def details = "Safety Device Subscriptions:\n"
+	getArmedSafetyDevices()?.sort { it.displayName }?.each { device ->
+		getSafetyDeviceTypes().each { type ->
+			if (device.hasAttribute("${type.alarmAttr}")) {				
+				details += "${device.displayName}: ${type.alarmAttr?.capitalize()} Event\n"
+				subscribe(device, "${type.alarmAttr}.${type.alarmValue}", "safetyEventHandler")
+			}
+		}
+	}
+	logTrace(details)
+}
+
+private getArmedSafetyDevices() {
+	def devices = []
+	def excludedDevices = settings["${state.status?.id}ExcludedDevices"]
+	
+	getZones().each { zone ->
+		if (zone.armed) {
+			def zoneSafetyDevices = settings["${zone.settingName}SafetyDevices"]
+			
+			if (zoneSafetyDevices) {
+				getAllSafetyDevices().each { device ->					
+					if (device.displayName in zoneSafetyDevices) {					
+						if (device.displayName in excludedDevices) {
+							logTrace "Ignoring ${device.displayName} because it's in the ${state.status?.name} Exclude List"
+						}
+						else {
+							devices << device
+						}					
+					}
+				}
+			}
+		}
+	}
+	return devices
+}
+
+private getAllSafetyDevices() {
+	def devices = []
+	getSafetyDeviceTypes().each { deviceType ->
+		def settingValue = settings[deviceType.prefName]
+		if (settingValue) {
+			if (deviceType.multiple) {
+				devices += settingValue
+			}
+			else {
+				devices << settingValue
+			}
+		}
+	}
+	return devices.flatten()
+}
+
 private initializeMonitoredSecurityDevices() {
 	def details = "Security Device Subscriptions:\n"
 	getArmedSecurityDevices()?.sort { it.displayName }?.each { device ->
 		getSecurityDeviceTypes().each { type ->
 			if (device.hasAttribute("${type.alarmAttr}")) {				
 				details += "${device.displayName}: ${type.alarmAttr?.capitalize()} Event\n"
-				subscribe(device, "${type.alarmAttr}.${type.alarmValue}", "security${type.shortName}Handler")
+				subscribe(device, "${type.alarmAttr}.${type.alarmValue}", "securityEventHandler")
 			}
 		}
 	}
@@ -1143,106 +1122,145 @@ private getAllSecurityDevices() {
 	return devices.flatten()
 }
 
-def securityContactHandler(evt) {
-	logInfo("${evt.displayName}: Contact is ${evt.value}")
-	handleSecurityNotifications("Security", evt)
+def safetyEventHandler(evt) {
+	logDebug("${evt.displayName}: ${evt.name?.capitalize()} is ${evt.value}")
+	handleNotifications("Safety", evt)
 }
 
-def securityMotionHandler(evt) {
-	logInfo("${evt.displayName}: Motion is ${evt.value}")
-	handleSecurityNotifications("Security", evt)
+def securityEventHandler(evt) {
+	logDebug("${evt.displayName}: ${evt.name?.capitalize()} is ${evt.value}")
+	handleNotifications("Security", evt)
 }
 
-private handleSecurityNotifications(notificationType, evt) {
+private handleNotifications(notificationType, evt) {
 	def currentZone = findZoneByDevice(notificationType, evt?.device?.displayName)
 
-	log.info "$notificationType Event in Zone ${currentZone?.displayName}"
+	logInfo "$notificationType Event in Zone ${currentZone?.displayName}"
 
 	def currentDeviceType = getDeviceType(notificationType, evt.name, evt.value)
-	def namePrefix = "${state.status.id}${notificationType}"
-	def alarmAutoOffSeconds = settings["${namePrefix}AlarmTurnOffAfter"]
-	def volume = settings["${namePrefix}Volume"] ?: null
-	def message = "${currentZone?.displayName}: ${evt.device?.displayName} - ${evt.name} is ${evt.value}"
+	def eventMsg = "${currentZone?.displayName}: ${evt.device?.displayName} - ${evt.name} is ${evt.value}"
 
-	def zoneMessage = settings["${currentZone?.settingName}${currentDeviceType?.prefName}Message"]
+	def zoneMsg = settings["${currentZone?.settingName}${currentDeviceType?.prefName}Message"]
+		
+	if (!zoneMsg) {
+		logDebug "Using Event Message because the ${evt.name?.capitalize()} Message has not been set for zone ${currentZone?.displayName}."
+		zoneMsg = eventMsg
+	}
 
-	getNotificationSettingNames(notificationType, state.status?.id).each { prefName ->
-		def prefValue = settings[prefName]
-
-		if (prefValue) {
-			if (prefName.endsWith("SendPush")) {
-				logTrace("Sending Push message \"$message\"")
-				sendPush(message)
+	getStatusNotificationSettings(notificationType, state.status?.id). each {
+		def msg = it.prefName?.contains("Zone") ? zoneMsg : eventMsg
+		
+		if (settings["${it.prefName}"]) {			
+			if (it.prefName?.contains("Push")) {				
+				handlePushFeedNotification(it, msg)
 			}
-			else if (prefName.endsWith("SendSMS")) {
-				prefValue.each { phone ->
-					logTrace("Sending SMS message \"$message\" to $phone")
-					sendSms(phone, message)
+			else if (it.prefName?.contains("Sms")) {
+				settings["${it.prefName}"]?.each { phone ->
+					logTrace("Sending SMS message \"$msg\" to $phone")
+					sendSmsMessage(phone, msg)
 				}
 			}
-			else if (!prefName.endsWith("Volume") && !prefName.endsWith("AlarmTurnOffAfter")) {
-				def devices = findNotificationDevices(prefValue)
+			else if (it.isDevice) {
+				def devices = findNotificationDevices(settings["${it.prefName}"])
 				if (devices) {
-					switch (prefName.replace(namePrefix, "")) {
-						case { it in ["Siren", "Strobe", "SirenAndStrobe"] }:
-							if (alarmAutoOffSeconds) {
-								logTrace("Scheduling Alarm to turn off in ${alarmAutoOffSeconds} seconds.")
-								runIn(alarmAutoOffSeconds, turnOffAlarm)
-							}
-						case "Siren":
-							logTrace("Executing siren() on $prefValue")
-							devices*.siren()
-							break
-						case "Strobe":
-							logTrace("Executing strobe(): $prefValue")
-							devices*.strobe()
-							break
-						case "SirenStrobe":
-							logTrace("Executing both on $prefValue")
-							devices*.both()
-							break
-						case "SwitchOn":
-							logTrace("Turning on $prefValue")
-							devices*.on()
-							break
-						case "SwitchOff":
-							logTrace("Turning off $prefValue")
-							devices*.off()
-							break
-						case "Speak":
-							logTrace("Speak \"${zoneMessage}\" on $prefValue")
-							devices*.speak(zoneMessage)
-							break
-						case "PlayText":
-							logTrace("Playing Text \"${zoneMessage}\" on ${prefValue} at volume ${volume}")
-							devices*.playText(zoneMessage, volume)
-							break
-						case "PlayTrack":
-							logTrace("Playing Track \"${zoneMessage}\" on ${prefValue} at volume ${volume}")
-							devices*.playTrack(zoneMessage, volume)
-							break
-						case "TakePhoto":
-							logTrace("Taking Photo with ${prefValue}")
-							devices*.take()
-							break
-						default:
-							logDebug("Unknown Notification - $prefName: $prefValue")
+					if (it.prefName.contains("Speak")) {
+						logTrace "Executing speak($msg) on: ${settings[it.prefName]}"
+						devices*.speak(msg)
 					}
-				}
-				else {
-					logDebug("Unable to find devices for $prefName: $prefValue")
+					else if (it.prefName.contains("Play")) {
+						playNotification(devices, it, msg)
+					}
+					else {
+						logTrace "Executing ${it.cmd}() on : ${settings[it.prefName]}"
+						devices*."${it.cmd}"()
+						
+						if (it.prefName.contains("Alarm")) {
+							initializeAutoOff(it)
+						}
+					}
 				}
 			}
 		}
 	}
 }
 
+private handlePushFeedNotification(notificationSetting, msg) {
+	def options = settings["${notificationSetting.prefName}"]	
+	def push = options?.find { it.contains("Push") }
+	def displayOnFeed = options?.find { it.contains("Display") }
+	def askAlexa = options?.find { it.contains("Alexa") }
+	
+	if (push && displayOnFeed) {
+		logTrace("Sending Push & Displaying on Notification Feed Message: $msg")
+		sendPush(msg)
+	}
+	else if (push) {
+		logTrace("Sending Push Message: $msg")
+		sendPushMessage(msg)
+	}
+	else if (displayOnFeed) {
+		logTrace("Displaying on Notification Feed: $msg")
+		sendNotificationEvent(msg)
+	}
+	if (askAlexa) {
+		logTrace("Sending to Ask Alexa SmartApp: $msg")
+		sendLocationEvent(name: "AskAlexaMsgQueue", value: "Simple Zone Monitor", isStateChange: true, descriptionText: "$msg")
+	}
+}
+
+private initializeAutoOff(notificationSetting) {
+	def value = getChildPrefValue(notificationSetting.childPrefs, 0)
+	if (value && value instanceof Integer) {
+		if (!state.pendingOff) {
+			state.pendingOff = []
+		}
+		int offSecs = (int)value
+		long offTime = (new Date().time + (offSecs * 1000))
+		
+		state.pendingOff << [status: state.status, offTime: offTime, prefName: notificationSetting.prefName]
+		
+		logTrace "Scheduling devices to turn off in ${offSecs} seconds: ${settings[notificationSetting.prefName]}"
+		runIn(offSecs, turnOffDevice, [overwrite: !canSchedule()])
+	}
+}
+
+def turnOffDevice() {
+	def pendingOff = []
+	state.pendingOff?.each {
+		if (it.status?.id == state.status?.id) {
+			if (new Date().time > it.offTime) {
+				logDebug "Turning Off: ${settings[it.prefName]}"
+				findNotificationDevices(settings[it.prefName])*.off()
+			}
+			else {
+				pendingOff << it
+			}
+		}
+	}
+	state.pendingOff = pendingOff
+}
+
+private playNotification(devices, notificationSetting, msg) {
+	def volume = getChildPrefValue(notificationSetting.childPrefs, 0)
+	if (!volume || !(volume instanceof Integer)) {
+		volume = null
+	}	
+	logTrace "${notificationSetting.cmd}($msg, $volume)"
+	devices*."${notificationSetting.cmd}"(msg, volume)
+}
+
+private getChildPrefValue(childPrefs, childIndex) {
+	if (childPrefs && childPrefs.size() >= (childIndex-1)) {
+		if (childPrefs[childIndex]?.prefName) {
+			return settings[childPrefs[childIndex]?.prefName]
+		}		
+	}	
+}
+
 private findZoneByDevice(notificationType, deviceDisplayName) {
 	getZones().find { zone ->
 		if (zone.armed) {
-			log.debug "zettingName: ${zone.settingName}${notificationType}Devices"
 			def zoneDeviceNames = settings["${zone.settingName}${notificationType}Devices"]
-			log.debug "$deviceDisplayName == $zoneDeviceNames"
 			return (deviceDisplayName in zoneDeviceNames)
 		}
 		else {
@@ -1421,7 +1439,7 @@ private getArmDisarmDevices() {
 private getArmDisarmDeviceTypes() {
 	return [
 		[name: "Switches", shortName: "Switch", prefName: "armDisarmSwitches", prefType: "capability.switch", attrName: "switch", attrValues: ["on", "off"]],
-		[name: "Buttons", shortName: "Button", prefName: "armDisarmButtons", prefType: "capability.button", attrName: "button", attrValues: ["pushed", "held"]],
+		//[name: "Buttons", shortName: "Button", prefName: "armDisarmButtons", prefType: "capability.button", attrName: "button", attrValues: ["pushed", "held"]],
 		[name: "Presence Sensors", shortName: "PresenceSensor", prefName: "armDisarmPresenceSensors", prefType: "capability.presenceSensor", attrName: "presence", attrValues: ["present", "not present"]]
 	]
 }
@@ -1453,12 +1471,12 @@ private hasConfiguredNotifications(notificationType, statusId) {
 
 private getStatusNotificationDeviceNames(notificationType, statusId) {
 	def names = []
-	getStatuses().each { status ->
 
+	getStatuses().each { status ->
 		if (!statusId || statusId == status?.id) {
-			getNotificationSettingNames(notificationType, status?.id).each {
-				if (settings["$it"]) {
-					names += settings["$it"]
+			getStatusNotificationSettings(notificationType, status?.id).each {
+				if (settings["${it.prefName}"]) {
+					names += settings["${it.prefName}"]
 				}
 			}
 		}
@@ -1466,10 +1484,16 @@ private getStatusNotificationDeviceNames(notificationType, statusId) {
 	return names
 }
 
-private getNotificationSettingNames(notificationType, statusId) {
-	def prefix = "${statusId}${notificationType}"
-
-	return ["${prefix}SendPush", "${prefix}SendSMS", "${prefix}Siren", "${prefix}Strobe", "${prefix}SirenStrobe", "${prefix}AlarmTurnOffAfter", "${prefix}SwitchOn", "${prefix}SwitchOff", "${prefix}Speak", "${prefix}PlayText", "${prefix}PlayTrack", "${prefix}Volume", "${prefix}TakePhoto"]
+private getStatusNotificationSettings(notificationType, statusId) {
+	def result = []	
+	getStatusNotificationTypeData(notificationType, statusId).each { sect ->
+		sect.subSections.each { subSect ->
+			getStatusNotificationSubSectionSettings(subSect).each {
+				result << it
+			}
+		}
+	}	
+	return result
 }
 
 private getNotificationDeviceNames(cmd, capability) {
@@ -1490,6 +1514,217 @@ private getNotificationDevices() {
 		}
 	}
 	return devices.unique()
+}
+
+private getStatusNotificationSubSectionSettings(subSection) {
+	def result = []
+	
+	if (subSection.prefs) {
+		def childPrefs = subSection.childPrefs?.clone()
+		subSection.prefs.each { pref ->
+			def item = subSection.clone()
+			item.prefName = "${item.prefName.replace('%', pref.name)}"
+			item.prefTitle = "${item.prefTitle.replace('%', pref.name)}"
+			item.cmd = "${pref.cmd}"
+			
+			if (settings["${item.prefName}"]) {
+				item.childPrefs = []
+				subSection.childPrefs?.each {
+					def childPref = it.clone()
+					childPref.prefName = "${it.prefName.replace('%', pref.name)}"
+					childPref.prefTitle = "${it.prefTitle.replace('%', pref.name)}"
+					item.childPrefs << childPref
+				}
+			}
+			else {
+				item.childPrefs = []
+			}
+			result << item
+		}
+	}	
+	else {
+		if (!settings["${subSection.prefName}"]) {
+			subSection.childPrefs = null
+		}
+		result << subSection
+	}		
+	return result
+}
+
+private getStatusNotificationTypeData(notificationType, statusId) {
+	def prefix = "${statusId}${notificationType}"
+	[
+		[sectionName: "Push/Feed Notifications",
+			subSections: [
+				[
+					prefTitle: "Push/Feed % Notifications:",
+					prefName: "${prefix}PushFeed%Msg",
+					prefType: "enum",
+					required: false,
+					submitOnChange: false,
+					multiple: true,
+					options: ["Display on Notification Feed", "Push Message", "Send to Ask Alexa SmartApp"],
+					noOptionsMsg: "",
+					isDevice: false,
+					prefs: [ 
+						[name: "Zone"],
+						[name: "Event"]
+					],
+					childPrefs: []
+				]
+			]
+		],
+		[sectionName: "SMS Notifications",
+			subSections: [
+				[
+					prefTitle: "Send SMS with % Message to:",
+					prefName: "${prefix}Sms%Msg",
+					prefType: "enum",
+					required: false,
+					submitOnChange: false,
+					multiple: true,
+					options: getSMSNotificationPhoneNumbers(),
+					noOptionsMsg: "You can't use SMS Notifications until you enter at least one \"SMS Phone Number\" into the \"SMS Phone Numbers\" section of the \"Choose Devices\" page.",
+					isDevice: false,
+					prefs: [ 
+						[name: "Zone"],
+						[name: "Event"]
+					],
+					childPrefs: []
+				]
+			]
+		],
+		[sectionName: "Alarm Notifications",
+			subSections: [
+				[
+					prefTitle: "Turn on %:",
+					prefName: "${prefix}Alarm%",
+					prefType: "enum",
+					required: false,
+					submitOnChange: true,
+					multiple: true,
+					options: getNotificationDeviceNames(null, "Alarm"),
+					noOptionsMsg: getNotificationNoDeviceMessage("Alarm Notifications", "Alarm", null),
+					isDevice: true,
+					prefs: [ 
+						[name: "Siren", cmd: "siren"],
+						[name: "Strobe", cmd: "strobe"],
+						[name: "Both", cmd: "both"]
+					],
+					childPrefs: [
+						[prefTitle: "Turn % off after (seconds):",
+						prefName: "${prefix}Alarm%Off",
+						prefType: "number",
+						required: false,
+						multiple: false,
+						options: null]
+					]
+				]
+			]
+		],
+		[sectionName: "Switch Notifications",
+			subSections: [
+				[
+					prefTitle: "Turn %:",
+					prefName: "${prefix}Switch%",
+					prefType: "enum",
+					required: false,
+					submitOnChange: false,
+					multiple: true,
+					options: getNotificationDeviceNames(null, "Switch"),
+					noOptionsMsg: getNotificationNoDeviceMessage("Switch Notifications", "Switch", null),
+					isDevice: true,
+					prefs: [ 
+						[name: "On", cmd: "on"],
+						[name: "Off", cmd: "off"]
+					],
+					childPrefs: []
+				]
+			]
+		],
+		[sectionName: "Audio Notifications",
+			subSections: [
+				[
+					prefTitle: "Speak % Message on:",
+					prefName: "${prefix}Speak%",
+					prefType: "enum",
+					required: false,
+					submitOnChange: false,
+					multiple: true,
+					options: getNotificationDeviceNames("speak", null),
+					noOptionsMsg: getNotificationNoDeviceMessage("Speak Message", "Speech Synthesis", null),
+					isDevice: true,
+					prefs: [ 
+						[name: "Zone", cmd: "speak"]
+					],
+					childPrefs: []
+				],
+				[
+					prefTitle: "Play % Message as Text on:",
+					prefName: "${prefix}Play%Text",
+					prefType: "enum",
+					required: false,
+					submitOnChange: true,
+					multiple: true,
+					options: getNotificationDeviceNames("playText", null),
+					noOptionsMsg: getNotificationNoDeviceMessage("Play Message as Text", "Audio Notification or Music Player", "playText"),
+					isDevice: true,
+					prefs: [ 
+						[name: "Zone", cmd: "playText"]
+					],
+					childPrefs: [
+						[prefTitle: "Play Text Volume:",
+						prefName: "${prefix}Play%TextVolume",
+						prefType: "number",
+						required: false,
+						multiple: false,
+						options: null]
+					]
+				],
+				[
+					prefTitle: "Play % Message as Track on:",
+					prefName: "${prefix}Play%Track",
+					prefType: "enum",
+					required: false,
+					submitOnChange: true,
+					multiple: true,
+					options: getNotificationDeviceNames("playTrack", null),
+					noOptionsMsg: getNotificationNoDeviceMessage("Play Message as Track", "Audio Notification or Music Player", "playTrack"),
+					isDevice: true,
+					prefs: [ 
+						[name: "Zone", cmd: "playTrack"]
+					],
+					childPrefs: [
+						[prefTitle: "Play Track Volume:",
+						prefName: "${prefix}Play%TrackVolume",
+						prefType: "number",
+						required: false,
+						multiple: false,
+						options: null]
+					]
+				]
+			]
+		],
+		[sectionName: "Photo Notifications",
+			subSections: [
+				[
+					prefTitle: "% Photo with:",
+					prefName: "${prefix}%Photo",
+					prefType: "enum",
+					required: false,					
+					submitOnChange: false,
+					multiple: true,
+					options: getNotificationDeviceNames(null, "Image Capture"),
+					noOptionsMsg: getNotificationNoDeviceMessage("Photo Notifications", "Image Capture", null),
+					isDevice: true,
+					prefs: [ 
+						[name: "Take", cmd: "take"]
+					],
+					childPrefs: []
+				]
+			]
+		]
+	]
 }
 
 private getNotificationDeviceTypes() {
