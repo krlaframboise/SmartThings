@@ -65,17 +65,6 @@ I don't think SmartThings developers should charge for the things they create, b
 
 <hr />
 
-<h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/aeon-labs-multifunction-doorbell.src">Aeon Labs Multifunction Doorbell</a></h3>
-
-<ul>
-<li>DTH for the Aeon Labs Aeotec Doorbell that provides all the functionality of the Aeotec Doorbell DTH, but also provides features like supporting Music Player capability and allowing you to pass it custom commands using the playText/SpeakText commands.<br /></li>
-<li>Allows you to make the doorbell button silent so you can use it for other things like changing modes or a panic button.  It supports the Presence Sensor capability and reports not present when it stops responding.  This feature was added so I'd be able to detect if I lost power or my internet goes down.<br /></li>
-
-<li><a href="https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
-</ul>
-
-<hr />
-
 <h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/aeon-labs-multifunction-siren.src">Aeon Labs Multifunction Siren</a></h3>
 
 <ul>
