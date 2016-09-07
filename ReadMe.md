@@ -56,9 +56,7 @@ I don't think SmartThings developers should charge for the things they create, b
 <h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/aeotec-doorbell.src">Aeon Labs Aeotec Doorbell</a></h3>
 
 <ul>
-<li>DTH for the Aeon Labs Aeotec Doorbell that allows you to use the device as a Switch, Alarm or Tone Generator. Implements custom commands to allow you to play tracks by track number and change the volume on the fly.<br /></li>
-
-<li>This is a stripped down version of the Aeon Labs Multifunction Doorbell DTH and I've submitted this version to be published, but I haven't heard anything yet.<br /></li>
+<li>DTH for the Aeon Labs Aeotec Doorbell that allows you to use the device as a Switch, Alarm, Tone Generator, Music Player, and Audio Notification. Implements custom commands to allow you to play tracks by track number and change the volume on the fly.<br /></li>
 
 <li><a href="https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 </ul>
