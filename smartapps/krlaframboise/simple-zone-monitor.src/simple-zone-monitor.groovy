@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.1 [ALPHA]
+ *  Simple Zone Monitor v0.0.2 [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -7,6 +7,12 @@
  *  URL to documentation:
  *
  *  Changelog:
+ *
+ *    0.0.2 (09/08/2016)
+ *      - Added CoRE Pistons as Arming/Disarming trigger.
+ *      - Changed safety monitoring so that it's unrelated to zones being armed.
+ *      - Bug fix for SHM arm/disarm trigger.
+ *      - Other UI enhancements.
  *
  *    0.0.1 (09/04/2016)
  *      - Has basic safety/security monitoring and notifications.
@@ -45,7 +51,6 @@ definition(
 	page(name:"zonesPage", title: "Zones")
 	page(name:"editZonePage", title: "Zone Details")
 	page(name:"statusZonesPage", title: "Monitoring Status Zones")
-	page(name:"editStatusZonesPage", title: "Monitoring Status Zones")
 	//page(name:"refreshZonesPage", title: "Refresh Zones")
 	page(name:"safetyNotificationsPage", title: "Safety Notifications")
 	page(name:"securityNotificationsPage", title: "Security Notifications")
@@ -86,6 +91,12 @@ def mainPage() {
 					section("Armed Zones") {
 						getParagraph(armedZones ?: "None", "armed.png")
 					}
+				}
+				section("Zone Activity") {
+					getParagraph("Not Implemented")
+					getPageLink("clearActivityLink",
+						"Clear Zone Activity (Not Implemented)",
+						"clearZoneActivityPage")
 				}
 				section("Settings") {
 					getPageLink("settingsPageLink",
@@ -230,9 +241,14 @@ def changeStatusPage(params) {
 }
 
 private changeStatus(newStatus) {
-	logInfo("Changing Monitoring Status to ${newStatus?.name}")
-	state.status = newStatus
-	initialize()
+	if (state.status?.id != newStatus.id) {
+		logInfo("Changing Monitoring Status to ${newStatus?.name}")
+		state.status = newStatus
+		initialize()
+	}
+	else {
+		logDebug("Did not change Monitoring Status because it was already set to ${newStatus.name}")
+	}
 }
 
 def statusesPage() {
@@ -258,6 +274,7 @@ def statusesPage() {
 def devicesPage() {
 	dynamicPage(name:"devicesPage") {
 		section("Safety Devices to Monitor") {
+			getInfoParagraph("Safety devices that support multiple capabilities may appear in multiple Safety device fields, but you only need to select each device once.")
 			getSafetyDeviceTypes().each {
 				input "${it.prefName}", "${it.prefType}",
 					title: "${it.name}:",
@@ -266,6 +283,7 @@ def devicesPage() {
 			}
 		}
 		section("Security Devices to Monitor") {
+			getInfoParagraph("Security that support multiple capabilities may appear in multiple Security device fields, but you only need to select each device once.")
 			getSecurityDeviceTypes().each {
 				input "${it.prefName}", "${it.prefType}",
 					title: "${it.name}:",
@@ -274,6 +292,7 @@ def devicesPage() {
 			}
 		}
 		section("Arming/Disarming Trigger Devices") {
+			getInfoParagraph("Arming/Disarming devices that support multiple capabilities may appear in multiple Arming/Disarming device fields, but you only need to select each device once.")
 			getArmDisarmDeviceTypes().each {
 				input "${it.prefName}", "${it.prefType}",
 					title: "${it.name}:",
@@ -282,6 +301,7 @@ def devicesPage() {
 			}
 		}
 		section("Notification Devices") {
+			getInfoParagraph("Notification devices that support multiple capabilities may appear in multiple Notification device fields, but you only need to select each device once.")
 			getNotificationDeviceTypes().each {
 				input "${it.prefName}", "${it.prefType}",
 					title: "${it.name}:",
@@ -355,7 +375,7 @@ def zonesPage() {
 			getPageLink("addZoneLink",
 				"Add New Zone",
 				"editZonePage",
-				[zone: null])
+				[zone: getFirstEmptyZone()])
 			getZones(false).each {
 				hasZones = true
 				getPageLink("${it.settingName}Link",
@@ -405,7 +425,14 @@ private getZoneSummary(zone) {
 
 def editZonePage(params) {
 	dynamicPage(name:"editZonePage") {
-		def zone = params?.zone ?: getFirstEmptyZone()
+		if (params?.zone) {
+			state.params.zone = params.zone
+		}
+		else if (!state.params.zone) {
+			state.params.zone = getFirstEmptyZone()
+		}
+		def zone = state.params.zone
+				
 		if (zone) {
 			section() {
 				input "${zone.settingName}", "text",
@@ -416,38 +443,55 @@ def editZonePage(params) {
 					required: false,
 					options: getZoneGroupNames()
 			}
-			section("Safety Settings") {
-				input "${zone.settingName}SafetyDevices", "enum",
-					title: "Safety Devices:",
-					multiple: true,
-					required: false,
-					options: getSafetyDeviceNames()
-
-				getSafetyDeviceTypes().each {
-					def attr = it.alarmAttr
-					if (getSafetyDevices().find { it.hasAttribute(attr) }) {
-						input "${zone.settingName}${it.prefName}Message", "text",
-							title: "${it.shortName} Notification Message:",
-							required: false
-					}
-				}
-			}
 			section("Security Settings") {
+				getInfoParagraph("Select the devices that should be monitored when this zone is armed.  If you need more control over which devices in a zone get armed for a specific Monitoring Status, you can use the 'Excluded Devices' field in the Advanced Settings page.")
+				
 				input "${zone.settingName}SecurityDevices", "enum",
 					title: "Security Devices:",
 					multiple: true,
 					required: false,
+					submitOnChange: true,
 					options: getSecurityDeviceNames()
-
-				getSecurityDeviceTypes().each {
-					def attr = it.alarmAttr
-					if (getSecurityDevices().find { it.hasAttribute(attr) }) {
-						input "${zone.settingName}${it.prefName}Message", "text",
-							title: "${it.shortName} Notification Message:",
+				
+				if (settings["${zone.settingName}SecurityDevices"]) {					
+					if (settings["${zone.settingName}SecurityDevices"]?.size() > 1) {
+						getInfoParagraph("To reduce false alarms you can optionally require an event from more than one of the zone's devices within a specified amount of time.\n\n(NOT IMPLEMENTED)") 
+						input "${zone.settingName}MultiEventSeconds", "number",
+							title: "Require multiple events within: (seconds)",
 							required: false
+					}
+					
+					getInfoParagraph("The Security Notification Message fields allow you to setup a custom message to use when an intrusion is detected in this zone.  The message field can also be used by Audio Notification devices which allows you to speak the message or use the message as a track #.")
+					getSecurityDeviceTypes().each {
+						def attr = it.alarmAttr
+						if (getSecurityDevices().find { it.hasAttribute(attr) }) {
+							input "${zone.settingName}${it.prefName}Message", "text",
+								title: "${it.shortName} Notification Message:",
+								required: false
+						}
 					}
 				}
 			}
+			section("Safety Settings") {
+				getInfoParagraph("Safety devices are monitored regardless of the Zone's Armed Status.")
+				input "${zone.settingName}SafetyDevices", "enum",
+					title: "Safety Devices:",
+					multiple: true,
+					required: false,
+					submitOnChange: true,
+					options: getSafetyDeviceNames()
+				if (settings["${zone.settingName}SafetyDevices"]) {
+					getInfoParagraph("The Safety Notification Messages are used the same way as the Security Notification Messages")
+					getSafetyDeviceTypes().each {
+						def attr = it.alarmAttr
+						if (getSafetyDevices().find { it.hasAttribute(attr) }) {
+							input "${zone.settingName}${it.prefName}Message", "text",
+								title: "${it.shortName} Notification Message:",
+								required: false
+						}
+					}
+				}
+			}			
 			if (zone.name) {
 				section() {
 					paragraph "You can Delete this Zone by clearing the Zone Name field and tapping Done."
@@ -455,6 +499,7 @@ def editZonePage(params) {
 			}
 		}
 		else {
+			// It wasn't able to find an empty zone so display warning message.
 			section() {
 				getWarningParagraph("You can only have 100 Zones")
 			}
@@ -466,44 +511,13 @@ def statusZonesPage() {
 	dynamicPage(name:"statusZonesPage") {
 		section() {
 			getInfoParagraph("Specify zones that are armed for the different Monitoring Statuses.")
-			getStatuses(true).each {
-				getPageLink("${it.id}StatusZonesLink",
-					"${it.name}",
-					"editStatusZonesPage",
-					[status: it],
-					getStatusZonesSummary(it))
+			getStatuses(false).each {
+				input "${it.id}StatusZones", "enum",
+					title: "${it.name}:",
+					multiple: true,
+					required: false,
+					options: getZoneNames()
 			}
-		}
-	}
-}
-
-private getStatusZonesSummary(status) {
-		def summary = ""
-	
-	summary = appendStatusSettingSummary(summary, status.id, "StatusZones", "%")
-		
-	return summary ?: "(not set)"
-}
-
-def editStatusZonesPage(params) {
-	dynamicPage(name:"editStatusZonesPage") {
-		if (params?.status) {
-			state.params.status = params.status
-		}
-
-		def id = state.params?.status?.id
-		def name = state.params?.status?.name
-
-		section("${name} - Zones") {
-			getInfoParagraph("Select the Zones that should be armed while the Monitoring Status is ${name}.")
-		}
-		
-		section() {
-			input "${id}StatusZones", "enum",
-				title: "Select Zones:",
-				multiple: true,
-				required: false,
-				options: getZoneNames()
 		}
 	}
 }
@@ -633,6 +647,12 @@ private getStatusArmDisarmSummary(status) {
 		summary += "Location Mode: $settingValue"
 	}
 	
+	settingValue = getStatusSettings(status.id, "ArmDisarmPistons")
+	if (settingValue) {
+		summary += summary ? "\n" : ""
+		summary += "CoRE Pistons: $settingValue"
+	}
+	
 	getArmDisarmDeviceTypes().each { type ->			
 		type.attrValues.each { attrValue ->
 			def settingName = "${type.prefName?.capitalize()}${attrValue?.replace(' ', '')?.capitalize()}"
@@ -676,9 +696,18 @@ def statusArmDisarmPage(params) {
 				options: getSmartHomeMonitorStates().collect{ it.name },
 				submitOnChange: true
 		}
+		
+		if (state.pistons) {
+			section("CoRE Pistons") {
+				input "${id}ArmDisarmPistons", "enum",
+					title: "When any of these CoRE Pistons change to true:",
+					multiple: true,
+					required: false,
+					options: state.pistons
+			}
+		}
 
 		if (hasArmDisarmDevices()) {
-
 			section("Switches") {
 				input "${id}ArmDisarmSwitchesOn", "enum",
 					title: "When Switch Turns On",
@@ -787,7 +816,7 @@ def statusAdvancedOptionsPage(params) {
 				options: getSecurityDeviceNames(),
 				submitOnChange: true
 		}
-		section("Entry/Exit Delay") {
+		section("Entry/Exit Delay (NOT IMPLEMENTED)") {
 			input "${id}EntryExitDevices", "enum",
 				title: "Use Delay for these Devices:",
 				multiple: true,
@@ -800,7 +829,7 @@ def statusAdvancedOptionsPage(params) {
 					required: true
 			}
 		}
-		section("Beep Options") {
+		section("Beep Options (NOT IMPLEMENTED)") {
 			def beepDeviceNames = getNotificationDeviceNames("beep", null)
 			if (beepDeviceNames) {
 				input "${id}EntryExitBeepingEnabled", "bool",
@@ -887,11 +916,22 @@ def updated() {
 def initialize() {
 	unsubscribe()
 	unschedule()
+	subscribe(location, "CoRE", coreHandler)
 	state.params = [:]
 	armZones()
-	initializeMonitoredSecurityDevices()
-	initializeMonitoredSafetyDevices()
-	initializeArmDisarmTriggers()
+	if (state.status?.id != "disabled") {
+		initializeMonitoredSecurityDevices()
+		initializeMonitoredSafetyDevices()
+		initializeArmDisarmTriggers()
+	}
+	else {
+		logDebug "No devices are being monitored and the Monitoring Status change triggers are disabled because the current Monitoring Status is \"Disabled\"."
+	}
+}
+
+def coreHandler(evt) {
+	logTrace "Updating CoRE Piston List"
+	state.pistons = evt.jsonData?.pistons
 }
 
 def armZones() {
@@ -924,7 +964,12 @@ private initializeArmDisarmTriggers() {
 		details += "Location Mode Changes\n"
 		subscribe(location, "mode", armDisarmModeChangedHandler)
 	}
-
+	
+	getStatusSettings(null, "ArmDisarmPistons").each {
+		details += "CoRE Piston: ${it}\n"
+		subscribe(location, "piston.${it}", pistonHandler)
+	}
+		
 	getArmDisarmDevices().each { device ->
 		getArmDisarmDeviceTypes().each { type ->
 			def canSubscribe = false
@@ -948,15 +993,27 @@ private initializeArmDisarmTriggers() {
 
 def armDisarmSmartHomeMonitorChangedHandler(evt) {
 	def shmState = getSmartHomeMonitorStates().find { it.id == evt.value }
-	logInfo("SHM changed to ${shmState?.name}")
+	logDebug("SHM changed to ${shmState?.name}")
 	
 	def newStatus = getStatuses().find {
-		(status?.name in settings["${it.id}ArmDisarmSmartHomeMonitorStates"])
+		(shmState?.name in settings["${it.id}ArmDisarmSmartHomeMonitorStates"])
 	}
 	
 	if (newStatus) {
 		changeStatus(newStatus)
 	}	
+}
+
+def pistonHandler(evt) {
+	if (evt.data?.contains("\"state\":true") && !evt.data?.contains("\"restricted\":true")) {
+		logDebug "Piston ${evt.value} changed to True"
+		def newStatus = getStatuses().find {
+			(evt.value in settings["${it.id}ArmDisarmPistons"])
+		}
+		if (newStatus) {
+			changeStatus(newStatus)
+		}
+	}
 }
 
 def armDisarmModeChangedHandler(evt) {
@@ -1015,8 +1072,8 @@ private getStatusSettings(statusId, partialSettingName) {
 }
 
 private initializeMonitoredSafetyDevices() {
-	def details = "Safety Device Subscriptions:\n"
-	getArmedSafetyDevices()?.sort { it.displayName }?.each { device ->
+	def details = "Safety Device Subscriptions:\n"	
+	getAllZoneSafetyDevices()?.sort { it.displayName }?.each { device ->
 		getSafetyDeviceTypes().each { type ->
 			if (device.hasAttribute("${type.alarmAttr}")) {				
 				details += "${device.displayName}: ${type.alarmAttr?.capitalize()} Event\n"
@@ -1027,45 +1084,21 @@ private initializeMonitoredSafetyDevices() {
 	logTrace(details)
 }
 
-private getArmedSafetyDevices() {
+private getAllZoneSafetyDevices() {
 	def devices = []
-	def excludedDevices = settings["${state.status?.id}ExcludedDevices"]
-	
-	getZones().each { zone ->
-		if (zone.armed) {
-			def zoneSafetyDevices = settings["${zone.settingName}SafetyDevices"]
-			
-			if (zoneSafetyDevices) {
-				getAllSafetyDevices().each { device ->					
-					if (device.displayName in zoneSafetyDevices) {					
-						if (device.displayName in excludedDevices) {
-							logTrace "Ignoring ${device.displayName} because it's in the ${state.status?.name} Exclude List"
-						}
-						else {
-							devices << device
-						}					
-					}
+	def excludedDevices = settings["${state.status?.id}ExcludedDevices"]	
+	getZones().each { zone ->			
+		def zoneSafetyDevices = settings["${zone.settingName}SafetyDevices"]
+		
+		if (zoneSafetyDevices) {
+			getSafetyDevices().each { device ->					
+				if (device.displayName in zoneSafetyDevices) {
+					devices << device
 				}
 			}
 		}
 	}
-	return devices
-}
-
-private getAllSafetyDevices() {
-	def devices = []
-	getSafetyDeviceTypes().each { deviceType ->
-		def settingValue = settings[deviceType.prefName]
-		if (settingValue) {
-			if (deviceType.multiple) {
-				devices += settingValue
-			}
-			else {
-				devices << settingValue
-			}
-		}
-	}
-	return devices.flatten()
+	return devices.unique()
 }
 
 private initializeMonitoredSecurityDevices() {
@@ -1259,7 +1292,7 @@ private getChildPrefValue(childPrefs, childIndex) {
 
 private findZoneByDevice(notificationType, deviceDisplayName) {
 	getZones().find { zone ->
-		if (zone.armed) {
+		if (zone.armed || notificationType == "Safety") {
 			def zoneDeviceNames = settings["${zone.settingName}${notificationType}Devices"]
 			return (deviceDisplayName in zoneDeviceNames)
 		}
@@ -1554,7 +1587,7 @@ private getStatusNotificationSubSectionSettings(subSection) {
 private getStatusNotificationTypeData(notificationType, statusId) {
 	def prefix = "${statusId}${notificationType}"
 	[
-		[sectionName: "Push/Feed Notifications",
+		[sectionName: "Push/Feed ${notificationType} Notifications",
 			subSections: [
 				[
 					prefTitle: "Push/Feed % Notifications:",
@@ -1574,7 +1607,7 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 				]
 			]
 		],
-		[sectionName: "SMS Notifications",
+		[sectionName: "SMS ${notificationType} Notifications",
 			subSections: [
 				[
 					prefTitle: "Send SMS with % Message to:",
@@ -1594,7 +1627,7 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 				]
 			]
 		],
-		[sectionName: "Alarm Notifications",
+		[sectionName: "Alarm ${notificationType} Notifications",
 			subSections: [
 				[
 					prefTitle: "Turn on %:",
@@ -1622,7 +1655,7 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 				]
 			]
 		],
-		[sectionName: "Switch Notifications",
+		[sectionName: "Switch ${notificationType} Notifications",
 			subSections: [
 				[
 					prefTitle: "Turn %:",
@@ -1642,7 +1675,7 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 				]
 			]
 		],
-		[sectionName: "Audio Notifications",
+		[sectionName: "Audio ${notificationType} Notifications",
 			subSections: [
 				[
 					prefTitle: "Speak % Message on:",
@@ -1705,7 +1738,7 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 				]
 			]
 		],
-		[sectionName: "Photo Notifications",
+		[sectionName: "Photo ${notificationType} Notifications",
 			subSections: [
 				[
 					prefTitle: "% Photo with:",
