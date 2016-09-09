@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.2 [ALPHA]
+ *  Simple Zone Monitor v0.0.3 [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -7,6 +7,9 @@
  *  URL to documentation:
  *
  *  Changelog:
+ *
+ *    0.0.3 (09/09/2016)
+ *      - Implemented Entry/Exit Delay feature.
  *
  *    0.0.2 (09/08/2016)
  *      - Added CoRE Pistons as Arming/Disarming trigger.
@@ -242,13 +245,15 @@ def changeStatusPage(params) {
 
 private changeStatus(newStatus) {
 	if (state.status?.id != newStatus.id) {
+		state.delayedEvents = []
 		logInfo("Changing Monitoring Status to ${newStatus?.name}")
-		state.status = newStatus
+		state.status = newStatus		
 		initialize()
 	}
 	else {
-		logDebug("Did not change Monitoring Status because it was already set to ${newStatus.name}")
+		logDebug("Did not change Monitoring Status because it was already set to ${newStatus.name}")		
 	}
+	state.status.time = new Date().time
 }
 
 def statusesPage() {
@@ -816,7 +821,7 @@ def statusAdvancedOptionsPage(params) {
 				options: getSecurityDeviceNames(),
 				submitOnChange: true
 		}
-		section("Entry/Exit Delay (NOT IMPLEMENTED)") {
+		section("Entry/Exit Delay") {
 			input "${id}EntryExitDevices", "enum",
 				title: "Use Delay for these Devices:",
 				multiple: true,
@@ -918,6 +923,7 @@ def initialize() {
 	unschedule()
 	subscribe(location, "CoRE", coreHandler)
 	state.params = [:]
+	state.delayedEvents = []
 	armZones()
 	if (state.status?.id != "disabled") {
 		initializeMonitoredSecurityDevices()
@@ -1162,16 +1168,59 @@ def safetyEventHandler(evt) {
 
 def securityEventHandler(evt) {
 	logDebug("${evt.displayName}: ${evt.name?.capitalize()} is ${evt.value}")
-	handleNotifications("Security", evt)
+	
+	if (evt.displayName in settings["${state.status?.id}EntryExitDevices"]) {
+		handleEntryExitNotification(evt)
+	}
+	else {
+		handleNotifications("Security", evt)
+	}
+}
+
+private handleEntryExitNotification(evt) {
+	int delaySeconds = 0
+	long statusTime = 0
+	def value = settings["${state.status?.id}EntryExitDelay"]
+	
+	if (value && value instanceof Integer) {
+		delaySeconds = (int)value		
+	}
+	if (state.status?.time && state.status?.time instanceof Long) {
+		statusTime = (long)state.status.time
+	}
+	
+	if (delaySeconds > 0 && statusTime > 0) {
+		if ((((new Date().time) - statusTime) / 1000) < delaySeconds) {
+			logTrace("Ignoring security event from ${evt.displayName} because it's an entry/exit device and the Monitoring Status has changed within ${delaySeconds} seconds.")
+		}
+		else {
+			logTrace("Delaying Security event from ${evt.displayName} for ${delaySeconds} seconds because it's an entry/exit device.")
+
+			state.delayedEvents << [name: evt.name, value: evt.value, displayName: evt.displayName]			
+			runIn(delaySeconds, delayedSecurityEventHandler, [overwrite: false])
+		}
+	}
+	else {
+		// Invalid delay time so status change time so handle normally.
+		logDebug "${evt.displayName} is an entry/exit device, but handling it like a normal device because of invalid delay time or status change time.  (Entry Exit Delay: ${delaySeconds}, Monitoring Status Changed: ${statusTime})"
+		handleNotifications("Security", evt)
+	}
+}
+
+def delayedSecurityEventHandler() {
+	state.delayedEvents?.each {
+		handleNotifications("Security", it)
+	}
+	state.delayedEvents = []
 }
 
 private handleNotifications(notificationType, evt) {
-	def currentZone = findZoneByDevice(notificationType, evt?.device?.displayName)
+	def currentZone = findZoneByDevice(notificationType, evt?.displayName)
 
 	logInfo "$notificationType Event in Zone ${currentZone?.displayName}"
 
 	def currentDeviceType = getDeviceType(notificationType, evt.name, evt.value)
-	def eventMsg = "${currentZone?.displayName}: ${evt.device?.displayName} - ${evt.name} is ${evt.value}"
+	def eventMsg = "${currentZone?.displayName}: ${evt.displayName} - ${evt.name} is ${evt.value}"
 
 	def zoneMsg = settings["${currentZone?.settingName}${currentDeviceType?.prefName}Message"]
 		
