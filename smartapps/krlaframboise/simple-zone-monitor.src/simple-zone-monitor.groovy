@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.3 [ALPHA]
+ *  Simple Zone Monitor v0.0.4 [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,12 +8,20 @@
  *
  *  Changelog:
  *
+ *    0.0.4 (09/10/2016)
+ *      - Implemented Monitor Status Beep Confirmation
+ *      - Implemented Entry/Exit Delay Beeping
+ *        (requires device with beep() command)
+ *      - Added backup handler that runs every minute and
+ *        performs any scheduled tasks that are overdue.
+ *
  *    0.0.3 (09/09/2016)
  *      - Implemented Entry/Exit Delay feature.
  *
  *    0.0.2 (09/08/2016)
  *      - Added CoRE Pistons as Arming/Disarming trigger.
- *      - Changed safety monitoring so that it's unrelated to zones being armed.
+ *      - Changed safety monitoring so that it's unrelated
+ *        to zones being armed.
  *      - Bug fix for SHM arm/disarm trigger.
  *      - Other UI enhancements.
  *
@@ -243,17 +251,86 @@ def changeStatusPage(params) {
 	}
 }
 
-private changeStatus(newStatus) {
-	if (state.status?.id != newStatus.id) {
-		state.delayedEvents = []
-		logInfo("Changing Monitoring Status to ${newStatus?.name}")
-		state.status = newStatus		
-		initialize()
+private changeStatus(newStatus) {	
+	state.delayedEvents = []
+	state.entryEventTime = null
+	state.beepStatus = null
+	logInfo("Changing Monitoring Status to ${newStatus?.name}")
+	state.status = newStatus
+	state.status.time = new Date().time
+	initialize()
+	playConfirmationBeep()
+	initializeEntryExitBeeping()
+}
+
+private playConfirmationBeep() {
+	def selectedBeepDevices = settings["${state.status.id}ConfirmationBeepDevices"]	
+	if (selectedBeepDevices) {
+		findNotificationDevices(selectedBeepDevices)*.beep()
+	}
+}
+
+private initializeEntryExitBeeping() {
+	if (getCurrentEntryExitDelay() && getCurrentEntryExitBeepDeviceNames()) {
+		logTrace "Starting entry/exit beeping"
+		state.beepStatus = state.status
+		playEntryExitBeep()
 	}
 	else {
-		logDebug("Did not change Monitoring Status because it was already set to ${newStatus.name}")		
+		state.beepStatus = null
+	}	
+}
+
+def entryExitBeepHandler(evt) {
+	def beepFrequency = getCurrentEntryExitBeepFrequency()
+	if (state.beepStatus && beepFrequency) {
+		runIn(beepFrequency, playEntryExitBeep)
 	}
-	state.status.time = new Date().time
+}
+
+def playEntryExitBeep() {
+	def startTime = state.entryEventTime ?: state.status?.time
+	
+	if (state.beepStatus?.id == state.status.id && !timeElapsed(startTime, getCurrentEntryExitDelay())) {
+		logTrace("Executing entry/exit beep on ${getCurrentEntryExitBeepDeviceNames()}")
+		
+		findNotificationDevices(getCurrentEntryExitBeepDeviceNames())*.beep()
+		
+		sendLocationEvent(name: "Simple Zone Monitor", value: "Entry/Exit Beep", isStateChange: true)	
+	}
+	else {
+		state.beepStatus = null
+	}
+}
+
+private int getCurrentEntryExitDelay() {
+	return safeToInt(settings["${state.status?.id}EntryExitDelay"], 0)	
+}
+
+private int getCurrentEntryExitBeepFrequency() {
+	return safeToInt(settings["${state.status.id}EntryExitBeepFrequency"], 0)
+}
+
+private int safeToInt(value, int defaultValue) {
+	if (value && value instanceof Integer) {
+		return (int)value		
+	}
+	else {
+		return defaultValue
+	}
+}
+
+private long safeToLong(value, defaultValue) {
+	if (value && value instanceof Long) {
+		return (long)value		
+	}
+	else {
+		return (long)safeToInt(value, defaultValue)
+	}
+}
+
+private getCurrentEntryExitBeepDeviceNames() {
+	return settings["${state.status.id}EntryExitBeepDevices"]
 }
 
 def statusesPage() {
@@ -785,20 +862,19 @@ private getStatusAdvancedOptionsSummary(status) {
 	def summary = ""
 	
 	summary = appendStatusSettingSummary(summary, status.id, "ExcludedDevices", "Exclude: %")
+	
+	if (settings["${status.id}EntryExitDevices"]) {
+		def entryExitDelay = settings["${status.id}EntryExitDelay"]
 		
-	def entryExitDelay = settings["${status.id}EntryExitDelay"]
-	if (entryExitDelay) {
 		summary = appendStatusSettingSummary(summary, status.id, "EntryExitDevices", "Delayed ${entryExitDelay}s: %")
-		
-		summary = appendStatusSettingSummary(summary, status.id, "EntryExitBeepingEnabled", "Entry/Exit Beeping: %")
-		
-		summary = appendStatusSettingSummary(summary, status.id, "EntryExitBeepFrequency", "Beep Frequency: % Seconds")		
+			
+		summary = appendStatusSettingSummary(summary, status.id, "EntryExitBeepDevices", "Play Entry/Exit Beeping on %")
+	
+		summary = appendStatusSettingSummary(summary, status.id, "EntryExitBeepFrequency", "Entry/Exit Beep Frequency: %s")		
 	}
 	
-	summary = appendStatusSettingSummary(summary, status.id, "ConfirmationBeepEnabled", "Beep on Monitoring Status change: %")
+	summary = appendStatusSettingSummary(summary, status.id, "ConfirmationBeepDevices", "Play Confirmation Beep on %")
 	
-	summary = appendStatusSettingSummary(summary, status.id, "BeepDevices", "Play beep on %")
-					
 	return summary ?: "(not set)"
 }
 
@@ -809,8 +885,9 @@ def statusAdvancedOptionsPage(params) {
 		}
 		def id = state.params?.status?.id
 		def name = state.params?.status?.name
-
-	section("${name} - Advanced Options") {
+		def beepDeviceNames = getNotificationDeviceNames("beep", null)
+	
+		section("${name} - Advanced Options") {
 			getInfoParagraph("Configure Advanced Options for Monitoring Status ${name}.")
 		}
 		section("Exclude Devices") {
@@ -821,7 +898,7 @@ def statusAdvancedOptionsPage(params) {
 				options: getSecurityDeviceNames(),
 				submitOnChange: true
 		}
-		section("Entry/Exit Delay") {
+		section("Entry/Exit Options") {
 			input "${id}EntryExitDevices", "enum",
 				title: "Use Delay for these Devices:",
 				multiple: true,
@@ -832,38 +909,37 @@ def statusAdvancedOptionsPage(params) {
 				input "${id}EntryExitDelay", "number",
 					title: "Delay Length (seconds):",
 					required: true
+				if (beepDeviceNames) {
+					input "${id}EntryExitBeepDevices", "enum",
+						title: "Beep on these devices:",
+						multiple: true,
+						required: false,
+						options: beepDeviceNames,
+						submitOnChange: true
+					if (settings["${id}EntryExitBeepDevices"]) {						
+						input "${id}EntryExitBeepFrequency", "number",
+							title: "Beep Frequency (seconds):",
+							required: true
+					}
+				}
+				else {
+					getInfoParagraph("Entry/Exit Beeping can't be used because none of the selected Notification Devices support the 'beep' command")
+				}
 			}
 		}
-		section("Beep Options (NOT IMPLEMENTED)") {
-			def beepDeviceNames = getNotificationDeviceNames("beep", null)
-			if (beepDeviceNames) {
-				input "${id}EntryExitBeepingEnabled", "bool",
-					title: "Beep during entry/exit delay?",
-					defaultValue: false,
+		
+		section("Confirmation Beep") {
+			if (beepDeviceNames) {			
+				input "${id}ConfirmationBeepDevices", "enum",
+					title: "Beep with these devices when Monitoring Status changes to ${name}:",
+					multiple: true,
 					required: false,
-					submitOnChange: true
-				input "${id}ConfirmationBeepEnabled", "bool",
-					title: "Beep when Monitoring Status changes?",
-					defaultValue: false,
-					required: false,
-					submitOnChange: true
-				if (settings?."${id}ConfirmationBeepEnabled" || settings?."${id}EntryExitBeepingEnabled") {
-					input "${id}BeepDevices", "enum",
-						title: "Beep Devices:",
-						multiple: true,
-						required: true,
-						options: beepDeviceNames
-				}
-				if (settings?."${id}EntryExitBeepingEnabled") {
-					input "${id}EntryExitBeepFrequency", "number",
-						title: "Entry/Exit Beep Frequency (seconds):",
-						required: true
-				}
+					options: beepDeviceNames
 			}
 			else {
-				getInfoParagraph("None of the selected Notification Devices support the 'beep' command")
+				getInfoParagraph("Confirmation Beep can't be used because none of the selected Notification Devices support the 'beep' command")
 			}
-		}
+		}		
 	}
 }
 
@@ -914,16 +990,21 @@ def installed() {
 
 def updated() {	
 	initialize()
-
+	
 	logDebug("State Used: ${(state.toString().length() / 100000)*100}%")
 }
 
 def initialize() {
 	unsubscribe()
 	unschedule()
+	
+	schedule("23 0/1 * * * ?", scheduledTaskBackupHandler)
+	
+	subscribe(location, "Simple Zone Monitor.Entry/Exit Beep", entryExitBeepHandler)
 	subscribe(location, "CoRE", coreHandler)
 	state.params = [:]
 	state.delayedEvents = []
+	state.entryEventTime = null
 	armZones()
 	if (state.status?.id != "disabled") {
 		initializeMonitoredSecurityDevices()
@@ -932,6 +1013,18 @@ def initialize() {
 	}
 	else {
 		logDebug "No devices are being monitored and the Monitoring Status change triggers are disabled because the current Monitoring Status is \"Disabled\"."
+	}
+}
+
+def scheduledTaskBackupHandler() {
+	if (state.pendingOff) {
+		logTrace("Scheduled Task Backup: Executing turnOffDevice()")
+		turnOffDevice()
+	}
+	
+	if (state.entryEventTime && timeElapsed(state.entryEventTime, (getCurrentEntryExitDelay() + 10))) {
+		logTrace("Scheduled Task Backup: Executing delayedSecurityEventHandler()")
+		delayedSecurityEventHandler()
 	}
 }
 
@@ -1122,6 +1215,7 @@ private initializeMonitoredSecurityDevices() {
 
 private getArmedSecurityDevices() {
 	def devices = []
+	def excludedMsg = ""
 	def excludedDevices = settings["${state.status?.id}ExcludedDevices"]
 	
 	getZones().each { zone ->
@@ -1132,7 +1226,7 @@ private getArmedSecurityDevices() {
 				getAllSecurityDevices().each { device ->					
 					if (device.displayName in zoneSecurityDevices) {					
 						if (device.displayName in excludedDevices) {
-							logTrace "Ignoring ${device.displayName} because it's in the ${state.status?.name} Exclude List"
+							excludedMsg += "\n${device.displayName}"
 						}
 						else {
 							devices << device
@@ -1141,6 +1235,9 @@ private getArmedSecurityDevices() {
 				}
 			}
 		}
+	}
+	if (excludedMsg) {
+		logTrace "The following devices are not being monitored because they're in the ${state.status?.name} Excluded Device List:${excludedMsg}"
 	}
 	return devices
 }
@@ -1178,26 +1275,27 @@ def securityEventHandler(evt) {
 }
 
 private handleEntryExitNotification(evt) {
-	int delaySeconds = 0
-	long statusTime = 0
-	def value = settings["${state.status?.id}EntryExitDelay"]
-	
-	if (value && value instanceof Integer) {
-		delaySeconds = (int)value		
-	}
-	if (state.status?.time && state.status?.time instanceof Long) {
-		statusTime = (long)state.status.time
-	}
+	int delaySeconds = getCurrentEntryExitDelay()
+	long statusTime = safeToLong(state.status?.time, 0)
 	
 	if (delaySeconds > 0 && statusTime > 0) {
-		if ((((new Date().time) - statusTime) / 1000) < delaySeconds) {
-			logTrace("Ignoring security event from ${evt.displayName} because it's an entry/exit device and the Monitoring Status has changed within ${delaySeconds} seconds.")
+		if (!timeElapsed(statusTime, delaySeconds)) {
+			logDebug("Ignoring security event from ${evt.displayName} because it's an entry/exit device and the Monitoring Status has changed within ${delaySeconds} seconds.")
 		}
 		else {
-			logTrace("Delaying Security event from ${evt.displayName} for ${delaySeconds} seconds because it's an entry/exit device.")
-
-			state.delayedEvents << [name: evt.name, value: evt.value, displayName: evt.displayName]			
-			runIn(delaySeconds, delayedSecurityEventHandler, [overwrite: false])
+			state.delayedEvents << [name: evt.name, value: evt.value, displayName: evt.displayName]
+			if (!state.entryEventTime) {
+				
+				logTrace("Delaying security event from ${evt.displayName} for ${delaySeconds} seconds because it's an entry/exit device.")
+				
+				state.entryEventTime = new Date().time			
+				initializeEntryExitBeeping()
+				runIn(delaySeconds, delayedSecurityEventHandler)
+				
+			}
+			else {
+				logTrace("Delaying security event from ${evt.displayName} because it's an entry/exit device.")				
+			}			
 		}
 	}
 	else {
@@ -1208,10 +1306,23 @@ private handleEntryExitNotification(evt) {
 }
 
 def delayedSecurityEventHandler() {
-	state.delayedEvents?.each {
-		handleNotifications("Security", it)
+	if (timeElapsed(state.entryEventTime, getCurrentEntryExitDelay())) {
+		state.delayedEvents?.each {
+			handleNotifications("Security", it)
+		}
+		state.delayedEvents = []
+		state.entryEventTime = null
+		state.beepStatus = null
+	}	
+}
+
+private timeElapsed(startTime, delaySeconds) {
+	if (!startTime) {
+		return true
 	}
-	state.delayedEvents = []
+	else {
+		return ((((new Date().time) - safeToLong(startTime, 0)) / 1000) >= safeToInt(delaySeconds, 0))
+	}
 }
 
 private handleNotifications(notificationType, evt) {
@@ -1225,8 +1336,8 @@ private handleNotifications(notificationType, evt) {
 	def zoneMsg = settings["${currentZone?.settingName}${currentDeviceType?.prefName}Message"]
 		
 	if (!zoneMsg) {
-		logDebug "Using Event Message because the ${evt.name?.capitalize()} Message has not been set for zone ${currentZone?.displayName}."
-		zoneMsg = eventMsg
+		logDebug "Using default zone message because the ${evt.name?.capitalize()} Message has not been set for zone ${currentZone?.displayName}."
+		zoneMsg = "${notificationType} event detected in Zone ${currentZone?.displayName} by ${evt.displayName}."
 	}
 
 	getStatusNotificationSettings(notificationType, state.status?.id). each {
@@ -1271,6 +1382,7 @@ private handlePushFeedNotification(notificationSetting, msg) {
 	def push = options?.find { it.contains("Push") }
 	def displayOnFeed = options?.find { it.contains("Display") }
 	def askAlexa = options?.find { it.contains("Alexa") }
+	def askAlexaUnit = notificationSetting.prefName?.contains("Security") ? "Security" : "Safety"
 	
 	if (push && displayOnFeed) {
 		logTrace("Sending Push & Displaying on Notification Feed Message: $msg")
@@ -1286,7 +1398,7 @@ private handlePushFeedNotification(notificationSetting, msg) {
 	}
 	if (askAlexa) {
 		logTrace("Sending to Ask Alexa SmartApp: $msg")
-		sendLocationEvent(name: "AskAlexaMsgQueue", value: "Simple Zone Monitor", isStateChange: true, descriptionText: "$msg")
+		sendLocationEvent(name: "AskAlexaMsgQueue", value: "Simple Zone Monitor", isStateChange: true, descriptionText: "$msg", unit: "${askAlexaUnit}")
 	}
 }
 
