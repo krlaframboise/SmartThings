@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell v 1.9.1
+ *  Aeotec Doorbell v 1.9.2
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
@@ -12,6 +12,10 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.9.2 (09/10/2016)
+ *    - Bug fix that uses default volume if the volume
+ *      argument is 0.
  *
  *  1.9.1 (09/04/2016)
  *    - Bug fix for playing track at volume.
@@ -463,6 +467,9 @@ private getTextFromTTSUrl(URI) {
 
 //Plays the track specified as the message at the specified volume.
 def playText(message, volume=null) {
+	if ("${volume}" == "0") {
+		volume = null
+	}
 	logTrace "Executing playText($message, $volume)"
 	return startTrack([track: message, volume: volume])
 }
