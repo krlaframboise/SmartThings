@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.8.3
+ *  Aeon Labs Multifunction Siren v 1.8.4
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -12,6 +12,10 @@
  *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *	1.8.4 (09/10/2016)
+ *    - Added setting for starting beep schedule when beep
+ *      is executed.
  *
  *	1.8.3 (08/24/2016)
  *    - Bug Fixes
@@ -172,6 +176,11 @@ metadata {
 		input "beepStopAfter", "number", 
 			title: "Stop Scheduled Beep After (seconds)", 
 			defaultValue: 60,
+			displayDuringSetup: true,
+			required: false
+		input "useBeepScheduleForBeep", "bool",
+			title: "Play Beep Schedule for Beep Command?",
+			defaultValue: false,
 			displayDuringSetup: true,
 			required: false
 		input "useBeepDelayedAlarm", "bool",
@@ -590,8 +599,13 @@ private startDelayedAlarm(sound, volume, duration, delay) {
 // Plays the default beep.
 def beep() {
 	logTrace "beep()"
-	changeStatus("beep")
-	playDefaultBeep()	
+	if (!settings.useBeepScheduleForBeep) {
+		changeStatus("beep")
+		playDefaultBeep()	
+	}
+	else {
+		startBeep()
+	}
 }
 
 private playDefaultBeep() {
