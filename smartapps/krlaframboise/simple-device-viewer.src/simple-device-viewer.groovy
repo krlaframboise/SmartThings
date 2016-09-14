@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 2.0.1
+ *  Simple Device Viewer v 2.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,86 +9,18 @@
  *
  *  Changelog:
  *
+ *    2.1 (09/13/2016)
+ *      - Added Ask Alexa Notification Option.
+ *      - Reversed order of Events screen.
+ *      - Changed Sort By Value default settings to true.
+ *      - Added 3 more icons for battery levels.
+ *
  *    2.0.1 (09/02/2016)
- *      - Added Dashboard
+ *      - Bug fix due to platform issue.
  *
  *    2.0 (08/09/2016)
  *      - Added Dashboard
  *      - Added exclude device option for all capabilities.
- *
- *    1.9.2 (05/31/2016)
- *      - Increased default polling interval to 4 hours.
- *      - Added polling disclaimer.
- *
- *    1.9.1 (05/18/2016)
- *      - Added Event/State Caching
- *      - Added accuracy level for retrieving events so it can
- *        check between 50 and 1,250 events based on accuracy
- *        and performance needs.
- *      - Added option to exclude devices from polling.
- *
- *    1.8.2 (05/10/2016)
- *      - Fixed bug with new feature that caused duplicates
- *        on the last event screen.
- *      - Added option to poll devices supporting poll command.
- *      - Added icons for Switches, Smoke/Carbon, Water,
- *        Alarms, Normal Battery, Normal Last Event
- *      - Added Light Device Type so that switches selected
- *        from that preference will appear on the Lights
- *        screen instead of the Switches screen.
- *      - Modified the Last Event check so that it only
- *        uses DEVICE events because polling the device
- *        creates an APP COMMAND event.
- *      - Added workaround for the 50 event limit so the N/A
- *        last event time should no longer be a problem.
- *
- *    1.7.1 (05/04/2016)
- *      - Added optional check for last event time that
- *        detects activity from hidden events.
- *      - Fixed bug with new feature that caused last event
- *        to display N/A when they fall outside the threshold.
- *
- *    1.6.3 (04/26/2016)
- *      - Fixed condensed view bug introduced in version 1.5.
- *      - Fixed duplicate notifications in message list bug.
- *      - Documented public methods for publication.
- *      - Accidentally removed modes option in one of the last
- *        test versions so reverting back to version before those
- *        changes.
- *
- *    1.5.1 (03/27/2016)
- *      - Added Icons for Contact Sensors, Motion Sensors, 
- *        Presence Sensors, Locks, and Switches.
- *      - Added Exclude Device options for Battery, Temp,
- *        and Last Event Notifications.
- *      - Bug fix for random N/A notifications.
- *
- *    1.4.4 (03/22/2016)
- *      - Added Temp, Battery, and Last Event notifications.
- *      - Added Condensed View option.
- *      - Created Custom Icon
- *      - Changed title formatting of capability screens.
- *      - Turned off unnecessary logging
- *      - Fixed bug caused by decimals in numeric fields.
- *      - Fixed bug caused by settings object that has 
- *        the property ID, but is not a device. (3/22)
- *
- *    1.3 (03/19/2016)
- *      - Added "Setup Thresholds" section that allows you
- *        to specify battery low level, temp high/low, and
- *        last event time.
- *      - Added threshold icons and value sorting for screens
- *        Temp, Battery, and Last Events.
- *      - Added "Other Settings" section that allows you to
- *        enable/disable icons and value sorting.
- *
- *    1.2 (03/17/2016)
- *      - Added page headings
- *      - Added ability to toggle switches from Switches screen.
- *      - Added "Turn Off All Switches" link to Switches page.
- *
- *    1.1 (03/17/2016)
- *      - Initial Release
  *
  *  Licensed under the Apache License, Version 2.0 (the
  *  "License"); you may not use this file except in
@@ -294,6 +226,10 @@ def notificationsPage() {
 		section ("Notification Settings") {
 			paragraph "When notifications are enabled, notifications will be sent when the device value goes above or below the threshold specified in the Threshold Settings."				
 			
+			input "createAskAlexaMsg", "bool",
+				title: "Create Ask Alexa Message?", 
+				required: false,
+				defaultValue: false			
 			input "sendPush", "bool",
 				title: "Send Push Notifications?", 
 				required: false
@@ -411,15 +347,15 @@ def otherSettingsPage() {
 		section ("Sorting") {
 			input "batterySortByValue", "bool",
 				title: "Sort by Battery Value?",
-				defaultValue: false,
+				defaultValue: true,
 				required: false
 			input "tempSortByValue", "bool",
 				title: "Sort by Temperature Value?",
-				defaultValue: false,
+				defaultValue: true,
 				required: false
 			input "lastEventSortByValue", "bool",
 				title: "Sort by Last Event Value?",
-				defaultValue: false,
+				defaultValue: true,
 				required: false			
 		}	
 		section ("Last Event Accuracy") {
@@ -552,7 +488,12 @@ def lastEventPage() {
 				page: "refreshLastEventPage",
 				required: false
 			)
-			getParagraphs(getAllDeviceLastEventListItems()?.unique())			
+			
+			def items = getAllDeviceLastEventListItems()?.unique()
+			if (settings.lastEventSortByValue) {
+				items?.each { it.sortValue = (it.sortValue * -1) }
+			}				
+			getParagraphs(items)
 		}		
 	}
 }
@@ -1066,7 +1007,26 @@ private String getSmokeCO2Image(currentState) {
 }
 
 private String getBatteryImage(batteryLevel) {
-	def status = batteryIsLow(batteryLevel) ? "low" : "normal"
+	def status 
+	if (batteryIsLow(batteryLevel)) {
+		status = "low"
+	}
+	else {
+		switch (safeToInteger(batteryLevel, 100)) {
+			case { it == 100}:
+				status = "normal"
+				break
+			case { it >= 75 }:
+				status = "normal-75"
+				break
+			case { it >= 50 }:
+				status = "normal-50"
+				break
+			case { it >= 25 }:
+				status = "normal-25"
+				break
+		}	
+	}
 	return  getImagePath("${status}-battery.png")	
 }
 
@@ -1470,6 +1430,9 @@ private sendNotificationMessage(message) {
 	if (sendPush || recipients || phone) {
 		state.currentCheckSent = state.currentCheckSent + 1
 		logInfo "Sending $message"
+		if (settings.createAskAlexaMsg) {
+			sendLocationEvent(name: "AskAlexaMsgQueue", value: "Simple Device Viewer", isStateChange: true, descriptionText: "${message.replace(' - ', ' ')}", unit: "SDV")
+		}
 		if (sendPush) {
 			sendPush(message)
 		}
@@ -1701,7 +1664,11 @@ def api_dashboard() {
 		footer = api_getPageFooter(null, currentUrl)
 		
 		if (params.capability == "events") {
-			html = api_getItemsHtml(getAllDeviceLastEventListItems()?.unique())
+			def items = getAllDeviceLastEventListItems()?.unique()
+			if (settings.lastEventSortByValue) {
+				items?.each { it.sortValue = (it.sortValue * -1) }
+			}
+			html = api_getItemsHtml(items)
 		}
 		else if (cap) {
 			html = api_getCapabilityHtml(cap, currentUrl, params.deviceId, params.cmd)
@@ -1845,6 +1812,7 @@ private api_getItemsHtml(listItems) {
 	def html = ""		
 	
 	listItems.sort { it.sortValue }
+	
 	listItems.unique().each {				
 		html += api_getItemHtml(it.title, it.image, null, it.deviceId, it.status)
 	}
@@ -1912,7 +1880,7 @@ private api_getJS() {
 private api_getCSS() {
 	// return "<link rel=\"stylesheet\" href=\"${getResourcesUrl()}/dashboard.css\">"
 	
-	def css = "body {	font-size: 100%;	text-align:center;	font-family:Helvetica,arial,sans-serif;	margin:0 0 10px 0;	background-color: #000000;}header, nav, section, footer {	display: block;	text-align:center;}header {	margin: 0 0 0 0;	padding: 4px 0 4px 0;	width: 100%;		font-weight: bold;	font-size: 100%;	background-color:#808080;	color:#ffffff;}nav.top{	padding-top: 0;}nav.bottom{	padding: 4px 4px 4px 4px;}section {	padding: 10px 20px 40px 20px;}.command-results {	background-color: #d6e9c6;	margin: 0 20px 20px 20px;	padding: 10px 20px 10px 20px;	border-radius: 100px;}.command-results h1 {	margin: 0 0 0 0;}.command-results ul {	list-style: none;}.command-results li {	line-height: 1.5;	font-size: 120%;}.dashboard-url {	display:block;	width:100%;	font-size: 80%;}.device-id-none{	background-color: #d6e9c6 !important;}.refresh {	background-image: url('refresh.png');}.alarm, .alarm-both {	background-image: url('alarm-both.png');}.alarm-siren {	background-image: url('alarm-siren.png');}.alarm-strobe {	background-image: url('alarm-strobe.png');}.alarm-off {	background-image: url('alarm-off.png');}.battery, .normal-battery {	background-image: url('normal-battery.png');}.low-battery {	background-image: url('low-battery.png');}.open {	background-image: url('open.png');}.contactSensor, .closed {	background-image: url('closed.png');}.light, .light-on {	background-image: url('light-on.png');}.light-off {	background-image: url('light-off.png');}.lock, .locked{	background-image: url('locked.png');}.unlocked {	background-image: url('unlocked.png');}.motionSensor, .motion {	background-image: url('motion.png');}.no-motion {	background-image: url('no-motion.png');}.presenceSensor, .present {	background-image: url('present.png');}.not-present {	background-image: url('not-present.png');}.smokeDetector, .smoke-detected {	background-image: url('smoke-detected.png');}.smoke-clear {	background-image: url('smoke-clear.png');}.switch, .switch-on {	background-image: url('switch-on.png');}.switch-off {	background-image: url('switch-off.png');}.temperatureMeasurement, .normal-temp {	background-image: url('normal-temp.png');}.low-temp {	background-image: url('low-temp.png');}.high-temp {	background-image: url('high-temp.png');}.waterSensor, .dry {	background-image: url('dry.png');}.wet {	background-image: url('wet.png');}.ok {	background-image: url('ok.png');}.warning {	background-image: url('warning.png');}.device-item {	width: 200px;	display: inline-block;	background-color: #ffffff;	margin: 2px 2px 2px 2px;	padding: 4px 4px 4px 4px;	border-radius: 5px;}.item-image-text {	position: relative;	height: 75px;	width:100%;	display: table;}.item-image {	display: table-cell;	position: relative;	width: 35%;	border: 1px solid #cccccc;	border-radius: 5px;	background-repeat:no-repeat;	background-size:auto 70%;	background-position: center bottom;}.item-status {	width: 100%;	font-size:75%;	display:inline-block;}.item-text {	display: table-cell;	width: 65%;	position: relative;	vertical-align: middle;}a.item-text {	color:#000000;}.item-text.wait, .menu-item a.wait{	color:#ffffff;	background-image:url('wait.gif');	background-repeat:no-repeat;	background-position: center bottom;}.item-text.wait{	background-size:auto 100%;}.label {	display:inline-block;	vertical-align: middle;	line-height:1.4;	font-weight: bold;	padding-left:4px;}.menu-item {	display: inline-block;	background-color:#808080;	padding:4px 4px 4px 4px;	border:1px solid #000000;	border-radius: 5px;	font-weight:bold;}.menu-item .item-image{	display:table-cell;	background-size:auto 45%;	height:50px;	width:75px;	border:0;	border-radius:0;}.menu-item .item-image.switch,.menu-item .item-image.light,.menu-item .item-image.battery,.menu-item .item-image.alarm,.menu-item .item-image.refresh {	background-size:auto 60%;}.menu-item a, .menu-item a:link, .menu-item a:hover, .menu-item a:active,.menu-item a:visited {	color: #ffffff;		text-decoration:none;}.menu-item:hover, .menu-item:hover a, .menu-item a:hover { 	background-color:#ffffff;	color:#000000 !important;}.menu-item span {	width: 100%;	font-size:75%;	display:inline-block;}@media (max-width: 639px){	.device-item {		width:125px;	}	.item-image-text {		height: 65px;	}	.item-image {		background-size: auto 60%;	}	.item-text .label {		font-size: 80%;		line-height: 1.2;	}}"
+	def css = "body {	font-size: 100%;	text-align:center;	font-family:Helvetica,arial,sans-serif;	margin:0 0 10px 0;	background-color: #000000;}header, nav, section, footer {	display: block;	text-align:center;}header {	margin: 0 0 0 0;	padding: 4px 0 4px 0;	width: 100%;		font-weight: bold;	font-size: 100%;	background-color:#808080;	color:#ffffff;}nav.top{	padding-top: 0;}nav.bottom{	padding: 4px 4px 4px 4px;}section {	padding: 10px 20px 40px 20px;}.command-results {	background-color: #d6e9c6;	margin: 0 20px 20px 20px;	padding: 10px 20px 10px 20px;	border-radius: 100px;}.command-results h1 {	margin: 0 0 0 0;}.command-results ul {	list-style: none;}.command-results li {	line-height: 1.5;	font-size: 120%;}.dashboard-url {	display:block;	width:100%;	font-size: 80%;}.device-id-none{	background-color: #d6e9c6 !important;}.refresh {	background-image: url('refresh.png');}.alarm, .alarm-both {	background-image: url('alarm-both.png');}.alarm-siren {	background-image: url('alarm-siren.png');}.alarm-strobe {	background-image: url('alarm-strobe.png');}.alarm-off {	background-image: url('alarm-off.png');}.battery, .normal-battery {	background-image: url('normal-battery.png');}.normal-75-battery {	background-image: url('normal-75-battery.png');}.normal-50-battery {	background-image: url('normal-50-battery.png');}.normal-25-battery {	background-image: url('normal-25-battery.png');}.low-battery {	background-image: url('low-battery.png');}.open {	background-image: url('open.png');}.contactSensor, .closed {	background-image: url('closed.png');}.light, .light-on {	background-image: url('light-on.png');}.light-off {	background-image: url('light-off.png');}.lock, .locked{	background-image: url('locked.png');}.unlocked {	background-image: url('unlocked.png');}.motionSensor, .motion {	background-image: url('motion.png');}.no-motion {	background-image: url('no-motion.png');}.presenceSensor, .present {	background-image: url('present.png');}.not-present {	background-image: url('not-present.png');}.smokeDetector, .smoke-detected {	background-image: url('smoke-detected.png');}.smoke-clear {	background-image: url('smoke-clear.png');}.switch, .switch-on {	background-image: url('switch-on.png');}.switch-off {	background-image: url('switch-off.png');}.temperatureMeasurement, .normal-temp {	background-image: url('normal-temp.png');}.low-temp {	background-image: url('low-temp.png');}.high-temp {	background-image: url('high-temp.png');}.waterSensor, .dry {	background-image: url('dry.png');}.wet {	background-image: url('wet.png');}.ok {	background-image: url('ok.png');}.warning {	background-image: url('warning.png');}.device-item {	width: 200px;	display: inline-block;	background-color: #ffffff;	margin: 2px 2px 2px 2px;	padding: 4px 4px 4px 4px;	border-radius: 5px;}.item-image-text {	position: relative;	height: 75px;	width:100%;	display: table;}.item-image {	display: table-cell;	position: relative;	width: 35%;	border: 1px solid #cccccc;	border-radius: 5px;	background-repeat:no-repeat;	background-size:auto 70%;	background-position: center bottom;}.item-status {	width: 100%;	font-size:75%;	display:inline-block;}.item-text {	display: table-cell;	width: 65%;	position: relative;	vertical-align: middle;}a.item-text {	color:#000000;}.item-text.wait, .menu-item a.wait{	color:#ffffff;	background-image:url('wait.gif');	background-repeat:no-repeat;	background-position: center bottom;}.item-text.wait{	background-size:auto 100%;}.label {	display:inline-block;	vertical-align: middle;	line-height:1.4;	font-weight: bold;	padding-left:4px;}.menu-item {	display: inline-block;	background-color:#808080;	padding:4px 4px 4px 4px;	border:1px solid #000000;	border-radius: 5px;	font-weight:bold;}.menu-item .item-image{	display:table-cell;	background-size:auto 45%;	height:50px;	width:75px;	border:0;	border-radius:0;}.menu-item .item-image.switch,.menu-item .item-image.light,.menu-item .item-image.battery,.menu-item .item-image.alarm,.menu-item .item-image.refresh {	background-size:auto 60%;}.menu-item a, .menu-item a:link, .menu-item a:hover, .menu-item a:active,.menu-item a:visited {	color: #ffffff;		text-decoration:none;}.menu-item:hover, .menu-item:hover a, .menu-item a:hover { 	background-color:#ffffff;	color:#000000 !important;}.menu-item span {	width: 100%;	font-size:75%;	display:inline-block;}@media (max-width: 639px){	.device-item {		width:125px;	}	.item-image-text {		height: 65px;	}	.item-image {		background-size: auto 60%;	}	.item-text .label {		font-size: 80%;		line-height: 1.2;	}}"
 	
 	css = css.replace("url('", "url('${getResourcesUrl()}/")
 	
