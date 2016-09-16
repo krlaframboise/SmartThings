@@ -364,7 +364,7 @@ def settingsPage() {
 					"Arming/Disarming",
 					"armDisarmPage")
 				getPageLink("advancedOptionsLink",
-					"Delays / Beeping / Device Exclusions",
+					"Entry/Exit Delays & Beeping",
 					"advancedOptionsPage")
 			}
 			else {
