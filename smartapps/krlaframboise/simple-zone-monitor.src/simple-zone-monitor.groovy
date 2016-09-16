@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.6 [ALPHA]
+ *  Simple Zone Monitor v0.0.7 [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -7,6 +7,14 @@
  *  URL to documentation:
  *
  *  Changelog:
+ *
+ *    0.0.7 (09/16/2016)
+ *      - CoRE resends piston state every 3 hours so added
+ *        check to ignore events older than 60 seconds.
+ *      - Moved Excluded Devices into Monitoring Status Zones
+ *        section since arming zones and excluding devices
+ *        go together.
+ *      - Added icons for the activity section.
  *
  *    0.0.6 (09/15/2016)
  *      - Some code cleanup
@@ -79,6 +87,7 @@ definition(
 	page(name:"zonesPage", title: "Zones")
 	page(name:"editZonePage", title: "Zone Details")
 	page(name:"statusZonesPage", title: "Monitoring Status Zones")
+	page(name:"editStatusZonesPage", title: "Monitoring Status Zones")
 	//page(name:"refreshZonesPage", title: "Refresh Zones")
 	page(name:"safetyNotificationsPage", title: "Safety Notifications")
 	page(name:"securityNotificationsPage", title: "Security Notifications")
@@ -158,7 +167,7 @@ private getActivityContent() {
 			"activityDetailsPage",
 			[activityType:"Safety Alerts"],
 			getActivitySummary(state.safetyAlerts),
-			"info.png")
+			"safety-alert.png")
 	}
 	if (state.securityAlerts) {
 		getPageLink("securityEventsPageLink",
@@ -166,7 +175,7 @@ private getActivityContent() {
 			"activityDetailsPage",
 			[activityType:"Security Alerts"],
 			getActivitySummary(state.securityAlerts),
-			"warning.png")
+			"security-alert.png")
 	}
 	if (state.statusHistory) {
 		getPageLink("statusHistoryPageLink",
@@ -174,12 +183,15 @@ private getActivityContent() {
 			"activityDetailsPage",
 			[activityType: "Monitoring Status History"],
 			"",
-			"info.png")
+			"status-history.png")
 	}
 	if (state.safetyAlerts || state.securityAlerts || state.statusHistory) {		
 		getPageLink("clearActivityLink",
 			"Clear All Activity",
-			"clearActivityPage")
+			"clearActivityPage",
+			null,
+			"",
+			"remove.png")
 	}
 	else {
 		getParagraph("No Activity")
@@ -235,7 +247,9 @@ def activityDetailsPage(params) {
 				getPageLink("clearActivityLink",
 					"Clear ${activityType}",
 					"clearActivityPage",
-					[activityType:"${activityType}"])
+					[activityType:"${activityType}"],					
+					"",
+					"remove.png")
 			}
 			else {
 				getParagraph("No Activity")
@@ -252,13 +266,15 @@ private getStatusActivityParagraph(activity) {
 	getParagraph("${getFormattedLocalTime(activity.statusChanged)}\n${activity?.details}", "", "${activity.status?.name}")
 }
 
-def getFormattedLocalTime(utcDateString) {
-	def localTZ = TimeZone.getTimeZone(location.timeZone.ID)		
-	def utcDate = Date.parse(
-		"yyyy-MM-dd'T'HH:mm:ss", 
-		utcDateString.replace("+00:00", "")).time
-	def localDate = new Date(utcDate + localTZ.getOffset(utcDate))	
+def getFormattedLocalTime(utcDateString) {	
+	def localTZ = TimeZone.getTimeZone(location.timeZone.ID)
+	def utcTime = getDateFromUtcString(utcDateString).time
+	def localDate = new Date(utcTime + localTZ.getOffset(utcTime))	
 	return localDate.format("MM/dd/yyyy hh:mm:ss a")
+}
+
+private getDateFromUtcString(utcDateString) {
+	return Date.parse("yyyy-MM-dd'T'HH:mm:ss", utcDateString.replace("+00:00", ""))
 }
 
 def clearActivityPage(params) {
@@ -393,14 +409,14 @@ def changeStatusPage(params) {
 	dynamicPage(name:"changeStatusPage") {
 		section() {
 			changeStatus(params.status)
-			addStatusHistory(params.status, "Manual")			
-			paragraph "Monitoring Status Changed to ${state.status?.name}"
+			addStatusHistory(params?.status, "Manual")
+			getParagraph("Monitoring Status Changed to ${state.status?.name}", "success.png")
 		}
 	}
 }
 
 private addStatusHistory(status, details) {
-	logDebug("${status}: ${details}")
+	logDebug("${status?.name}: ${details}")
 	state.statusHistory.add(0, [statusChanged: new Date(), status: status, details: details])
 }
 
@@ -681,7 +697,7 @@ def editZonePage(params) {
 					options: getZoneGroupNames()
 			}
 			section("Security Settings") {
-				getInfoParagraph("Select the Security devices that should be monitored when this zone is armed.  If you need more control over which devices in a zone get armed for a specific Monitoring Status, you can use the 'Excluded Devices' field in the Advanced Settings page.")
+				getInfoParagraph("Select the Security devices that should be monitored when this zone is armed.  If you need more control over which devices in a zone get armed for a specific Monitoring Status, you can use the 'Excluded Devices' field on the Monitoring Status Zones page.")
 				
 				input "${zone.settingName}SecurityDevices", "enum",
 					title: "Security Devices:",
@@ -753,17 +769,79 @@ def editZonePage(params) {
 def statusZonesPage() {
 	dynamicPage(name:"statusZonesPage") {
 		section() {
-			getInfoParagraph("Specify zones that are armed for the different Monitoring Statuses.")
+			getInfoParagraph("This section allows you to choose the Zones that should be armed for each Monitoringi Status.  It also allows you to select devices within those zones that shouldn't be armed.")
 			getStatuses(false).each {
-				input "${it.id}StatusZones", "enum",
-					title: "${it.name}:",
-					multiple: true,
-					required: false,
-					options: getZoneNames()
+				getPageLink("${it.id}StatusZonesLink",
+					"${it.name}",
+					"editStatusZonesPage",
+					[status: it],
+					getStatusZonesSummary(it))
 			}
 		}
 	}
 }
+
+private getStatusZonesSummary(status) {
+	def zoneSummary = appendStatusSettingSummary("", status.id, "StatusZones", "%")
+	
+	def deviceSummary = appendStatusSettingSummary("", status.id, "ExcludedDevices", "%")
+	
+	def summary = ""		
+	if (zoneSummary) {
+		summary = "<---  Armed Zones  --->\n${zoneSummary}"
+	}
+	if (deviceSummary) {
+		summary += summary ? "\n" : ""
+		summary += "<---  Excluded Devices  --->\n${deviceSummary}"
+	}
+	return summary ?: "(not set)"	
+}
+
+def editStatusZonesPage(params) {
+	dynamicPage(name:"editStatusZonesPage") {
+		if (params?.status) {
+			state.params.status = params.status
+		}
+
+		def id = state.params?.status?.id
+		def name = state.params?.status?.name
+
+		section("${name} - Zones") {
+			getInfoParagraph("Select the Zones that should be armed while the Monitoring Status is ${name}.")
+		}
+		
+		section("Zones") {
+			input "${id}StatusZones", "enum",
+				title: "Arm these Zones:",
+				multiple: true,
+				required: false,
+				options: getZoneNames()
+		}
+		section("Excluded Devices") {
+			input "${id}ExcludedDevices", "enum",
+				title: "Don't Monitor these Devices:",
+				multiple: true,
+				required: false,
+				options: getDeviceNames(getSecurityDeviceTypes()),
+				submitOnChange: true
+		}
+	}
+}
+
+// def statusZonesPage() {
+	// dynamicPage(name:"statusZonesPage") {
+		// section() {
+			// getInfoParagraph("Specify zones that are armed for the different Monitoring Statuses.")
+			// getStatuses(false).each {
+				// input "${it.id}StatusZones", "enum",
+					// title: "${it.name}:",
+					// multiple: true,
+					// required: false,
+					// options: getZoneNames()
+			// }
+		// }
+	// }
+// }
 
 def safetyNotificationsPage() {
 	dynamicPage(name:"safetyNotificationsPage") {
@@ -1042,7 +1120,7 @@ def statusArmDisarmPage(params) {
 def advancedOptionsPage() {
 	dynamicPage(name:"advancedOptionsPage") {
 		section() {
-			getInfoParagraph("Exclude Devices, configure Entry/Exit Delays, and Beeping Options for each Monitoring Status.")
+			getInfoParagraph("Configure Entry/Exit Delays and Beeping Options for each Monitoring Status.")
 			getStatuses(true).each {				
 				getPageLink("${it.id}advancedOptionsLink",
 					"${it.name}",
@@ -1056,8 +1134,6 @@ def advancedOptionsPage() {
 
 private getStatusAdvancedOptionsSummary(status) {
 	def summary = ""
-	
-	summary = appendStatusSettingSummary(summary, status.id, "ExcludedDevices", "Exclude: %")
 	
 	if (settings["${status.id}EntryExitDevices"]) {
 		def entryExitDelay = settings["${status.id}EntryExitDelay"]
@@ -1086,14 +1162,7 @@ def statusAdvancedOptionsPage(params) {
 		section("${name} - Advanced Options") {
 			getInfoParagraph("Configure Advanced Options for Monitoring Status ${name}.")
 		}
-		section("Exclude Devices") {
-			input "${id}ExcludedDevices", "enum",
-				title: "Don't Monitor these Security Devices:",
-				multiple: true,
-				required: false,
-				options: getDeviceNames(getSecurityDeviceTypes()),
-				submitOnChange: true
-		}
+		
 		section("Entry/Exit Options") {
 			input "${id}EntryExitDevices", "enum",
 				title: "Use Delay for these Devices:",
@@ -1296,17 +1365,49 @@ def armDisarmSmartHomeMonitorChangedHandler(evt) {
 	}	
 }
 
-def pistonHandler(evt) {		
-	if (evt.data?.contains("\"state\":true") && !evt.data?.contains("\"restricted\":true")) {		
-		def newStatus = getStatuses().find {
-			(evt.value in settings["${it.id}ArmDisarmPistons"])
-		}
-		if (newStatus) {
-			addStatusHistory(newStatus, "Piston ${evt.value} changed to True")
-			changeStatus(newStatus)
-		}
+def pistonHandler(evt) {
+	if (evt.data) {
+		//try {
+			def slurper = new groovy.json.JsonSlurper()
+			def data = slurper.parseText(evt.data)			
+			
+			if (data?.state && data?.restricted != true && pistonEventIsNew(data)) {			
+				def newStatus = getStatuses().find {
+					(evt.value in settings["${it.id}ArmDisarmPistons"])
+				}
+				if (newStatus) {
+					addStatusHistory(newStatus, "Piston ${evt.value} changed to True")
+					changeStatus(newStatus)
+				}
+			}
+			else {
+				logDebug "Ignoring CoRE Piston event because it's old, restricted, or false.\nPiston Data: ${data}"
+			}
+		//}
+		// catch(ex) {
+			// logDebug "Unable to parse CoRE data: ${evt.data}"
+		// }
 	}
 }
+
+private pistonEventIsNew(data) {
+	def utcDateString = data?.event?.event?.date
+	if (utcDateString) {	
+		def pistonTime = getDateFromUtcString(utcDateString)?.time
+		if (pistonTime && pistonTime instanceof Long) {
+			return ((new Date().time - pistonTime) < 60000)
+		}
+		else {
+			logDebug "Unable to convert ${utcDateString} to local date"
+			return true
+		}		
+	}
+	else {
+		logDebug "Unable to detect piston date: ${data}"
+		return true
+	}
+}
+
 
 def armDisarmModeChangedHandler(evt) {	
 	def newStatus = getStatuses().find {
