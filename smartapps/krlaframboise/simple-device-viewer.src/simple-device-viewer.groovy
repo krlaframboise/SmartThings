@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 2.2
+ *  Simple Device Viewer v 2.2.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,7 +9,7 @@
  *
  *  Changelog:
  *
- *    2.2 (09/19/2016)
+ *    2.2.1 (09/19/2016)
  *      - Made the program detect potential timeout errors and
  *        abort before it times out and then pickup where it left
  *        off the next time it runs.
@@ -735,7 +735,7 @@ private getDeviceLastDeviceEvent(device) {
 	def endDate = new Date()
 	def lastEvent
 	
-	totalLoops = (totalLoops > 4) ? 4 : totalLoops  // Limit to 4 due to event timeout problem.
+	totalLoops = (totalLoops > 3) ? 3 : totalLoops  // Limit to 3 due to event timeout problem.
 	
 	for (int index= 0; index < totalLoops; index++) {
 		def events = device.eventsBetween(startDate, endDate, [max:50]).flatten()
