@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 2.1
+ *  Simple Device Viewer v 2.2
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,11 @@
  *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    2.2 (09/19/2016)
+ *      - Made the program detect potential timeout errors and
+ *        abort before it times out and then pickup where it left
+ *        off the next time it runs.
  *
  *    2.1 (09/13/2016)
  *      - Added Ask Alexa Notification Option.
@@ -361,7 +366,7 @@ def otherSettingsPage() {
 		section ("Last Event Accuracy") {
 			input "lastEventAccuracy", "number",
 				title: "Accuracy Level (1-25)\n(Setting this to a higher number will improve the accuracy for devices that generate a lot of events, but if you're seeing timeout errors in Live Logging, you should set this to a lower number.)",
-				defaultValue: 15,
+				defaultValue: 8,
 				range: "1..25",
 				required: false		
 			input "lastEventByStateEnabled", "bool",
@@ -490,7 +495,7 @@ def lastEventPage() {
 			)
 			
 			def items = getAllDeviceLastEventListItems()?.unique()
-			if (settings.lastEventSortByValue) {
+			if (settings.lastEventSortByValue != false) {
 				items?.each { it.sortValue = (it.sortValue * -1) }
 			}				
 			getParagraphs(items)
@@ -507,9 +512,8 @@ private getRefreshLastEventLinkDescription() {
 def refreshLastEventPage() {
 	dynamicPage(name:"refreshLastEventPage") {		
 		section () {
-			refreshDeviceEventCache()
-			refreshDeviceStateCache()
-			paragraph "The last event times have been refreshed."
+			refreshDeviceActivityCache()
+			paragraph "Started refreshing last events, but this process could take up to a minute."
 		}		
 	}
 }
@@ -709,7 +713,7 @@ private getDeviceLastEventListItem(device) {
 	]
 	
 	listItem.title = getDeviceStatusTitle(device, listItem.status)
-	listItem.sortValue = settings.lastEventSortByValue ? listItem.value : device.displayName
+	listItem.sortValue = settings.lastEventSortByValue != false ? listItem.value : device.displayName
 	listItem.image = getLastEventImage(lastEventTime)
 	return listItem
 }
@@ -726,10 +730,12 @@ of events returned to 50 so this method loops
 through the list until it finds one that has 
 a source containing "DEVICE".*/
 private getDeviceLastDeviceEvent(device) {
-	def totalLoops = safeToInteger(settings.lastEventAccuracy, 5)
+	def totalLoops = safeToInteger(settings.lastEventAccuracy, 1)
 	def startDate = new Date() - 7
 	def endDate = new Date()
 	def lastEvent
+	
+	totalLoops = (totalLoops > 4) ? 4 : totalLoops  // Limit to 4 due to event timeout problem.
 	
 	for (int index= 0; index < totalLoops; index++) {
 		def events = device.eventsBetween(startDate, endDate, [max:50]).flatten()
@@ -852,14 +858,14 @@ private getCapabilityStatusItem(cap, sortValue, value) {
 			case "Battery":			
 				item.status = "${item.status}%"
 				item.image = getBatteryImage(item.value)
-				if (batterySortByValue) {
+				if (batterySortByValue != false) {
 					item.sortValue = safeToInteger(item.value)
 				}				
 				break
 			case "Temperature Measurement":
 				item.status = "${item.status}°${location.temperatureScale}"
 				item.image = getTemperatureImage(item.value)
-				if (tempSortByValue) {
+				if (tempSortByValue != false) {
 					item.sortValue = safeToInteger(item.value)
 				}
 				break
@@ -1141,10 +1147,10 @@ def timerSwitchEventHandler(evt) {
 
 def performScheduledTasks() {
 	if (canCheckDevices(state.lastDeviceCheck)) {
-		runIn(45, checkDevices)
+		checkDevices()		
 	}
 	if (canPollDevices(state.lastDevicePoll)) {
-		runIn(20, refreshDeviceActivityCache)
+		runIn(61, refreshDeviceActivityCache)
 		pollDevices()
 	}
 	else {
@@ -1164,12 +1170,12 @@ private canPollDevices(lastPoll) {
 }
 
 void refreshDeviceActivityCache() {
-	runIn(25, refreshDeviceStateCache)
+	runIn(30, refreshDeviceStateCache)
 	refreshDeviceEventCache()		
 }
 
 void refreshDeviceStateCache() {
-	refreshDeviceActivityTypeCache("state")
+	refreshDeviceActivityTypeCache("state")	
 }
 
 void refreshDeviceEventCache() {
@@ -1177,23 +1183,40 @@ void refreshDeviceEventCache() {
 }
 
 void refreshDeviceActivityTypeCache(activityType) {
-	def cachedTime = new Date().time
-	
-	getAllDevices().each { device ->		
-		def lastActivity 
-		if (activityType == "event") {
-			lastActivity = getDeviceLastDeviceEvent(device)
-		}
-		else {
-			lastActivity = getDeviceLastStateChange(device)		
-		}
+	def devices = getAllDevices()
+	def deviceCount = devices?.size()
+	if (deviceCount) {
+		def cachedTime = new Date().time
 		
-		if (lastActivity) {
-			lastActivity.cachedTime = cachedTime
-			saveLastActivityToDeviceCache(device.deviceNetworkId, lastActivity)
-		}		
-	}
-	state."${activityType}CachedTime" = cachedTime
+		def deviceIndex = (safeToInteger(state."${activityType}DeviceIndex", -1))
+		
+		for (int i= 0; i < deviceCount; i++) {
+			
+			deviceIndex += 1
+			deviceIndex = (deviceIndex >= deviceCount) ? 0 : deviceIndex
+			def device = devices[deviceIndex]
+			
+			def lastActivity 
+			if (activityType == "event") {
+				lastActivity = getDeviceLastDeviceEvent(device)
+			}
+			else {
+				lastActivity = getDeviceLastStateChange(device)		
+			}
+			
+			if (lastActivity) {
+				lastActivity.cachedTime = cachedTime
+				saveLastActivityToDeviceCache(device.deviceNetworkId, lastActivity)
+			}
+			
+			if (((new Date().time) - cachedTime) > 15000) {
+				logTrace "Aborted refreshing ${activityType} cache after device ${devices[deviceIndex]?.displayName}[${deviceIndex}]. (Refreshed ${i} of the ${deviceCount} devices)"
+				i = deviceCount
+			}
+		}	
+		state."${activityType}CachedTime" = cachedTime
+		state."${activityType}DeviceIndex" = deviceIndex
+	}	
 }
 
 void saveLastActivityToDeviceCache(dni, lastActivity) {
@@ -1237,10 +1260,10 @@ def checkDevices() {
 	state.currentCheckSent = 0
 		
 	if (settings.batteryNotificationsEnabled) {
-		checkBatteries()
+		runIn(61, checkBatteries)
 	}			
 	if (settings.temperatureNotificationsEnabled) {
-		checkTemperatures()
+		runIn(30, checkTemperatures)
 	}			
 	if (settings.lastEventNotificationsEnabled) {
 		checkLastEvents()
@@ -1254,7 +1277,7 @@ private canCheckDevices(lastCheck) {
 		timeElapsed((lastCheck ?: 0) + msMinute(5), true)
 }
 
-private checkTemperatures() {
+def checkTemperatures() {
 	logDebug "Checking Temperatures"
 	def cap = getCapabilitySettingByName("Temperature Measurement")
 	
@@ -1281,7 +1304,7 @@ private boolean tempIsLow(val) {
 	isBelowThreshold(val, lowTempThreshold, 63)
 }
 
-private checkBatteries() {
+def checkBatteries() {
 	logDebug "Checking Batteries"
 	def cap = getCapabilitySettingByName("Battery")
 
@@ -1308,15 +1331,24 @@ private boolean isBelowThreshold(val, threshold, int defaultThreshold) {
 
 private int safeToInteger(val, defaultVal=0) {
 	try {
-		if (val) {
-			return val.toFloat().round().toInteger()
-		}
-		else if (defaultVal != 0){
-			return safeToInteger(defaultVal, 0)
+		if (val && "$val".isNumber()) {
+			if ("$val".isInteger()) {
+				return "$val".toInteger()
+			}
+			else if ("$val".isFloat()) {
+				return "$val".toFloat().round().toInteger()
+			}
+			else if ("$val".isDouble()) {
+				return "$val".toDouble().round().toInteger()
+			}
+			else {
+				logDebug "Unable to parse $val to Integer so returning 0"
+				return 0
+			}
 		}
 		else {
-			return defaultVal
-		}
+			return safeToInteger(defaultVal, 0)
+		}		
 	}
 	catch (e) {
 		logDebug "safeToInteger($val, $defaultVal) failed with error $e"
@@ -1324,7 +1356,7 @@ private int safeToInteger(val, defaultVal=0) {
 	}
 }
 
-private checkLastEvents() {
+def checkLastEvents() {
 	logDebug "Checking Last Events"
 	removeExcludedDevices(getAllDevices(), lastEventNotificationsExcluded)?.each {
 		
@@ -1665,7 +1697,7 @@ def api_dashboard() {
 		
 		if (params.capability == "events") {
 			def items = getAllDeviceLastEventListItems()?.unique()
-			if (settings.lastEventSortByValue) {
+			if (settings.lastEventSortByValue != false) {
 				items?.each { it.sortValue = (it.sortValue * -1) }
 			}
 			html = api_getItemsHtml(items)
