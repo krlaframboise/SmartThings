@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 2.2.1
+ *  Simple Device Viewer v 2.2.2
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,10 @@
  *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    2.2.2 (09/20/2016)
+ *      - Still having occassional timeouts so made it abort sooner,
+ *        but run more often when it's not successful.
  *
  *    2.2.1 (09/19/2016)
  *      - Made the program detect potential timeout errors and
@@ -1209,8 +1213,15 @@ void refreshDeviceActivityTypeCache(activityType) {
 				saveLastActivityToDeviceCache(device.deviceNetworkId, lastActivity)
 			}
 			
-			if (((new Date().time) - cachedTime) > 15000) {
-				logTrace "Aborted refreshing ${activityType} cache after device ${devices[deviceIndex]?.displayName}[${deviceIndex}]. (Refreshed ${i} of the ${deviceCount} devices)"
+			if (((new Date().time) - cachedTime) > 12000) {
+				logTrace "Aborted refreshing ${activityType} cache after device ${devices[deviceIndex]?.displayName} [${deviceIndex}]. (Refreshed ${i} of the ${deviceCount} devices)"
+				
+				if (activityType == "event") {
+					runIn(61, refreshDeviceEventCache)
+				}
+				else {
+					runIn(61, refreshDeviceStateCache)
+				}
 				i = deviceCount
 			}
 		}	
