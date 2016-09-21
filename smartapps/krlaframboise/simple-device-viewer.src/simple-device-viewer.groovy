@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 2.2.2
+ *  Simple Device Viewer v 2.2.3
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,7 +9,7 @@
  *
  *  Changelog:
  *
- *    2.2.2 (09/20/2016)
+ *    2.2.3 (09/21/2016)
  *      - Still having occassional timeouts so made it abort sooner,
  *        but run more often when it's not successful.
  *
@@ -1150,6 +1150,7 @@ def timerSwitchEventHandler(evt) {
 }
 
 def performScheduledTasks() {
+	state.lastPerformedScheduledTasks = new Date().time
 	if (canCheckDevices(state.lastDeviceCheck)) {
 		checkDevices()		
 	}
@@ -1213,15 +1214,18 @@ void refreshDeviceActivityTypeCache(activityType) {
 				saveLastActivityToDeviceCache(device.deviceNetworkId, lastActivity)
 			}
 			
-			if (((new Date().time) - cachedTime) > 12000) {
+			if (((new Date().time) - cachedTime) > 10000) {
 				logTrace "Aborted refreshing ${activityType} cache after device ${devices[deviceIndex]?.displayName} [${deviceIndex}]. (Refreshed ${i} of the ${deviceCount} devices)"
 				
-				if (activityType == "event") {
-					runIn(61, refreshDeviceEventCache)
-				}
-				else {
-					runIn(61, refreshDeviceStateCache)
-				}
+				if ((new Date().time - (state.lastPerformedScheduledTasks ?: 0)) < 190000) {
+					// Start the refresh again in 1 minute as long as it won't overlap with the refresh that occurs every 5 minutes.
+					if (activityType == "event") {
+						runIn(61, refreshDeviceEventCache)
+					}
+					else {
+						runIn(61, refreshDeviceStateCache)
+					}
+				}				
 				i = deviceCount
 			}
 		}	
