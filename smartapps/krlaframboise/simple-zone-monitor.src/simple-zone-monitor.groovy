@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.7 [ALPHA]
+ *  Simple Zone Monitor v0.0.8 [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -7,6 +7,11 @@
  *  URL to documentation:
  *
  *  Changelog:
+ *
+ *    0.0.8 (09/23/2016)
+ *      - Added Button Arming/Disarming Triggers
+ *      - Added All/Any/First option to Presence Arm/Disarm
+ * 			  Triggers.
  *
  *    0.0.7 (09/16/2016)
  *      - CoRE resends piston state every 3 hours so added
@@ -96,11 +101,11 @@ definition(
 	page(name:"armDisarmPage", title: "Arming/Disarming Options")
 	page(name:"statusArmDisarmPage")
 	page(name:"advancedOptionsPage", title: "Advanced Options")
-	page(name:"statusAdvancedOptionsPage")
+	page(name:"statusAdvancedOptionsPage")	
 }
 
 def mainPage() {
-	dynamicPage(name:"mainPage", uninstall:true, install:true) {
+	dynamicPage(name:"mainPage", uninstall:true, install:true) {		
 		if (state.installed) {					
 			def config = getConfigSummary()
 			if (config.hasAllRequirements) {
@@ -282,17 +287,27 @@ def clearActivityPage(params) {
 		def activityType = params?.activityType
 		if (!activityType || activityType == "Safety Alerts") {
 			state.safetyAlerts = []
+			if (settings.allowAskAlexaSafetyMsgDeletion) {
+				removeAskAlexaMsgs("Safety")
+			}			
 		}
 		if (!activityType || activityType == "Security Alerts") {
 			state.securityAlerts = []
+			if (settings.allowAskAlexaSecurityMsgDeletion) {
+				removeAskAlexaMsgs("Security")
+			}			
 		}
 		if (!activityType || activityType == "Monitoring Status History") {
 			state.statusHistory = []
-		}
+		}		
 		section() {
-			paragraph "${activityType ?: 'All Activity'} Cleared Successfully"
+			getParagraph("${activityType ?: 'All Activity'} Cleared Successfully", "success.png")
 		}
 	}
+}
+
+private removeAskAlexaMsgs(unit) {
+   sendLocationEvent(name: "AskAlexaMsgQueueDelete", value: "Simple Zone Monitor", isStateChange: true, unit: "$unit")
 }
 
 def settingsPage() {
@@ -371,9 +386,20 @@ def settingsPage() {
 				getWarningParagraph("Arming/Disarming and Advanced Options can't be setup until \"Zones\" and \"Notifications\" have been configured.")
 			}
 		}
-		section("Logging Options") {
+		section("Ask Alexa Options") {
+			getInfoParagraph("If you enable the options below, clearing the messages within this SmartApp will also clear them from the Ask Alexa SmartApp")
+			input "allowAskAlexaSafetyMsgDeletion", "bool",
+				title: "Allow deleting of Alexa Alexa Safety Messages?",
+				defaultValue: false,
+				required: false
+			input "allowAskAlexaSecurityMsgDeletion", "bool",
+				title: "Allow deleting of Alexa Alexa Security Messages?",
+				defaultValue: false,
+				required: false
+		}
+		section("Other Options") {	
 			input "logging", "enum",
-				title: "Types of messages to log:",
+				title: "Log these types of messages to log:",
 				multiple: true,
 				required: false,
 				defaultValue: ["debug", "info"],
@@ -883,7 +909,7 @@ def securityNotificationsPage() {
 
 private getStatusNotificationsSummary(notificationType, statusId) {
 	def summary = ""
-	getStatusNotificationSettings(notificationType, statusId).each {
+	getStatusTypeSettings(getStatusNotificationTypeData(notificationType, statusId)).each {
 		def settingValue = settings["${it.prefName}"]
 		if (settingValue) {
 			summary = summary ? "${summary}\n" : ""
@@ -900,41 +926,7 @@ def statusNotificationsPage(params) {
 			state.params.notificationType = params.notificationType
 		}
 
-		def statusId = state.params?.status?.id
-		def notificationType = state.params?.notificationType
-
-		getStatusNotificationTypeData(notificationType, statusId).each { sect ->
-			section("${sect?.sectionName}") {			
-				if (sect?.sectionInfo) {
-					getInfoParagraph("${sect.sectionInfo}")
-				}			
-				sect?.subSections.each { subSect ->					
-					if (!subSect?.noOptionsMsg || subSect?.options) {
-						getStatusSubSectionSettings(subSect)?.each {
-		
-							input "${it.prefName}", "${it.prefType}", 
-								title: "${it.prefTitle}",
-								required: it.required,
-								multiple: it.multiple,
-								submitOnChange: it.submitOnChange,
-								options: it.options
-							
-							it.childPrefs?.each { child ->
-								input "${child.prefName}", "${child.prefType}",
-									title: "${child.prefTitle}",
-									required: child.required,
-									multiple: child.multiple,
-									options: child.options,
-									range: child.range
-							}
-						}
-					}
-					else {
-						paragraph "${subSect?.noOptionsMsg}"
-					}			
-				}
-			}
-		}		
+		getStatusTypeDataSections(getStatusNotificationTypeData(state.params?.notificationType, state.params?.status?.id))		
 	}
 }
 
@@ -942,7 +934,6 @@ private getNotificationNoDeviceMessage(fieldName, deviceType, cmd=null) {
 	def supportsCmd = cmd ? ", that supports the \"$cmd\" command," : ""
 	return "You can't use ${fieldName} until you select at least one \"${deviceType}\" device${supportsCmd} from the \"Notification Devices\" section of the \"Choose Devices\" page."
 }
-
 
 def customMessagesPage() {
 	dynamicPage(name:"customMessagesPage") {
@@ -982,139 +973,218 @@ def armDisarmPage() {
 					"${it.name}",
 					"statusArmDisarmPage",
 					[status: it],
-					getStatusArmDisarmSummary(it))
+					getStatusArmDisarmSummary(it?.id))
 			}
 		}
 	}
 }
 
-private getStatusArmDisarmSummary(status) {
+private getStatusArmDisarmSummary(statusId) {
 	def summary = ""
-	def settingValue = getStatusSettings(status.id, "ArmDisarmSmartHomeMonitorStates")
-	if (settingValue) {
-		summary = "Smart Home Monitor: $settingValue"
-	}
-	
-	settingValue = getStatusSettings(status.id, "ArmDisarmModes")
-	if (settingValue) {
-		summary += summary ? "\n" : ""
-		summary += "Location Mode: $settingValue"
-	}
-	
-	settingValue = getStatusSettings(status.id, "ArmDisarmPistons")
-	if (settingValue) {
-		summary += summary ? "\n" : ""
-		summary += "CoRE Pistons: $settingValue"
-	}
-	
-	getArmDisarmDeviceTypes().each { type ->			
-		type.attrValues.each { attrValue ->
-			def settingName = "${type.prefName?.capitalize()}${attrValue?.replace(' ', '')?.capitalize()}"
-			settingValue = getStatusSettings(status.id, "$settingName")
-			
-			if (settingValue) {
-				summary += summary ? "\n" : ""
-				summary += "${type.name.capitalize()} ${attrValue.capitalize()}: $settingValue"
-			}
+	getStatusTypeSettings(getStatusArmDisarmTypeData(statusId)).each {
+		def settingValue = settings["${it.prefName}"]
+		def childPrefValue = getChildPrefValue(it.childPrefs, 0) ?: ""
+		if (settingValue) {
+			summary = summary ? "${summary}\n" : ""
+			summary = "${summary}${it.prefTitle} ${childPrefValue} ${settingValue}"
 		}
-	}	
-	return summary ?: "(not set)"
+	}				
+	return summary ?: "(not set)"	
 }
 
 def statusArmDisarmPage(params) {
 	dynamicPage(name:"statusArmDisarmPage") {
+
 		if (params?.status) {
 			state.params.status = params.status
 		}
 
 		def id = state.params?.status?.id
 		def name = state.params?.status?.name
-
+			
 		section("${name} - Arming/Disarming Options") {
-			getInfoParagraph("Specify triggers that will cause the Monitoring Status to change to ${name}.")
-		}
-
-		section("Location Mode") {
-			input "${id}ArmDisarmModes", "mode",
-				title: "When Mode changes to",
-				multiple: true,
-				required: false,
-				submitOnChange: true
-		}
-
-		section("Smart Home Monitor") {
-			input "${id}ArmDisarmSmartHomeMonitorStates", "enum",
-				title: "When Smart Home Monitor changes to",
-				multiple: true,
-				required: false,
-				options: getSmartHomeMonitorStates().collect{ it.name },
-				submitOnChange: true
+			getInfoParagraph("Specify triggers that will cause the Monitoring Status to change to ${name}.", "${name}")
 		}
 		
-		if (state.pistons) {
-			section("CoRE Pistons") {
-				input "${id}ArmDisarmPistons", "enum",
-					title: "When any of these CoRE Pistons change to true:",
-					multiple: true,
-					required: false,
-					options: state.pistons
-			}
-		}
+		getStatusTypeDataSections(getStatusArmDisarmTypeData(id))	
+	}
+}
 
-		def switches = getDeviceNames(getArmDisarmDeviceTypes(), null, "Switch")
-		if (switches) {			
-			section("Switches") {
-				input "${id}ArmDisarmSwitchesOn", "enum",
-					title: "When Switch Turns On",
-					multiple: true,
-					required: false,
-					options: switches
-				input "${id}ArmDisarmSwitchesOff", "enum",
-					title: "When Switch Turns Off",
-					multiple: true,
-					required: false,
-					options: switches
-			}
-
-			// section("Buttons") {
-				// input "${id}ArmDisarmButtons", "enum",
-					// title: "When Button",
-					// multiple: true,
-					// required: false,
-					// options: getDeviceNames(getArmDisarmDeviceTypes(), null, "Button"),
-					// submitOnChange: true
-
-				// if (settings?."${id}ArmDisarmButtons") {
-					// input "${id}ArmDisarmButtonNumber", "number",
-						// title: "#",
-						// required: true
-					// input "${id}ArmDisarmButtonAction", "enum",
-						// title: "is",
-						// required:true,
-						// options: ["pushed", "held"]
-				// }
-			// }
-
-			section("Presence Sensors") {
-				def presenceSensors = getDeviceNames(getArmDisarmDeviceTypes(), null, "Presence Sensor")
-				input "${id}ArmDisarmPresenceSensorsPresent", "enum",
-					title: "When Presence changes to Present:",
-					multiple: true,
-					required: false,
-					options: presenceSensors
-				input "${id}ArmDisarmPresenceSensorsNotpresent", "enum",
-					title: "When Presence changes to Not Present:",
-					multiple: true,
-					required: false,
-					options: presenceSensors
-			}
-		}
-		else {
-			section() {
-				getInfoParagraph("You can't use devices to trigger Arming/Disarming until you select at least one \"Arming/Disarming Trigger Device\" from the \"Choose Devices\" page.")
+private getStatusTypeDataSections(data) {
+	data?.each { sect ->
+		section("${sect?.sectionName}") {			
+			if (sect?.sectionInfo) {
+				getInfoParagraph("${sect.sectionInfo}")
+			}			
+			sect?.subSections.each { subSect ->					
+				if (!subSect?.noOptionsMsg || subSect?.options) {
+					getStatusSubSectionSettings(subSect)?.each {
+	
+						input "${it.prefName}", "${it.prefType}", 
+							title: "${it.prefTitle}",
+							required: it.required,
+							multiple: it.multiple,
+							submitOnChange: it.submitOnChange,
+							options: it.options
+						
+						it.childPrefs?.each { child ->
+							input "${child.prefName}", "${child.prefType}",
+								title: "${child.prefTitle}",
+								required: child.required,
+								multiple: child.multiple,
+								options: child.options,
+								range: child.range
+						}
+					}
+				}
+				else {
+					paragraph "${subSect?.noOptionsMsg}"
+				}			
 			}
 		}
 	}
+}
+
+private getStatusArmDisarmTypeData(statusId) {
+	def prefix = "${statusId}ArmDisarm"	
+	[
+		[sectionName: "Location Mode",
+			sectionInfo: "",
+			subSections: [
+				[
+					prefTitle: "When Mode changes to:",
+					prefName: "${prefix}Modes",
+					prefType: "mode",
+					required: false,
+					submitOnChange: false,
+					multiple: true,
+					options: null,
+					noOptionsMsg: "",
+					isDevice: false,
+					prefs: [ 
+						[name: "Location Mode", attrName: "mode"]
+					],
+					childPrefs: []
+				]
+			]
+		],		
+		[sectionName: "Smart Home Monitor",
+			sectionInfo: "",
+			subSections: [
+				[
+					prefTitle: "When Smart Home Monitor changes to",
+					prefName: "${prefix}SmartHomeMonitorStates",
+					prefType: "enum",
+					required: false,
+					submitOnChange: false,
+					multiple: true,
+					options: getSmartHomeMonitorStates().collect{ it.name },
+					noOptionsMsg: "",
+					isDevice: false,
+					prefs: [ 
+						[name: "Smart Home Monitor", attrName: "alarmSystemStatus"]
+					],
+					childPrefs: []
+				]
+			]
+		],
+		[sectionName: "CoRE Pistons",
+			sectionInfo: "This SmartApp has limited arming/disarming features, but you can use the SmartApp CoRE to create complex rules and select them here to make the Monitoring Status change when they change to True." ,
+			subSections: [
+				[
+					prefTitle: "When any of these CoRE Pistons change to true:",
+					prefName: "${prefix}Pistons",
+					prefType: "enum",
+					required: false,
+					submitOnChange: false,
+					multiple: true,
+					options: state.pistons,
+					noOptionsMsg: "You need to have at least one Piston setup in the SmartApp CoRE in order to use this feature.  You may need to open and close CoRE in order to populate the piston list.",
+					isDevice: false,
+					subscribeToValues: true,
+					prefs: [ 
+						[name: "CoRE Piston", attrName: "piston"]
+					],
+					childPrefs: [ ]					
+				]
+			]
+		],
+		[sectionName: "Switches",
+			subSections: [
+				[
+					prefTitle: "When any of these Switches Turn %:",
+					prefName: "${prefix}Switches%",
+					prefType: "enum",
+					required: false,
+					submitOnChange: false,
+					multiple: true,
+					options: getDeviceNames(getArmDisarmDeviceTypes(), null, "Switch"),
+					noOptionsMsg: getArmDisarmNoDeviceMessage("Switches", "Switch"),
+					isDevice: true,
+					prefs: [
+						[name: "Off", attrName: "switch", attrValue: "off"],
+						[name: "On", attrName: "switch", attrValue: "on"]
+					],
+					childPrefs: [ ]						
+				]
+			]
+		],
+		[sectionName: "Buttons",
+			subSections: [
+				[
+					prefTitle: "When any of these Buttons are %:",
+					prefName: "${prefix}Buttons%",
+					prefType: "enum",
+					required: false,
+					submitOnChange: true,
+					multiple: true,
+					options: getDeviceNames(getArmDisarmDeviceTypes(), null, "Button"),
+					noOptionsMsg: getArmDisarmNoDeviceMessage("Buttons", "Button"),
+					isDevice: true,
+					prefs: [
+						[name: "Pushed", attrName: "button", attrValue:"pushed"],
+						[name: "Held", attrName: "button", attrValue: "held"]
+					],
+					childPrefs: [ 
+						[prefTitle: "Button Number: (1-20)",
+						prefName: "${prefix}ButtonNumber%",
+						prefType: "number",
+						required: true,
+						multiple: false,
+						range: "1..20",
+						options: null]
+					]
+				]
+			]
+		],
+		[sectionName: "Presence Sensors",
+			subSections: [
+				[
+					prefTitle: "When Presence changes to %:",
+					prefName: "${prefix}PresenceSensors%",
+					prefType: "enum",
+					required: false,
+					submitOnChange: true,
+					multiple: true,
+					options: getDeviceNames(getArmDisarmDeviceTypes(), null, "Presence Sensor"),
+					noOptionsMsg: getArmDisarmNoDeviceMessage("Presence", "Presence Sensor"),
+					isDevice: true,
+					prefs: [ 
+						[name: "Present", attrName: "presence", attrValue: "present"],
+						[name: "Not Present", attrName: "presence", attrValue: "not present"]
+					],
+					childPrefs: [
+						[prefTitle: "Presence Condition:",
+						prefName: "${prefix}PresenceSensorsCondition%",
+						prefType: "enum",
+						required: true,
+						multiple: false,
+						options: ["All", "Any", "First"]]
+					]
+				]
+			]
+		]
+	]
 }
 
 def advancedOptionsPage() {
@@ -1316,120 +1386,187 @@ def armZones() {
 
 private initializeArmDisarmTriggers() {
 	def details = "Arming/Disarming Subscriptions:\n"
-	if (getStatusSettings(null, "ArmDisarmSmartHomeMonitorStates")) {
-		details += "Smart Home Monitor Changes\n"
-		subscribe(location, "alarmSystemStatus", armDisarmSmartHomeMonitorChangedHandler)
-	}
-
-	if (getStatusSettings(null, "ArmDisarmModes")) {
-		details += "Location Mode Changes\n"
-		subscribe(location, "mode", armDisarmModeChangedHandler)
-	}
+	def deviceTriggers = []
+	def locationTriggers = []
 	
-	getStatusSettings(null, "ArmDisarmPistons").each {
-		details += "CoRE Piston: ${it}\n"
-		subscribe(location, "piston.${it}", pistonHandler)
-	}
+	getStatuses().each { status ->
 		
-	getDevices(getArmDisarmDeviceTypes()).each { device ->
-		getArmDisarmDeviceTypes().each { type ->
-			def canSubscribe = false
-
-			type.attrValues.each { attrValue ->
-				def settingName = "${type.prefName?.capitalize()}${attrValue?.replace(' ', '')?.capitalize()}"
+		getStatusTypeSettings(getStatusArmDisarmTypeData(status.id))?.each { sect ->		
+			if (settings[sect.prefName]) {
+				def values = sect.multiple ? settings[sect.prefName] : [settings[sect.prefName]]
+				details += "${status.name} - ${sect.prefTitle} ${values}\n"
 				
-				if (device.displayName in getStatusSettings(null, "$settingName")) {
-					canSubscribe = true
+				if (sect.isDevice) {
+					def trig = deviceTriggers.find { it.attrName == sect.attrName }
+					if (trig) {
+						trig.devices += values
+					}
+					else {
+						deviceTriggers << [subscription: "${sect.attrName}.${sect.attrValue}", devices: values]
+					}
+				}
+				else if (sect.subscribeToValues) {
+					values.each { value ->
+						def subscription = "${sect.attrName}.${value}"
+						if (!(subscription in locationTriggers)) {
+							locationTriggers << subscription
+						}
+					}
+				}
+				else {
+					if (!(sect.attrName in locationTriggers)) {
+						locationTriggers << sect.attrName
+					}					
 				}
 			}
-
-			if (canSubscribe) {
-				details += "${device.displayName}: ${type.attrName?.capitalize()} Event\n"
-				subscribe(device, "${type.attrName}", armDisarmDeviceEventHandler)
-			}
+		}
+	}
+	
+	locationTriggers.each {
+		subscribe(location, "${it}", armDisarmLocationEventHandler)
+	}
+	
+	deviceTriggers.each { trig ->		
+		findDevices(getArmDisarmDeviceTypes(), trig.devices)?.each { device ->
+			subscribe(device, trig.subscription, armDisarmDeviceEventHandler)
 		}
 	}
 	logTrace(details)
 }
 
-def armDisarmSmartHomeMonitorChangedHandler(evt) {
-	def shmState = getSmartHomeMonitorStates().find { it.id == evt.value }
-		 
-	def newStatus = getStatuses().find {
-		(shmState?.name in settings["${it.id}ArmDisarmSmartHomeMonitorStates"])
+def armDisarmLocationEventHandler(evt) {
+	def item
+	
+	if (evt.name == "alarmSystemStatus") {
+		def shmState = getSmartHomeMonitorStates().find { it.id == evt.value}?.name
+		item = findArmDisarmLocationEventItem(evt.name, shmState)
+	}
+	else if (evt.name != "piston" || pistonEventIsValid(evt.data)) {
+		item =  findArmDisarmLocationEventItem(evt.name, evt.value)
 	}
 	
-	if (newStatus) {
-		addStatusHistory(newStatus, "SHM changed to ${shmState?.name}")
-		changeStatus(newStatus)
-	}	
-}
-
-def pistonHandler(evt) {
-	if (evt.data) {
-		//try {
-			def slurper = new groovy.json.JsonSlurper()
-			def data = slurper.parseText(evt.data)			
-			
-			if (data?.state && data?.restricted != true && pistonEventIsNew(data)) {			
-				def newStatus = getStatuses().find {
-					(evt.value in settings["${it.id}ArmDisarmPistons"])
-				}
-				if (newStatus) {
-					addStatusHistory(newStatus, "Piston ${evt.value} changed to True")
-					changeStatus(newStatus)
-				}
-			}
-			else {
-				logDebug "Ignoring CoRE Piston event because it's old, restricted, or false.\nPiston Data: ${data}"
-			}
-		//}
-		// catch(ex) {
-			// logDebug "Unable to parse CoRE data: ${evt.data}"
-		// }
-	}
-}
-
-private pistonEventIsNew(data) {
-	def utcDateString = data?.event?.event?.date
-	if (utcDateString) {	
-		def pistonTime = getDateFromUtcString(utcDateString)?.time
-		if (pistonTime && pistonTime instanceof Long) {
-			return ((new Date().time - pistonTime) < 60000)
-		}
-		else {
-			logDebug "Unable to convert ${utcDateString} to local date"
-			return true
-		}		
+	if (item) {		
+		addStatusHistory(item.status, "${item?.sect?.sectionName} ${evt.value}")
+		changeStatus(item.status)
 	}
 	else {
-		logDebug "Unable to detect piston date: ${data}"
-		return true
+		logTrace "Ignoring location event ${evt.name}.${evt.value} because it's not an active Arm/Disarm Trigger"
 	}
 }
 
-
-def armDisarmModeChangedHandler(evt) {	
-	def newStatus = getStatuses().find {
-		(evt.value in settings["${it.id}ArmDisarmModes"])
+def findArmDisarmLocationEventItem(eventName, eventValue) {
+	def item	
+	getStatuses().find { status ->
+		getStatusTypeSettings(getStatusArmDisarmTypeData(status.id))?.find { sect ->			
+			if (sect.attrName == eventName && (!sect.attrValue ||  eventValue in settings[sect.prefName])) {				
+				item = [status: status, sect: sect]
+				return true
+			}
+		}
 	}
-	if (newStatus) {
-		addStatusHistory(newStatus, "Location Mode changed to ${evt.value}")
-		changeStatus(newStatus)
-	}	
+	return item
+}
+
+private pistonEventIsValid(eventData) {
+	if (eventData) {
+		def slurper = new groovy.json.JsonSlurper()
+		def data = slurper.parseText(eventData)			
+		
+		if (data?.state && data?.restricted != true) {			
+			def utcDateString = data?.event?.event?.date
+			if (utcDateString) {	
+		
+				def pistonTime = getDateFromUtcString(utcDateString)?.time
+				if (pistonTime && pistonTime instanceof Long) {
+					return ((new Date().time - pistonTime) < 60000)
+				}
+				else {
+					logDebug "Unable to convert ${utcDateString} to local date"
+				}		
+			}
+			else {
+				logDebug "Unable to detect piston date: ${eventData}"
+			}
+		}		
+	}
 }
 
 def armDisarmDeviceEventHandler(evt) {
-	def type = getArmDisarmDeviceTypes().find { it.attrName == evt.name}	
-	if (type) {
-		def newStatus = getStatuses().find {
-			(evt.displayName in settings[getStatusSettingName(it.id, type.prefName, evt.value)])
+	def matchingItems = findArmDisarmDeviceEventItems(evt.displayName, evt.name, evt.value)
+
+	if (matchingItems) {
+		
+		def verifiedMatch =	matchingItems.find { match ->
+			switch(evt.name) {
+				case "button":
+					return isArmDisarmButtonMatch(evt, match)
+					break
+				
+				case "presence":
+					return isArmDisarmPresenceMatch(evt, match)
+					break
+			
+				default:
+					addStatusHistory(verifiedMatch.status, "${evt.displayName}: ${evt.name} changed to ${evt.value}")
+					return true
+			}
 		}
-		if (newStatus) {
-			addStatusHistory(newStatus, "${evt.displayName}: ${evt.name} changed to ${evt.value}")
-			changeStatus(newStatus)
+		if (verifiedMatch) {			
+			changeStatus(verifiedMatch.status)
 		}
-	}	
+	}
+	else {
+		logTrace "Ignoring ${evt.name}.${evt.value} event from ${evt.displayName} because it's not an active Arm/Disarm Trigger"
+	}
+}
+
+def findArmDisarmDeviceEventItems(deviceName, eventName, eventValue) {
+	def items = []
+	getStatuses().each { status ->
+	
+		getStatusTypeSettings(getStatusArmDisarmTypeData(status.id))?.each { sect ->			
+	
+			if (sect.attrName == eventName && sect.attrValue == eventValue && deviceName in settings["${sect.prefName}"]) {
+				items << [status: status, sect: sect]				
+			}
+			
+		}		
+	}
+	return items
+}
+
+private isArmDisarmButtonMatch(evt, eventItem) {
+	def eventBtn = evt.jsonData?.buttonNumber
+	def expectedBtn = getChildPrefValue(eventItem.sect?.childPrefs, 0)	
+	if (eventBtn && expectedBtn && eventBtn == expectedBtn) {
+		addStatusHistory(eventItem.status, "${evt.displayName}: Button #${eventBtn} ${evt.value}")
+			return true
+	}
+	else {
+		logTrace "Ignoring ${evt.name} #${eventBtn} ${evt.value} event from ${evt.displayName} because it's not an active Arm/Disarm Trigger"
+	}		
+}
+
+private isArmDisarmPresenceMatch(evt, eventItem) {
+	def isMatch = true
+	def presenceCondition = getChildPrefValue(eventItem.sect?.childPrefs, 0)	
+	
+	if (presenceCondition != "Any") {
+		def nonMatchingPresence = presenceCondition == "First" ? evt.value : (evt.value == "present" ? "not present" : "present")
+		
+		def nonMatchingDevices = findDevices(getArmDisarmDeviceTypes(), settings["${eventItem.sect?.prefName}"])?.findAll { 
+			device -> return (device.displayName != evt.displayName && device.currentPresence == nonMatchingPresence)}
+		
+		if (nonMatchingDevices) {
+			isMatch = false
+			logTrace "Ignoring ${evt.name}.${evt.value} event from ${evt.displayName} because the following devices are ${nonMatchingPresence}: ${nonMatchingDevices}"
+		}			
+	}
+	
+	if (isMatch) {
+		addStatusHistory(eventItem.status, "${evt.displayName}: ${evt.name} changed to ${evt.value} (${presenceCondition})")
+		return true
+	}
 }
 
 private getStatusSettingName(statusId, partialSettingName, attrValue) {
@@ -1642,7 +1779,7 @@ private handleNotifications(notificationType, evt) {
 	
 	storeNotification(notificationType, currentZone, evt, eventMsg, zoneMsg)
 	
-	getStatusNotificationSettings(notificationType, state.status?.id). each {
+	getStatusTypeSettings(getStatusNotificationTypeData(notificationType, state.status?.id)). each {
 		def msg = it.prefName?.contains("Zone") ? zoneMsg : eventMsg
 		
 		if (settings["${it.prefName}"]) {			
@@ -1884,6 +2021,10 @@ private getSecurityDeviceTypes() {
 	]
 }
 
+private getArmDisarmNoDeviceMessage(fieldName, deviceType) {
+	return "You can't use ${fieldName} to Arm or Disarm until you select at least one \"${deviceType}\" from the \"Arm/Disarm Devices\" section of the \"Choose Devices\" page."
+}
+
 private getArmDisarmDeviceTypes() {
 	return [
 		[name: "Switches", shortName: "Switch", prefName: "armDisarmSwitches", prefType: "capability.switch", attrName: "switch", attrValues: ["on", "off"]],
@@ -1921,8 +2062,8 @@ private getStatusNotificationDeviceNames(notificationType, statusId) {
 	def names = []
 
 	getStatuses().each { status ->
-		if (!statusId || statusId == status?.id) {
-			getStatusNotificationSettings(notificationType, status?.id).each {
+		if (!statusId || statusId == status?.id) {		
+			getStatusTypeSettings(getStatusNotificationTypeData(notificationType, status?.id)).each {
 				if (settings["${it.prefName}"]) {
 					names += settings["${it.prefName}"]
 				}
@@ -1932,17 +2073,30 @@ private getStatusNotificationDeviceNames(notificationType, statusId) {
 	return names
 }
 
-private getStatusNotificationSettings(notificationType, statusId) {
+private getStatusTypeSettings(data) {
 	def result = []	
-	getStatusNotificationTypeData(notificationType, statusId).each { sect ->
+	data?.each { sect ->
 		sect.subSections.each { subSect ->
 			getStatusSubSectionSettings(subSect).each {
+				it.sectionName = sect.sectionName
 				result << it
 			}
 		}
 	}	
 	return result
 }
+
+// private getStatusNotificationSettings(notificationType, statusId) {
+	// def result = []	
+	// getStatusNotificationTypeData(notificationType, statusId).each { sect ->
+		// sect.subSections.each { subSect ->
+			// getStatusSubSectionSettings(subSect).each {
+				// result << it
+			// }
+		// }
+	// }	
+	// return result
+// }
 
 private hasDevices(deviceTypes) {
 	return getDevices(deviceTypes) ? true : false
@@ -1987,9 +2141,11 @@ private getStatusSubSectionSettings(subSection) {
 		def childPrefs = subSection.childPrefs?.clone()
 		subSection.prefs.each { pref ->
 			def item = subSection.clone()
-			item.prefName = "${item.prefName.replace('%', pref.name)}"
+			item.prefName = "${item.prefName.replace('%', pref.name?.replace(' ', ''))}"
 			item.prefTitle = "${item.prefTitle.replace('%', pref.name)}"
 			item.cmd = "${pref.cmd}"
+			item.attrName = "${pref.attrName}"
+			item.attrValue = "${pref.attrValue}"
 			
 			if (settings["${item.prefName}"] && !pref.ignoreChildren) {
 				item.childPrefs = []
