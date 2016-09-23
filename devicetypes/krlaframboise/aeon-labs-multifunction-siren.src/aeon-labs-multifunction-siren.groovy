@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.8.4
+ *  Aeon Labs Multifunction Siren v 1.8.5
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -12,6 +12,9 @@
  *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *	1.8.5 (09/22/2016)
+ *    - Bug fix for TTS commands.
  *
  *	1.8.4 (09/10/2016)
  *    - Added setting for starting beep schedule when beep
@@ -548,7 +551,8 @@ def customAlarm(sound, volume, duration) {
 
 private playAlarm(sound, volume, duration) {
 	logTrace "playAlarm($sound, $volume, $duration)"
-	def durationMsg = (duration && duration > 0) ? ", duration: $duration" : ""
+	
+	def durationMsg = (duration && durantion instanceof Integer && (int)duration > 0) ? ", duration: $duration" : ""
 	logDebug "Sounding Alarm: [sound: $sound, volume: $volume$durationMsg]"
 	
 	sound = validateSound(sound)
