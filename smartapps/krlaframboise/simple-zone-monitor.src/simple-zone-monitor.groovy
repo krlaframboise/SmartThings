@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.8 [ALPHA]
+ *  Simple Zone Monitor v0.0.9 [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -7,6 +7,11 @@
  *  URL to documentation:
  *
  *  Changelog:
+ *
+ *    0.0.9 (09/23/2016)
+ *      - Added option to Security Notifications and Safety
+ *				Notifications that allow you to use the same settings
+ *				for all the monitoring statuses. 
  *
  *    0.0.8 (09/23/2016)
  *      - Added Button Arming/Disarming Triggers
@@ -155,7 +160,7 @@ def mainPage() {
 		else {
 			section() {
 				state.installed = true
-				getParagraph("Installation Complete.\n\nPlease tap Done, exit the Marketplace, and open Simple Zone Monitor from your installed SmartApp list.", "app-SimpleZoneMonitor@2x.png")
+				getParagraph("Installation Complete.\n\nPlease tap Done, exit the Marketplace, and open the Simple Zone Monitor from SmartApps tab of the Automations page.", "app-SimpleZoneMonitor@2x.png")
 			}
 		}
 	}
@@ -348,7 +353,7 @@ def settingsPage() {
 				}
 			}
 			else {
-				getWarningParagraph("Zones can't be setup until at least one \"Safety Device to Monitor\" or \"Security Device to Monitor\" has been chosen.")
+				getWarningParagraph("Zones can't be setup until at least one \"Safety Device to Monitor\" or \"Security Device to Monitor\" has been chosen from the \"Choose Devices\" Screen.")
 			}
 		}
 		section("Notification Settings") {
@@ -398,6 +403,9 @@ def settingsPage() {
 				required: false
 		}
 		section("Other Options") {	
+			label(name: "label",
+				title: "Name:",
+				required: false)
 			input "logging", "enum",
 				title: "Log these types of messages to log:",
 				multiple: true,
@@ -422,7 +430,7 @@ def getConfigSummary() {
 	config.hasConfiguredSafetyNotifications = hasConfiguredNotifications("Safety", null)
 
 	config.hasConfiguredSecurityNotifications = hasConfiguredNotifications("Security", null)
-
+	
 	config.hasConfiguredSafetyOrSecurityNotifications = config.hasConfiguredSafetyNotifications || config.hasConfiguredSecurityNotifications
 
 	config.hasAllRequirements = config.hasSafetyOrSecurityDevices && config.hasConfiguredSafetyOrSecurityNotifications && config.hasStatuses && config.hasZones && config.hasStatusZones && config.hasStatuses
@@ -871,41 +879,46 @@ def editStatusZonesPage(params) {
 
 def safetyNotificationsPage() {
 	dynamicPage(name:"safetyNotificationsPage") {
-		section() {
-			getInfoParagraph("Setup Safety Notifications for each Monitoring Status.")
-			if (!state.configSummary?.hasSafetyDevices) {
-				getWarningParagraph("These notifications won't get executed because no Safety Devices are being monitored.")
-			}
-
-			getStatuses(true).each {
-				getPageLink("${it.id}SafetyNotificationsLink",
-					"${it.name}",
-					"statusNotificationsPage",
-					[status: it, notificationType: "Safety"],
-					getStatusNotificationsSummary("Safety", it?.id))
-			}
-		}
+		getNotificationPageContent("Safety")
 	}
 } 
 
 def securityNotificationsPage() {
 	dynamicPage(name:"securityNotificationsPage") {
-		section() {
-			getInfoParagraph("Setup Security Notifications for each Monitoring Status.")
-			if (!state.configSummary?.hasSecurityDevices) {
-				getWarningParagraph("These notifications won't get executed because no Security Devices are being monitored.")
-			}
+		getNotificationPageContent("Security")
+	}
+}
 
-			getStatuses(false).each {
-				getPageLink("${it.id}SecurityNotificationsLink",
-					"${it.name}",
-					"statusNotificationsPage",
-					[status: it, notificationType: "Security"],
-					getStatusNotificationsSummary("Security", it?.id))
-			}
+private getNotificationPageContent(notificationType) {
+	section() {
+		if (!state.configSummary?."has${notificationType}Devices") {
+			getWarningParagraph("These notifications won't get executed because no ${notificationType} Devices are being monitored.")
+		}
+		
+		input "shared${notificationType}NotificationsEnabled", "bool",
+			title: "Use the same ${notificationType} Notification settings for all Monitoring Statuses?",
+			defaultValue: false,
+			required: false,
+			submitOnChange: true
+		
+		def statuses = []
+		if (settings["shared${notificationType}NotificationsEnabled"]) {
+			statuses << [id: "all", name: "All Monitoring Statuses"]
+		}
+		else {
+			getInfoParagraph("Setup ${notificationType} Notifications for each Monitoring Status.")
+			statuses += getStatuses(notificationType == "Safety")
+		}
+							
+		statuses.each {
+			getPageLink("${it.id}${notificationType}NotificationsLink",
+				"${it.name}",
+				"statusNotificationsPage",
+				[status: it, notificationType: notificationType],
+				getStatusNotificationsSummary(notificationType, it?.id))
 		}
 	}
-} 
+}
 
 private getStatusNotificationsSummary(notificationType, statusId) {
 	def summary = ""
@@ -937,17 +950,23 @@ private getNotificationNoDeviceMessage(fieldName, deviceType, cmd=null) {
 
 def customMessagesPage() {
 	dynamicPage(name:"customMessagesPage") {
-		section() {
-			getTokensParagraph()			
+		section("Tokens") {
+			getTokensParagraph()
+		}
+		section("Event Message") {
+			getInfoParagraph("This is the message that gets used for the \"Event Message\" Notifications.")
+			input "defaultEventMessage", "text",
+				title: "Default Event Message:",
+				defaultValue: getEventMessage(),
+				required: false			
+		}
+		section("Zone Message") {
+			getInfoParagraph("This is the message that gets used for the \"Zone Message\" Notifications when the custom message wasn't specified in the corresponding zone's settings.")
 			input "defaultZoneMessage", "text",
 				title: "Default Zone Message:",
 				defaultValue: getDefaultZoneMessage(),
 				required: false
-			input "defaultEventMessage", "text",
-				title: "Default Event Message:",
-				defaultValue: getEventMessage(),
-				required: false
-		}
+		}		
 	}
 }
 
@@ -1768,18 +1787,19 @@ private timeElapsed(startTime, delaySeconds) {
 
 private handleNotifications(notificationType, evt) {
 	def currentZone = findZoneByDevice(notificationType, evt?.displayName)
-
+	def notificationStatusId = (settings["shared${notificationType}NotificationsEnabled"] ? "all" : state.status?.id)
+	
 	logInfo "$notificationType Event in Zone ${currentZone?.displayName}"
 
 	def currentDeviceType = getDeviceType(notificationType, evt.name, evt.value)
 	
-	 def eventMsg = replaceMessageTokens(getEventMessage(), evt, currentZone, notificationType, currentDeviceType.name)
+	def eventMsg = replaceMessageTokens(getEventMessage(), evt, currentZone, notificationType, currentDeviceType.name)
 
 	def zoneMsg = replaceMessageTokens((settings["${currentZone?.settingName}${currentDeviceType?.prefName}Message"] ?: getDefaultZoneMessage()), evt, currentZone, notificationType, currentDeviceType.name)
 	
 	storeNotification(notificationType, currentZone, evt, eventMsg, zoneMsg)
 	
-	getStatusTypeSettings(getStatusNotificationTypeData(notificationType, state.status?.id)). each {
+	getStatusTypeSettings(getStatusNotificationTypeData(notificationType, notificationStatusId)). each {
 		def msg = it.prefName?.contains("Zone") ? zoneMsg : eventMsg
 		
 		if (settings["${it.prefName}"]) {			
@@ -1994,7 +2014,7 @@ private getZones(includeEmpty=false) {
 
 		if (includeEmpty || zone.name) {
 			zone.zoneGroupName = settings."${zone.settingName}Group" ?: ""
-			zone.displayName = zone.zoneGroupName ? "${zone.zoneGroupName} > ${zone.name}" : "${zone.name}"
+			zone.displayName = zone.zoneGroupName ? "${zone.zoneGroupName}: ${zone.name}" : "${zone.name}"
 
 			zone.armedStateName = "${zone.settingName}Armed"
 			zone.armed = state."${zone.armedStateName}" ?: false
@@ -2051,11 +2071,16 @@ private getStatusZoneNames(statusId) {
 }
 
 private hasStatuses() {
-	return getStatuses() ? true : false
+	return getStatuses(false) ? true : false
 }
 
 private hasConfiguredNotifications(notificationType, statusId) {
-	return getStatusNotificationDeviceNames(notificationType, statusId) ? true : false
+	if (settings["shared${notificationType}NotificationsEnabled"]) {	
+		return getStatusTypeSettings(getStatusNotificationTypeData(notificationType, "all"))?.size() ? true : false
+	}
+	else {
+		return getStatusNotificationDeviceNames(notificationType, statusId) ? true : false
+	}
 }
 
 private getStatusNotificationDeviceNames(notificationType, statusId) {
@@ -2287,7 +2312,8 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 					noOptionsMsg: getNotificationNoDeviceMessage("Speak Message", "Speech Synthesis", null),
 					isDevice: true,
 					prefs: [ 
-						[name: "Zone", cmd: "speak"]
+						[name: "Event", cmd: "speak"],
+						[name: "Zone", cmd: "speak"]						
 					],
 					childPrefs: []
 				],
@@ -2302,7 +2328,8 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 					noOptionsMsg: getNotificationNoDeviceMessage("Play Message as Text", "Audio Notification or Music Player", "playText"),
 					isDevice: true,
 					prefs: [ 
-						[name: "Zone", cmd: "playText"]
+						[name: "Event", cmd: "playText"],
+						[name: "Zone", cmd: "playText"]						
 					],
 					childPrefs: [
 						[prefTitle: "Play Text Volume: (1-100)",
