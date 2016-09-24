@@ -1,7 +1,16 @@
 /**
  *  Aeon Labs Multifunction Doorbell v 1.8.13
- *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-multifunction-doorbell/36586?u=krlaframboise)
+ *******************************************
+ *******************************************
  *
+ *  !!! THIS DTH IS NO LONGER SUPPORTED !!!
+ *   Use the Aeotec Doorbell DTH instead: 
+ *  https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/aeotec-doorbell.src/aeotec-doorbell.groovy
+ *
+ *******************************************
+ *******************************************
+ *
+ * 
  *  Capabilities:
  *					Switch, Alarm, Music Player, Tone,
  *					Button, Battery, Presence Sensor, Polling, Refresh
