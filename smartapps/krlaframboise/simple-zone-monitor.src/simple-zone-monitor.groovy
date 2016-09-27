@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.9 [ALPHA]
+ *  Simple Zone Monitor v0.0.10 [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -7,6 +7,10 @@
  *  URL to documentation:
  *
  *  Changelog:
+ *
+ *    0.0.10 (09/26/2016)
+ *      - Bug fix for arming/disarming
+ *      - Started adding security condition feature.
  *
  *    0.0.9 (09/23/2016)
  *      - Added option to Security Notifications and Safety
@@ -690,6 +694,13 @@ private getZoneSummary(zone) {
 		summary += summary ? "\n" : ""
 		summary = "Zone Status: ${zone?.status}"
 	}
+	if (zone?.condition) {
+		summary += summary ? "\n" : ""
+		summary = "Security Condition: ${zone?.condition?.name}"
+		if (zone?.condition?.includeTimeout) {
+			summary += " within ${zone?.conditionTimeout} seconds"
+		}
+	}
 	settings["${zone.settingName}SafetyDevices"]?.each {
 		summary += summary ? "\n" : ""
 		summary += "Safety: ${it}"
@@ -741,14 +752,24 @@ def editZonePage(params) {
 					options: getDeviceNames(getSecurityDeviceTypes())
 				
 				if (settings["${zone.settingName}SecurityDevices"]) {
-					getInfoParagraph("To reduce false alarms you can optionally require an event from more than one of the zone's devices within a specified amount of time.\n\n(NOT IMPLEMENTED)") 
-					input "${zone.settingName}MultiEventSeconds", "number",
-						title: "Require multiple events within: (seconds)",
-						required: false
+					getInfoParagraph("To reduce false alarms you can optionally set a condition for security events require an event from more than one of the zone's devices within a specified amount of time.") 
+					
+					input "${zone.settingName}Condition", "enum",
+						title: "Security Condition:",
+						required: false,
+						submitOnChange: true,
+						defaultValue: "One Event",
+						options: getZoneConditionTypes().collect { it.name }.sort()
+					
+					if (getZoneConditionTypeByName(settings["${zone.settingName}Condition"])?.includeTimeout) {
+						input "${zone.settingName}ConditionTimeout", "number",
+							title: "Security Condition Timeout (seconds):",
+							required: true
+					}
 				}
 			}
 			section("Safety Settings") {
-				getInfoParagraph("Safety devices are monitored regardless of the Zone's Armed Status.")
+				getInfoParagraph("Safety devices are monitored regardless of the Zone's Armed Status and you can setup different notification settings based on the active Monitoring Status.")
 				input "${zone.settingName}SafetyDevices", "enum",
 					title: "Safety Devices:",
 					multiple: true,
@@ -1526,7 +1547,7 @@ def armDisarmDeviceEventHandler(evt) {
 					break
 			
 				default:
-					addStatusHistory(verifiedMatch.status, "${evt.displayName}: ${evt.name} changed to ${evt.value}")
+					addStatusHistory(match.status, "${evt.displayName}: ${evt.name} changed to ${evt.value}")
 					return true
 			}
 		}
@@ -1732,6 +1753,18 @@ def securityEventHandler(evt) {
 	else {
 		handleNotifications("Security", evt)
 	}
+}
+
+private securityConditionMet(evt) {
+
+}
+
+def zoneGroupSecurityConditionMet(zoneGroup) {
+	
+}
+
+def zoneSecurityConditionMet(zone) {
+
 }
 
 private handleEntryExitNotification(evt) {
@@ -2020,10 +2053,38 @@ private getZones(includeEmpty=false) {
 			zone.armed = state."${zone.armedStateName}" ?: false
 			zone.status = zone.armed ? "Armed" : "Disarmed"
 
+			zone.condition = getZoneConditionTypeByName(settings["${zone.settingName}Condition"])
+			
+			zone.conditionTimeout = settings["${zone.settingName}ConditionTimeout"] ?: 0
+			
 			zones << zone
 		}
 	}
 	return zones.sort { it.displayName }
+}
+
+private getZoneConditionTypeByName(name) {
+	return getZoneConditionTypes().find { it.name == name }
+}
+
+private getZoneConditionTypes() {
+	[
+		[
+			id: "one",
+			name: "One Event",
+			includeTimeout: false
+		],
+		[
+			id: "multiple",
+			name: "Multiple Events",
+			includeTimeout: true
+		],
+		[
+			id: "multipleMotion",
+			name: "One Contact Event or Multiple Motion Events",
+			includeTimeout: true
+		]
+	].sort { it.name }
 }
 
 private getSafetyDeviceTypes() {
