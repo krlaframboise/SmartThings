@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.10 [ALPHA]
+ *  Simple Zone Monitor v0.0.11 [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -7,6 +7,10 @@
  *  URL to documentation:
  *
  *  Changelog:
+ *
+ *    0.0.11 (09/27/2016)
+ *      - Split Contact Zone Message into seperate inputs for
+ *        Windows and Doors, but door must be in device name.
  *
  *    0.0.10 (09/26/2016)
  *      - Bug fix for arming/disarming
@@ -786,7 +790,7 @@ def editZonePage(params) {
 				 getSecurityDeviceTypes().each { deviceType ->
 					def attr = deviceType.alarmAttr
 					if (getDevices([deviceType]).find { it.hasAttribute(attr) && it.displayName in settings["${zone.settingName}SecurityDevices"]}) {
-						zoneMsgPrefs << [name: "${zone.settingName}${deviceType.prefName}Message", title: "${deviceType.name} Zone Message:"]
+						zoneMsgPrefs << [name: "${zone.settingName}${deviceType.prefName}Message", title: "${deviceType.name} Zone Message:", alarmAttr: "$attr"]
 					}
 				}
 				getSafetyDeviceTypes().each { deviceType ->
@@ -796,10 +800,20 @@ def editZonePage(params) {
 					}
 				}
 				if (zoneMsgPrefs) {
-					zoneMsgPrefs?.sort { it.title }?.each { pref ->
-						input "${pref.name}", "text",
-								title: "${pref.title}",
-								required: false
+					zoneMsgPrefs?.sort { it.title }?.each { pref ->						
+						if (pref.alarmAttr == "contact") {
+							input "${pref.name}Window", "text",
+									title: "Window Zone Message:",
+									required: false
+							input "Door Zone Message:", "text",
+									title: "${pref.title} (Door)",
+									required: false
+						}
+						else {
+							input "${pref.name}", "text",
+									title: "${pref.title}",
+									required: false
+						}
 					}
 				}
 				else {
@@ -1827,8 +1841,8 @@ private handleNotifications(notificationType, evt) {
 	def currentDeviceType = getDeviceType(notificationType, evt.name, evt.value)
 	
 	def eventMsg = replaceMessageTokens(getEventMessage(), evt, currentZone, notificationType, currentDeviceType.name)
-
-	def zoneMsg = replaceMessageTokens((settings["${currentZone?.settingName}${currentDeviceType?.prefName}Message"] ?: getDefaultZoneMessage()), evt, currentZone, notificationType, currentDeviceType.name)
+	
+	def zoneMsg = getZoneMessage(evt, currentZone, currentDeviceType, notificationType)
 	
 	storeNotification(notificationType, currentZone, evt, eventMsg, zoneMsg)
 	
@@ -1870,6 +1884,16 @@ private handleNotifications(notificationType, evt) {
 			}
 		}
 	}
+}
+
+private getZoneMessage(evt, zone, deviceType, notificationType) {
+	def prefName = "${zone?.settingName}${deviceType?.prefName}Message"
+	
+	if (evt.name == "contact") {
+		prefName += evt?.displayName?.toLowerCase().contains("door") ? "Door" : "Window"
+	}
+	
+	return replaceMessageTokens((settings[prefName] ?: getDefaultZoneMessage()), evt, zone, notificationType, deviceType?.name)
 }
 
 private storeNotification(notificationType, zone, evt, eventMsg, zoneMsg) {
