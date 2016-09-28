@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.11 [ALPHA]
+ *  Simple Zone Monitor v0.0.12 [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -7,6 +7,9 @@
  *  URL to documentation:
  *
  *  Changelog:
+ *
+ *    0.0.12 (09/28/2016)
+ *      - Bug fix for door zone message.
  *
  *    0.0.11 (09/27/2016)
  *      - Split Contact Zone Message into seperate inputs for
@@ -803,10 +806,10 @@ def editZonePage(params) {
 					zoneMsgPrefs?.sort { it.title }?.each { pref ->						
 						if (pref.alarmAttr == "contact") {
 							input "${pref.name}Window", "text",
-									title: "Window Zone Message:",
+									title: "Window Opened Message:",
 									required: false
-							input "Door Zone Message:", "text",
-									title: "${pref.title} (Door)",
+							input "${pref.name}Door", "text",
+									title: "Door Opened Message:",
 									required: false
 						}
 						else {
