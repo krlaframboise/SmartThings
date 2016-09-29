@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.12 [ALPHA]
+ *  Simple Zone Monitor v0.0.13 [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -7,6 +7,11 @@
  *  URL to documentation:
  *
  *  Changelog:
+ *
+ *    0.0.13 (09/29/2016)
+ *      - UI Enhancements
+ *      - Added Security Condition setting fields, but
+ *        the settings aren't being used yet.
  *
  *    0.0.12 (09/28/2016)
  *      - Bug fix for door zone message.
@@ -139,15 +144,15 @@ def mainPage() {
 					}
 				}
 
-				def armedZones = ""
+				def armedZones = []
 				getZones(false)?.sort{ it.displayName }?.each {
 					if (it.armed) {
-						armedZones += "${it.displayName}\n"
+						armedZones << "${it.displayName}"
 					}
 				}
 				if (armedZones) {
 					section("Armed Zones") {
-						getParagraph(armedZones ?: "None", "armed.png")
+						getParagraph(buildSummary(armedZones ?: ["None"]), "armed.png")
 					}
 				}
 				section("Activity") {
@@ -219,10 +224,8 @@ private getActivityContent() {
 	}
 }
 
-private getActivitySummary(alerts) {
-	def desc = ""
-	def zones = []
-	
+private getActivitySummary(alerts) {	
+	def zones = []	
 	alerts?.each { alert ->		
 		def zone = zones?.find { it.name == alert.zoneName }		
 		if (zone) {			
@@ -232,11 +235,11 @@ private getActivitySummary(alerts) {
 			zones << [name: alert.zoneName, events: 1]
 		}
 	}
+	def summaryItems = []
 	zones?.sort { it.name }?.each {
-		desc += desc ? "\n" : ""
-		desc += "${it.name} (${it.events})"
+		summaryItems << "${it.name} (${it.events})"
 	}
-	return desc
+	return buildSummary(summaryItems)
 }
 
 def activityDetailsPage(params) {
@@ -636,14 +639,13 @@ def zoneGroupsPage() {
 }  
 
 private getZoneGroupSummary(zoneGroup) {
-	def summary = ""
+	def summaryItems = []
 	getZones(false)?.sort { it.name }?.each { zone ->
 		if (zone?.zoneGroupName == zoneGroup.name) {
-			summary += summary ? "\n" : ""
-			summary += "${zone.name}"
+			summaryItems << "${zone.name}"
 		}
 	}	
-	return summary ?: "  > (No Zones)"
+	return buildSummary(summaryItems ?: ["(No Zones)"])
 }
 
 def editZoneGroupPage(params) {
@@ -683,50 +685,52 @@ def zonesPage() {
 					getZoneSummary(it))
 			}
 		}
-
-		// if (hasZones) {
-			// section("Zone Changes") {
-				// paragraph "Zone changes that effect the Armed state won't get applied until you exit the application.  To apply these changes immediately, tap the Refresh Zones button below."
-				// getPageLink("$refreshZonesLink",
-					// "Refresh Zones",
-					// "refreshZonesPage")
-			// }
-		// }
 	}
 }
 
 private getZoneSummary(zone) {
-	def summary = ""	
+	def summaryItems = []
 	if (zone?.status) {
-		summary += summary ? "\n" : ""
-		summary = "Zone Status: ${zone?.status}"
+		summaryItems << "Zone Status: ${zone?.status}"
 	}
-	if (zone?.condition) {
-		summary += summary ? "\n" : ""
-		summary = "Security Condition: ${zone?.condition?.name}"
-		if (zone?.condition?.includeTimeout) {
-			summary += " within ${zone?.conditionTimeout} seconds"
-		}
+	if (zone?.deviceCondition) {
+		summaryItems << "Device Condition: ${zone?.deviceCondition?.name}"
+	}	
+	zone?.zoneCondition?.each {
+		summaryItems << "Zone Condition: ${it}"
 	}
+	if (zone?.conditionTimeout) {
+		summaryItems << "Condition Timeout: ${zone?.conditionTimeout}"
+	}
+	
 	settings["${zone.settingName}SafetyDevices"]?.each {
-		summary += summary ? "\n" : ""
-		summary += "Safety: ${it}"
+		summaryItems << "Safety: ${it}"
 	}
 	settings["${zone.settingName}SecurityDevices"]?.each {
-		summary += summary ? "\n" : ""
-		summary += "Security: ${it}"
-	}	
-	return summary ?: "(not set)"
+		summaryItems << "Security: ${it}"
+	}
+	
+	getZoneMessagePrefs(zone, "Security")?.each { pref ->
+		if (settings[pref.name]) {
+			summaryItems << "${pref.title} ${settings[pref.name]}"
+		}
+	}
+	getZoneMessagePrefs(zone, "Safety")?.each { pref ->
+		if (settings[pref.name]) {
+			summaryItems << "${pref.title} ${settings[pref.name]}"
+		}
+	}
+	return summaryItems  ? buildSummary(summaryItems) : "(not set)"
 }
 
-// def refreshZonesPage(params) {
-	// dynamicPage(name:"refreshZonesPage") {
-		// section() {
-			// initialize()
-			// paragraph "Zones refreshed successfully"
-		// }
-	// }
-// }
+private buildSummary(items) {
+	def summary = ""
+	items?.each {
+		summary += summary ? "\n" : ""
+		summary += "► ${it}"
+	}
+	return summary
+}
 
 def editZonePage(params) {
 	dynamicPage(name:"editZonePage") {
@@ -760,15 +764,22 @@ def editZonePage(params) {
 				
 				if (settings["${zone.settingName}SecurityDevices"]) {
 					getInfoParagraph("To reduce false alarms you can optionally set a condition for security events require an event from more than one of the zone's devices within a specified amount of time.") 
-					
-					input "${zone.settingName}Condition", "enum",
-						title: "Security Condition:",
+									
+					input "${zone.settingName}DeviceCondition", "enum",
+						title: "Device Condition:",
 						required: false,
 						submitOnChange: true,
 						defaultValue: "One Event",
 						options: getZoneConditionTypes().collect { it.name }.sort()
+						
+					input "${zone.settingName}ZoneCondition", "enum",
+						title: "Require one event from any of these zones:",
+						required: false,
+						submitOnChange: true,
+						multiple: true,
+						options: getZones().findAll{ it.displayName != zone.displayName }.collect { it.displayName }.sort()
 					
-					if (getZoneConditionTypeByName(settings["${zone.settingName}Condition"])?.includeTimeout) {
+					if (getZoneConditionTypeByName(settings["${zone.settingName}DeviceCondition"])?.includeTimeout || settings["${zone.settingName}ZoneCondition"]) {
 						input "${zone.settingName}ConditionTimeout", "number",
 							title: "Security Condition Timeout (seconds):",
 							required: true
@@ -788,35 +799,17 @@ def editZonePage(params) {
 				getInfoParagraph("You can optionally specify a Zone Message for each type of device being monitored.  The Safety/Security Notifications page has message and audio settings that support using the Zone Message.", "What are Zone Messages?")
 				getInfoParagraph("If you have an audio device that can play audio messages by track number, like the Aeon Labs Doorbell, you can use the Zone Message fields to assign different tracks for each type of device in each zone.  You can then use the \"Play Zone Message as Track\" Notification option to play the corresponding track when a safety or security event occurs.", "Other uses for Zone Messages")
 				getInfoParagraph("If you leave the Zone Message fields empty and use one of the Zone Message Notification options, it will use the Default Zone Message which is located in the \"Custom Messages\" section.", "Zone Message Defaults")
+				
 				getTokensParagraph()
-				def zoneMsgPrefs = []			
-				 getSecurityDeviceTypes().each { deviceType ->
-					def attr = deviceType.alarmAttr
-					if (getDevices([deviceType]).find { it.hasAttribute(attr) && it.displayName in settings["${zone.settingName}SecurityDevices"]}) {
-						zoneMsgPrefs << [name: "${zone.settingName}${deviceType.prefName}Message", title: "${deviceType.name} Zone Message:", alarmAttr: "$attr"]
-					}
-				}
-				getSafetyDeviceTypes().each { deviceType ->
-					def attr = deviceType.alarmAttr
-					if (getDevices([deviceType]).find { it.hasAttribute(attr) && it.displayName in settings["${zone.settingName}SafetyDevices"]}) {
-						zoneMsgPrefs << [name: "${zone.settingName}${deviceType.prefName}Message", title: "${deviceType.name} Zone Message:"]
-					}
-				}
+				
+				def zoneMsgPrefs = []
+				zoneMsgPrefs += getZoneMessagePrefs(zone, "Security")
+				zoneMsgPrefs += getZoneMessagePrefs(zone, "Safety")
 				if (zoneMsgPrefs) {
-					zoneMsgPrefs?.sort { it.title }?.each { pref ->						
-						if (pref.alarmAttr == "contact") {
-							input "${pref.name}Window", "text",
-									title: "Window Opened Message:",
-									required: false
-							input "${pref.name}Door", "text",
-									title: "Door Opened Message:",
-									required: false
-						}
-						else {
-							input "${pref.name}", "text",
-									title: "${pref.title}",
-									required: false
-						}
+					zoneMsgPrefs?.sort { it.title }?.each { pref ->
+						input "${pref.name}", "text",
+							title: "${pref.title}",
+							required: false						
 					}
 				}
 				else {
@@ -836,6 +829,42 @@ def editZonePage(params) {
 			}
 		}
 	}
+}
+
+private getZoneMessagePrefs(zone, type) {
+	def zoneMsgPrefs = []
+	def deviceTypes = (type == "Security") ? getSecurityDeviceTypes() : getSafetyDeviceTypes()
+	
+	deviceTypes?.each { deviceType ->
+		def attr = deviceType.alarmAttr
+		
+		if (getDevices([deviceType]).find { 
+		it.hasAttribute(attr) && it.displayName in settings["${zone.settingName}${type}Devices"]}) {
+		
+			def zoneMsg = [
+				name: "${zone.settingName}${deviceType.prefName}Message",
+				title: "${deviceType.name} Message:",
+				alarmAttr: "$attr"			
+			]
+			
+			if (attr == "contact") {
+				zoneMsgPrefs << [
+					name: "${zoneMsg.name}Window",
+					title: "Window Opened Message:",
+					alarmAttr: "${zoneMsg.alarmAttr}"
+				]
+				zoneMsgPrefs << [
+					name: "${zoneMsg.name}Door",
+					title: "Door Opened Message:",
+					alarmAttr: "${zoneMsg.alarmAttr}"
+				]				
+			}
+			else {
+				zoneMsgPrefs << zoneMsg
+			}
+		}
+	}
+	return zoneMsgPrefs
 }
 
 def statusZonesPage() {
@@ -959,15 +988,14 @@ private getNotificationPageContent(notificationType) {
 }
 
 private getStatusNotificationsSummary(notificationType, statusId) {
-	def summary = ""
+	def summaryItems = []
 	getStatusTypeSettings(getStatusNotificationTypeData(notificationType, statusId)).each {
 		def settingValue = settings["${it.prefName}"]
 		if (settingValue) {
-			summary = summary ? "${summary}\n" : ""
-			summary = "${summary}${it.prefTitle} ${settingValue}"
+			summaryItems << "${it.prefTitle} ${settingValue}"
 		}
 	}				
-	return summary ?: "(not set)"
+	return buildSummary(summaryItems ?: ["(not set)"])
 }
 
 def statusNotificationsPage(params) {
@@ -1037,16 +1065,15 @@ def armDisarmPage() {
 }
 
 private getStatusArmDisarmSummary(statusId) {
-	def summary = ""
+	def summaryItems = []
 	getStatusTypeSettings(getStatusArmDisarmTypeData(statusId)).each {
 		def settingValue = settings["${it.prefName}"]
 		def childPrefValue = getChildPrefValue(it.childPrefs, 0) ?: ""
 		if (settingValue) {
-			summary = summary ? "${summary}\n" : ""
-			summary = "${summary}${it.prefTitle} ${childPrefValue} ${settingValue}"
+			summaryItems << "${it.prefTitle} ${childPrefValue} ${settingValue}"
 		}
 	}				
-	return summary ?: "(not set)"	
+	return buildSummary(summaryItems ?: ["(not set)"])
 }
 
 def statusArmDisarmPage(params) {
@@ -1378,9 +1405,9 @@ def installed() {
 }
 
 def updated() {	
-	initialize()
-	
 	logDebug("State Used: ${(state.toString().length() / 100000)*100}%")
+	
+	initialize()
 }
 
 def initialize() {
@@ -1635,12 +1662,15 @@ private getStatusSettingName(statusId, partialSettingName, attrValue) {
 	return "${statusId}${partialSettingName}"
 }
 
-private appendStatusSettingSummary(summary, statusId, partialSettingName, summaryLineFormat) {	
+private appendStatusSettingSummary(summary, statusId, partialSettingName, summaryLineFormat) {
+	def items = []
 	getStatusSettings(statusId, partialSettingName)?.each {
-		summary += summary ? "\n" : ""
-		summary += summaryLineFormat.replace("%", "${it}")
+		items << summaryLineFormat.replace("%", "${it}")
 	}
-	return summary
+	if (items) {
+		summary += summary ? "\n" : ""
+	}
+	return summary + buildSummary(items)
 }
 
 private getStatusSettings(statusId, partialSettingName) {
@@ -2080,8 +2110,10 @@ private getZones(includeEmpty=false) {
 			zone.armed = state."${zone.armedStateName}" ?: false
 			zone.status = zone.armed ? "Armed" : "Disarmed"
 
-			zone.condition = getZoneConditionTypeByName(settings["${zone.settingName}Condition"])
+			zone.deviceCondition = getZoneConditionTypeByName(settings["${zone.settingName}DeviceCondition"])
 			
+			zone.zoneCondition = settings["${zone.settingName}ZoneCondition"]
+						
 			zone.conditionTimeout = settings["${zone.settingName}ConditionTimeout"] ?: 0
 			
 			zones << zone
