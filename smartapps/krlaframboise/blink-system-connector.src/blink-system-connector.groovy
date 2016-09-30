@@ -1,11 +1,16 @@
 /**
- *  Blink System Connector v 1.5
+ *  Blink System Connector v 1.5.1
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.5.1 (9/29/2016)
+ *      - Fixed uninstall bug, but still can't uninstall
+ *        while cameras are being used in SmartApps.
+ *      - Added additional logging for Blink requests.
  *
  *    1.5 (7/3/2016)
  *      - Added Web Dashboard
@@ -413,8 +418,24 @@ private initialize() {
 	}
 }
 
+// Revokes the dashboard access token, if applicable.
 def uninstalled() {
-	removeAllCameras(getChildDevices())
+	if (state.endpoint) {
+		try {
+			logDebug "Revoking dashboard access token"
+			revokeAccessToken()
+		}
+		catch (e) {
+			log.warn "Unable to revoke dashboard access token: $e"
+		}
+	}
+	try {
+		logDebug "Removing Cameras"
+		removeAllCameras(getChildDevices())
+	}
+	catch (e) {
+		log.warn "Unable to remove cameras"
+	}
 }
 
 def childUninstalled() {
@@ -422,13 +443,10 @@ def childUninstalled() {
 }
 
 private removeAllCameras(devices) {
-	devices.each {
-		removeCamera(it.deviceNetworkId)
+	devices?.each {
+		logDebug "Removing ${it.displayName}"
+		deleteChildDevice(it.deviceNetworkId)
 	}
-}
-
-def removeCamera(dni) {
-	deleteChildDevice(dni)
 }
 
 def getSystemStatus() {
@@ -710,10 +728,11 @@ private getAuthToken() {
 			password: settings.blinkPassword,
 			client_specifier: "iPhone 9.2 | 2.2 | 222"
 		]
-		def request = buildRequest("/login", null, requestBody)	
-		state.authToken = postToBlink(request)?.data?.authtoken?.authtoken
+		def request = buildRequest("/login", null, requestBody)
+		def response = postToBlink(request)
+		state.authToken = response?.data?.authtoken?.authtoken
 		if (!state.authToken) {
-			log.error "Failed to login: ${response}"
+			log.error "Failed to login:\nResponse:${response}\nData:${response?.data}"
 		}
 	}
 	return state.authToken
@@ -772,24 +791,20 @@ private postToBlink(request) {
     }
   }
 	catch (e) {
+		log.warn "Post to Blink ${request?.path} Exception: ${e}"
 		if (canRetryRequest(e.message)) {			
 			return postToBlink(buildRetryRequest(request))
 		}
-		else {
-			log.error "Post to Blink ${request?.path} Exception: ${e}"
+		else {			
 			return null
 		}
   }
 }
 
-private canRetryRequest(errorMsg) {
-	if (state.authToken && errorMsg.contains("Unauthorized")) {
-		state.authToken = null
-		return true
-	}
-	else {
-		return false
-	}
+private canRetryRequest(errorMsg) {	
+	def result = (state.authToken && errorMsg.contains("Unauthorized"))
+	state.authToken = null
+	return result
 }
 
 def shmHandler(evt) {
@@ -858,12 +873,14 @@ boolean shmEnabled() {
 }
 
 def getFormattedLocalTime(utcDateString) {
-	def localTZ = TimeZone.getTimeZone(location.timeZone.ID)		
-	def utcDate = Date.parse(
-		"yyyy-MM-dd'T'HH:mm:ss", 
-		utcDateString.replace("+00:00", "")).time
-	def localDate = new Date(utcDate + localTZ.getOffset(utcDate))	
-	return localDate.format("MM/dd/yyyy hh:mm:ss a")
+	if (utcDateString) {
+		def localTZ = TimeZone.getTimeZone(location.timeZone.ID)		
+		def utcDate = Date.parse(
+			"yyyy-MM-dd'T'HH:mm:ss", 
+			utcDateString.replace("+00:00", "")).time
+		def localDate = new Date(utcDate + localTZ.getOffset(utcDate))	
+		return localDate.format("MM/dd/yyyy hh:mm:ss a")
+	}
 }
 
 def getCameraDNI(networkId, cameraId) {
