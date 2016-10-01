@@ -163,23 +163,9 @@ These are the Notification Options you can use for each Monitoring Status:
 **Future Features**
 _The details of these features will most likely changes as they're being implemented_
 
-**Version 0.0.10** will have some options to help prevent false positives. 
+**Security Conditions** specify whether a zone is active if any device has activity, more than one device, or one contact sensor or more than one motions sensor.  
 
-These are some of the settings I'm considering:
-
-* Zone Group option with choices like:
- - Any event (default)
- - Any event from more than one of its zones within x seconds.
-
- * Zone option with choices like: 
- - Not Set (default) _uses Zone Group setting_
- - Any event
- - Any 2 events within x seconds
- - Any contact sensor event or 2 motion sensor events within x seconds. 
-
-**Version 0.0.11** will have a web dashboard that can be accessed from any browser.  This is one of the main reasons why zones should be setup based on device location.  
-
-These are some of the features I'm thinking about:
+**Web Dashboard** that can be accessed from any browser and has some of these options:
 
 * Main Page
  - Allows you to change the Monitoring Status
