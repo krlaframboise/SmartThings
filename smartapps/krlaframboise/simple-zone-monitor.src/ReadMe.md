@@ -5,6 +5,14 @@
 
 ----------
 
+**Screenshots**
+
+<img src="http://community.smartthings.com/uploads/default/original/3X/c/d/cde476bac8bbd2ebc84c59aa67d389a050347e5c.png" width="281" height="500">&nbsp;&nbsp;&nbsp;<img src="http://community.smartthings.com/uploads/default/original/3X/f/4/f40a54bdd66c1d4e97533cf7a9dd9ed7e203409b.png" width="281" height="500">&nbsp;&nbsp;&nbsp;<img src="http://community.smartthings.com/uploads/default/original/3X/2/9/29b3361fe752169224c9cb4ba0c7d29be6c967e0.png" width="281" height="500">
+<br>
+<br>
+<img src="http://community.smartthings.com/uploads/default/original/3X/3/3/33daa25c09ba279fd19d25b0f6d5b383b90dfdc5.png" width="281" height="500">&nbsp;&nbsp;&nbsp;<img src="http://community.smartthings.com/uploads/default/original/3X/a/5/a5e0df780a9b6eb84f282d2f2eb15704a7b0e6d7.png" width="281" height="500">&nbsp;&nbsp;&nbsp;<img src="http://community.smartthings.com/uploads/default/original/3X/0/a/0a83c1edfb663e8cd6bb65e34e93863a1497cf33.png" width="281" height="500">
+
+----------
 
 **Overview**
 
