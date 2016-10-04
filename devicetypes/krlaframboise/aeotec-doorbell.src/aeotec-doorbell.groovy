@@ -111,7 +111,8 @@ metadata {
 		command "playRepeatTrack", ["number", "number"]
 		command "playRepeatTrackAtVolume", ["number", "number", "number"]
 		command "playSoundAndTrack"
-		command "playTrackAtVolume"		
+		command "playTrackAtVolume"	
+		command "setVolume", ["number"]
 
 		fingerprint mfr: "0086", prod: "0104", model: "0038"        
 
