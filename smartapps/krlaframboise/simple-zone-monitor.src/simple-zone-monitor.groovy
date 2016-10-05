@@ -1,12 +1,15 @@
 /**
- *  Simple Zone Monitor v0.0.13 [ALPHA]
+ *  Simple Zone Monitor v0.0.14 [ALPHA]
  *
  *  Author: 
- *    Kevin LaFramboise (krlaframboise)
+ *    Kevin LaFramboise (@krlaframboise)
  *
  *  URL to documentation:
  *
  *  Changelog:
+ *
+ *    0.0.14 (10/05/2016)
+ *      - UI Enhancements
  *
  *    0.0.13 (09/29/2016)
  *      - UI Enhancements
@@ -689,45 +692,67 @@ def zonesPage() {
 }
 
 private getZoneSummary(zone) {
-	def summaryItems = []
+	def summary = ""
+	
 	if (zone?.status) {
-		summaryItems << "Zone Status: ${zone?.status}"
+		summary += "| ZONE STATUS |\n" + buildSummary([zone?.status])
 	}
+
+	if (settings["${zone.settingName}SecurityDevices"]) {
+		summary += summary ? "\n" : ""
+		summary += "| SECURITY DEVICES |\n"			
+		summary += buildSummary(settings["${zone.settingName}SecurityDevices"]?.collect { it })
+	}
+	
+	summary = appendZoneMessageSummary("Security", zone, summary)
+	
+	def conditions = []
 	if (zone?.deviceCondition) {
-		summaryItems << "Device Condition: ${zone?.deviceCondition?.name}"
+		conditions << "Device: ${zone?.deviceCondition?.name}"
 	}	
-	zone?.zoneCondition?.each {
-		summaryItems << "Zone Condition: ${it}"
-	}
+	if (zone?.zoneCondition) {
+		conditions << "Zone: ${zone.zoneCondition}"
+	}	
 	if (zone?.conditionTimeout) {
-		summaryItems << "Condition Timeout: ${zone?.conditionTimeout}"
+		conditions << "Timeout: ${zone?.conditionTimeout}"
+	}
+	if (conditions) {
+		summary += summary ? "\n" : ""
+		summary += "| SECURITY CONDITIONS |\n${buildSummary(conditions)}"		
 	}
 	
-	settings["${zone.settingName}SafetyDevices"]?.each {
-		summaryItems << "Safety: ${it}"
+	if (settings["${zone.settingName}SafetyDevices"]) {
+		summary += summary ? "\n" : ""
+		summary += "| SAFETY DEVICES |\n" + buildSummary(settings["${zone.settingName}SafetyDevices"]?.collect{ it })
 	}
-	settings["${zone.settingName}SecurityDevices"]?.each {
-		summaryItems << "Security: ${it}"
-	}
+		
+	summary = appendZoneMessageSummary("Safety", zone, summary)
 	
-	getZoneMessagePrefs(zone, "Security")?.each { pref ->
+	return summary ? summary : "(not set)"
+}
+
+private appendZoneMessageSummary(notificationType, zone, summary) {
+	def messages = []
+	
+	getZoneMessagePrefs(zone, notificationType)?.sort { it.title }?.each { pref ->
 		if (settings[pref.name]) {
-			summaryItems << "${pref.title} ${settings[pref.name]}"
+			messages << "${pref.title} ${settings[pref.name]}"
 		}
+	}	
+	if (messages) {
+		summary += summary ? "\n" : ""
+		return "${summary}| ${notificationType?.toUpperCase()} MESSAGES |\n${buildSummary(messages)}"		
 	}
-	getZoneMessagePrefs(zone, "Safety")?.each { pref ->
-		if (settings[pref.name]) {
-			summaryItems << "${pref.title} ${settings[pref.name]}"
-		}
+	else {
+		return summary
 	}
-	return summaryItems  ? buildSummary(summaryItems) : "(not set)"
 }
 
 private buildSummary(items) {
 	def summary = ""
 	items?.each {
 		summary += summary ? "\n" : ""
-		summary += "► ${it}"
+		summary += "  ► ${it}"
 	}
 	return summary
 }
@@ -889,11 +914,11 @@ private getStatusZonesSummary(status) {
 	
 	def summary = ""		
 	if (zoneSummary) {
-		summary = "<---  Armed Zones  --->\n${zoneSummary}"
+		summary = "| ARMED ZONES |\n${zoneSummary}"
 	}
 	if (deviceSummary) {
 		summary += summary ? "\n" : ""
-		summary += "<---  Excluded Devices  --->\n${deviceSummary}"
+		summary += "| EXCLUDED DEVICES |\n${deviceSummary}"
 	}
 	return summary ?: "(not set)"	
 }
@@ -1664,7 +1689,7 @@ private getStatusSettingName(statusId, partialSettingName, attrValue) {
 
 private appendStatusSettingSummary(summary, statusId, partialSettingName, summaryLineFormat) {
 	def items = []
-	getStatusSettings(statusId, partialSettingName)?.each {
+	getStatusSettings(statusId, partialSettingName)?.sort()?.each {
 		items << summaryLineFormat.replace("%", "${it}")
 	}
 	if (items) {
