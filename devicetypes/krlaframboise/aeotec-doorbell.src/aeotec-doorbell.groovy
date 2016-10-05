@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell v 1.9.2
+ *  Aeotec Doorbell v 1.10
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
@@ -12,6 +12,10 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.10 (10/04/2016)
+ *    - Added volume slider to main tile.
+ *    - Removed volume preference.
  *
  *  1.9.2 (09/10/2016)
  *    - Bug fix that uses default volume if the volume
@@ -108,12 +112,13 @@ metadata {
 		
 		attribute "status", "enum", ["off", "doorbell", "beep", "alarm", "play"]
 		
+		command "setVolume", ["number"]
 		command "playRepeatTrack", ["number", "number"]
 		command "playRepeatTrackAtVolume", ["number", "number", "number"]
 		command "playSoundAndTrack"
 		command "playTrackAtVolume"		
 
-		fingerprint mfr: "0086", prod: "0104", model: "0038"        
+		fingerprint mfr: "0086", prod: "0104", model: "0038"
 
 		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98,0x25,0x70,0x72,0x59,0x85,0x73,0x7A,0x5A", outClusters: "0x82"
 	}
@@ -136,12 +141,7 @@ metadata {
 			title: "Doorbell Track: (1-100)",
 			required: true,
 			range: "1..100",
-			displayDuringSetup: true
-		input "volume", "number",
-			title: "Volume: (1-10)",
-			required: true,
-			range: "0..10",
-			displayDuringSetup: true
+			displayDuringSetup: true		
 		input "repeat", "number",
 			title: "Repeat: (1-20)",
 			required: true,
@@ -163,8 +163,14 @@ metadata {
 				attributeState "alarm", label:'Alarm Sounding!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
 				attributeState "beep", label:'Beeping!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#99FF99"
 				attributeState "play", label:'Playing!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#694489"
-			}			
-		}    
+			}		
+		} 
+		valueTile("volume", "device.level", decoration: "flat", height:1, width:2) {
+			state "level", label: 'VOLUME ${currentValue}', defaultState: true
+		}
+		controlTile("volumeSlider", "device.level", "slider", height: 1, width: 4, range: "(0..10)") {
+			state "level", action:"setVolume"
+		}		
 		standardTile("playDoorbell", "device.switch", width: 2, height: 2) {
 			state "off", 
 				label:'Doorbell', 
@@ -207,12 +213,9 @@ metadata {
 		}
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
 			state "refresh", label:'', action: "refresh", icon:"st.secondary.refresh"
-		}
-		valueTile("settingsMovedMsg", "generic", width: 2, height: 2) {
-			state "default", label:'All settings have been moved to the settings screen'
-		}
+		}		
 		main "statusTile"
-		details(["statusTile", "playDoorbell", "playBeep", "playAlarm", "refresh", "battery", "settingsMovedMsg"])
+		details(["statusTile", "playDoorbell", "playBeep", "playAlarm", "volume", "volumeSlider", "refresh", "battery"])
 	}
 }
 
@@ -254,10 +257,7 @@ private updateSettings() {
 	}
 	if (settings?.repeat && settings?.repeat != state?.repeat) {
 		result << setRepeat(settings?.repeat)
-	}
-	if (settings?.volume != null && settings?.volume != state?.volume) {
-		result << setVolume(settings?.volume)
-	}
+	}	
 	return result
 }
 
