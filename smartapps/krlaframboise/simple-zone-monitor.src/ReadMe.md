@@ -1,4 +1,4 @@
-**Simple Zone Monitor**
+<h1><a name="top"></a>Simple Zone Monitor</h1>
 
 **Disclaimer:**  This is an Alpha Release so there are most likely some bugs and it's possible that future changes will break some of your settings and you'll have to reconfigure them.
 
