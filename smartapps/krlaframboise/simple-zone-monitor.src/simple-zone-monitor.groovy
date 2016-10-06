@@ -1,12 +1,25 @@
 /**
- *  Simple Zone Monitor v0.0.14 [ALPHA]
+ *  Simple Zone Monitor v0.0.15 [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (@krlaframboise)
  *
+ *    Special Thanks to Greg Harper (@greg) for being the
+ *    primary tester and providing ongoing feedback that
+ *    was essential to the overall design and
+ *    functionality of this SmartApp. 
+ *
+ *
  *  URL to documentation:
+ *    https://github.com/krlaframboise/SmartThings/blob/master/smartapps/krlaframboise/simple-zone-monitor.src/ReadMe.md#simple-zone-monitor
+ *
  *
  *  Changelog:
+ *
+ *    0.0.15 (10/06/2016)
+ *      - Moved entry/exit settings into the
+ *        Monitoring Status Zones section.
+ *      - Added Monitoring Status Change Notifications
  *
  *    0.0.14 (10/05/2016)
  *      - UI Enhancements
@@ -20,8 +33,9 @@
  *      - Bug fix for door zone message.
  *
  *    0.0.11 (09/27/2016)
- *      - Split Contact Zone Message into seperate inputs for
- *        Windows and Doors, but door must be in device name.
+ *      - Split Contact Zone Message into seperate inputs
+ *        for Windows and Doors, but door must be in
+ *        device name.
  *
  *    0.0.10 (09/26/2016)
  *      - Bug fix for arming/disarming
@@ -29,8 +43,8 @@
  *
  *    0.0.9 (09/23/2016)
  *      - Added option to Security Notifications and Safety
- *				Notifications that allow you to use the same settings
- *				for all the monitoring statuses. 
+ *				Notifications that allow you to use the same
+ *        settings for all the monitoring statuses. 
  *
  *    0.0.8 (09/23/2016)
  *      - Added Button Arming/Disarming Triggers
@@ -40,7 +54,8 @@
  *    0.0.7 (09/16/2016)
  *      - CoRE resends piston state every 3 hours so added
  *        check to ignore events older than 60 seconds.
- *      - Moved Excluded Devices into Monitoring Status Zones
+ *      - Moved Excluded Devices into Monitoring Status
+ *        Zones
  *        section since arming zones and excluding devices
  *        go together.
  *      - Added icons for the activity section.
@@ -50,15 +65,20 @@
  *      - Implemented Activity Viewing
  *
  *    0.0.5 (09/11/2016)
- *      - Added "Level" as option for Switch On Notifications.
- *      - Added additional information to Notifications page.
- *      - Added Custom Messages settings page that allows you
- *        to customize the Event Message and the Default Zone
- *        Message using tokens.
+ *      - Added "Level" as option for Switch On
+ *        Notifications.
+ *      - Added additional information to Notifications
+ *        page.
+ *      - Added Custom Messages settings page that allows
+ *        you to customize the Event Message and the
+ *        Default Zone Message using tokens.
  *      - Rearranged Zone Settings page so that the custom
- *        messages for safety and security are shown together
- *        and only shows them for the selected device types.
- *      - Added token list and fixed the zone message explanation *        so that it matches the notification page terminology.
+ *        messages for safety and security are shown
+ *        together and only shows them for the selected
+ *        device types.
+ *      - Added token list and fixed the zone message
+ *        explanation so that it matches the notification
+ *        page terminology.
  *
  *    0.0.4 (09/10/2016)
  *      - Implemented Monitor Status Beep Confirmation
@@ -78,7 +98,8 @@
  *      - Other UI enhancements.
  *
  *    0.0.1 (09/04/2016)
- *      - Has basic safety/security monitoring and notifications.
+ *      - Has basic safety/security monitoring and
+ *        notifications.
  *
  *  Licensed under the Apache License, Version 2.0 (the
  *  "License"); you may not use this file except in
@@ -118,6 +139,7 @@ definition(
 	page(name:"statusZonesPage", title: "Monitoring Status Zones")
 	page(name:"editStatusZonesPage", title: "Monitoring Status Zones")
 	//page(name:"refreshZonesPage", title: "Refresh Zones")
+	page(name:"statusChangeNotificationsPage", title: "Monitoring Status Change Notifications")
 	page(name:"safetyNotificationsPage", title: "Safety Notifications")
 	page(name:"securityNotificationsPage", title: "Security Notifications")
 	page(name:"statusNotificationsPage", title: "Monitoring Status Notifications")
@@ -374,7 +396,12 @@ def settingsPage() {
 			}
 		}
 		section("Notification Settings") {
-			if (config.hasStatuses) {
+			if (config.hasStatuses) {			
+				getPageLink("statusChangeNotificationsLink",
+					"Monitoring Status Change Notifications",
+					"statusChangeNotificationsPage",
+					null,
+					"")
 				getPageLink("safetyNotificationsLink",
 					"Safety Notifications",
 					"safetyNotificationsPage",
@@ -401,7 +428,7 @@ def settingsPage() {
 					"Arming/Disarming",
 					"armDisarmPage")
 				getPageLink("advancedOptionsLink",
-					"Entry/Exit Delays & Beeping",
+					"Beeping Options",
 					"advancedOptionsPage")
 			}
 			else {
@@ -468,7 +495,12 @@ def changeStatusPage(params) {
 
 private addStatusHistory(status, details) {
 	logDebug("${status?.name}: ${details}")
+	
 	state.statusHistory.add(0, [statusChanged: new Date(), status: status, details: details])
+	
+	def notificationStatusId = (settings["sharedStatusNotificationsEnabled"] ? "all" : status?.id)
+	
+	handleNotifications("Status", notificationStatusId, "Simple Zone Monitor - Monitoring Status changed to ${status?.name}.  Event: ${details}")
 }
 
 private changeStatus(newStatus) {
@@ -481,7 +513,7 @@ private changeStatus(newStatus) {
 		state.status.time = new Date().time
 		initialize()
 		playConfirmationBeep()
-		initializeEntryExitBeeping()
+		initializeEntryExitBeeping()		
 	}
 	else {
 		log.warn "Ignoring changeStatus($newStatus)"
@@ -912,6 +944,10 @@ private getStatusZonesSummary(status) {
 	
 	def deviceSummary = appendStatusSettingSummary("", status.id, "ExcludedDevices", "%")
 	
+	def entryExitDelay = settings["${status.id}EntryExitDelay"]
+		
+	def entryExitSummary = appendStatusSettingSummary("", status.id, "EntryExitDevices", "Delayed ${entryExitDelay}s: %")
+		
 	def summary = ""		
 	if (zoneSummary) {
 		summary = "| ARMED ZONES |\n${zoneSummary}"
@@ -919,6 +955,10 @@ private getStatusZonesSummary(status) {
 	if (deviceSummary) {
 		summary += summary ? "\n" : ""
 		summary += "| EXCLUDED DEVICES |\n${deviceSummary}"
+	}
+	if (entryExitSummary) {
+		summary += summary ? "\n" : ""
+		summary += "| ENTRY/EXIT DEVICES |\n${entryExitSummary}"
 	}
 	return summary ?: "(not set)"	
 }
@@ -951,6 +991,19 @@ def editStatusZonesPage(params) {
 				options: getDeviceNames(getSecurityDeviceTypes()),
 				submitOnChange: true
 		}
+		section("Entry/Exit Devices") {
+			input "${id}EntryExitDevices", "enum",
+				title: "Use Delay for these Devices:",
+				multiple: true,
+				required: false,
+				options: getDeviceNames(getSecurityDeviceTypes()),
+				submitOnChange: true
+			if (settings?."${id}EntryExitDevices") {
+				input "${id}EntryExitDelay", "number",
+					title: "Delay Length (seconds):",
+					required: true
+			}
+		}
 	}
 }
 
@@ -969,6 +1022,12 @@ def editStatusZonesPage(params) {
 	// }
 // }
 
+def statusChangeNotificationsPage() {
+	dynamicPage(name:"statusChangeNotificationsPage") {
+		getNotificationPageContent("Status")
+	}
+}
+
 def safetyNotificationsPage() {
 	dynamicPage(name:"safetyNotificationsPage") {
 		getNotificationPageContent("Safety")
@@ -982,8 +1041,8 @@ def securityNotificationsPage() {
 }
 
 private getNotificationPageContent(notificationType) {
-	section() {
-		if (!state.configSummary?."has${notificationType}Devices") {
+	section() {		
+		if (notificationType != "Status" && !state.configSummary?."has${notificationType}Devices") {
 			getWarningParagraph("These notifications won't get executed because no ${notificationType} Devices are being monitored.")
 		}
 		
@@ -999,7 +1058,7 @@ private getNotificationPageContent(notificationType) {
 		}
 		else {
 			getInfoParagraph("Setup ${notificationType} Notifications for each Monitoring Status.")
-			statuses += getStatuses(notificationType == "Safety")
+			statuses += getStatuses(notificationType != "Security")
 		}
 							
 		statuses.each {
@@ -1030,7 +1089,7 @@ def statusNotificationsPage(params) {
 			state.params.notificationType = params.notificationType
 		}
 
-		getStatusTypeDataSections(getStatusNotificationTypeData(state.params?.notificationType, state.params?.status?.id))		
+		getStatusTypeDataSections(getStatusNotificationTypeData(state.params?.notificationType, state.params?.status?.id), (state.params?.notificationType == "Status"))		
 	}
 }
 
@@ -1119,30 +1178,32 @@ def statusArmDisarmPage(params) {
 	}
 }
 
-private getStatusTypeDataSections(data) {
+private getStatusTypeDataSections(data, hideZoneData=false) {
 	data?.each { sect ->
-		section("${sect?.sectionName}") {			
-			if (sect?.sectionInfo) {
+		section("${sect?.sectionName}") {
+		
+			if (sect?.sectionInfo && (!hideZoneData || !sect?.sectionInfo?.toUpperCase()?.contains("ZONE"))) {
 				getInfoParagraph("${sect.sectionInfo}")
 			}			
 			sect?.subSections.each { subSect ->					
 				if (!subSect?.noOptionsMsg || subSect?.options) {
 					getStatusSubSectionSettings(subSect)?.each {
-	
-						input "${it.prefName}", "${it.prefType}", 
-							title: "${it.prefTitle}",
-							required: it.required,
-							multiple: it.multiple,
-							submitOnChange: it.submitOnChange,
-							options: it.options
-						
-						it.childPrefs?.each { child ->
-							input "${child.prefName}", "${child.prefType}",
-								title: "${child.prefTitle}",
-								required: child.required,
-								multiple: child.multiple,
-								options: child.options,
-								range: child.range
+						if (!hideZoneData || !"${it.prefName}".toUpperCase().contains("ZONE")) {
+							input "${it.prefName}", "${it.prefType}", 
+								title: "${it.prefTitle}",
+								required: it.required,
+								multiple: it.multiple,
+								submitOnChange: it.submitOnChange,
+								options: it.options
+							
+							it.childPrefs?.each { child ->
+								input "${child.prefName}", "${child.prefType}",
+									title: "${child.prefTitle}",
+									required: child.required,
+									multiple: child.multiple,
+									options: child.options,
+									range: child.range
+							}
 						}
 					}
 				}
@@ -1299,7 +1360,7 @@ private getStatusArmDisarmTypeData(statusId) {
 def advancedOptionsPage() {
 	dynamicPage(name:"advancedOptionsPage") {
 		section() {
-			getInfoParagraph("Configure Entry/Exit Delays and Beeping Options for each Monitoring Status.")
+			getInfoParagraph("Configure Beeping Options for each Monitoring Status.")
 			getStatuses(true).each {				
 				getPageLink("${it.id}advancedOptionsLink",
 					"${it.name}",
@@ -1315,9 +1376,6 @@ private getStatusAdvancedOptionsSummary(status) {
 	def summary = ""
 	
 	if (settings["${status.id}EntryExitDevices"]) {
-		def entryExitDelay = settings["${status.id}EntryExitDelay"]
-		
-		summary = appendStatusSettingSummary(summary, status.id, "EntryExitDevices", "Delayed ${entryExitDelay}s: %")
 			
 		summary = appendStatusSettingSummary(summary, status.id, "EntryExitBeepDevices", "Beep during delay using %")
 	
@@ -1342,34 +1400,23 @@ def statusAdvancedOptionsPage(params) {
 			getInfoParagraph("Configure Advanced Options for Monitoring Status ${name}.")
 		}
 		
-		section("Entry/Exit Options") {
-			input "${id}EntryExitDevices", "enum",
-				title: "Use Delay for these Devices:",
-				multiple: true,
-				required: false,
-				options: getDeviceNames(getSecurityDeviceTypes()),
-				submitOnChange: true
-			if (settings?."${id}EntryExitDevices") {
-				input "${id}EntryExitDelay", "number",
-					title: "Delay Length (seconds):",
-					required: true
-				if (beepDeviceNames) {
-					input "${id}EntryExitBeepDevices", "enum",
-						title: "Beep on these devices:",
-						multiple: true,
-						required: false,
-						options: beepDeviceNames,
-						submitOnChange: true
-					if (settings["${id}EntryExitBeepDevices"]) {						
-						input "${id}EntryExitBeepFrequency", "number",
-							title: "Beep Frequency (seconds):",
-							required: true
-					}
-				}
-				else {
-					getInfoParagraph("Entry/Exit Beeping can't be used because none of the selected Notification Devices support the 'beep' command")
+		section("Entry/Exit Options") {		
+			if (beepDeviceNames) {
+				input "${id}EntryExitBeepDevices", "enum",
+					title: "Beep on these devices:",
+					multiple: true,
+					required: false,
+					options: beepDeviceNames,
+					submitOnChange: true
+				if (settings["${id}EntryExitBeepDevices"]) {						
+					input "${id}EntryExitBeepFrequency", "number",
+						title: "Beep Frequency (seconds):",
+						required: true
 				}
 			}
+			else {
+				getInfoParagraph("Entry/Exit Beeping can't be used because none of the selected Notification Devices support the 'beep' command")
+			}			
 		}
 		
 		section("Confirmation Beep") {
@@ -1813,7 +1860,7 @@ private getArmedSecurityDevices() {
 
 def safetyEventHandler(evt) {
 	logDebug("${evt.displayName}: ${evt.name?.capitalize()} is ${evt.value}")
-	handleNotifications("Safety", evt)
+	handleEventNotifications("Safety", evt)
 }
 
 def securityEventHandler(evt) {
@@ -1823,7 +1870,7 @@ def securityEventHandler(evt) {
 		handleEntryExitNotification(evt)
 	}
 	else {
-		handleNotifications("Security", evt)
+		handleEventNotifications("Security", evt)
 	}
 }
 
@@ -1866,14 +1913,14 @@ private handleEntryExitNotification(evt) {
 	else {
 		// Invalid delay time so status change time so handle normally.
 		logDebug "${evt.displayName} is an entry/exit device, but handling it like a normal device because of invalid delay time or status change time.  (Entry Exit Delay: ${delaySeconds}, Monitoring Status Changed: ${statusTime})"
-		handleNotifications("Security", evt)
+		handleEventNotifications("Security", evt)
 	}
 }
 
 def delayedSecurityEventHandler() {
 	if (timeElapsed(state.entryEventTime, getCurrentEntryExitDelay())) {
 		state.delayedEvents?.each {
-			handleNotifications("Security", it)
+			handleEventNotifications("Security", it)
 		}
 		state.delayedEvents = []
 		state.entryEventTime = null
@@ -1890,7 +1937,7 @@ private timeElapsed(startTime, delaySeconds) {
 	}
 }
 
-private handleNotifications(notificationType, evt) {
+private handleEventNotifications(notificationType, evt) {
 	def currentZone = findZoneByDevice(notificationType, evt?.displayName)
 	def notificationStatusId = (settings["shared${notificationType}NotificationsEnabled"] ? "all" : state.status?.id)
 	
@@ -1904,7 +1951,11 @@ private handleNotifications(notificationType, evt) {
 	
 	storeNotification(notificationType, currentZone, evt, eventMsg, zoneMsg)
 	
-	getStatusTypeSettings(getStatusNotificationTypeData(notificationType, notificationStatusId)). each {
+	handleNotifications(notificationType, notificationStatusId, eventMsg, zoneMsg)
+}
+
+def handleNotifications(notificationType, notificationStatusId, eventMsg, zoneMsg="") {		
+	getStatusTypeSettings(getStatusNotificationTypeData(notificationType, notificationStatusId)).each {
 		def msg = it.prefName?.contains("Zone") ? zoneMsg : eventMsg
 		
 		if (settings["${it.prefName}"]) {			
@@ -1969,7 +2020,7 @@ private storeNotification(notificationType, zone, evt, eventMsg, zoneMsg) {
 	else {		
 		state.safetyAlerts.add(0, data)
 	}
-	sendLocationEvent(name: "SimpleDeviceViewerAlert", value: "${notificationType}", isStateChange: true, descriptionText: "${eventMsg}")	
+	sendLocationEvent(name: "SimpleZoneMonitorAlert", value: "${notificationType}", isStateChange: true, descriptionText: "${eventMsg}")	
 }
 
 private handlePushFeedNotification(notificationSetting, msg) {
@@ -2256,18 +2307,6 @@ private getStatusTypeSettings(data) {
 	return result
 }
 
-// private getStatusNotificationSettings(notificationType, statusId) {
-	// def result = []	
-	// getStatusNotificationTypeData(notificationType, statusId).each { sect ->
-		// sect.subSections.each { subSect ->
-			// getStatusSubSectionSettings(subSect).each {
-				// result << it
-			// }
-		// }
-	// }	
-	// return result
-// }
-
 private hasDevices(deviceTypes) {
 	return getDevices(deviceTypes) ? true : false
 }
@@ -2341,7 +2380,7 @@ private getStatusSubSectionSettings(subSection) {
 	return result
 }
 
-private getStatusNotificationTypeData(notificationType, statusId) {
+private getStatusNotificationTypeData(notificationType, statusId) {	
 	def prefix = "${statusId}${notificationType}"	
 	[
 		[sectionName: "Push/Feed ${notificationType} Notifications",
