@@ -1,3 +1,4 @@
+<img align="right" src="https://github.com/krlaframboise/Resources/blob/master/simple-zone-monitor/app-SimpleZoneMonitor@2x.png?raw=true" />
 <h1>Simple Zone Monitor</h1>
 
 **Disclaimer:**  This is an Alpha Release so there are most likely some bugs and it's possible that future changes will break some of your settings and you'll have to reconfigure them.
