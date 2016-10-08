@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.16d [ALPHA]
+ *  Simple Zone Monitor v0.0.16e [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (@krlaframboise)
@@ -23,6 +23,8 @@
  *        because iOS default to 99 if you don't set one.
  *     c- Added Contact Book feature
  *     d- Removed hideable and hidden from zone section.
+ *     e- Added "Custom Message" Notification option for
+ *        Speak and Contact Book notifications.
  *
  *    0.0.15 (10/06/2016)
  *      - Moved entry/exit settings into the
@@ -151,7 +153,7 @@ definition(
 	page(name:"safetyNotificationsPage", title: "Safety Notifications")
 	page(name:"securityNotificationsPage", title: "Security Notifications")
 	page(name:"statusNotificationsPage", title: "Monitoring Status Notifications")
-	page(name:"customMessagesPage", title: "Custom Messages")
+	page(name:"customMessagesPage", title: "Default Messages")
 	page(name:"armDisarmPage", title: "Arming/Disarming Options")
 	page(name:"statusArmDisarmPage")
 	page(name:"advancedOptionsPage", title: "Advanced Options")
@@ -450,7 +452,7 @@ def settingsPage() {
 					null,
 					config.hasConfiguredSecurityNotifications ? "" : (config.hasConfiguredSafetyNotifications ? "(not set)" : "(unconfigured)"))
 				getPageLink("customMessagesLink",
-					"Custom Messages",
+					"Default Messages",
 					"customMessagesPage",
 					null,
 					"")				
@@ -2011,7 +2013,13 @@ private handleEventNotifications(notificationType, evt) {
 
 def handleNotifications(notificationType, notificationStatusId, eventMsg, zoneMsg="") {		
 	getStatusTypeSettings(getStatusNotificationTypeData(notificationType, notificationStatusId)).each {
-		def msg = it.prefName?.contains("Zone") ? zoneMsg : eventMsg
+		def msg = ""
+		if (it?.prefName?.contains("Custom")) {
+			msg = getChildPrefValue(it.childPrefs, 0)
+		}
+		else {
+			msg = it.prefName?.contains("Zone") ? "$zoneMsg" : "$eventMsg"
+		}
 		
 		if (settings["${it.prefName}"]) {			
 			if (it.prefName?.contains("Push")) {				
@@ -2031,7 +2039,7 @@ def handleNotifications(notificationType, notificationStatusId, eventMsg, zoneMs
 			else if (it.isDevice) {
 				def devices = findDevices(getNotificationDeviceTypes(), settings["${it.prefName}"])
 				if (devices) {
-					if (it.prefName.contains("Speak")) {
+					if (it.prefName.contains("Speak")) {						
 						logTrace "Executing speak($msg) on: ${settings[it.prefName]}"
 						devices*.speak(msg)
 					}
@@ -2102,13 +2110,7 @@ private handlePushFeedNotification(notificationSetting, msg) {
 	def displayOnFeed = options?.find { it.contains("Display") }
 	def askAlexa = options?.find { it.contains("Alexa") }
 	def askAlexaUnit = notificationSetting.prefName?.contains("Security") ? "Security" : "Safety"
-	
-		// input("recipients", "contact", title: "Send notifications to") { }
-	
-		// if (location.contactBookEnabled && recipients) {
-			// sendNotificationToContacts(message, recipients)
-		// } 
-	
+		
 	if (push) {
 		logTrace("Sending Push: $msg")
 		sendPush(msg)
@@ -2466,16 +2468,24 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 					prefName: "${prefix}Contacts%Msg",
 					prefType: "contact",
 					required: false,
-					submitOnChange: false,
+					submitOnChange: true,
 					multiple: false,
 					options: null,
 					noOptionsMsg: "You can't send notifications to Contacts because your Contact Book is not enabled.",
 					isDevice: false,
 					prefs: [ 
-						[name: "Zone"],
-						[name: "Event"]
+						[name: "Custom"],
+						[name: "Event", ignoreChildren: true],
+						[name: "Zone", ignoreChildren: true]
 					],
-					childPrefs: []
+					childPrefs: [
+						[prefTitle: "Custom Message:",
+						prefName: "${prefix}Contacts%MsgText",
+						prefType: "text",
+						required: true,
+						multiple: false,
+						options: null]
+					]
 				],
 				[
 					prefTitle: "Push/Feed % Notifications:",
@@ -2577,16 +2587,24 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 					prefName: "${prefix}Speak%",
 					prefType: "enum",
 					required: false,
-					submitOnChange: false,
+					submitOnChange: true,
 					multiple: true,
 					options: getDeviceNames(getNotificationDeviceTypes(), "speak", null),
 					noOptionsMsg: getNotificationNoDeviceMessage("Speak Message", "Speech Synthesis", null),
 					isDevice: true,
 					prefs: [ 
-						[name: "Event", cmd: "speak"],
-						[name: "Zone", cmd: "speak"]						
+						[name: "Custom", cmd: "speak"],
+						[name: "Event", cmd: "speak", ignoreChildren: true],
+						[name: "Zone", cmd: "speak", ignoreChildren: true]
 					],
-					childPrefs: []
+					childPrefs: [
+						[prefTitle: "Custom Message:",
+						prefName: "${prefix}Speak%Text",
+						prefType: "text",
+						required: true,
+						multiple: false,
+						options: null]
+					]
 				],
 				[
 					prefTitle: "Play % Message as Text on:",
@@ -2600,7 +2618,7 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 					isDevice: true,
 					prefs: [ 
 						[name: "Event", cmd: "playText"],
-						[name: "Zone", cmd: "playText"]						
+						[name: "Zone", cmd: "playText"]
 					],
 					childPrefs: [
 						[prefTitle: "Play Text Volume: (1-100)",
