@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.15 [ALPHA]
+ *  Simple Zone Monitor v0.0.16 [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (@krlaframboise)
@@ -15,6 +15,10 @@
  *
  *
  *  Changelog:
+ *
+ *    0.0.16 (10/08/2016)
+ *      - Added Ignored Activity feature.
+ *      - Other bug fixes and UI enhancements.
  *
  *    0.0.15 (10/06/2016)
  *      - Moved entry/exit settings into the
@@ -169,17 +173,18 @@ def mainPage() {
 					}
 				}
 
-				def armedZones = []
-				getZones(false)?.sort{ it.displayName }?.each {
-					if (it.armed) {
-						armedZones << "${it.displayName}"
-					}
-				}
-				if (armedZones) {
-					section("Armed Zones") {
-						getParagraph(buildSummary(armedZones ?: ["None"]), "armed.png")
-					}
-				}
+				// def armedZones = []
+				// getZones(false)?.sort{ it.displayName }?.each {
+					// if (it.armed) {
+						// armedZones << "${it.displayName}"
+					// }
+				// }
+				// if (armedZones) {
+					// section("Armed Zones") {
+						// getParagraph(buildSummary(armedZones ?: ["None"]), "armed.png")
+					// }
+				// }
+				
 				section("Activity") {
 					getActivityContent()
 				}				
@@ -210,6 +215,7 @@ def mainPage() {
 private getActivityContent() {
 	state.securityAlerts = state.securityAlerts ?: []
 	state.safetyAlerts = state.safetyAlerts ?: []
+	state.ignoredActivity = state.ignoredActivity ?: []
 	state.statusHistory = state.statusHistory ?: []
 	
 	if (state.safetyAlerts) {	
@@ -219,6 +225,14 @@ private getActivityContent() {
 			[activityType:"Safety Alerts"],
 			getActivitySummary(state.safetyAlerts),
 			"safety-alert.png")
+	}
+	if (state.ignoredActivity) {
+		getPageLink("ignoredEventsPageLink",
+			"Ignored Events",
+			"activityDetailsPage",
+			[activityType:"Ignored Activity"],
+			getActivitySummary(state.ignoredActivity),
+			"")
 	}
 	if (state.securityAlerts) {
 		getPageLink("securityEventsPageLink",
@@ -236,7 +250,7 @@ private getActivityContent() {
 			"",
 			"status-history.png")
 	}
-	if (state.safetyAlerts || state.securityAlerts || state.statusHistory) {		
+	if (state.safetyAlerts || state.ignoredActivity || state.securityAlerts || state.statusHistory) {		
 		getPageLink("clearActivityLink",
 			"Clear All Activity",
 			"clearActivityPage",
@@ -275,6 +289,9 @@ def activityDetailsPage(params) {
 			case "Safety Alerts":
 				activity = state.safetyAlerts
 				break
+			case "Ignored Activity":
+				activity = state.ignoredActivity
+				break
 			case "Security Alerts":
 				activity = state.securityAlerts
 				break
@@ -286,12 +303,16 @@ def activityDetailsPage(params) {
 		section("${activityType}") {
 			if (activity) {				
 				activity.each {
-					if (activityType == "Monitoring Status History") {
-						getStatusActivityParagraph(it)
+					switch (activityType) {
+						case "Monitoring Status History":
+							getStatusActivityParagraph(it)
+							break
+						case "Ignored Activity":
+							getIgnoredActivityParagraph(it)
+							break
+						default:
+							getAlertActivityParagraph(it)
 					}
-					else {
-						getAlertActivityParagraph(it)
-					}					
 				}
 				getPageLink("clearActivityLink",
 					"Clear ${activityType}",
@@ -309,6 +330,10 @@ def activityDetailsPage(params) {
 
 private getAlertActivityParagraph(activity) {	
 	getParagraph("${getFormattedLocalTime(activity.eventTime)}\n${activity.status}\n${activity.deviceName}: ${activity.eventValue?.capitalize()}", "", "${activity.zoneName}")	
+}
+
+private getIgnoredActivityParagraph(activity) {	
+	getParagraph("${getFormattedLocalTime(activity.eventTime)}\n${activity.status}\n${activity.deviceName}: ${activity.eventValue?.capitalize()}\n${activity.reason}", "", "${activity.zoneName}")	
 }
 
 private getStatusActivityParagraph(activity) {
@@ -329,29 +354,37 @@ private getDateFromUtcString(utcDateString) {
 def clearActivityPage(params) {
 	dynamicPage(name:"clearActivityPage") {
 		def activityType = params?.activityType
-		if (!activityType || activityType == "Safety Alerts") {
-			state.safetyAlerts = []
-			if (settings.allowAskAlexaSafetyMsgDeletion) {
-				removeAskAlexaMsgs("Safety")
-			}			
+		
+		switch (activityType) {
+			case "Safety Alerts":
+				clearAlerts("Safety")
+				break
+			case "Security Alerts":
+				clearAlerts("Security")
+				break
+			case "Ignored Activity":
+				state.ignoredActivity = []
+				break
+			case "Monitoring Status History":
+				state.statusHistory = []
+				break
+			default:
+				clearAlerts("Safety")
+				clearAlerts("Security")
+				state.ignoredActivity = []
+				state.statusHistory = []
 		}
-		if (!activityType || activityType == "Security Alerts") {
-			state.securityAlerts = []
-			if (settings.allowAskAlexaSecurityMsgDeletion) {
-				removeAskAlexaMsgs("Security")
-			}			
-		}
-		if (!activityType || activityType == "Monitoring Status History") {
-			state.statusHistory = []
-		}		
 		section() {
 			getParagraph("${activityType ?: 'All Activity'} Cleared Successfully", "success.png")
 		}
 	}
 }
 
-private removeAskAlexaMsgs(unit) {
-   sendLocationEvent(name: "AskAlexaMsgQueueDelete", value: "Simple Zone Monitor", isStateChange: true, unit: "$unit")
+private clearAlerts(alertType) {
+	state."${alertType.toLowerCase()}Alerts" = []
+	if (settings.allowAskAlexaSafetyMsgDeletion) {		
+		sendLocationEvent(name: "AskAlexaMsgQueueDelete", value: "Simple Zone Monitor", isStateChange: true, unit: "$alertType")
+	}			
 }
 
 def settingsPage() {
@@ -504,13 +537,13 @@ private addStatusHistory(status, details) {
 }
 
 private changeStatus(newStatus) {
-	if (newStatus) {
-		state.delayedEvents = []
+	if (newStatus) {		
 		state.entryEventTime = null
 		state.beepStatus = null
+		ignoreDelayedEvents()
 		logInfo("Changing Monitoring Status to ${newStatus?.name}")
 		state.status = newStatus
-		state.status.time = new Date().time
+		state.status.time = new Date().time		
 		initialize()
 		playConfirmationBeep()
 		initializeEntryExitBeeping()		
@@ -518,6 +551,15 @@ private changeStatus(newStatus) {
 	else {
 		log.warn "Ignoring changeStatus($newStatus)"
 	}	
+}
+
+private ignoreDelayedEvents() {	
+	state.delayedEvents?.each { evt ->
+		logDebug "Ignored ${evt.displayName} ${evt.name}.${evt.value} because Monitoring Status changed within device's entry/exit delay."
+		def zone = findZoneByDevice("Security", evt?.displayName)
+		addIgnoredActivity(zone, evt, "Monitoring Status changed within device's entry/exit delay.")
+	}		
+	state.delayedEvents = []
 }
 
 private playConfirmationBeep() {
@@ -1893,6 +1935,9 @@ private handleEntryExitNotification(evt) {
 	if (delaySeconds > 0 && statusTime > 0) {
 		if (!timeElapsed(statusTime, delaySeconds)) {
 			logDebug("Ignoring security event from ${evt.displayName} because it's an entry/exit device and the Monitoring Status has changed within ${delaySeconds} seconds.")
+			
+			def zone = findZoneByDevice("Security", evt?.displayName)
+			addIgnoredActivity(zone, evt, "Entry/Exit device event within ${delaySeconds} seconds of Monitoring Status change.")
 		}
 		else {
 			state.delayedEvents << [name: evt.name, value: evt.value, displayName: evt.displayName]
@@ -2023,6 +2068,19 @@ private storeNotification(notificationType, zone, evt, eventMsg, zoneMsg) {
 	sendLocationEvent(name: "SimpleZoneMonitorAlert", value: "${notificationType}", isStateChange: true, descriptionText: "${eventMsg}")	
 }
 
+private addIgnoredActivity(zone, evt, reason) {
+	def data = [
+		zoneName: zone?.displayName,
+		deviceName: evt?.displayName,
+		eventName: evt?.name,
+		eventValue: evt?.value,
+		eventTime: new Date(),
+		status: state.status?.name,
+		reason: reason
+	]
+	state.ignoredActivity.add(0, data)	
+}
+
 private handlePushFeedNotification(notificationSetting, msg) {
 	def options = settings["${notificationSetting.prefName}"]	
 	def push = options?.find { it.contains("Push") }
@@ -2030,13 +2088,13 @@ private handlePushFeedNotification(notificationSetting, msg) {
 	def askAlexa = options?.find { it.contains("Alexa") }
 	def askAlexaUnit = notificationSetting.prefName?.contains("Security") ? "Security" : "Safety"
 	
-	if (push && displayOnFeed) {
+	// if (location.contactBookEnabled && recipients) {
+		// sendNotificationToContacts(msg, recipients)
+	// } 
+	
+	if (push) {
 		logTrace("Sending Push & Displaying on Notification Feed Message: $msg")
 		sendPush(msg)
-	}
-	else if (push) {
-		logTrace("Sending Push Message: $msg")
-		sendPushMessage(msg)
 	}
 	else if (displayOnFeed) {
 		logTrace("Displaying on Notification Feed: $msg")
