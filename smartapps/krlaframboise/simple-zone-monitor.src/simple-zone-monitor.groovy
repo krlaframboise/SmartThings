@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.16 [ALPHA]
+ *  Simple Zone Monitor v0.0.16b [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (@krlaframboise)
@@ -173,17 +173,17 @@ def mainPage() {
 					}
 				}
 
-				// def armedZones = []
-				// getZones(false)?.sort{ it.displayName }?.each {
-					// if (it.armed) {
-						// armedZones << "${it.displayName}"
-					// }
-				// }
-				// if (armedZones) {
-					// section("Armed Zones") {
-						// getParagraph(buildSummary(armedZones ?: ["None"]), "armed.png")
-					// }
-				// }
+				def armedZones = []
+				getZones(false)?.sort{ it.displayName }?.each {
+					if (it.armed) {
+						armedZones << "${it.displayName}"
+					}
+				}
+				if (armedZones) {
+					section("Armed Zones") {
+						getParagraph(buildSummary(armedZones ?: ["None"]), "armed.png")
+					}
+				}
 				
 				section("Activity") {
 					getActivityContent()
@@ -2507,6 +2507,7 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 						prefType: "number",
 						required: false,
 						multiple: false,
+						range: "1..3600",
 						options: null]
 					]
 				]
