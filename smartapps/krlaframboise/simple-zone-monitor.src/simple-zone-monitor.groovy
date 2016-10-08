@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.16f [ALPHA]
+ *  Simple Zone Monitor v0.0.16g [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (@krlaframboise)
@@ -29,6 +29,7 @@
  *        but changed it so the "Custom Message" option is
  *        only shown on the "Monitoring Status Change
  *        Notifications" screen.
+ *     g- Bug fix for custom message to contacts.
  *
  *    0.0.15 (10/06/2016)
  *      - Moved entry/exit settings into the
@@ -1243,7 +1244,7 @@ private getStatusTypeDataSections(data, hideZoneData=false, hideCustomData=false
 						if ((!hideZoneData || !"${it.prefName}".contains("Zone")) && (!hideCustomData || !"${it.prefName}".contains("Custom"))) {
 						
 							if (it.prefType == "contact") {
-								input ("${it.prefName}", "contact", title: "${it.prefTitle}", required: false){}
+								input ("${it.prefName}", "contact", title: "${it.prefTitle}", required: it.required, submitOnChange: it.submitOnChange){}
 							}
 							else {
 								input "${it.prefName}", "${it.prefType}", 
