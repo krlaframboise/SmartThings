@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.16c [ALPHA]
+ *  Simple Zone Monitor v0.0.16d [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (@krlaframboise)
@@ -16,12 +16,13 @@
  *
  *  Changelog:
  *
- *    0.0.16 (10/09/2016)
+ *    0.0.16 (10/08/2016)
  *      - Added Ignored Activity feature.
  *      - Other bug fixes and UI enhancements.
  *     b- Added zone to main page, set range for siren off
  *        because iOS default to 99 if you don't set one.
  *     c- Added Contact Book feature
+ *     d- Removed hideable and hidden from zone section.
  *
  *    0.0.15 (10/06/2016)
  *      - Moved entry/exit settings into the
@@ -183,7 +184,7 @@ def mainPage() {
 					}
 				}
 				if (armedZones) {
-					section(hideable:true,hidden:true,"Armed Zones") {
+					section("Armed Zones") {
 						getParagraph(buildSummary(armedZones ?: ["None"]), "armed.png")
 					}
 				}
