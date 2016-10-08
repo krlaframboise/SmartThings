@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.16b [ALPHA]
+ *  Simple Zone Monitor v0.0.16c [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (@krlaframboise)
@@ -16,9 +16,12 @@
  *
  *  Changelog:
  *
- *    0.0.16 (10/08/2016)
+ *    0.0.16 (10/09/2016)
  *      - Added Ignored Activity feature.
  *      - Other bug fixes and UI enhancements.
+ *     b- Added zone to main page, set range for siren off
+ *        because iOS default to 99 if you don't set one.
+ *     c- Added Contact Book feature
  *
  *    0.0.15 (10/06/2016)
  *      - Moved entry/exit settings into the
@@ -180,7 +183,7 @@ def mainPage() {
 					}
 				}
 				if (armedZones) {
-					section("Armed Zones") {
+					section(hideable:true,hidden:true,"Armed Zones") {
 						getParagraph(buildSummary(armedZones ?: ["None"]), "armed.png")
 					}
 				}
@@ -1228,15 +1231,21 @@ private getStatusTypeDataSections(data, hideZoneData=false) {
 				getInfoParagraph("${sect.sectionInfo}")
 			}			
 			sect?.subSections.each { subSect ->					
-				if (!subSect?.noOptionsMsg || subSect?.options) {
+				if (!subSect?.noOptionsMsg || subSect?.options || (subSect?.prefType == "contact" && location.contactBookEnabled)) {
 					getStatusSubSectionSettings(subSect)?.each {
 						if (!hideZoneData || !"${it.prefName}".toUpperCase().contains("ZONE")) {
-							input "${it.prefName}", "${it.prefType}", 
-								title: "${it.prefTitle}",
-								required: it.required,
-								multiple: it.multiple,
-								submitOnChange: it.submitOnChange,
-								options: it.options
+						
+							if (it.prefType == "contact") {
+								input ("${it.prefName}", "contact", title: "${it.prefTitle}", required: false){}
+							}
+							else {
+								input "${it.prefName}", "${it.prefType}", 
+									title: "${it.prefTitle}",
+									required: it.required,
+									multiple: it.multiple,
+									submitOnChange: it.submitOnChange,
+									options: it.options
+							}
 							
 							it.childPrefs?.each { child ->
 								input "${child.prefName}", "${child.prefType}",
@@ -2007,6 +2016,11 @@ def handleNotifications(notificationType, notificationStatusId, eventMsg, zoneMs
 			if (it.prefName?.contains("Push")) {				
 				handlePushFeedNotification(it, msg)
 			}
+			if (it.prefType == "contact") {
+				if (location.contactBookEnabled && settings["${it.prefName}"]) {
+					sendNotificationToContacts(msg, settings["${it.prefName}"])
+				}
+			}
 			else if (it.prefName?.contains("Sms")) {
 				settings["${it.prefName}"]?.each { phone ->
 					logTrace("Sending SMS message \"$msg\" to $phone")
@@ -2088,12 +2102,14 @@ private handlePushFeedNotification(notificationSetting, msg) {
 	def askAlexa = options?.find { it.contains("Alexa") }
 	def askAlexaUnit = notificationSetting.prefName?.contains("Security") ? "Security" : "Safety"
 	
-	// if (location.contactBookEnabled && recipients) {
-		// sendNotificationToContacts(msg, recipients)
-	// } 
+		// input("recipients", "contact", title: "Send notifications to") { }
+	
+		// if (location.contactBookEnabled && recipients) {
+			// sendNotificationToContacts(message, recipients)
+		// } 
 	
 	if (push) {
-		logTrace("Sending Push & Displaying on Notification Feed Message: $msg")
+		logTrace("Sending Push: $msg")
 		sendPush(msg)
 	}
 	else if (displayOnFeed) {
@@ -2441,9 +2457,25 @@ private getStatusSubSectionSettings(subSection) {
 private getStatusNotificationTypeData(notificationType, statusId) {	
 	def prefix = "${statusId}${notificationType}"	
 	[
-		[sectionName: "Push/Feed ${notificationType} Notifications",
+		[sectionName: "Push/Feed/SMS ${notificationType} Notifications",
 			sectionInfo: getZoneVsEventMsg(),
 			subSections: [
+				[
+					prefTitle: "Send % Notification to Contacts:",
+					prefName: "${prefix}Contacts%Msg",
+					prefType: "contact",
+					required: false,
+					submitOnChange: false,
+					multiple: false,
+					options: null,
+					noOptionsMsg: "You can't send notifications to Contacts because your Contact Book is not enabled.",
+					isDevice: false,
+					prefs: [ 
+						[name: "Zone"],
+						[name: "Event"]
+					],
+					childPrefs: []
+				],
 				[
 					prefTitle: "Push/Feed % Notifications:",
 					prefName: "${prefix}PushFeed%Msg",
@@ -2459,12 +2491,7 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 						[name: "Event"]
 					],
 					childPrefs: []
-				]
-			]
-		],
-		[sectionName: "SMS ${notificationType} Notifications",
-			sectionInfo: msgTypeSectionInfo,
-			subSections: [
+				],
 				[
 					prefTitle: "Send SMS with % Message to:",
 					prefName: "${prefix}Sms%Msg",
