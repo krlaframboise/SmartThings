@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.16e [ALPHA]
+ *  Simple Zone Monitor v0.0.16f [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (@krlaframboise)
@@ -25,6 +25,10 @@
  *     d- Removed hideable and hidden from zone section.
  *     e- Added "Custom Message" Notification option for
  *        Speak and Contact Book notifications.
+ *     f- Added "Custom Message" for "Push/Feed" and "SMS",
+ *        but changed it so the "Custom Message" option is
+ *        only shown on the "Monitoring Status Change
+ *        Notifications" screen.
  *
  *    0.0.15 (10/06/2016)
  *      - Moved entry/exit settings into the
@@ -1137,7 +1141,7 @@ def statusNotificationsPage(params) {
 			state.params.notificationType = params.notificationType
 		}
 
-		getStatusTypeDataSections(getStatusNotificationTypeData(state.params?.notificationType, state.params?.status?.id), (state.params?.notificationType == "Status"))		
+		getStatusTypeDataSections(getStatusNotificationTypeData(state.params?.notificationType, state.params?.status?.id), (state.params?.notificationType == "Status"), (state.params?.notificationType != "Status"))
 	}
 }
 
@@ -1226,7 +1230,7 @@ def statusArmDisarmPage(params) {
 	}
 }
 
-private getStatusTypeDataSections(data, hideZoneData=false) {
+private getStatusTypeDataSections(data, hideZoneData=false, hideCustomData=false) {
 	data?.each { sect ->
 		section("${sect?.sectionName}") {
 		
@@ -1236,7 +1240,7 @@ private getStatusTypeDataSections(data, hideZoneData=false) {
 			sect?.subSections.each { subSect ->					
 				if (!subSect?.noOptionsMsg || subSect?.options || (subSect?.prefType == "contact" && location.contactBookEnabled)) {
 					getStatusSubSectionSettings(subSect)?.each {
-						if (!hideZoneData || !"${it.prefName}".toUpperCase().contains("ZONE")) {
+						if ((!hideZoneData || !"${it.prefName}".contains("Zone")) && (!hideCustomData || !"${it.prefName}".contains("Custom"))) {
 						
 							if (it.prefType == "contact") {
 								input ("${it.prefName}", "contact", title: "${it.prefTitle}", required: false){}
@@ -2479,7 +2483,7 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 						[name: "Zone", ignoreChildren: true]
 					],
 					childPrefs: [
-						[prefTitle: "Custom Message:",
+						[prefTitle: "Enter % Message:",
 						prefName: "${prefix}Contacts%MsgText",
 						prefType: "text",
 						required: true,
@@ -2492,32 +2496,48 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 					prefName: "${prefix}PushFeed%Msg",
 					prefType: "enum",
 					required: false,
-					submitOnChange: false,
+					submitOnChange: true,
 					multiple: true,
 					options: ["Display on Notification Feed", "Push Message", "Send to Ask Alexa SmartApp"],
 					noOptionsMsg: "",
 					isDevice: false,
 					prefs: [ 
-						[name: "Zone"],
-						[name: "Event"]
+						[name: "Custom"],
+						[name: "Event", ignoreChildren: true],
+						[name: "Zone", ignoreChildren: true]
 					],
-					childPrefs: []
+					childPrefs: [
+						[prefTitle: "Enter % Push/Feed Message:",
+						prefName: "${prefix}PushFeed%MsgText",
+						prefType: "text",
+						required: true,
+						multiple: false,
+						options: null]
+					]
 				],
 				[
 					prefTitle: "Send SMS with % Message to:",
 					prefName: "${prefix}Sms%Msg",
 					prefType: "enum",
 					required: false,
-					submitOnChange: false,
+					submitOnChange: true,
 					multiple: true,
 					options: getSMSNotificationPhoneNumbers(),
 					noOptionsMsg: "You can't use SMS Notifications until you enter at least one \"SMS Phone Number\" into the \"SMS Phone Numbers\" section of the \"Choose Devices\" page.",
 					isDevice: false,
 					prefs: [ 
-						[name: "Zone"],
-						[name: "Event"]
+						[name: "Custom"],
+						[name: "Event", ignoreChildren: true],
+						[name: "Zone", ignoreChildren: true]
 					],
-					childPrefs: []
+					childPrefs: [
+						[prefTitle: "Enter % SMS Message:",
+						prefName: "${prefix}Sms%MsgText",
+						prefType: "text",
+						required: true,
+						multiple: false,
+						options: null]
+					]
 				]
 			]
 		],
