@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.16i [ALPHA]
+ *  Simple Zone Monitor v0.0.16j [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (@krlaframboise)
@@ -32,6 +32,7 @@
  *     g- Bug fix for custom message to contacts.
  *     h- Misc
  *     i- Split Notification options into toggle sections
+ *     j- Split Zone Settings into toggle sections.
  *
  *    0.0.15 (10/06/2016)
  *      - Moved entry/exit settings into the
@@ -868,31 +869,8 @@ def editZonePage(params) {
 					required: false,
 					submitOnChange: true,
 					options: getDeviceNames(getSecurityDeviceTypes())
-				
-				if (settings["${zone.settingName}SecurityDevices"]) {
-					getInfoParagraph("To reduce false alarms you can optionally set a condition for security events require an event from more than one of the zone's devices within a specified amount of time.") 
-									
-					input "${zone.settingName}DeviceCondition", "enum",
-						title: "Device Condition:",
-						required: false,
-						submitOnChange: true,
-						defaultValue: "One Event",
-						options: getZoneConditionTypes().collect { it.name }.sort()
-						
-					input "${zone.settingName}ZoneCondition", "enum",
-						title: "Require one event from any of these zones:",
-						required: false,
-						submitOnChange: true,
-						multiple: true,
-						options: getZones().findAll{ it.displayName != zone.displayName }.collect { it.displayName }.sort()
-					
-					if (getZoneConditionTypeByName(settings["${zone.settingName}DeviceCondition"])?.includeTimeout || settings["${zone.settingName}ZoneCondition"]) {
-						input "${zone.settingName}ConditionTimeout", "number",
-							title: "Security Condition Timeout (seconds):",
-							required: true
-					}
-				}
 			}
+			
 			section("Safety Settings") {
 				getInfoParagraph("Safety devices are monitored regardless of the Zone's Armed Status and you can setup different notification settings based on the active Monitoring Status.")
 				input "${zone.settingName}SafetyDevices", "enum",
@@ -902,25 +880,64 @@ def editZonePage(params) {
 					submitOnChange: true,
 					options: getDeviceNames(getSafetyDeviceTypes())
 			}
-			section("Zone Messages") {
-				getInfoParagraph("You can optionally specify a Zone Message for each type of device being monitored.  The Safety/Security Notifications page has message and audio settings that support using the Zone Message.", "What are Zone Messages?")
-				getInfoParagraph("If you have an audio device that can play audio messages by track number, like the Aeon Labs Doorbell, you can use the Zone Message fields to assign different tracks for each type of device in each zone.  You can then use the \"Play Zone Message as Track\" Notification option to play the corresponding track when a safety or security event occurs.", "Other uses for Zone Messages")
-				getInfoParagraph("If you leave the Zone Message fields empty and use one of the Zone Message Notification options, it will use the Default Zone Message which is located in the \"Custom Messages\" section.", "Zone Message Defaults")
-				
-				getTokensParagraph()
-				
-				def zoneMsgPrefs = []
-				zoneMsgPrefs += getZoneMessagePrefs(zone, "Security")
-				zoneMsgPrefs += getZoneMessagePrefs(zone, "Safety")
-				if (zoneMsgPrefs) {
-					zoneMsgPrefs?.sort { it.title }?.each { pref ->
-						input "${pref.name}", "text",
-							title: "${pref.title}",
-							required: false						
+			
+			section("More Settings") {
+				input "showZoneMessageSettings", "bool",
+					title: "Show Zone Message Settings?",
+					submitOnChange: true
+				input "showAdvancedSettings", "bool",
+					title: "Show Advanced Security Settings?",
+					submitOnChange: true
+			}
+			
+			if (settings?.showZoneMessageSettings) {
+				section("Zone Message Settings") {
+					getInfoParagraph("You can optionally specify a Zone Message for each type of device being monitored.  The Safety/Security Notifications page has message and audio settings that support using the Zone Message.", "What are Zone Messages?")
+					getInfoParagraph("If you have an audio device that can play audio messages by track number, like the Aeon Labs Doorbell, you can use the Zone Message fields to assign different tracks for each type of device in each zone.  You can then use the \"Play Zone Message as Track\" Notification option to play the corresponding track when a safety or security event occurs.", "Other uses for Zone Messages")
+					getInfoParagraph("If you leave the Zone Message fields empty and use one of the Zone Message Notification options, it will use the Default Zone Message which is located in the \"Custom Messages\" section.", "Zone Message Defaults")
+					
+					getTokensParagraph()
+					
+					def zoneMsgPrefs = []
+					zoneMsgPrefs += getZoneMessagePrefs(zone, "Security")
+					zoneMsgPrefs += getZoneMessagePrefs(zone, "Safety")
+					if (zoneMsgPrefs) {
+						zoneMsgPrefs?.sort { it.title }?.each { pref ->
+							input "${pref.name}", "text",
+								title: "${pref.title}",
+								required: false						
+						}
+					}
+					else {
+						getWarningParagraph("The Zone Message fields are not available until you've selected at least one Safety Device or Security Device to monitor.")
 					}
 				}
-				else {
-					getWarningParagraph("The Zone Message fields are not available until you've selected at least one Safety Device or Security Device to monitor.")
+			}
+			if (settings?.showAdvancedSettings) {
+				section("Advanced Security Settings") {
+					if (settings["${zone.settingName}SecurityDevices"]) {
+						getInfoParagraph("To reduce false alarms you can optionally set a condition for security events require an event from more than one of the zone's devices within a specified amount of time.") 
+										
+						input "${zone.settingName}DeviceCondition", "enum",
+							title: "Device Condition:",
+							required: false,
+							submitOnChange: true,
+							defaultValue: "One Event",
+							options: getZoneConditionTypes().collect { it.name }.sort()
+							
+						input "${zone.settingName}ZoneCondition", "enum",
+							title: "Require one event from any of these zones:",
+							required: false,
+							submitOnChange: true,
+							multiple: true,
+							options: getZones().findAll{ it.displayName != zone.displayName }.collect { it.displayName }.sort()
+						
+						if (getZoneConditionTypeByName(settings["${zone.settingName}DeviceCondition"])?.includeTimeout || settings["${zone.settingName}ZoneCondition"]) {
+							input "${zone.settingName}ConditionTimeout", "number",
+								title: "Security Condition Timeout (seconds):",
+								required: true
+						}
+					}
 				}
 			}
 			if (zone.name) {
