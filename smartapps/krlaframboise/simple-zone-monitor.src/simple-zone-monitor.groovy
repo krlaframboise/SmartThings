@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.16h [ALPHA]
+ *  Simple Zone Monitor v0.0.16i [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (@krlaframboise)
@@ -31,6 +31,7 @@
  *        Notifications" screen.
  *     g- Bug fix for custom message to contacts.
  *     h- Misc
+ *     i- Split Notification options into toggle sections
  *
  *    0.0.15 (10/06/2016)
  *      - Moved entry/exit settings into the
@@ -1123,8 +1124,11 @@ private getNotificationPageContent(notificationType) {
 private getStatusNotificationsSummary(notificationType, statusId) {
 	def summaryItems = []
 	getStatusTypeSettings(getStatusNotificationTypeData(notificationType, statusId)).each {
-		def settingValue = settings["${it.prefName}"]
+		def settingValue = settings["${it.prefName}"]		
 		if (settingValue) {
+		
+			def childPrefValue = getChildPrefValue(it.childPrefs, 0) ?: ""
+			settingValue += childPrefValue ? " (${childPrefValue})" : ""
 			summaryItems << "${it.prefTitle} ${settingValue}"
 		}
 	}				
@@ -1136,6 +1140,16 @@ def statusNotificationsPage(params) {
 		if (params?.status) {
 			state.params.status = params.status
 			state.params.notificationType = params.notificationType
+		}
+		
+		section() {
+			def prefix = "${state.params?.status?.id}${state.params?.notificationType}"
+			input "${prefix}ShowMessages", "bool",
+				title: "Show Push/SMS/Ask Alexa Notification Options?", submitOnChange: true
+			input "${prefix}ShowOther", "bool",
+				title: "Show Alarm/Switch/Photo Notification Options?", submitOnChange: true
+			input "${prefix}ShowAudio", "bool",
+				title: "Show Audio Notification Options?", submitOnChange: true
 		}
 
 		getStatusTypeDataSections(getStatusNotificationTypeData(state.params?.notificationType, state.params?.status?.id), (state.params?.notificationType == "Status"))
@@ -1227,44 +1241,46 @@ def statusArmDisarmPage(params) {
 	}
 }
 
-private getStatusTypeDataSections(data, hideZoneData=false) {
+private getStatusTypeDataSections(data, hideZoneData=false) {	
 	data?.each { sect ->
-		section("${sect?.sectionName}") {
-		
-			if (sect?.sectionInfo && (!hideZoneData || !sect?.sectionInfo?.toUpperCase()?.contains("ZONE"))) {
-				getInfoParagraph("${sect.sectionInfo}")
-			}			
-			sect?.subSections.each { subSect ->					
-				if (!subSect?.noOptionsMsg || subSect?.options || (subSect?.prefType == "contact" && location.contactBookEnabled)) {
-					getStatusSubSectionSettings(subSect)?.each {
-						if (!hideZoneData || !"${it.prefName}".contains("Zone")) {
-						
-							if (it.prefType == "contact") {
-								input ("${it.prefName}", "contact", title: "${it.prefTitle}", required: it.required, submitOnChange: it.submitOnChange){}
-							}
-							else {
-								input "${it.prefName}", "${it.prefType}", 
-									title: "${it.prefTitle}",
-									required: it.required,
-									multiple: it.multiple,
-									submitOnChange: it.submitOnChange,
-									options: it.options
-							}
+		if (!sect?.showPrefName || settings["${sect.showPrefName}"]) {
+			section("${sect?.sectionName}") {
+			
+				if (sect?.sectionInfo && (!hideZoneData || !sect?.sectionInfo?.toUpperCase()?.contains("ZONE"))) {
+					getInfoParagraph("${sect.sectionInfo}")
+				}			
+				sect?.subSections.each { subSect ->					
+					if (!subSect?.noOptionsMsg || subSect?.options || (subSect?.prefType == "contact" && location.contactBookEnabled)) {
+						getStatusSubSectionSettings(subSect)?.each {
+							if (!hideZoneData || !"${it.prefName}".contains("Zone")) {
 							
-							it.childPrefs?.each { child ->
-								input "${child.prefName}", "${child.prefType}",
-									title: "${child.prefTitle}",
-									required: child.required,
-									multiple: child.multiple,
-									options: child.options,
-									range: child.range
+								if (it.prefType == "contact") {
+									input ("${it.prefName}", "contact", title: "${it.prefTitle}", required: it.required, submitOnChange: it.submitOnChange){}
+								}
+								else {
+									input "${it.prefName}", "${it.prefType}", 
+										title: "${it.prefTitle}",
+										required: it.required,
+										multiple: it.multiple,
+										submitOnChange: it.submitOnChange,
+										options: it.options
+								}
+								
+								it.childPrefs?.each { child ->
+									input "${child.prefName}", "${child.prefType}",
+										title: "${child.prefTitle}",
+										required: child.required,
+										multiple: child.multiple,
+										options: child.options,
+										range: child.range
+								}
 							}
 						}
 					}
+					else {
+						paragraph "${subSect?.noOptionsMsg}"
+					}			
 				}
-				else {
-					paragraph "${subSect?.noOptionsMsg}"
-				}			
 			}
 		}
 	}
@@ -2447,6 +2463,7 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 	def prefix = "${statusId}${notificationType}"	
 	[
 		[sectionName: "Contact Book ${notificationType} Notifications",
+			showPrefName: "${prefix}ShowMessages",
 			sectionInfo: getZoneVsEventMsg(),
 			subSections: [
 				[
@@ -2476,6 +2493,7 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 			]
 		],
 		[sectionName: "Push/Feed/Ask Alexa ${notificationType} Notifications",
+			showPrefName: "${prefix}ShowMessages",
 			sectionInfo: getZoneVsEventMsg(),
 			subSections: [
 				[
@@ -2505,6 +2523,7 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 			]
 		],
 		[sectionName: "SMS ${notificationType} Notifications",
+			showPrefName: "${prefix}ShowMessages",
 			sectionInfo: getZoneVsEventMsg(),
 			subSections: [
 				[
@@ -2534,6 +2553,7 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 			]
 		],
 		[sectionName: "Alarm ${notificationType} Notifications",
+			showPrefName: "${prefix}ShowOther",
 			sectionInfo: getZoneVsEventMsg(),
 			subSections: [
 				[
@@ -2564,6 +2584,7 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 			]
 		],
 		[sectionName: "Switch ${notificationType} Notifications",
+			showPrefName: "${prefix}ShowOther",
 			subSections: [
 				[
 					prefTitle: "Turn %:",
@@ -2591,7 +2612,28 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 				]
 			]
 		],
+		[sectionName: "Photo ${notificationType} Notifications",
+			showPrefName: "${prefix}ShowOther",
+			subSections: [
+				[
+					prefTitle: "% Photo with:",
+					prefName: "${prefix}%Photo",
+					prefType: "enum",
+					required: false,					
+					submitOnChange: false,
+					multiple: true,
+					options: getDeviceNames(getNotificationDeviceTypes(), null, "Image Capture"),
+					noOptionsMsg: getNotificationNoDeviceMessage("Photo Notifications", "Image Capture", null),
+					isDevice: true,
+					prefs: [ 
+						[name: "Take", cmd: "take"]
+					],
+					childPrefs: []
+				]
+			]
+		],
 		[sectionName: "Audio ${notificationType} Notifications",
+			showPrefName: "${prefix}ShowAudio",
 			sectionInfo: "The Zone Message can be used to play messages on TTS devices, but you can also use it to play specific tracks on devices like the Aeon Labs Doorbell.",
 			subSections: [
 				[
@@ -2664,25 +2706,6 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 						range: "1..100",
 						options: null]
 					]
-				]
-			]
-		],
-		[sectionName: "Photo ${notificationType} Notifications",
-			subSections: [
-				[
-					prefTitle: "% Photo with:",
-					prefName: "${prefix}%Photo",
-					prefType: "enum",
-					required: false,					
-					submitOnChange: false,
-					multiple: true,
-					options: getDeviceNames(getNotificationDeviceTypes(), null, "Image Capture"),
-					noOptionsMsg: getNotificationNoDeviceMessage("Photo Notifications", "Image Capture", null),
-					isDevice: true,
-					prefs: [ 
-						[name: "Take", cmd: "take"]
-					],
-					childPrefs: []
 				]
 			]
 		]
