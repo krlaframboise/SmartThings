@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.16g [ALPHA]
+ *  Simple Zone Monitor v0.0.16h [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (@krlaframboise)
@@ -30,6 +30,7 @@
  *        only shown on the "Monitoring Status Change
  *        Notifications" screen.
  *     g- Bug fix for custom message to contacts.
+ *     h- Misc
  *
  *    0.0.15 (10/06/2016)
  *      - Moved entry/exit settings into the
@@ -555,8 +556,7 @@ private changeStatus(newStatus) {
 		logInfo("Changing Monitoring Status to ${newStatus?.name}")
 		state.status = newStatus
 		state.status.time = new Date().time		
-		initialize()
-		playConfirmationBeep()
+		initialize()		
 		initializeEntryExitBeeping()		
 	}
 	else {
@@ -571,10 +571,6 @@ private ignoreDelayedEvents() {
 		addIgnoredActivity(zone, evt, "Monitoring Status changed within device's entry/exit delay.")
 	}		
 	state.delayedEvents = []
-}
-
-private playConfirmationBeep() {
-	findDevices(getNotificationDeviceTypes(), settings["${state.status.id}ConfirmationBeepDevices"])*.beep()	
 }
 
 private initializeEntryExitBeeping() {
@@ -1142,7 +1138,7 @@ def statusNotificationsPage(params) {
 			state.params.notificationType = params.notificationType
 		}
 
-		getStatusTypeDataSections(getStatusNotificationTypeData(state.params?.notificationType, state.params?.status?.id), (state.params?.notificationType == "Status"), (state.params?.notificationType != "Status"))
+		getStatusTypeDataSections(getStatusNotificationTypeData(state.params?.notificationType, state.params?.status?.id), (state.params?.notificationType == "Status"))
 	}
 }
 
@@ -1231,7 +1227,7 @@ def statusArmDisarmPage(params) {
 	}
 }
 
-private getStatusTypeDataSections(data, hideZoneData=false, hideCustomData=false) {
+private getStatusTypeDataSections(data, hideZoneData=false) {
 	data?.each { sect ->
 		section("${sect?.sectionName}") {
 		
@@ -1241,7 +1237,7 @@ private getStatusTypeDataSections(data, hideZoneData=false, hideCustomData=false
 			sect?.subSections.each { subSect ->					
 				if (!subSect?.noOptionsMsg || subSect?.options || (subSect?.prefType == "contact" && location.contactBookEnabled)) {
 					getStatusSubSectionSettings(subSect)?.each {
-						if ((!hideZoneData || !"${it.prefName}".contains("Zone")) && (!hideCustomData || !"${it.prefName}".contains("Custom"))) {
+						if (!hideZoneData || !"${it.prefName}".contains("Zone")) {
 						
 							if (it.prefType == "contact") {
 								input ("${it.prefName}", "contact", title: "${it.prefTitle}", required: it.required, submitOnChange: it.submitOnChange){}
@@ -1441,8 +1437,6 @@ private getStatusAdvancedOptionsSummary(status) {
 		summary = appendStatusSettingSummary(summary, status.id, "EntryExitBeepFrequency", "Beep Frequency: %s")		
 	}
 	
-	summary = appendStatusSettingSummary(summary, status.id, "ConfirmationBeepDevices", "Play Confirmation Beep on %")
-	
 	return summary ?: "(not set)"
 }
 
@@ -1476,19 +1470,6 @@ def statusAdvancedOptionsPage(params) {
 			else {
 				getInfoParagraph("Entry/Exit Beeping can't be used because none of the selected Notification Devices support the 'beep' command")
 			}			
-		}
-		
-		section("Confirmation Beep") {
-			if (beepDeviceNames) {			
-				input "${id}ConfirmationBeepDevices", "enum",
-					title: "Beep with these devices when Monitoring Status changes to ${name}:",
-					multiple: true,
-					required: false,
-					options: beepDeviceNames
-			}
-			else {
-				getInfoParagraph("Confirmation Beep can't be used because none of the selected Notification Devices support the 'beep' command")
-			}
 		}		
 	}
 }
@@ -2465,7 +2446,7 @@ private getStatusSubSectionSettings(subSection) {
 private getStatusNotificationTypeData(notificationType, statusId) {	
 	def prefix = "${statusId}${notificationType}"	
 	[
-		[sectionName: "Push/Feed/SMS ${notificationType} Notifications",
+		[sectionName: "Contact Book ${notificationType} Notifications",
 			sectionInfo: getZoneVsEventMsg(),
 			subSections: [
 				[
@@ -2479,9 +2460,9 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 					noOptionsMsg: "You can't send notifications to Contacts because your Contact Book is not enabled.",
 					isDevice: false,
 					prefs: [ 
-						[name: "Custom"],
 						[name: "Event", ignoreChildren: true],
-						[name: "Zone", ignoreChildren: true]
+						[name: "Zone", ignoreChildren: true],
+						[name: "Custom"]
 					],
 					childPrefs: [
 						[prefTitle: "Enter % Message:",
@@ -2491,9 +2472,14 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 						multiple: false,
 						options: null]
 					]
-				],
+				]
+			]
+		],
+		[sectionName: "Push/Feed/Ask Alexa ${notificationType} Notifications",
+			sectionInfo: getZoneVsEventMsg(),
+			subSections: [
 				[
-					prefTitle: "Push/Feed % Notifications:",
+					prefTitle: "Push/Feed/Ask Alexa % Notifications:",
 					prefName: "${prefix}PushFeed%Msg",
 					prefType: "enum",
 					required: false,
@@ -2503,9 +2489,9 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 					noOptionsMsg: "",
 					isDevice: false,
 					prefs: [ 
-						[name: "Custom"],
 						[name: "Event", ignoreChildren: true],
-						[name: "Zone", ignoreChildren: true]
+						[name: "Zone", ignoreChildren: true],
+						[name: "Custom"]
 					],
 					childPrefs: [
 						[prefTitle: "Enter % Push/Feed Message:",
@@ -2515,7 +2501,12 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 						multiple: false,
 						options: null]
 					]
-				],
+				]
+			]
+		],
+		[sectionName: "SMS ${notificationType} Notifications",
+			sectionInfo: getZoneVsEventMsg(),
+			subSections: [
 				[
 					prefTitle: "Send SMS with % Message to:",
 					prefName: "${prefix}Sms%Msg",
@@ -2527,9 +2518,9 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 					noOptionsMsg: "You can't use SMS Notifications until you enter at least one \"SMS Phone Number\" into the \"SMS Phone Numbers\" section of the \"Choose Devices\" page.",
 					isDevice: false,
 					prefs: [ 
-						[name: "Custom"],
 						[name: "Event", ignoreChildren: true],
-						[name: "Zone", ignoreChildren: true]
+						[name: "Zone", ignoreChildren: true],
+						[name: "Custom"]
 					],
 					childPrefs: [
 						[prefTitle: "Enter % SMS Message:",
@@ -2614,9 +2605,9 @@ private getStatusNotificationTypeData(notificationType, statusId) {
 					noOptionsMsg: getNotificationNoDeviceMessage("Speak Message", "Speech Synthesis", null),
 					isDevice: true,
 					prefs: [ 
-						[name: "Custom", cmd: "speak"],
 						[name: "Event", cmd: "speak", ignoreChildren: true],
-						[name: "Zone", cmd: "speak", ignoreChildren: true]
+						[name: "Zone", cmd: "speak", ignoreChildren: true],
+						[name: "Custom", cmd: "speak"]
 					],
 					childPrefs: [
 						[prefTitle: "Custom Message:",
