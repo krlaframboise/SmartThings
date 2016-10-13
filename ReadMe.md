@@ -3,7 +3,7 @@
 
 Below you will find a list of the SmartApps and Device Handlers that I've created.  I've included a short description of what they can do and included links to their topics in the SmartThings forum.
 
-I don't think SmartThings developers should charge for the things they create, but donations are always appreciated.  If you would like to make a donation, please go to https://www.paypal.me/krlaframboise
+If you like the SmartApps and Device Handlers I've created and you would like to make a donation, please go to https://www.paypal.me/krlaframboise
 
 <hr />
 
