@@ -190,3 +190,25 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>This is a device handler for the Zipato Z-Wave Indoor Multi-Sound Siren (PH-PSE02.US).  It's been tested on the US version, but it should work with the EU version.<br /></li>
 <li><a href="https://community.smartthings.com/t/release-zipato-phileo-multisound-siren-ph-pse02-us/53748?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
 </ul>
+
+<hr />
+
+<h3><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-strip.src/zooz-power-strip.groovy">Zooz Z-Wave Power Strip</a></h3>
+
+<ul>
+<li>This is a device handler for the Zooz Z-Wave Power Strip (ZEN20).<br /></li>
+<li>The 5 outlets can be controlled seperately using the custom commands ch1On, ch1Off, ch2On, ch2Off, etc.  This requires the use of a SmartApp that supports custom commands, like CoRE.</li>
+<li>Immediately reports "Physical" 
+<li>The Main Switch Behavior setting for each outlet determines how it responds to the switch.on/switch.off commands.<br>
+<ul>
+<li><b>On/Off:</b> Switch.on command turns it on and Switch.off command turns it off.</li>
+<li><b>On:</b> Switch.on command turns the outlet on, but Switch.off doesn't turn it off.</li>
+<li><b>Off:</b> Switch.off turns the outlet off, but Switch.on doesn't turn it on.</li>
+<li><b>None:</b> The outlet ignores the Switch.on and Switch.off commands.</li>
+</ul>
+</li>
+<li>
+<li>The Main Switch shows "on" when ANY of the outlets with the Main Switch Behavior set to "on" or "on/off" are on.</li>
+<li>The Main Switch shows "off" when ALL of the outlets with the Main Switch Behavior set to "off" or "on/off" are off.</li>
+<li>Main Switch Delay setting allows the Main Switch to turn the outlets on/off gradually instead of all at once.</li>
+</ul>
