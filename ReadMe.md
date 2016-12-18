@@ -193,7 +193,7 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
-<h3><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-strip.src/zooz-power-strip.groovy">Zooz Z-Wave Power Strip</a></h3>
+<h3><a id="ZoozPowerStrip" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-strip.src/zooz-power-strip.groovy">Zooz Z-Wave Power Strip</a></h3>
 
 <ul>
 <li>This is a device handler for the Zooz Z-Wave Power Strip (ZEN20).<br /></li>
@@ -207,7 +207,6 @@ Supports the Tamper Alert Capability.<br /></li>
 <li><b>None:</b> The outlet ignores the Switch.on and Switch.off commands.</li>
 </ul>
 </li>
-<li>
 <li>The Main Switch shows "on" when ANY of the outlets with the Main Switch Behavior set to "on" or "on/off" are on.</li>
 <li>The Main Switch shows "off" when ALL of the outlets with the Main Switch Behavior set to "off" or "on/off" are off.</li>
 <li>Main Switch Delay setting allows the Main Switch to turn the outlets on/off gradually instead of all at once.</li>
