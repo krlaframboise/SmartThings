@@ -1,5 +1,5 @@
 /**
- *  Zooz Power Strip v1.0.0
+ *  Zooz Power Strip v1.0.1
  *     (Model: ZEN20)
  *  
  *
@@ -11,6 +11,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.0.1 (12/18/2016)
+ *    - Enhanced Main Switch functionality.
  *
  *  1.0.0 (12/16/2016)
  *    - Initial Release
@@ -27,17 +30,18 @@
  */
 metadata {
 	definition (name: "Zooz Power Strip", namespace: "krlaframboise", author: "Kevin LaFramboise") {
+		capability "Configuration"
 		capability "Actuator"
 		capability "Switch"
 		capability "Refresh"
-		capability "Polling"
+		capability "Polling"		
 
 		attribute "lastPoll", "number"
 		
-		(1..5).each { n ->
-			attribute "ch${n}Switch", "enum", ["on", "off"]
-			command "ch${n}On"
-			command "ch${n}Off"
+		(1..5).each { ch ->
+			attribute "ch${ch}Switch", "enum", ["on", "off"]
+			command "ch${ch}On"
+			command "ch${ch}Off"
 		}
 		
 		fingerprint mfr: "015D", prod: "0651", model: "F51C"
@@ -48,14 +52,17 @@ metadata {
 	}
 	
 	preferences {
-		input "defaultChannel", "enum",
-			title: "What should the default On/Off command control?",
-			defaultValue: "CH1",
-			options: ["CH1", "CH2", "CH3", "CH4", "CH5", "All"]
-		input "multiSwitchDelay", "number",
-			title: "Multi-Switch Delay in Milliseconds:",
-			description: "Increase this number if you have the default On/Off setting set to 'All' and outlets are being skipped.",
-			defaultValue: 1500
+		(1..5).each { ch ->
+			input "ch${ch}Behavior", "enum",
+				title: "CH${ch} Main Switch Behavior:",
+				options: ["On/Off", "On", "Off", "None"],
+				defaultValue: "On/Off",
+				required: false
+		}
+		input "mainSwitchDelay", "number",
+			title: "Main Switch Delay (milliseconds):",
+			defaultValue: 0,
+			required: false
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -110,15 +117,37 @@ metadata {
 def updated() {	
 	if (!isDuplicateCommand(state.lastUpdated, 1000)) {
 		state.lastUpdated = new Date().time
-		
+
 		def cmds = []
+		if (!state?.isConfigured) {
+			cmds += configure()
+		}		
 		cmds += refresh()
+		
+		initializeMainSwitch()		
 		return response(cmds)
 	}
 }
 
-private isDuplicateCommand(lastExecuted, allowedMil) {
-	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
+private initializeMainSwitch() {	
+	state.mainSwitchOnCHs = []
+	state.mainSwitchOffCHs = []
+	
+	(1..5).each { ch ->
+		["On","Off"].each { action ->
+			def chBehavior = settings?."ch${ch}Behavior"
+			if (!chBehavior || chBehavior.contains(action)) {
+				state."mainSwitch${action}CHs" << ch
+			}
+		}
+	}	
+}
+
+def configure() {
+	state.isConfigured = true
+	def cmds = []
+	cmds << switchAllSetCmd(255)		
+	return cmds		
 }
 
 def poll() {
@@ -129,63 +158,75 @@ def poll() {
 def refresh() {
 	logDebug "Executing refresh()"	
 	def result = []	
-	(1..5).each { n ->
-		result << basicGetCmd(n)
+	(1..5).each { ch ->
+		result << basicGetCmd(ch)
 	}
-	return delayBetween(result, settings?.multiSwitchDelay ?: 1500)
+	return delayBetween(result, 50)
 }
 
-def on() {
-	logDebug "Executing on()"
-	return defaultOnOff(0xFF)
-}
-
-def off() {
-	logDebug "Executing off()"
-	return defaultOnOff(0x00)
-}
-
-private defaultOnOff(val) {
+def on() { return executeMainSwitch("on") }
+def off() { return executeMainSwitch("off") }
+private executeMainSwitch(val) {
+	logDebug "Executing ${val}()"
 	def result = []
+	def cmd = val.capitalize()
+	def switchDelay = settings?.mainSwitchDelay
+	def switchCHs = state."mainSwitch${cmd}CHs"
 	
-	if (settings?.defaultChannel == "All") {
-		(1..5).each { n ->
-			result += chOnOff(val, n)
-			result << "delay ${settings?.multiSwitchDelay ?: 1500}"
-		}		
+	if (!switchDelay && switchCHs?.size()== 5) {
+		logDebug "Turning All CHs ${cmd}"
+		result << "switchAll${cmd}Cmd"()
+		result += refresh()
 	}
 	else {
-		result += chOnOff(val, getDefaultChannel())
+		switchCHs?.each { ch ->
+			if (switchDelay) {
+				result << "ch${cmd}"(ch)
+				result << "delay ${switchDelay}"
+			}
+			else {
+				result << basicSetCmd((val == "on" ? 0xFF : 0x00), ch)
+				result << "delay 50"				
+			}			
+		}
+		if (!switchDelay) {
+			result += refresh()
+		}
 	}
 	return result
 }
 
-private getDefaultChannel() {
-	return settings?.defaultChannel?.replace("CH","")?.toInteger() ?: 1
+def ch1On() { return chOn(1) }
+def ch1Off() { return chOff(1) }
+def ch2On() { return chOn(2) }
+def ch2Off() { return chOff(2) }
+def ch3On() { return chOn(3) }
+def ch3Off() { return chOff(3) }
+def ch4On() { return chOn(4) }
+def ch4Off() { return chOff(4) }
+def ch5On() { return chOn(5) }
+def ch5Off() { return chOff(5) }
+
+private chOn(ch) {
+	logDebug "Turning CH${ch} On"
+	return chOnOff(ch, 0xFF)
 }
 
-def ch1On() { chOnOff(0xFF, 1) }
-def ch1Off() { chOnOff(0x00, 1) }
-def ch2On() { chOnOff(0xFF, 2) }
-def ch2Off() { chOnOff(0x00, 2) }
-def ch3On() { chOnOff(0xFF, 3) }
-def ch3Off() { chOnOff(0x00, 3) }
-def ch4On() { chOnOff(0xFF, 4) }
-def ch4Off() { chOnOff(0x00, 4) }
-def ch5On() { chOnOff(0xFF, 5) }
-def ch5Off() { chOnOff(0x00, 5) }
+private chOff(ch) {
+	logDebug "Turning CH${ch} Off"
+	return chOnOff(ch, 0x00)
+}
 
-private chOnOff(val, channel) {
-	logDebug "Turning CH${channel} ${(val == 0xFF) ? 'On' : 'Off'}"
+private chOnOff(ch, val) {
 	return delayBetween([
-		basicSetCmd(val, channel),
-		basicGetCmd(channel)
+		basicSetCmd(val, ch),
+		basicGetCmd(ch)
 	], 50)
 }
 
 def parse(String description) {	
 	def result = []
-	def cmd = zwave.parse(description, [0x59:1, 0x85:2, 0x20:1, 0x5A:1, 0X72:2, 0X8E:2, 0X60:3, 0X73:1, 0X25:1, 0X86:1])
+	def cmd = zwave.parse(description, [0x59:1, 0x85:2, 0x20:1, 0x5A:1, 0X72:2, 0X8E:2, 0X60:3, 0X73:1, 0X25:1, 0x27:1, 0X86:1])
 	
 	if (cmd) {
 		result += zwaveEvent(cmd)		
@@ -209,42 +250,46 @@ def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap 
 	}
 }
 
+def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd, endpoint) {	
+	return handleSwitchEvent(cmd.value, endpoint, "physical")
+}
+
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd, endpoint) {	
+	return handleSwitchEvent(cmd.value, endpoint, "digital")
+}
+
+private handleSwitchEvent(val, ch, type) {
 	def result = []
-	def currentAttr = "ch${endpoint}Switch"
-	def newVal = cmd.value ? "on" : "off"
-	def display = (device.currentValue(currentAttr) != newVal)
+	def attrName = "ch${ch}Switch"
+	def newVal = val ? "on" : "off"
+	def display = (device.currentValue(attrName) != newVal)
 	
-	logDebug "CH${endpoint} is ${newVal}"
+	logDebug "CH${ch} is ${newVal}"
 	
-	result << createEvent(name:currentAttr, value:newVal,displayed: display)
-	
-	if (settings?.defaultChannel == "All") {
-		if (cmd.value) {
-			result << createSwitchEvent(newVal)
-		}
-		else {
-			def foundOn = false
-			(1..5).each { n -> 
-				if (n != endpoint && device.currentValue("ch${n}Switch") == "on") {
-					foundOn = true
+	result << createEvent(name:attrName, value:newVal,displayed: display, type: type)
+
+	def switchCHs = state?."mainSwitch${newVal.capitalize()}CHs"
+		
+	if (switchCHs?.find { n -> "$n" == "$ch" }) {
+		
+		def ignoreMainSwitch = false
+		if (newVal == "off") {			
+			switchCHs?.each { otherCH ->			
+				if (ch != otherCH && device.currentValue("ch${otherCH}Switch") == "on") {
+					ignoreMainSwitch = true
 				}
 			}
-			if (!foundOn) {
-				result << createSwitchEvent(newVal)
-			}
-		}	
-	}
-	else if (getDefaultChannel() == endpoint) {
-		result << createSwitchEvent(newVal)
+		}
+		if (!ignoreMainSwitch) {
+			result << createSwitchEvent(newVal, type)
+		}
 	}
 	
 	return result
 }
 
-private createSwitchEvent(newVal) {
-	def display = (device.currentValue("switch") != newVal)
-	return createEvent(name:"switch", value:newVal,displayed: display)
+private createSwitchEvent(newVal, type) {
+	return createEvent(name:"switch", value:newVal,displayed: true, type: "$type")
 }
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
@@ -252,10 +297,23 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	return []
 }
 
-private basicGetCmd(endpoint=1) {
+private switchAllOnCmd() {
+	return zwave.switchAllV1.switchAllOn().format()
+}
+
+private switchAllOffCmd() {
+	return zwave.switchAllV1.switchAllOff().format()
+}
+
+private switchAllSetCmd(mode) {
+	// None: 0, All On: 1, All Off: 2, All On/Off: 255
+	return zwave.switchAllV1.switchAllSet(mode: mode).format()
+}
+
+private basicGetCmd(endpoint=null) {
 	return multiChannelEncap(zwave.basicV1.basicGet(), endpoint)
 }
-private basicSetCmd(val, endpoint=1) {	
+private basicSetCmd(val, endpoint=null) {	
 	return multiChannelEncap(zwave.basicV1.basicSet(value: val), endpoint)
 }
 
@@ -268,13 +326,12 @@ private multiChannelEncap(cmd, endpoint) {
 	}
 }
 
+private isDuplicateCommand(lastExecuted, allowedMil) {
+	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
+}
 
 private logDebug(msg) {
 	if (settings?.debugOutput || settings?.debugOutput == null) {
 		log.debug "$msg"
 	}
-}
-
-private logInfo(msg) {
-	log.info "${device.displayName} $msg"
 }
