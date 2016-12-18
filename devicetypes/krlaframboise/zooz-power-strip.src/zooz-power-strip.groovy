@@ -161,7 +161,7 @@ def refresh() {
 	(1..5).each { ch ->
 		result << basicGetCmd(ch)
 	}
-	return delayBetween(result, 50)
+	return delayBetween(result, 500)
 }
 
 def on() { return executeMainSwitch("on") }
@@ -189,9 +189,7 @@ private executeMainSwitch(val) {
 				result << "delay 50"				
 			}			
 		}
-		if (!switchDelay) {
-			result += refresh()
-		}
+		result += refresh()
 	}
 	return result
 }
