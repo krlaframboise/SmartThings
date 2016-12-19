@@ -197,8 +197,8 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <ul>
 <li>This is a device handler for the Zooz Z-Wave Power Strip (ZEN20).<br /></li>
-<li>The 5 outlets can be controlled seperately using the custom commands ch1On, ch1Off, ch2On, ch2Off, etc.  This requires the use of a SmartApp that supports custom commands, like CoRE.</li>
-<li>Immediately reports "Physical" 
+<li>The 5 outlets can be controlled separately using the custom commands ch1On, ch1Off, ch2On, ch2Off, etc.  This requires the use of a SmartApp that supports custom commands, like CoRE.</li>
+<li>Creates Digital events when turned on/off from SmartApp and Physical events when the buttons on the power strip are pushed.</li>
 <li>The Main Switch Behavior setting for each outlet determines how it responds to the switch.on/switch.off commands.<br>
 <ul>
 <li><b>On/Off:</b> Switch.on command turns it on and Switch.off command turns it off.</li>
