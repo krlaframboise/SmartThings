@@ -1,9 +1,7 @@
 /**
- *  Zooz Power Strip v1.0.1
+ *  Zooz Power Strip v1.0.2
  *     (Model: ZEN20)
  *  
- *
- *
  *  Capabilities:
  *	  Switch, Refresh, Polling
  *
@@ -11,6 +9,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.0.2 (12/19/2016)
+ *    - Fixed issue with button events.
  *
  *  1.0.1 (12/18/2016)
  *    - Enhanced Main Switch functionality.
@@ -175,8 +176,7 @@ private executeMainSwitch(val) {
 	
 	if (!switchDelay && switchCHs?.size()== 5) {
 		logDebug "Turning All CHs ${cmd}"
-		result << "switchAll${cmd}Cmd"()
-		result += refresh()
+		result << "switchAll${cmd}Cmd"()		
 	}
 	else {
 		switchCHs?.each { ch ->
@@ -188,9 +188,10 @@ private executeMainSwitch(val) {
 				result << basicSetCmd((val == "on" ? 0xFF : 0x00), ch)
 				result << "delay 50"				
 			}			
-		}
-		result += refresh()
+		}		
 	}
+	result << "delay 1000"
+	result += refresh()
 	return result
 }
 
