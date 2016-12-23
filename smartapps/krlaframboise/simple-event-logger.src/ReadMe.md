@@ -1,6 +1,6 @@
-<h1>Simple Event Logger<br><br></li>
+<h1>Simple Event Logger</h1>
 
-<h2>Google Sheets Setup<br><br></li>
+<h2>Google Sheets Setup</h2>
 
 <ol>
 <li>Go to <a target="_blank" href="http://docs.google.com/spreadsheets">http://docs.google.com/spreadsheets</a><br><br></li>
@@ -12,11 +12,23 @@
 <li>Delete the existing code that's shown and copy and paste all the code from file <a target="_blank" href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/Code.gs">code.gs</a>.<br><br></li>
 <li>Go into the "Publish" menu and click "Deploy as web app".<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-publish-menu.png?raw=true" /><br><br></li>
 <li>Enter a title for the project, you can name it anything you want.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-project-name.png?raw=true" /><br><br></li>
-<li>Change the "Who has access to the app" field to "Anyone, even anonymous".<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-web-app-access.png?raw=true" /><br><br></li>
-<li>Click the "Deploy" button<br><br></li>
+<li>Change the "Who has access to the app" field to "Anyone, even anonymous" and click "Deploy".<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-web-app-access.png?raw=true" /><br><br></li>
 <li>Click "Review Permissions" button on the "Authorization Required" popup.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-auth.png?raw=true" /><br><br></li>
 <li>Click the "Allow" button on the permissions screen popup.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-allow.png?raw=true" /><br><br></li>
 <li>Copy the "Current Web App Url" and click "OK".<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-url.png?raw=true" /><br><br></li>
 <li>Navigate to the Web App Url you copied and you should see the message "SUCCESS" which indicates that the Web App has been configured properly.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-success.png?raw=true" /><br><br></li>
 <li>That completes the Google Sheets installation, but you should paste the Web App Url somewhere that you can access from your mobile device because you'll need to paste it into the SmartApp's settings.<br><br></li>
+</ol>
+
+<h2>SmartApp Setup</h2>
+<ol>
+<li>Either copy and paste the <a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy" target="_blank">Simple Event Logger code</a> into a new SmartApp or link to my repository using krlaframboise, SmartThings and master.</li>
+<li>Enable OAuth in the SmartApp Settings</li>
+<li>Install the SmartApp through the Mobile App</li>
+<li>Select all the devices you want to log events for.  The devices will appear in multiple fields, but you only need to select a device once</li>
+<li>Then select all the events that you'd like to log.  Only events that are supported by at least one of the selected devices will appear in the list.</li>
+<li>For each event you selected, choose the devices that it should ignore.  You can skip this section if you want all the selected devices to log all the selected events.</li>
+<li>Paste the Web App Url you previously copied into the "Google Web App Url" field and fill in the rest of the settings.</li>
+<li>Once you've tapped "Done" you should see entries in Live Logging at the interval you specified.</li>
+<li>You can see the events that it logged by going back to the google sheets page.</li>
 </ul>
