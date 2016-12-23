@@ -52,13 +52,13 @@
 
 <h2>SmartApp Setup</h2>
 <ol>
-<li>Either copy and paste the <a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy" target="_blank">Simple Event Logger code</a> into a new SmartApp or link to my repository using krlaframboise, SmartThings and master.<br></li>
-<li>Enable OAuth in the SmartApp Settings<br></li>
-<li>Install the SmartApp through the Mobile App<br></li>
-<li>Select all the devices you want to log events for.  The devices will appear in multiple fields, but you only need to select a device once<br></li>
-<li>Then select all the events that you'd like to log.  Only events that are supported by at least one of the selected devices will appear in the list.<br></li>
-<li>For each event you selected, choose the devices that it should ignore.  You can skip this section if you want all the selected devices to log all the selected events.<br></li>
-<li>Paste the Web App Url you previously copied into the "Google Web App Url" field and fill in the rest of the settings.<br></li>
-<li>Once you've tapped "Done" you should see entries in Live Logging at the interval you specified.<br></li>
-<li>You can see the events that it logged by going back to the google sheets page.<br></li>
+<li>Either copy and paste the <a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy" target="_blank">Simple Event Logger code</a> into a new SmartApp or link to my repository using krlaframboise, SmartThings and master.<br><br></li>
+<li>Enable OAuth in the SmartApp Settings<br><br></li>
+<li>Install the SmartApp through the Mobile App<br><br></li>
+<li>Select all the devices you want to log events for.  The devices will appear in multiple fields, but you only need to select a device once<br><br></li>
+<li>Then select all the events that you'd like to log.  Only events that are supported by at least one of the selected devices will appear in the list.<br><br></li>
+<li>For each event you selected, choose the devices that it should ignore.  You can skip this section if you want all the selected devices to log all the selected events.<br><br></li>
+<li>Paste the Web App Url you previously copied into the "Google Web App Url" field and fill in the rest of the settings.<br><br></li>
+<li>Once you've tapped "Done" you should see entries in Live Logging at the interval you specified.<br><br></li>
+<li>You can see the events that it logged by going back to the google sheets page.<br><br></li>
 </ol>
