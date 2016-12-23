@@ -1,5 +1,35 @@
 <h1>Simple Event Logger</h1>
 
+<ul>
+	<li>It supports every capability and attribute in SmartThings.<br></li>
+	<br></li>
+	<li>It uses my "simple" approach of selecting all the devices you want to use once and presenting the narrowed list of devices for other settings.<br></li>
+	<br></li>
+	<li>It combines all the attributes supported by the selected devices into one setting and allows you to choose which ones to log.<br></li>
+	<br></li>
+	<li>Each attribute being logged has an exclusion list so you have complete control over which devices log what.<br></li>
+	<br></li>
+	<li>You can set the run interval to 5 Min, 10 Min, 15 Min, 30 Min, 1 Hour, 3 Hour<br></li>
+	<br></li>
+	<li>When it runs, it retrieves up to 50 events for each device since the last time it ran.  The number can be set to as low as 1 event.<br></li>
+	<br></li>
+	<li>It uses the device's event log to get the new events instead of subscribing to each device and queuing them.<br></li>
+	<br></li>
+	<li>It logs the event time, device, event name, event value, event description, but you can disable the description logging if you don't need it.<br></li>
+	<br></li>
+	<li>It only logs the events with the Source DEVICE, but I'm considering making that adjustable.<br></li>
+	<br></li>
+	<li>It sends all the new events in a single JSON post to eliminate the burden of making a separate http request for each event.<br></li>
+	<br></li>
+	<li>The Google Web App keeps track of the last time it was run to ensure that no events get skipped.<br></li>
+	<br></li>
+	<li>The SmartApp shows the result of the last run, the total # of events logged, and the percentage of free space in the log.  The log should be able to hold between 800,000 and 1,000,000 events depending on whether or not the description field is being logged.<br></li>
+	<br></li>
+	<li>It writes a debug messages to Live Logging showing the number events it found and the number of events that the Google web app said it logged.<br></li>
+	<br></li>
+	<li>You can choose which types of log entries to show in Live Logging (debug, info, trace)<br></li>
+</ul>
+
 <h2>Google Sheets Setup</h2>
 
 <ol>
@@ -22,13 +52,13 @@
 
 <h2>SmartApp Setup</h2>
 <ol>
-<li>Either copy and paste the <a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy" target="_blank">Simple Event Logger code</a> into a new SmartApp or link to my repository using krlaframboise, SmartThings and master.</li>
-<li>Enable OAuth in the SmartApp Settings</li>
-<li>Install the SmartApp through the Mobile App</li>
-<li>Select all the devices you want to log events for.  The devices will appear in multiple fields, but you only need to select a device once</li>
-<li>Then select all the events that you'd like to log.  Only events that are supported by at least one of the selected devices will appear in the list.</li>
-<li>For each event you selected, choose the devices that it should ignore.  You can skip this section if you want all the selected devices to log all the selected events.</li>
-<li>Paste the Web App Url you previously copied into the "Google Web App Url" field and fill in the rest of the settings.</li>
-<li>Once you've tapped "Done" you should see entries in Live Logging at the interval you specified.</li>
-<li>You can see the events that it logged by going back to the google sheets page.</li>
-</ul>
+<li>Either copy and paste the <a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy" target="_blank">Simple Event Logger code</a> into a new SmartApp or link to my repository using krlaframboise, SmartThings and master.<br></li>
+<li>Enable OAuth in the SmartApp Settings<br></li>
+<li>Install the SmartApp through the Mobile App<br></li>
+<li>Select all the devices you want to log events for.  The devices will appear in multiple fields, but you only need to select a device once<br></li>
+<li>Then select all the events that you'd like to log.  Only events that are supported by at least one of the selected devices will appear in the list.<br></li>
+<li>For each event you selected, choose the devices that it should ignore.  You can skip this section if you want all the selected devices to log all the selected events.<br></li>
+<li>Paste the Web App Url you previously copied into the "Google Web App Url" field and fill in the rest of the settings.<br></li>
+<li>Once you've tapped "Done" you should see entries in Live Logging at the interval you specified.<br></li>
+<li>You can see the events that it logged by going back to the google sheets page.<br></li>
+</ol>
