@@ -10,10 +10,13 @@
 <li>If you click the text "Untitled spreadsheet" in the top left corner, you can rename it to anything you want.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-title.png?raw=true" /><br><br></li>
 <li>Open the Script Editor which is located in the top "Tools" menu.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-script-editor-menu.png?raw=true" /><br><br></li>
 <li>Delete the existing code that's shown and copy and paste all the code from file <a target="_blank" href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/Code.gs">code.gs</a>.<br><br></li>
-<li>Go into the "Publish" menu and click "Deploy as web app".<br><br></li>
-<li>Enter a title for the project, you can name it anything you want.<br><br></li>
-<li>Change the "Who has access to the app" field to "Anyone, even anonymous".<br><br></li>
+<li>Go into the "Publish" menu and click "Deploy as web app".<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-.png?raw=true" /><br><br></li>
+<li>Enter a title for the project, you can name it anything you want.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-project-name.png?raw=true" /><br><br></li>
+<li>Change the "Who has access to the app" field to "Anyone, even anonymous".<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-web-app-access.png?raw=true" /><br><br></li>
 <li>Click the "Deploy" button<br><br></li>
-<li>Navigate to the url shown in the "Web App Url".<br><br></li>
-<li>If it displayse "SUCCESS", the Google Sheet is configured so you can install the SmartApp.<br><br></li>
+<li>Click "Review Permissions" button on the "Authorization Required" popup.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-auth.png?raw=true" /><br><br></li>
+<li>Click the "Allow" button on the permissions screen popup.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-allow.png?raw=true" /><br><br></li>
+<li>Copy the "Current Web App Url" and click "OK".<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-url.png?raw=true" /><br><br></li>
+<li>Navigate to the Web App Url you copied and you should see the message "SUCCESS" which indicates that the Web App has been configured properly.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-success.png?raw=true" /><br><br></li>
+<li>That completes the Google Sheets installation, but you should paste the Web App Url somewhere that you can access from your mobile device because you'll need to paste it into the SmartApp's settings.<br><br></li>
 </ul>
