@@ -1,15 +1,15 @@
 /**
- *  Simple Event Logger - Google Script Code v 0.0.0
+ *  Simple Event Logger - Google Script Code v 0.0.3
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  URL to documentation:
- *    N/A
+ *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
  *
- *    0.0.0 (12/23/2016)
+ *    0.0.3 (12/24/2016)
  *      - Beta Release
  *
  *  Licensed under the Apache License, Version 2.0 (the
@@ -31,42 +31,38 @@ function doGet(e) {
 }
 
 function doPost(e) {
-	var sheet = SpreadsheetApp.getActiveSheet();		
 	var result = new Object();
-	result.success = false;
-		
 	if (e && e.contentLength > 0) {
-
-		var data = JSON.parse(e.postData.contents);
-		if (data) {		
 		
-			result.eventCount = 0;
+		var data = JSON.parse(e.postData.contents);
+		if (data) {	
+			result.eventsLogged = 0;
 			
-			for each (event in data.events) {
-				logEvent(sheet, event);
-				result.eventCount++;
+			try {
+				var sheet = SpreadsheetApp.getActiveSheet();
+				
+				result.totalEventsLogged = sheet.getLastRow() - 1;
+				
+				for each (event in data.events) {
+					logEvent(sheet, event);
+					result.eventsLogged++;
+				}
+				
+				result.totalEventsLogged = sheet.getLastRow() - 1;
+				result.success = true;
 			}
-	
-			result.endTime = data.time;		
-			result.success = true;
+			catch(e) {
+				result.error = e.message;
+				result.success = false;
+			}
 			
-			var responseUrl = getSmartAppResponseUrl(sheet, data.appId, data.token, result);
-			var response = UrlFetchApp.fetch(responseUrl);
+			sendPostback(data.postBackUrl, result);
 		}
 	}
 	
-	return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
-	
+	return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);	
 }
 
-function getSmartAppResponseUrl(sheet, appId, token, result) {
-	var total = sheet.getLastRow();
-	if (total > 0) {
-		total = (total - 1);
-	}
-	
-	return "https://graph.api.smartthings.com/api/token/" + token + "/smartapps/installations/" + appId + "/logging-result/" + result.success.toString() + '§' + result.endTime.toString() + '§' + result.eventCount.toString() + '§' + total.toString();
-} 
 
 function logEvent(sheet, event) {
 	if (sheet.getLastRow() == 0) {
@@ -88,3 +84,13 @@ function logEvent(sheet, event) {
 	]);
 }
 
+
+function sendPostback(url, result) {
+	var options = {
+			'method': 'post',
+			'headers': {"Content-Type": "application/json"},
+			'payload': JSON.stringify(result)
+	};
+		
+	var response = UrlFetchApp.fetch(url, options);	
+}
