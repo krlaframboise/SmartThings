@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger v 0.0.0
+ *  Simple Event Logger v 0.0.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,7 +9,7 @@
  *
  *  Changelog:
  *
- *    0.0.0 (12/23/2016)
+ *    0.0.1 (12/23/2016)
  *      - Beta Release
  *
  *  Licensed under the Apache License, Version 2.0 (the
@@ -35,9 +35,9 @@ definition(
     author: "Kevin LaFramboise",
     description: "Allows you to choose devices and attributes and it logs the device, event name, event value, event time, and event description of all the events that have occured since the last time it ran.",
     category: "My Apps",
-    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
-    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
-    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
+    iconUrl: "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-event-logger/app-SimpleEventLogger.png",
+    iconX2Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-event-logger/app-SimpleEventLogger@2x.png",
+    iconX3Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-event-logger/app-SimpleEventLogger@3x.png")
 		
 preferences {
 	page(name: "mainPage")
@@ -237,7 +237,7 @@ private buildSummary(items) {
 	def summary = ""
 	items?.each {
 		summary += summary ? "\n" : ""
-		summary += "  ► ${it}"
+		summary += "   ${it}"
 	}
 	return summary
 }
@@ -375,7 +375,7 @@ mappings {
 }
 
 def api_updateLoggingStatus() {
-	def result = "${params?.result}".split("§")
+	def result = "${params?.result}".split("")
 	def loggingStatus
 	if (result.size() >= 3) {
 		loggingStatus = [
