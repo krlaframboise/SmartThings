@@ -1,15 +1,15 @@
 /**
- *  Simple Event Logger v 0.0.2
+ *  Simple Event Logger v 0.0.3
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  URL to documentation:
- *    N/A
+ *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
  *
- *    0.0.0 (12/23/2016)
+ *    0.0.3 (12/24/2016)
  *      - Beta Release
  *
  *  Licensed under the Apache License, Version 2.0 (the
@@ -35,7 +35,7 @@ definition(
     author: "Kevin LaFramboise",
     description: "Allows you to choose devices and attributes and it logs the device, event name, event value, event time, and event description of all the events that have occured since the last time it ran.",
     category: "My Apps",
-iconUrl: "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-event-logger/app-SimpleEventLogger.png",
+    iconUrl: "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-event-logger/app-SimpleEventLogger.png",
     iconX2Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-event-logger/app-SimpleEventLogger@2x.png",
     iconX3Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-event-logger/app-SimpleEventLogger@3x.png")
 		
@@ -237,7 +237,7 @@ private buildSummary(items) {
 	def summary = ""
 	items?.each {
 		summary += summary ? "\n" : ""
-		summary += "  ► ${it}"
+		summary += "   ${it}"
 	}
 	return summary
 }
@@ -305,44 +305,63 @@ def updated() {
 	else {
 		logDebug "Event Logging is disabled because there are unconfigured settings."
 	}
+	
+	logNewEvents()
 }
 
-def logNewEvents() {
-	def endDate = new Date()
-	def startTime = safeToLong(state.loggingStatus?.endTime)
+def logNewEvents() {	
+	def status = state.loggingStatus ?: [:]
 	
-	// Set Start Date to 1 second after last execusions End Date or to the previous day if this is the first execution.
-	def startDate = startTime ? new Date(startTime + 1000) : new Date() -1 
+	// Move the date range to the next position unless the google script failed.
+	if (!status.success) {
+		status.lastEventTime = status.firstEventTime
+	}
 	
+	status.success = null
+	status.finished = null
+	status.eventsLogged = 0
+	status.started = new Date().time	
+	status.firstEventTime = safeToLong(status.lastEventTime) ?: (new Date() - 1).time
+	status.lastEventTime = status.started
+	
+	def startDate = new Date(status.firstEventTime + 1000)
+	def endDate = new Date(status.lastEventTime)
+	
+	state.loggingStatus = status
 	logTrace "Retrieving Events from ${startDate} to ${endDate}"
-	
+		
 	def events = getNewEvents(startDate, endDate)
 	def eventCount = events?.size ?: 0
 	
 	logDebug "Found ${eventCount} events between ${getFormattedLocalTime(startDate.time)} and ${getFormattedLocalTime(endDate.time)}"
 	
 	if (events) {
-		def jsonOutput = new groovy.json.JsonOutput()
-		def jsonData = jsonOutput.toJson([time: endDate.time, appId: app.id, token: state.accessToken, events: events])
-	
-		def params = [
-			uri: "${settings?.googleWebAppUrl}",
-			contentType: "application/json",
-			body: jsonData
-		]	
-		
-		logTrace "Logging ${eventCount} events to Google Sheets"
-		
-		asynchttp_v1.post(processLogEventsResponse, params)
+		postEventsToGoogleSheets(events)
 	}
 	else {
 		logTrace "There were no new events to Log to Google Sheets"
-		def loggingStatus = state.loggingStatus ?: [:]
-		loggingStatus.success = true
-		loggingStatus.eventsLogged = 0
-		loggingStatus.time = endDate.time
-		state.loggingStatus = loggingStatus
+		
+		state.loggingStatus.success = true
+		state.loggingStatus.finished = new Date().time
 	}
+}
+
+private postEventsToGoogleSheets(events) {
+	def jsonOutput = new groovy.json.JsonOutput()
+	def jsonData = jsonOutput.toJson([
+		postBackUrl: "${state.endpoint}update-logging-status",
+		events: events
+	])
+
+	def params = [
+		uri: "${settings?.googleWebAppUrl}",
+		contentType: "application/json",
+		body: jsonData
+	]	
+	
+	logTrace "Posting ${events?.size()} events to Google Sheets"
+	
+	asynchttp_v1.post(processLogEventsResponse, params)
 }
 
 // Google Sheets redirects the post to a temporary url so the response is usually 302 which is page moved.
@@ -371,31 +390,50 @@ private getInitializeEndpointErrorMessage() {
 }
 
 mappings {
-	path("/logging-result/:result") {action: [GET: "api_updateLoggingStatus"]}
+	path("/update-logging-status") {
+		action: [
+			POST: "api_updateLoggingStatus"
+		]
+	}	
 }
 
 def api_updateLoggingStatus() {
-	def result = "${params?.result}".split("§")
-	def loggingStatus
-	if (result.size() >= 3) {
-		loggingStatus = [
-			success: result[0] ? true : false,
-			endTime: safeToLong(result[1]),
-			eventsLogged: safeToLong(result[2]),
-			totalEventsLogged: safeToLong(result[3]),
-			freeSpace: calculateFreeSpace(safeToLong(result[3]))
-		]
+	def status = state.loggingStatus ?: [:]
+	def data = request.JSON
+	if (data) {
+		status.success = data.success
+		status.finished = new Date().time
+		status.eventsLogged = data.eventsLogged
+		status.totalEventsLogged = data.totalEventsLogged
+		status.freeSpace = calculateFreeSpace(data.totalEventsLogged)
+		
+		if (data.error) {
+			logDebug "Google Sheets Reported: ${data.error}"
+		}
 	}
 	else {
-		loggingStatus = state.loggingStatus ?: [:]
-		loggingStatus.success = false
-		loggingStatus.eventsLogged = 0		
-		logDebug "Unexpected Logging Status Result: $result"
-	}
-	state.loggingStatus = loggingStatus
-	logDebug "api_updateLoggingStatus: ${state.loggingStatus}"
+		status.success = false
+		logDebug "Logging Postback was empty."
+	}	
+	state.loggingStatus = status
+	logDebug "${getLoggingStatus()}"
 }
 
+private getLoggingStatus() {
+	def status = state.loggingStatus
+	def start = getFormattedLocalTime(safeToLong(status.firstEventTime))
+	def end = getFormattedLocalTime(safeToLong(status.lastEventTime))
+	def runTime = (safeToLong(status.finished) - safeToLong(status.started)) / 1000
+	def events = safeToLong(status.eventsLogged)
+	
+	if (status.success) {
+		return "Logged ${status.eventsLogged} events between ${start} and ${end} in ${runTime} seconds."
+	}
+	else {
+		return "Failed to log events between ${start} and ${end}."
+	}	
+}
+	
 private calculateFreeSpace(totalLogged) {
 	def cellsPerRow = 5
 	def cellLimit = 4000000 - cellsPerRow // exclude header row	
