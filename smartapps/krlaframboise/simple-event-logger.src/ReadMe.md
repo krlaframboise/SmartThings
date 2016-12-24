@@ -21,26 +21,28 @@
 </ul>-->
 
 <ul>
-	<li>This SmartApp supports almost every capability and attribute that's listed in the SmartThings documentation.<br></li>	
-	<li>It uses my "simple" approach of selecting all the devices you want to use once and presenting the narrowed list of devices for other settings.<br></li>
-	<li>It combines all the attributes supported by the selected devices into one setting and allows you to choose which ones to log.<br></li>
-	<li>Each attribute being logged has an exclusion list so you have complete control over which devices log what.<br></li>
-	<li>You can set the run interval to 5 Min, 10 Min, 15 Min, 30 Min, 1 Hour, 3 Hour<br></li>
-	<li>When it runs, it retrieves up to 50 events for each device since the last time it ran.  The number can be set to as low as 1 event.<br></li>
-	<li>It uses the device's event log to get the new events instead of subscribing to each device and queuing them.<br></li>
-	<li>It logs the event time, device, event name, event value, event description, but you can disable the description logging if you don't need it.<br></li>
-	<li>It only logs the events with the Source DEVICE, but I'm considering making that adjustable and possibly adding the ability to log Location events instead of just device events.<br></li>
+	<li>This SmartApp supports almost every capability and attribute that's listed in the SmartThings documentation.<br><br></li>	
+	<li>It uses my "simple" approach of selecting all the devices you want to use once and presenting the narrowed list of devices for other settings.<br><br></li>
+	<li>It combines all the attributes supported by the selected devices into one setting and allows you to choose which ones to log.<br><br></li>
+	<li>Each attribute being logged has an exclusion list so you have complete control over which devices log what.<br><br></li>
+	<li>You can set the run interval to 5 Min, 10 Min, 15 Min, 30 Min, 1 Hour, 3 Hour<br><br></li>
+	<li>When it runs, it retrieves up to 50 events for each device since the last time it ran.  The number can be set to as low as 1 event.<br><br></li>
+	<li>It uses the device's event log to get the new events instead of subscribing to each device and queuing them.<br><br></li>
+	<li>It logs the event time, device, event name, event value, event description, but you can disable the description logging if you don't need it.<br><br></li>
+	<li>It only logs the events with the Source DEVICE, but I'm considering making that adjustable and possibly adding the ability to log Location events instead of just device events.<br><br></li>
 	<li>When it executes, it retrieves the events that have occurred since the last time it executed and posts them to the Google Sheets Web App in a single batch.<br>
 	<ul>
 		<li>This SmartApp posts the data so that it's transmitted securely.  If the data is being sent as key/value pairs in the url, it's getting stored in web server logs as clear text.</li>
 		<li>Posting all the information in a single batch reduces network traffic and should prevent the SmartApp from reaching the 20 second execution limit and timing out.</li>
 		</ul><br>
 	</li>
-	<li>Once the Google Web App has finished logging all the data that was posted to it, it posts a response back to the SmartApp confirming that everyone was logged.<br></li>
-	<li>The SmartApp shows the result of the last run, the total # of events logged, and the percentage of free space in the log.  The log should be able to hold between 800,000 and 1,000,000 events depending on whether or not the description field is being logged.<br></li>
-	<li>It writes a debug messages to Live Logging showing the number events it found and the number of events that the Google web app said it logged.<br></li>
-	<li>You can choose which types of log entries to show in Live Logging (debug, info, trace)<br></li>
+	<li>Once the Google Web App has finished logging all the data that was posted to it, it posts a response back to the SmartApp confirming that everyone was logged.<br><br></li>
+	<li>The SmartApp shows the result of the last run, the total # of events logged, and the percentage of free space in the log.  The log should be able to hold between 800,000 and 1,000,000 events depending on whether or not the description field is being logged.<br><br></li>
+	<li>It writes a debug messages to Live Logging showing the number events it found and the number of events that the Google web app said it logged.<br><br></li>
+	<li>You can choose which types of log entries to show in Live Logging (debug, info, trace)<br><br><br></li>
 </ul>
+
+<hr>
 
 <h2>Google Sheets Setup</h2>
 
@@ -61,6 +63,8 @@
 <li>Navigate to the Web App Url you copied and you should see the message "SUCCESS" which indicates that the Web App has been configured properly.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-success.png?raw=true" /><br><br></li>
 <li>That completes the Google Sheets installation, but you should paste the Web App Url somewhere that you can access from your mobile device because you'll need to paste it into the SmartApp's settings.<br><br></li>
 </ol>
+
+<hr>
 
 <h2>SmartApp Setup</h2>
 <ol>
