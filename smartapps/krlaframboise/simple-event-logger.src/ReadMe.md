@@ -62,7 +62,12 @@
 <li>Delete the existing code that's shown and copy and paste all the code from file <a target="_blank" href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/Code.gs">code.gs</a>.<br><br></li>
 <li>Go into the "Publish" menu and click "Deploy as web app".<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-publish-menu.png?raw=true" /><br><br></li>
 <li>Enter a title for the project, you can name it anything you want.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-project-name.png?raw=true" /><br><br></li>
-<li>Change the "Who has access to the app" field to "Anyone, even anonymous" and click "Deploy".<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-web-app-access.png?raw=true" /><br><br></li>
+<li>Deploy as Web App Options<br>
+<ul>
+	<li>Change the "Product Version" to "New".  That is the default value the first time you deploy it, but it needs to be changed manually every time you deploy a new version or the changes won't get applied.</li>
+	<li>Change the "Who has access to the app" field to "Anyone, even anonymous".<br><em>(This makes the Web App url accessible to anyone that knows the url, but no one will know the url unless you give it out.  Even if someone had the url, the only thing they'd be able to see is the interval version number.)</em></li>
+	<li>Click "Deploy"</li>
+</ul><br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-web-app-access.png?raw=true" /><br><br></li>
 <li>Click "Review Permissions" button on the "Authorization Required" popup.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-auth.png?raw=true" /><br><br></li>
 <li>Click the "Allow" button on the permissions screen popup.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-allow.png?raw=true" /><br><br></li>
 <li>Copy the "Current Web App Url" and click "OK".<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-url.png?raw=true" /><br><br></li>
