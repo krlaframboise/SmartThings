@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger v 0.0.3
+ *  Simple Event Logger v 0.0.4
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,7 +9,7 @@
  *
  *  Changelog:
  *
- *    0.0.3 (12/24/2016)
+ *    0.0.4 (12/25/2016)
  *      - Beta Release
  *
  *  Licensed under the Apache License, Version 2.0 (the
@@ -44,8 +44,12 @@ preferences {
 	page(name: "devicesPage")
 	page(name: "attributesPage")
 	page(name: "optionsPage")
+	page(name: "aboutPage")
 	page(name: "createTokenPage")
 }
+
+def version() { return "00.00.04" }
+def gsVersion() { return "00.00.04" }
 
 def mainPage() {
 	dynamicPage(name:"mainPage", uninstall:true, install:true) {
@@ -53,7 +57,7 @@ def mainPage() {
 			getLoggingStatusContent()
 		}
 		if (state.devicesConfigured) {
-			section() {
+			section("Devices") {
 				getPageLink("devicesPageLink", "Choose Devices", "devicesPage", null, buildSummary(getSelectedDeviceNames()))
 			}
 		}
@@ -62,7 +66,7 @@ def mainPage() {
 		}
 		
 		if (state.attributesConfigured) {
-			section() {
+			section("Events") {
 				getPageLink("attributesPageLink", "Choose Events", "attributesPage", null, buildSummary(getSupportedAttributes()))
 			}			
 		}
@@ -70,28 +74,60 @@ def mainPage() {
 			getAttributesPageContent()
 		}
 				
-		if (state.optionsConfigured) {
-			section() {
-				getPageLink("optionsPageLink", "Other Options", "optionsPage")
+		if (!state.optionsConfigured) {
+			getOptionsPageContent()
+		}
+		
+		section("  ") {
+			if (state.optionsConfigured) {
+				getPageLink("optionsPageLink", "Other Options", "optionsPage", null, "Tap to set")
+			}
+			label title: "Assign a name", required: false
+			mode title: "Set for specific mode(s)", required: false
+			if (state.installed) {		
+				getPageLink("aboutPageLink", "About Simple Event Logger", "aboutPage", null, "Tap to view documentation, version and additional information.")
 			}
 		}
-		else {			
-			getOptionsPageContent()			
-		}
-
-		section() {
-			label title: "Assign a name", required: false
-			mode title: "Set for specific mode(s)", required: false		
+		section("  ") {
+			paragraph "  ", required: false
 		}
 	}
 }
 
 private getLoggingStatusContent() {
-	section("Logging Status") {
-		def time = state.loggingStatus?.endTime ? getFormattedLocalTime(state.loggingStatus?.endTime) : ""		
-		def status = state.loggingStatus?.success ? "Successful" : "Failed"
+	if (state.loggingStatus?.success != null) {
+		section("Logging Status") {			
+			def status = getFormattedLoggingStatus()
+			
+			paragraph required: false,
+				"Total Events Logged: ${status.totalEventsLogged}\nAvailable Log Space: ${status.freeSpace}\nLast Execution:\n - Result: ${status.result}\n - Events From: ${status.start}\n - Events To: ${status.end}\n - Logged: ${status.eventsLogged}\n - Run Time: ${status.runTime}"
+		}
+	}
+}
+
+def aboutPage() {
+	dynamicPage(name:"aboutPage") {
+		section() {		
+			def gsVerActual = state.loggingStatus?.gsVersion ?: "?"
+			
+			def gsVerExpectedMsg = (gsVersion() == gsVerActual) ? "" : " (expected version is ${gsVersion()})"
+		
+			paragraph image: "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-event-logger/app-SimpleEventLogger@3x.png",
+				title: "Simple Event Logger\nBy Kevin LaFramboise (@krlaframboise)",
+				required: false,
+				"Allows you to choose devices and attributes and it logs the device, event name, event value, event time, and event description of all the events that have occured since the last time it ran."
 				
-		paragraph "${time} - ${status}\nLogged: ${state.loggingStatus?.eventsLogged}\nTotal Logged: ${state.loggingStatus?.totalEventsLogged}\nAvailable Log Space: ${state.loggingStatus?.freeSpace}"
+			paragraph title: "Version",
+				required: false,
+				"SmartApp: ${version()}\nGoogle Script: ${gsVerActual}${gsVerExpectedMsg}"
+				
+			 href(name: "documentationLink",
+				 title: "View Documentation",
+				 required: false,
+				 style: "external",
+				 url: "http://htmlpreview.github.com/?https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/ReadMe.md",
+				 description: "Additional information about the SmartApp and installation instructions.")
+		}		
 	}
 }
 
@@ -189,9 +225,13 @@ private getOptionsPageContent() {
 			title: "Google Sheets Web App Url:\n\n(A popup box with a URL is shown after Deploying the Google Sheets Script.  Copy and paste that entire URL into this field.)",
 			required: true
 	}
-	section("OAuth Token") {
-		getPageLink("createTokenPageLink", "Generate New OAuth Token", "createTokenPage", null, state.accessToken ? "" : "The SmartApp was unable to generate an OAuth token which usually happens if you haven't gone into the IDE and enabled OAuth in this SmartApps settings.  Once OAuth is enabled, you can click this link to try again.")
+	
+	if (state.installed) {
+		section("OAuth Token") {
+			getPageLink("createTokenPageLink", "Generate New OAuth Token", "createTokenPage", null, state.endpoint ? "" : "The SmartApp was unable to generate an OAuth token which usually happens if you haven't gone into the IDE and enabled OAuth in this SmartApps settings.  Once OAuth is enabled, you can click this link to try again.")
+		}
 	}
+	
 	section("Live Logging Options") {
 		input "logging", "enum",
 			title: "Types of messages to write to Live Logging:",
@@ -209,7 +249,7 @@ def createTokenPage() {
 		initializeAppEndpoint()		
 		
 		section() {
-			if (state.accessToken) {				
+			if (state.endpoint) {				
 				paragraph "A new token has been generated."
 			}
 			else {
@@ -248,7 +288,7 @@ def uninstalled() {
 }
 
 private disposeAppEndpoint() {
-	if (state.accessToken || state.endpoint) {
+	if (state.endpoint) {
 		try {
 			logTrace "Revoking access token"
 			revokeAccessToken()
@@ -256,19 +296,20 @@ private disposeAppEndpoint() {
 		catch (e) {
 			log.warn "Unable to remove access token: $e"
 		}
-		state.accessToken = ""
 		state.endpoint = ""
 	}
 }
 
-def installed() {
+def installed() {	
 	logTrace "Executing installed()"
 	initializeAppEndpoint()
+	state.installed = true
 }
 
 def updated() {
 	logTrace "Executing updated()"
-		
+	state.installed = true
+	
 	unschedule()
 	unsubscribe()
 	
@@ -300,13 +341,37 @@ def updated() {
 	if  (state.allConfigured) {
 		def logFrequency = (settings?.logFrequency ?: "5 Minutes").replace(" ", "")
 		
-		"runEvery${logFrequency}"(logNewEvents)				
+		"runEvery${logFrequency}"(logNewEvents)
+		
+		verifyGSVersion()
 	}
 	else {
 		logDebug "Event Logging is disabled because there are unconfigured settings."
 	}
+}
+
+// Requests the version from the Google Script and displays a warning if it's not the expected version.
+private verifyGSVersion() {
+	def actualGSVersion = ""
 	
-	logNewEvents()
+	logTrace "Retrieving Google Script Code version of the Google Sheets Web App."
+	
+	def params = [
+		uri: settings?.googleWebAppUrl
+	]	
+	httpGet(params) { objResponse ->
+		if (objResponse?.status == 200) {
+			if ("${objResponse.data}" == "Version ${gsVersion()}") {
+				logTrace "The Google Web App is using the correct version of the Google Script code."
+			}
+			else {
+				log.warn "The Google Sheet's Web App is not using version ${gsVersion()} of the Google Script code which is required by version ${version()} of the Simple Event Logger SmartApp.\n\nPlease update to the latest version of this SmartApp and the Google Script code to ensure that everything works properly.\n\nWhen deploying a new version of the Google Script Code in the Google Sheet, make sure you change the 'Product Version' field to 'New'."
+			}
+		}
+		else {
+			log.warn "Unable to connect to the Google Sheets Web App.  Make sure you followed the instructions for setting up and testing it."
+		}
+	}				
 }
 
 def logNewEvents() {	
@@ -328,19 +393,17 @@ def logNewEvents() {
 	def endDate = new Date(status.lastEventTime)
 	
 	state.loggingStatus = status
-	logTrace "Retrieving Events from ${startDate} to ${endDate}"
-		
+
 	def events = getNewEvents(startDate, endDate)
 	def eventCount = events?.size ?: 0
+	def actionMsg = eventCount > 0 ? ", posting them to Google Web App" : ""
 	
-	logDebug "Found ${eventCount} events between ${getFormattedLocalTime(startDate.time)} and ${getFormattedLocalTime(endDate.time)}"
+	logDebug "Found ${String.format('%,d', eventCount)} events between ${getFormattedLocalTime(startDate.time)} and ${getFormattedLocalTime(endDate.time)}${actionMsg}"
 	
 	if (events) {
 		postEventsToGoogleSheets(events)
 	}
-	else {
-		logTrace "There were no new events to Log to Google Sheets"
-		
+	else {		
 		state.loggingStatus.success = true
 		state.loggingStatus.finished = new Date().time
 	}
@@ -350,6 +413,7 @@ private postEventsToGoogleSheets(events) {
 	def jsonOutput = new groovy.json.JsonOutput()
 	def jsonData = jsonOutput.toJson([
 		postBackUrl: "${state.endpoint}update-logging-status",
+		logDesc: (settings?.logDesc != false),
 		events: events
 	])
 
@@ -359,8 +423,6 @@ private postEventsToGoogleSheets(events) {
 		body: jsonData
 	]	
 	
-	logTrace "Posting ${events?.size()} events to Google Sheets"
-	
 	asynchttp_v1.post(processLogEventsResponse, params)
 }
 
@@ -369,19 +431,19 @@ def processLogEventsResponse(response, data) {
 	logTrace "Google Sheets Logging Response: ${response?.status}"
 }
 
-
 private initializeAppEndpoint() {		
 	try {
-		if (!state.accessToken) {
+		if (!state.endpoint) {
 			logDebug "Creating Access Token"
-			state.accessToken = createAccessToken()
-			state.endpoint = apiServerUrl("/api/token/${state.accessToken}/smartapps/installations/${app.id}/")		
+			def accessToken = createAccessToken()
+			if (accessToken) {
+				state.endpoint = apiServerUrl("/api/token/${accessToken}/smartapps/installations/${app.id}/")
+			}
 		}		
 	} 
 	catch(e) {
 		log.warn "${getInitializeEndpointErrorMessage()}"
 		state.endpoint = null
-		state.accessToken = null
 	}
 }
 
@@ -402,10 +464,11 @@ def api_updateLoggingStatus() {
 	def data = request.JSON
 	if (data) {
 		status.success = data.success
+		status.gsVersion = data.version
 		status.finished = new Date().time
 		status.eventsLogged = data.eventsLogged
 		status.totalEventsLogged = data.totalEventsLogged
-		status.freeSpace = calculateFreeSpace(data.totalEventsLogged)
+		status.freeSpace = data.freeSpace
 		
 		if (data.error) {
 			logDebug "Google Sheets Reported: ${data.error}"
@@ -416,36 +479,39 @@ def api_updateLoggingStatus() {
 		logDebug "Logging Postback was empty."
 	}	
 	state.loggingStatus = status
-	logDebug "${getLoggingStatus()}"
+	logLoggingStatus()
 }
 
-private getLoggingStatus() {
-	def status = state.loggingStatus
-	def start = getFormattedLocalTime(safeToLong(status.firstEventTime))
-	def end = getFormattedLocalTime(safeToLong(status.lastEventTime))
-	def runTime = (safeToLong(status.finished) - safeToLong(status.started)) / 1000
-	def events = safeToLong(status.eventsLogged)
-	
-	if (status.success) {
-		return "Logged ${status.eventsLogged} events between ${start} and ${end} in ${runTime} seconds."
+private logLoggingStatus() {
+	def status = getFormattedLoggingStatus()	
+	if (state.loggingStatus?.success) {
+		logDebug "Logged ${status.eventsLogged} events between ${status.start} and ${status.end} in ${status.runTime}."
 	}
 	else {
-		return "Failed to log events between ${start} and ${end}."
+		logDebug "Failed to log events between ${status.start} and ${status.end}."
 	}	
+	
+	logTrace "Google Script Version: ${state.loggingStatus?.gsVersion}, Total Events Logged: ${status.totalEventsLogged}, Remaining Space Available: ${status.freeSpace}"
+}
+
+private getFormattedLoggingStatus() {
+	def status = state.loggingStatus ?: [:]
+	return [
+		result: status?.success ? "Successful" : "Failed",
+		start:  getFormattedLocalTime(safeToLong(status.firstEventTime)),
+		end:  getFormattedLocalTime(safeToLong(status.lastEventTime)),
+		runTime: "${((safeToLong(status.finished) - safeToLong(status.started)) / 1000)} seconds",
+		eventsLogged: "${String.format('%,d', safeToLong(status.eventsLogged))}",
+		totalEventsLogged: "${String.format('%,d', safeToLong(status.totalEventsLogged))}",
+		freeSpace: status.freeSpace
+	]
 }
 	
-private calculateFreeSpace(totalLogged) {
-	def cellsPerRow = 5
-	def cellLimit = 4000000 - cellsPerRow // exclude header row	
-	def allowedRows = cellLimit / cellsPerRow
-
-	double allAttributes = (totalLogged / allowedRows) * 100
-	return "${(100 - allAttributes).round(2)}%"
-}
-
 private getNewEvents(startDate, endDate) {	
 	def events = []
 	def maxEvents = settings?.maxEvents ?: 10
+
+	logTrace "Retrieving Events from ${startDate} to ${endDate}"		
 	
 	getSelectedDevices().each  { device ->
 
@@ -465,13 +531,18 @@ private getNewEvents(startDate, endDate) {
 		}
 	}
 
-	return events.sort { it.time }
+	return events.unique().sort { it.time }
 }
 
-private getFormattedLocalTime(utcTime) {	
-	def localTZ = TimeZone.getTimeZone(location.timeZone.ID)
-	def localDate = new Date(utcTime + localTZ.getOffset(utcTime))	
-	return localDate.format("MM/dd/yyyy HH:mm:ss")
+private getFormattedLocalTime(utcTime) {
+	if (utcTime) {
+		def localTZ = TimeZone.getTimeZone(location.timeZone.ID)
+		def localDate = new Date(utcTime + localTZ.getOffset(utcTime))	
+		return localDate.format("MM/dd/yyyy HH:mm:ss")
+	}
+	else {
+		return ""
+	}
 }
 
 private getEventDesc(desc) {
