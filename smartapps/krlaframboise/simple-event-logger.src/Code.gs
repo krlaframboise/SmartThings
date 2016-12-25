@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - Google Script Code v 0.0.3
+ *  Simple Event Logger - Google Script Code v 0.0.4
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,7 +9,7 @@
  *
  *  Changelog:
  *
- *    0.0.3 (12/24/2016)
+ *    0.0.4 (12/25/2016)
  *      - Beta Release
  *
  *  Licensed under the Apache License, Version 2.0 (the
@@ -26,25 +26,30 @@
  *  permissions and limitations under the License.
  *
  */
+function getVersion() { return "00.00.04"; }
+ 
 function doGet(e) {
-	return ContentService.createTextOutput("SUCCESS");
+	var output = "Version " + getVersion()
+	return ContentService.createTextOutput(output);
 }
 
 function doPost(e) {
 	var result = new Object();
+	result.version = getVersion();
+	
 	if (e && e.contentLength > 0) {
 		
 		var data = JSON.parse(e.postData.contents);
 		if (data) {	
+			var sheet = SpreadsheetApp.getActiveSheet();
+			
 			result.eventsLogged = 0;
 			
 			try {
-				var sheet = SpreadsheetApp.getActiveSheet();
-				
 				result.totalEventsLogged = sheet.getLastRow() - 1;
 				
 				for each (event in data.events) {
-					logEvent(sheet, event);
+					logEvent(sheet, data.logDesc, event);
 					result.eventsLogged++;
 				}
 				
@@ -56,6 +61,8 @@ function doPost(e) {
 				result.success = false;
 			}
 			
+			result.freeSpace = calculateAvailableLogSpace(sheet);
+			
 			sendPostback(data.postBackUrl, result);
 		}
 	}
@@ -64,26 +71,41 @@ function doPost(e) {
 }
 
 
-function logEvent(sheet, event) {
-	if (sheet.getLastRow() == 0) {
-		sheet.appendRow([
-			"Date/Time",
-			"Device",
-			"Event Name",
-			"Event Value",
-			"Description"
-		]);
+function logEvent(sheet, logDesc, event) {
+	if (sheet.getLastRow() == 0) {		
+		sheet.appendRow(getHeader(logDesc));
 	}
   
-	sheet.appendRow([
+	var newRow = [
 		event.time,
 		event.device,
 		event.name,
-		event.value,
-		event.desc
-	]);
+		event.value
+	];
+	if (logDesc) {
+		newRow.push(event.desc);
+	}	
+	sheet.appendRow(newRow);
 }
 
+function getHeader(logDesc) {
+	var header = [
+			"Date/Time",
+			"Device",
+			"Event Name",
+			"Event Value"
+		];
+		if (logDesc) {
+			header.push("Description");
+		}
+		return header;
+}
+
+function calculateAvailableLogSpace(sheet) {
+	var cellsUsed = (sheet.getLastRow() * sheet.getLastColumn());
+	var spaceUsed = (cellsUsed / 2000000) * 100;
+	return (100 - spaceUsed).toFixed(2) + "%";
+}
 
 function sendPostback(url, result) {
 	var options = {
