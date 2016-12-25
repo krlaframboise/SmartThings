@@ -43,7 +43,7 @@
 		</ul><br>
 	</li>
 	<li>Once the Google Web App has finished logging all the data that was posted to it, it posts a response back to the SmartApp confirming that everyone was logged.<br><br></li>
-	<li>The SmartApp shows the result of the last run, the total # of events logged, and the percentage of free space in the log.  The log should be able to hold between 800,000 and 1,000,000 events depending on whether or not the description field is being logged.<br><br></li>
+	<li>The SmartApp shows the result of the last run, the total # of events logged, and the percentage of free space in the log.  The log should be able to hold up to 400,000 events.<br><br></li>
 	<li>It writes a debug messages to Live Logging showing the number events it found and the number of events that the Google web app said it logged.<br><br></li>
 	<li>You can choose which types of log entries to show in Live Logging (debug, info, trace)<br><br><br></li>
 </ul>
