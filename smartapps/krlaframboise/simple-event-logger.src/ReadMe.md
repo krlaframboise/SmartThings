@@ -79,12 +79,15 @@
 
 <h2>SmartApp Setup</h2>
 <ol>
-<li>Either copy and paste the <a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy" target="_blank">Simple Event Logger code</a> into a new SmartApp or link to my repository using krlaframboise, SmartThings and master.<br><br></li>
-<li>Enable OAuth in the SmartApp Settings<br><br></li>
+<li>Create the SmartApp in the IDE by either copying the <a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy" target="_blank">Simple Event Logger code</a> and pasting it into the New SmartApp "From Code" option or by adding my GitHub Repository with the settings krlaframboise, SmartThings, and master.<br><ul><li><a href="http://thingsthataresmart.wiki/index.php?title=Using_Custom_Code#Using_a_Custom_SmartApp" target="_blank">Learn more about using custom SmartApps</a></li><li><a href="http://thingsthataresmart.wiki/index.php?title=Using_Custom_Code#A_Note_on_.22GitHub_Integration.22" target="_blank">Learn more about Github Integration</a></li></ul><br><br></li>
+<ol><li>Enable OAuth in the SmartApp Settings<br><ul><li>Open the SmartApp in the IDE and click the "App Settings" button.</li><li>Click the "OAuth" link and then click the "Enable OAuth in SmartApp" button.</li></ol><br></li>
 <li>Install the SmartApp through the Mobile App<br><br></li>
-<li>Select all the devices you want to log events for.  The devices will appear in multiple fields, but you only need to select a device once<br><br></li>
-<li>Then select all the events that you'd like to log.  Only events that are supported by at least one of the selected devices will appear in the list.<br><br></li>
-<li>For each event you selected, choose the devices that it should ignore.  You can skip this section if you want all the selected devices to log all the selected events.<br><br></li>
+<li>Select all the devices you want to log events for.  Upi should see most of your devices in the "Actuators" and "Sensors" fields, but most of them will be in multiple fields.  When you select a device, you're telling the SmartApp that it should log devices.  Which events it should log is specified in a different section of the settings so it doesn't matter which field you select the device from.<br><br></li>
+<li>After you've selected the devices you want to log events for, scroll down to the "Choose Events" section and select the events that should be logged for all devices.<br><br></li>
+<li>If you want to log an event for some devices and not others you can use to corresponding "Device Exclusion" fields to exclude those devices.<br><br></li>
+<li>Change the "Logging Options" (if needed)<br><ul><li><b>Log Events Every:</b> Determines the schedule interval for posting new events to the google sheet.</li>
+<li><b>Maximum number of events to log for each device per secution:</b> When the SmartApp Executes it retrieves between (1 and 50) events from the device since it last ran depending on this setting.  Setting this number too high may cause the SmartApp to reach the 20 second execution limit and setting it too low may result in some events not getting logged.</li><li><b>Log Event Description:</b> Determines whether the event's description is logged.  Google Sheets is limited to 2 million cells so it can hold about 400,000 events with the description or 500,000 events without it.</li></ul><br><br></li>
+<li>
 <li>Paste the Web App Url you previously copied into the "Google Web App Url" field and fill in the rest of the settings.<br><br></li>
 <li>Once you've tapped "Done" you should see entries in Live Logging at the interval you specified.<br><br></li>
 <li>You can see the events that it logged by going back to the google sheets page.<br><br></li>
