@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger v 0.0.5
+ *  Simple Event Logger - SmartApp v 1.0
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,8 +9,8 @@
  *
  *  Changelog:
  *
- *    0.0.5 (12/26/2016)
- *      - Beta Release
+ *    1.0.0 (12/26/2016)
+ *      - Initial Release
  *
  *  Licensed under the Apache License, Version 2.0 (the
  *  "License"); you may not use this file except in
@@ -48,8 +48,8 @@ preferences {
 	page(name: "createTokenPage")
 }
 
-def version() { return "00.00.05" }
-def gsVersion() { return "00.00.04" }
+def version() { return "01.00.00" }
+def gsVersion() { return "01.00.00" }
 
 def mainPage() {
 	dynamicPage(name:"mainPage", uninstall:true, install:true) {
