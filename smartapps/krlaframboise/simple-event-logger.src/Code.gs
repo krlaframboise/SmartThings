@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - Google Script Code v 0.0.4
+ *  Simple Event Logger - Google Script Code v 1.0
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,8 +9,8 @@
  *
  *  Changelog:
  *
- *    0.0.4 (12/25/2016)
- *      - Beta Release
+ *    1.0.0 (12/26/2016)
+ *      - Initial Release
  *
  *  Licensed under the Apache License, Version 2.0 (the
  *  "License"); you may not use this file except in
@@ -26,7 +26,7 @@
  *  permissions and limitations under the License.
  *
  */
-function getVersion() { return "00.00.04"; }
+function getVersion() { return "01.00.00"; }
  
 function doGet(e) {
 	var output = "Version " + getVersion()
