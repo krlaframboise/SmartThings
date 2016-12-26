@@ -1,4 +1,4 @@
-<h1>Simple Event Logger - Beta v0.0.4</h1>
+<h1>Simple Event Logger - Beta v0.0.5</h1>
 <p>By Kevin LaFramboise (krlaframboise)</p>
 
 <p><img align="right" src="https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-event-logger/app-SimpleEventLogger@3x.png" alt="Simple Event Logger Logo" />The Simple Event Logger is a fully customizable SmartApp that allows you to accurately log all device activity to a Google Sheets Spreadsheet.  Each event is stored on a separate row so that you have their exact time and details.</p>
