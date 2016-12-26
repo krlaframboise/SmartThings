@@ -25,6 +25,7 @@
 	<ul><li><a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/Code.gs">Google Sheets Web App Code</a></li>
 	<li><a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy" target="_blank">SmartApp Code</a></li>
 	</ul></li>
+	<li><a href="#upcoming-features">Upcoming Features</a></li>
 </ul>
 
 <hr>
@@ -115,3 +116,11 @@
 <li>The next time you want to view your temperatures, click the down arrow next to the filter icon in the toolbar and select the filter "Temperature".<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-filter7.png?raw=true" /><br><br></li>
 </ol>
 <p>If you've had the filtered view open for a while, you probably won't see the recent events, but you can refresh it by closing the filter and spreadsheet and then re-opening.</p>
+
+<hr>
+
+<h2>Upcoming Features</h2>
+<ul>
+<li>Ability to select specific numeric events/attributes and have it store an average of values since the last execution instead of creating a new row for every value.  This should conserve log space because a lot of power devices report a lot of values in a short period of time.</li>
+</li>
+</ul>
