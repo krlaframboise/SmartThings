@@ -89,6 +89,26 @@
 <li><b>Maximum number of events to log for each device per secution:</b> When the SmartApp Executes it retrieves between (1 and 50) events from the device since it last ran depending on this setting.  Setting this number too high may cause the SmartApp to reach the 20 second execution limit and setting it too low may result in some events not getting logged.</li><li><b>Log Event Description:</b> Determines whether the event's description is logged.  Google Sheets is limited to 2 million cells so it can hold about 400,000 events with the description or 500,000 events without it.</li></ul><br><br></li>
 <li>
 <li>Paste the Web App Url you previously copied into the "Google Web App Url" field and fill in the rest of the settings.<br><br></li>
-<li>Once you've tapped "Done" you should see entries in Live Logging at the interval you specified.<br><br></li>
-<li>You can see the events that it logged by going back to the google sheets page.<br><br></li>
+<li>Once you've filled in all the required information and tapped done, it will initialize the logging schedule for the interval specified.  After that scheduled amount of time, you should see new events logged to the spreadsheet and if you open the SmartApp, you will see information about the last time start it executed.<br><br></li>
+<li>
 </ol>
+
+<hr>
+
+<h2>Creating Filters to View the Logged Events</h2>
+
+<p>The data gets logged in a format that's easy to work with, but not very useful to look at, but you can easily create and save filters to see the information you care about.</p>
+
+<p>The following instructions demonstrate how to setup and save a filter that shows your temperature data.</p>
+
+<ol><li>Open the Google Sheet that the data is being logged to<br></li>
+<li>Click the down arrow next to the filter icon in the toolbar and then click "Create new filter view".<br>
+<img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-filter1.png?raw=true" /><br><br></li>
+<li>Enter a name filter by clicking in the box to the right of "Name:", typing "Temperature" and then pressing enter.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-filter2.png?raw=true" /><br><br></li>
+<li>Click the down arrow to the right of the Date/Time field and then click "Sort Z-A" which will ensure that the most recent data will appear at the top of the page.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-filter3.png?raw=true" /><br><br></li>
+<li>Click the down arrow to the right of the Event Name field, click the "clear" link, select the event name "temperature", and click OK.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-filter4.png?raw=true" /><br><br></li>
+<li>Once you've done that you should see just the event names that you select.  If you were just looking for the events of a specific device, you could click the down arrow next to the Device field and select it.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-filter5.png?raw=true" /><br><br></li>
+<li>Click the x in the top right corner of the black bar to close out of the filter view.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-filter6.png?raw=true" /><br><br></li>
+<li>The next time you want to view your temperatures, click the down arrow next to the filter icon in the toolbar and select the filter "Temperature".<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-filter7.png?raw=true" /><br><br></li>
+</ol>
+<p>If you've had the filtered view open for a while, you probably won't see the recent events, but you can refresh it by closing the filter and spreadsheet and then re-opening.</p>
