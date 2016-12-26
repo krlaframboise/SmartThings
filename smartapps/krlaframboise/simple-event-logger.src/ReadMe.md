@@ -7,24 +7,29 @@
 
 <p>Since all of your data will be stored in one spreadsheet,advanced users can easily generate pivot tables and graphs for any information they need.  It also eliminates the need to update the code in multiple spreadsheets every time a new version is released.</p>
 
-<p>You can find detailed instructions below, but here are the links to files:</p>
-<ul><li><a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/Code.gs">Google Sheets Web App Code</a></li>
-<li><a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy" target="_blank">SmartApp Code</a></li>
+<hr>
+
+<h2>Menu</h2>
+
+<ul>
+	<li><a href="#features">Features</a></li>
+	<li>Installation<br>
+		<ul>
+			<li><a href="#google-sheets-setup">Google Sheets Web App Installation</a></li>
+			<li><a href="#smartapp-setup">SmartApp Installation</a></li>			
+		</ul>
+	</li>
+		<li><a href="#creating-filters-to-view-the-logged-events">Creating Filters to View the Logged Events</a>
+	</li>
+	<li>Code<br>
+	<ul><li><a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/Code.gs">Google Sheets Web App Code</a></li>
+	<li><a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy" target="_blank">SmartApp Code</a></li>
+	</ul></li>
 </ul>
 
 <hr>
 
 <h2>Features</h2>
-
-<!--<ul>
-	<li><a href="#description">Description</a></li>
-	<li><a href="#installation">Installation</a>
-		<ul>
-			<li><a href="#installgoogle">Google Sheets Web App Installation</a></li>
-			<li><a href="installSmartApp">SmartApp Installation</a></li>
-		</ul>
-	</li>
-</ul>-->
 
 <ul>
 	<li>This SmartApp supports almost every capability and attribute that's listed in the SmartThings documentation.<br><br></li>	
@@ -87,10 +92,8 @@
 <li>If you want to log an event for some devices and not others you can use to corresponding "Device Exclusion" fields to exclude those devices.<br><br></li>
 <li>Change the "Logging Options" (if needed)<br><ul><li><b>Log Events Every:</b> Determines the schedule interval for posting new events to the google sheet.</li>
 <li><b>Maximum number of events to log for each device per secution:</b> When the SmartApp Executes it retrieves between (1 and 50) events from the device since it last ran depending on this setting.  Setting this number too high may cause the SmartApp to reach the 20 second execution limit and setting it too low may result in some events not getting logged.</li><li><b>Log Event Description:</b> Determines whether the event's description is logged.  Google Sheets is limited to 2 million cells so it can hold about 400,000 events with the description or 500,000 events without it.</li></ul><br><br></li>
-<li>
 <li>Paste the Web App Url you previously copied into the "Google Web App Url" field and fill in the rest of the settings.<br><br></li>
 <li>Once you've filled in all the required information and tapped done, it will initialize the logging schedule for the interval specified.  After that scheduled amount of time, you should see new events logged to the spreadsheet and if you open the SmartApp, you will see information about the last time start it executed.<br><br></li>
-<li>
 </ol>
 
 <hr>
