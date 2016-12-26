@@ -122,5 +122,6 @@
 <h2>Upcoming Features</h2>
 <ul>
 <li>Ability to select specific numeric events/attributes and have it store an average of values since the last execution instead of creating a new row for every value.  This should conserve log space because a lot of power devices report a lot of values in a short period of time.</li>
+<li>Optionally send low log space warnings by Push, SMS, and/or Email based on customizable threshold.</li>
 </li>
 </ul>
