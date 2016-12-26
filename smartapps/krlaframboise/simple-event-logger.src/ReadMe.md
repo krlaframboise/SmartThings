@@ -1,4 +1,4 @@
-<h1>Simple Event Logger - Beta v0.0.5</h1>
+<h1>Simple Event Logger - Beta v1.0.0</h1>
 <p>By Kevin LaFramboise (krlaframboise)</p>
 
 <p><img align="right" src="https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-event-logger/app-SimpleEventLogger@3x.png" alt="Simple Event Logger Logo" />The Simple Event Logger is a fully customizable SmartApp that allows you to accurately log all device activity to a Google Sheets Spreadsheet.  Each event is stored on a separate row so that you have their exact time and details.</p>
@@ -19,8 +19,7 @@
 			<li><a href="#smartapp-setup">SmartApp Installation</a></li>			
 		</ul>
 	</li>
-		<li><a href="#creating-filters-to-view-the-logged-events">Creating Filters to View the Logged Events</a>
-	</li>
+	<li><a href="#creating-filters-to-view-the-logged-events">Creating Filters to View the Logged Events</a></li>
 	<li>Code<br>
 	<ul><li><a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/Code.gs">Google Sheets Web App Code</a></li>
 	<li><a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy" target="_blank">SmartApp Code</a></li>
@@ -33,25 +32,24 @@
 <h2>Features</h2>
 
 <ul>
-	<li>This SmartApp supports almost every capability and attribute that's listed in the SmartThings documentation.<br><br></li>	
-	<li>It uses my "simple" approach of selecting all the devices you want to use once and presenting the narrowed list of devices for other settings.<br><br></li>
-	<li>It combines all the attributes supported by the selected devices into one setting and allows you to choose which ones to log.<br><br></li>
-	<li>Each attribute being logged has an exclusion list so you have complete control over which devices log what.<br><br></li>
-	<li>You can set the run interval to 5 Min, 10 Min, 15 Min, 30 Min, 1 Hour, 3 Hour<br><br></li>
-	<li>When it runs, it retrieves up to 50 events for each device since the last time it ran.  The number can be set to as low as 1 event.<br><br></li>
-	<li>It uses the device's event log to get the new events instead of subscribing to each device and queuing them.<br><br></li>
-	<li>It logs the event time, device, event name, event value, event description, but you can disable the description logging if you don't need it.<br><br></li>
-	<li>It only logs the events with the Source DEVICE, but I'm considering making that adjustable and possibly adding the ability to log Location events instead of just device events.<br><br></li>
-	<li>When it executes, it retrieves the events that have occurred since the last time it executed and posts them to the Google Sheets Web App in a single batch.<br>
+	<li><p>This SmartApp supports almost every capability and attribute that's listed in the SmartThings documentation.</p></li>	
+	<li><p>It uses my "simple" approach of selecting all the devices you want to use once and presenting the narrowed list of devices for other settings.</p></li>
+	<li><p>It combines all the attributes supported by the selected devices into one setting and allows you to choose which ones to log.</p></li>
+	<li><p>Each attribute being logged has an exclusion list so you have complete control over which devices log what.</p></li>
+	<li><p>You can set the run interval to 5 Min, 10 Min, 15 Min, 30 Min, 1 Hour, 3 Hour</p></li>
+	<li><p>When it runs, it retrieves up to 50 events for each device since the last time it ran.  The number can be set to as low as 1 event.</p></li>
+	<li><p>It uses the device's event log to get the new events instead of subscribing to each device and queuing them.</p></li>
+	<li><p>It logs the event time, device, event name, event value, event description, but you can disable the description logging if you don't need it.</p></li>
+	<li><p>It only logs the events with the Source DEVICE, but I'm considering making that adjustable and possibly adding the ability to log Location events instead of just device events.</p></li>
+	<li><p>When it executes, it retrieves the events that have occurred since the last time it executed and posts them to the Google Sheets Web App in a single batch.</p>
 	<ul>
-		<li>This SmartApp posts the data so that it's transmitted securely.  If the data is being sent as key/value pairs in the url, it's getting stored in web server logs as clear text.</li>
-		<li>Posting all the information in a single batch reduces network traffic and should prevent the SmartApp from reaching the 20 second execution limit and timing out.</li>
-		</ul><br>
-	</li>
-	<li>Once the Google Web App has finished logging all the data that was posted to it, it posts a response back to the SmartApp confirming that everyone was logged.<br><br></li>
-	<li>The SmartApp shows the result of the last run, the total # of events logged, and the percentage of free space in the log.  The log should be able to hold up to 400,000 events.<br><br></li>
-	<li>It writes a debug messages to Live Logging showing the number events it found and the number of events that the Google web app said it logged.<br><br></li>
-	<li>You can choose which types of log entries to show in Live Logging (debug, info, trace)<br><br><br></li>
+		<li><p>This SmartApp posts the data so that it's transmitted securely.  If the data is being sent as key/value pairs in the url, it's getting stored in web server logs as clear text.</p></li>
+		<li><p>Posting all the information in a single batch reduces network traffic and should prevent the SmartApp from reaching the 20 second execution limit and timing out.</p></li>
+		</ul></li>
+	<li><p>Once the Google Web App has finished logging all the data that was posted to it, it posts a response back to the SmartApp confirming that everyone was logged.</p></li>
+	<li><p>The SmartApp shows the result of the last run, the total # of events logged, and the percentage of free space in the log.  The log should be able to hold up to 400,000 events.</p></li>
+	<li><p>It writes a debug messages to Live Logging showing the number events it found and the number of events that the Google web app said it logged.</p></li>
+	<li><p>You can choose which types of log entries to show in Live Logging (debug, info, trace)</p></li>
 </ul>
 
 <hr>
@@ -59,13 +57,13 @@
 <h2>Google Sheets Setup</h2>
 
 <ol>
-<li>Go to <a target="_blank" href="http://docs.google.com/spreadsheets">http://docs.google.com/spreadsheets</a><br><br></li>
+<li>Go to <a target="_blank" href="http://docs.google.com/spreadsheets"><b>http://docs.google.com/spreadsheets</b></a><br><br></li>
 <li>Log in with your Google account.<br><br></li>
 <li>Start a new Blank spreadsheet by clicking the green plus<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-home.png?raw=true" /><br><br></li>
 <li>You should see "Untitled spreadsheet" in the top left corner, but if you don't, the top menu is collapsed so you'll need to click the 2 downarrows on the right side of the screen.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-expand-menu.png?raw=true" /><br><br></li>
 <li>If you click the text "Untitled spreadsheet" in the top left corner, you can rename it to anything you want.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-title.png?raw=true" /><br><br></li>
 <li>Open the Script Editor which is located in the top "Tools" menu.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-script-editor-menu.png?raw=true" /><br><br></li>
-<li>Delete the existing code that's shown and copy and paste all the code from file <a target="_blank" href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/Code.gs">code.gs</a>.<br><br></li>
+<li>Delete the existing code that's shown and copy and paste all the code from file <a target="_blank" href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/Code.gs"><b>code.gs</b></a>.<br><br></li>
 <li>Go into the "Publish" menu and click "Deploy as web app".<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-publish-menu.png?raw=true" /><br><br></li>
 <li>Enter a title for the project, you can name it anything you want.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-project-name.png?raw=true" /><br><br></li>
 <li>Deploy as Web App Options<br>
@@ -85,7 +83,7 @@
 
 <h2>SmartApp Setup</h2>
 <ol>
-<li>Create the SmartApp in the IDE by either copying the <a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy" target="_blank">Simple Event Logger code</a> and pasting it into the New SmartApp "From Code" option or by adding my GitHub Repository with the settings krlaframboise, SmartThings, and master.<br><ul><li><a href="http://thingsthataresmart.wiki/index.php?title=Using_Custom_Code#Using_a_Custom_SmartApp" target="_blank">Learn more about using custom SmartApps</a></li><li><a href="http://thingsthataresmart.wiki/index.php?title=Using_Custom_Code#A_Note_on_.22GitHub_Integration.22" target="_blank">Learn more about Github Integration</a></li></ul><br><br></li>
+<li>Create the SmartApp in the IDE by either copying the <a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy" target="_blank"><b>Simple Event Logger code</b></a> and pasting it into the New SmartApp "From Code" option or by adding my GitHub Repository with the settings krlaframboise, SmartThings, and master.<br><ul><li><a href="http://thingsthataresmart.wiki/index.php?title=Using_Custom_Code#Using_a_Custom_SmartApp" target="_blank">Learn more about using custom SmartApps</a></li><li><a href="http://thingsthataresmart.wiki/index.php?title=Using_Custom_Code#A_Note_on_.22GitHub_Integration.22" target="_blank">Learn more about Github Integration</a></li></ul><br><br></li>
 <ol><li>Enable OAuth in the SmartApp Settings<br><ul><li>Open the SmartApp in the IDE and click the "App Settings" button.</li><li>Click the "OAuth" link and then click the "Enable OAuth in SmartApp" button.</li></ol><br></li>
 <li>Install the SmartApp through the Mobile App<br><br></li>
 <li>Select all the devices you want to log events for.  Upi should see most of your devices in the "Actuators" and "Sensors" fields, but most of them will be in multiple fields.  When you select a device, you're telling the SmartApp that it should log devices.  Which events it should log is specified in a different section of the settings so it doesn't matter which field you select the device from.<br><br></li>
@@ -121,7 +119,7 @@
 
 <h2>Upcoming Features</h2>
 <ul>
-<li>Ability to select specific numeric events/attributes and have it store an average of values since the last execution instead of creating a new row for every value.  This should conserve log space because a lot of power devices report a lot of values in a short period of time.</li>
-<li>Optionally send low log space warnings by Push, SMS, and/or Email based on customizable threshold.</li>
-</li>
+<li><p>Ability to select specific numeric events/attributes and have it store an average of values since the last execution instead of creating a new row for every value.  This should conserve log space because a lot of power devices report a lot of values in a short period of time.</p></li>
+<li><p>Optionally send low log space warnings by Push, SMS, and/or Email based on customizable threshold.</p></li>
+<li><p>Convert the SmartApp into a Parent/Child SmartApp, but <b>only if multiple users request this feature</b>.</p><p>One of my goals in writing this SmartApp was to make it as easy as possible to log everything.  I didn't want to have to setup a different spreadsheet for every event I wanted to monitor because it's a pain to set them all up, configure them and then update them all every time there's a new version of the script code.</p><p>Having the SmartApp only support one spreadsheet should make things easier for most users, but for advanced users that are logging a lot of data, the 400k-500k event log limit might become a problem.  Those users may also experience performance problems while working with the data in Google Sheets or run into problems with the SmartApp reaching the 20 second execution limit before it can send the data to be logged.</p><p>The way the SmartApp is now, they can still use multiple spreadsheets by installing multiple instances of the SmartApp, but it would be easier for them if this was a Parent/Child SmartApp.  I'm hesistant to make this change because it will end up making the initial setup process more confusing for the average user, but I will make the change if enough users request it.</p></li>
 </ul>
