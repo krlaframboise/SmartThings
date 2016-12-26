@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger v 0.0.4
+ *  Simple Event Logger v 0.0.5
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,7 +9,7 @@
  *
  *  Changelog:
  *
- *    0.0.4 (12/25/2016)
+ *    0.0.5 (12/26/2016)
  *      - Beta Release
  *
  *  Licensed under the Apache License, Version 2.0 (the
@@ -48,7 +48,7 @@ preferences {
 	page(name: "createTokenPage")
 }
 
-def version() { return "00.00.04" }
+def version() { return "00.00.05" }
 def gsVersion() { return "00.00.04" }
 
 def mainPage() {
@@ -57,8 +57,8 @@ def mainPage() {
 			getLoggingStatusContent()
 		}
 		if (state.devicesConfigured) {
-			section("Devices") {
-				getPageLink("devicesPageLink", "Choose Devices", "devicesPage", null, buildSummary(getSelectedDeviceNames()))
+			section("Selected Devices") {
+				getPageLink("devicesPageLink", "Tap to change", "devicesPage", null, buildSummary(getSelectedDeviceNames()))
 			}
 		}
 		else {			
@@ -66,8 +66,8 @@ def mainPage() {
 		}
 		
 		if (state.attributesConfigured) {
-			section("Events") {
-				getPageLink("attributesPageLink", "Choose Events", "attributesPage", null, buildSummary(getSupportedAttributes()))
+			section("Selected Events") {
+				getPageLink("attributesPageLink", "Tap to change", "attributesPage", null, buildSummary(settings?.allowedAttributes))
 			}			
 		}
 		else {
@@ -139,7 +139,9 @@ def devicesPage() {
 
 private getDevicesPageContent() {
 	section("Choose Devices") {
-		paragraph "Select all the devices that should log events.  If a device appears in more than one list, you only need to select it once."
+		paragraph "Selecting a device from one of the fields below lets the SmartApp know that the device should be included in the logging process."
+		paragraph "Each device only needs to be selected once and which field you select it from has no effect on which events will be logged for it."
+		paragraph "There's a field below for every capability, but you should be able to locate most of your devices in either the 'Actuators' or 'Sensors' fields at the top."		
 		
 		getCapabilities().each { 
 			input "${it.cap}Pref", "capability.${it.cap}",
@@ -162,7 +164,9 @@ def attributesPage() {
 private getAttributesPageContent() {
 	def supportedAttr = getSupportedAttributes()
 	if (supportedAttr) {
-		section("Choose Events") {			
+		section("Choose Events") {
+			paragraph "Select all the events that should get logged for all devices that support them."
+			paragraph "If the event you want to log isn't shown, verify that you've selected a device that supports it because only supported events are included."
 			input "allowedAttributes", "enum",
 				title: "Which events should be logged?",
 				required: true,
@@ -172,8 +176,9 @@ private getAttributesPageContent() {
 		}
 	
 		if (settings?.allowedAttributes) {
-			section ("Device Event Exclusions (Optional)") {
-				paragraph "This section allows you to exclude devices for each of the events being logged."
+			section ("Device Exclusions (Optional)") {
+				paragraph "If there are some events that should't be logged for specific devices, use the corresponding event fields below to exclude them."
+				paragraph "You can also use the fields below to see which devices support each event."
 				
 				settings.allowedAttributes.sort().each { attr ->
 					def attrDevices = getSelectedDevices()?.findAll{ device ->
@@ -511,7 +516,7 @@ private getNewEvents(startDate, endDate) {
 	def events = []
 	def maxEvents = settings?.maxEvents ?: 10
 
-	logTrace "Retrieving Events from ${startDate} to ${endDate}"		
+	logTrace "Retrieving Events from ${startDate} to ${endDate}"
 	
 	getSelectedDevices().each  { device ->
 
@@ -615,32 +620,40 @@ private getSelectedDevices() {
 
 private getCapabilities() {
 	[
-		[title: "Acceleration Sensors", cap: "accelerationSensor", attr: "acceleration"],
 		[title: "Actuators", cap: "actuator"],
+		[title: "Sensors", cap: "sensor"],
+		[title: "Acceleration Sensors", cap: "accelerationSensor", attr: "acceleration"],
 		[title: "Alarms", cap: "alarm", attr: "alarm"],
 		[title: "Batteries", cap: "battery", attr: "battery"],
 		[title: "Beacons", cap: "beacon", attr: "presence"],
 		[title: "Bulbs", cap: "bulb", attr: "switch"],
-		[title: "Buttons", cap: "button", attr: "button"],
+		[title: "Buttons", cap: "button", attr: ["button", "numberOfButtons"]],
 		[title: "Carbon Dioxide Measurement Sensors", cap: "carbonDioxideMeasurement", attr: "carbonDioxide"],
 		[title: "Carbon Monoxide Detectors", cap: "carbonMonoxideDetector", attr: "carbonMonoxide"],
+		[title: "Color Control Devices", cap: "colorControl", attr: ["color", "hue", "saturation"]],
+		[title: "Color Temperature Devices", cap: "colorTemperature", attr: "colorTemperature"],
+		[title: "Consumable Devices", cap: "consumable", attr: "consumableStatus"],
 		[title: "Contact Sensors", cap: "contactSensor", attr: "contact"],
 		[title: "Doors", cap: "doorControl", attr: "door"],
 		[title: "Energy Meters", cap: "energyMeter", attr: "energy"],
 		[title: "Garage Doors", cap: "garageDoorControl", attr: "door"],
 		[title: "Illuminance Measurement Sensors", cap: "illuminanceMeasurement", attr: "illuminance"],
+		[title: "Image Capture Devices", cap: "imageCapture", attr: "image"],		
+		[title: "Indicators", cap: "indicator", attr: "indicatorStatus"],
 		[title: "Lights", cap: "light", attr: "switch"],
 		[title: "Locks", cap: "lock", attr: "lock"],
+		[title: "Media Controllers", cap: "mediaController", attr: "currentActivity"],
 		[title: "Motion Sensors", cap: "motionSensor", attr: "motion"],
+		[title: "Music Players", cap: "musicPlayer", attr: ["level", "mute", "status", "trackDescription"]],
 		[title: "Outlets", cap: "outlet", attr: "switch"],
-		[title: "pH Measurement Sensors", cap: "phMeasurement", attr: "ph"],
+		[title: "pH Measurement Sensors", cap: "phMeasurement", attr: "pH"],
 		[title: "Power Meters", cap: "powerMeter", attr: "power"],
 		[title: "Power Sources", cap: "powerSource", attr: "powerSource"],
 		[title: "Presence Sensors", cap: "presenceSensor", attr: "presence"],
 		[title: "Relative Humidity Measurement Sensors", cap: "relativeHumidityMeasurement", attr: "humidity"],
 		[title: "Relay Switches", cap: "relaySwitch", attr: "switch"],
-		[title: "Sensors", cap: "sensor"],
 		[title: "Shock Sensors", cap: "shockSensor", attr: "shock"],
+		[title: "Signal Strength Sensors", cap: "signalStrength", attr: ["lqi", "rssi"]],
 		[title: "Sleep Sensors", cap: "sleepSensor", attr: "sleeping"],
 		[title: "Smoke Detectors", cap: "smokeDetector", attr: "smoke"],
 		[title: "Sound Pressure Level Sensors", cap: "soundPressureLevel", attr: "soundPressureLevel"],
@@ -650,7 +663,7 @@ private getCapabilities() {
 		[title: "Switch Level Sensors", cap: "switchLevel", attr: "level"],
 		[title: "Tamper Alert Sensors", cap: "tamperAlert", attr: "tamper"],
 		[title: "Temperature Measurement Sensors", cap: "temperatureMeasurement", attr: "temperature"],
-		[title: "Thermostats", cap: "thermostat", attr: ["coolingSetpoint", "heatingSetpoint", "temperature", "thermostatFanMode", "thermostatMode", "thermostatOperatingStatethermostatSetpoint"]],
+		[title: "Thermostats", cap: "thermostat", attr: ["coolingSetpoint", "heatingSetpoint", "temperature", "thermostatFanMode", "thermostatMode", "thermostatOperatingState", "thermostatSetpoint"]],
 		[title: "Three Axis Sensors", cap: "threeAxis", attr: "threeAxis"],
 		[title: "Touch Sensors", cap: "touchSensor", attr: "touch"],
 		[title: "Ultraviolet Index Sensors", cap: "ultravioletIndex", attr: "ultravioletIndex"],
@@ -658,6 +671,29 @@ private getCapabilities() {
 		[title: "Voltage Measurement Sensors", cap: "voltageMeasurement", attr: "voltage"],
 		[title: "Water Sensors", cap: "waterSensor", attr: "water"],
 		[title: "Window Shades", cap: "windowShade", attr: "windowShade"]
+	]
+}
+
+private averageSupportedAttributes() {
+	[
+		"battery",
+		"carbonDioxide",
+		"colorTemperature",
+		"coolingSetpoint",
+		"energy",
+		"heatingSetpoint",
+		"humidity",
+		"illuminance",
+		"level",
+		"lqi",
+		"pH",
+		"power",
+		"rssi",
+		"soundPressureLevel",
+		"temperature",
+		"thermostatSetpoint",
+		"ultravioletIndex",
+		"voltage"
 	]
 }
 
