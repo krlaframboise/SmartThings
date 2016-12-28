@@ -83,13 +83,13 @@
 
 <h2>SmartApp Setup</h2>
 <ol>
-<li>Create the SmartApp in the IDE by either copying the <a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy" target="_blank"><b>Simple Event Logger code</b></a> and pasting it into the New SmartApp "From Code" option or by adding my GitHub Repository with the settings krlaframboise, SmartThings, and master.<br><ul><li><a href="http://thingsthataresmart.wiki/index.php?title=Using_Custom_Code#Using_a_Custom_SmartApp" target="_blank">Learn more about using custom SmartApps</a></li><li><a href="http://thingsthataresmart.wiki/index.php?title=Using_Custom_Code#A_Note_on_.22GitHub_Integration.22" target="_blank">Learn more about Github Integration</a></li></ul><br><br></li>
-<ol><li>Enable OAuth in the SmartApp Settings<br><ul><li>Open the SmartApp in the IDE and click the "App Settings" button.</li><li>Click the "OAuth" link and then click the "Enable OAuth in SmartApp" button.</li></ol><br></li>
+<li>Create the SmartApp in the IDE by either copying the <a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy" target="_blank"><b>Simple Event Logger code</b></a> and pasting it into the New SmartApp "From Code" option or by adding my GitHub Repository with the settings krlaframboise, SmartThings, and master.<br><ul><li><a href="http://thingsthataresmart.wiki/index.php?title=Using_Custom_Code#Using_a_Custom_SmartApp" target="_blank">Learn more about using custom SmartApps</a></li><li><a href="http://thingsthataresmart.wiki/index.php?title=Using_Custom_Code#A_Note_on_.22GitHub_Integration.22" target="_blank">Learn more about Github Integration</a></li></ul><br></li>
+<li>Enable OAuth in the SmartApp Settings<br><ul><li>Open the SmartApp in the IDE and click the "App Settings" button.</li><li>Click the "OAuth" link and then click the "Enable OAuth in SmartApp" button.</li></ul><br></li>
 <li>Install the SmartApp through the Mobile App<br>
 <ul><li>Open the SmartThings Mobile App and tap the "Automation" button that's located along the bottom.</li>
 <li>Tap the SmartApps tab and then tap "Add a SmartApp".</li>
 <li>Tap "My Apps" and then tap "Simple Event Logger".</li>
-</ul><br><br></li>
+</ul><br></li>
 <li>Select all the devices you want to log events for.  You should see most of your devices in the "Actuators" and "Sensors" fields, but most of them will be in multiple fields.  When you select a device, you're telling the SmartApp that it should log devices.  Which events it should log is specified in a different section of the settings so it doesn't matter which field you select the device from.<br><br></li>
 <li>After you've selected the devices you want to log events for, scroll down to the "Choose Events" section and select the events that should be logged for all devices.<br><br></li>
 <li>If you want to log an event for some devices and not others you can use to corresponding "Device Exclusion" fields to exclude those devices.<br><br></li>
