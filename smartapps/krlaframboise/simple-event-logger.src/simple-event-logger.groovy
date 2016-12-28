@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - SmartApp v 1.0
+ *  Simple Event Logger - SmartApp v 1.0.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,9 @@
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
+ *
+ *    1.0.1 (12/28/2016)
+ *      - Bug fix for devices with null attributes
  *
  *    1.0.0 (12/26/2016)
  *      - Initial Release
@@ -48,7 +51,7 @@ preferences {
 	page(name: "createTokenPage")
 }
 
-def version() { return "01.00.00" }
+def version() { return "01.00.01" }
 def gsVersion() { return "01.00.00" }
 
 def mainPage() {
@@ -524,7 +527,7 @@ private getNewEvents(startDate, endDate) {
 				
 		device.eventsBetween(startDate, endDate, [max: maxEvents])?.flatten().each { event ->
 			
-			if ("${event.source}" == "DEVICE" && deviceAllowedAttrs.find { attr -> attr.toLowerCase() == event.name.toLowerCase() }) {				
+			if ("${event?.source}" == "DEVICE" && deviceAllowedAttrs?.find { attr -> attr?.toLowerCase() == event?.name?.toLowerCase() }) {				
 				events << [
 					time: getFormattedLocalTime(event.date.time),
 					device: event.displayName,
