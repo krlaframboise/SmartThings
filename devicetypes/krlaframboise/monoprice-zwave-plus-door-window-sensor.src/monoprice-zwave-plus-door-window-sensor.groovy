@@ -1,5 +1,5 @@
 /**
- *  Monoprice Z-Wave Plus Door/Window Sensor 0.0.2
+ *  Monoprice Z-Wave Plus Door/Window Sensor 0.0.3
  *  (P/N 15270)
  *
  *  Author: 
@@ -10,7 +10,10 @@
  *
  *  Changelog:
  *
- *    0.0.2 (12/28/2016)
+ *    0.0.3 (12/28/2016)
+ *      - Bug fix for wakup interval / battery reporting.
+ *
+ *    0.0.2 (12/27/2016)
  *      - Beta Release
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -104,6 +107,20 @@ metadata {
 	}
 }
 
+def updated() {	
+	// This method always gets called twice when preferences are saved.
+	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
+				
+		state.lastUpdated = new Date().time
+		logTrace "updated()"
+		
+		if (state.checkinInterval != settings?.checkinInterval || state.enableExternalSensor != settings?.enableExternalSensor) {
+			state.pendingChanges = true
+		}
+	}	
+}
+
+
 def configure() {	
 	logTrace "configure()"
 	def cmds = []
@@ -114,7 +131,7 @@ def configure() {
 	}
 		
 	cmds += delayBetween([
-		wakeUpIntervalSetCmd(getCheckinIntervalSettingSeconds()),
+		wakeUpIntervalSetCmd(getCheckinIntervalSetting() * 60 * 60),
 		externalSensorConfigSetCmd(settings?.enableExternalSensor ?: false),
 		externalSensorConfigGetCmd(),
 		batteryGetCmd()
@@ -124,14 +141,14 @@ def configure() {
 	return cmds
 }
 
-private getCheckinIntervalSettingSeconds() {
-	return (settings?.checkinInterval ?: 6) * 3600
+private getCheckinIntervalSetting() {
+	return (settings?.checkinInterval ?: 6)
 }
 				
 def parse(String description) {
 	def result = []
 	
-	logTrace "description: $description"
+	//logTrace "description: $description"
 	
 	if (description.startsWith("Err 106")) {
 		state.useSecureCmds = false
@@ -145,7 +162,7 @@ def parse(String description) {
 	else {
 		def cmd = zwave.parse(description, getCommandClassVersions())
 		if (cmd) {
-			logTrace "cmd: $cmd"
+			//logTrace "cmd: $cmd"
 			result += zwaveEvent(cmd)
 		}
 		else {
@@ -169,7 +186,7 @@ private canCheckin() {
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
 	def encapCmd = cmd.encapsulatedCommand(getCommandClassVersions())
 	
-	logTrace "encapsulated cmd: $encapCmd"
+	//logTrace "encapsulated cmd: $encapCmd"
 	def result = []
 	if (encapCmd) {
 		state.useSecureCmds = true
@@ -206,14 +223,16 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	logTrace "WakeUpNotification: $cmd"
 	def result = []
 	
-	if (hasPendingChanges()) {
+	if (canSendConfiguration()) {
 		result += configure()
+		result << "delay 5000"
 	}
-	else if (canReportBattery()) {		
+	else if (canReportBattery()) {
 		result << batteryGetCmd()
+		result << "delay 2000"
 	}
 	else {
-		logDebug "Skipping battery check because it was already checked within the last $reportEveryHours hours."
+		logTrace "Skipping battery check because it was already checked within the last $reportEveryHours hours."
 	}
 	
 	if (result) {
@@ -228,7 +247,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 private canReportBattery() {
 	def reportEveryHours = settings?.reportBatteryEvery ?: 6
 	def reportEveryMS = (reportEveryHours * 60 * 60 * 1000)
-	
+		
 	return (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) 
 }
 
@@ -273,7 +292,9 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 		logDebug "${parameterName}: ${cmd.configurationValue}"
 	} 
 	state.isConfigured = true
-	state.refreshPending = false
+	state.pendingRefresh = false
+	state.pendingChanges = false
+	state.checkinInterval = getCheckinIntervalSetting()
 	return []
 }
 
@@ -341,7 +362,7 @@ private wakeUpNoMoreInfoCmd() {
 }
 
 private batteryGetCmd() {
-	logTrace "Requesting battery level"
+	logTrace "Requesting battery report"
 	return secureCmd(zwave.batteryV1.batteryGet())
 }
 
@@ -359,6 +380,7 @@ private configSetCmd(paramNumber, valSize, val) {
 }
 
 private configGetCmd(paramNumber) {
+	logTrace "Requesting configuration report for param #${paramNumber}"
 	return secureCmd(zwave.configurationV1.configurationGet(parameterNumber: paramNumber))
 }
 
@@ -371,8 +393,12 @@ private secureCmd(cmd) {
 	}
 }
 
-private hasPendingChanges() {
-	return (!state.isConfigured || state.pendingRefresh	|| (state.checkinInterval != settings?.checkinInterval) || (state.enableExternalSensor != settings?.enableExternalSensor))
+private canSendConfiguration() {
+	return (!state.isConfigured || state.pendingRefresh != false	|| state.pendingChanges != false)
+}
+
+private isDuplicateCommand(lastExecuted, allowedMil) {
+	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
 }
 
 private logDebug(msg) {
