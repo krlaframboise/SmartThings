@@ -1,4 +1,4 @@
-<h1 id="simple-event-logger">Simple Event Logger - v1.0.0</h1>
+<h1 id="simple-event-logger">Simple Event Logger - v1.0.1</h1>
 <p>By Kevin LaFramboise (krlaframboise)</p>
 
 <p><img align="right" src="https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-event-logger/app-SimpleEventLogger@3x.png" alt="Simple Event Logger Logo" />The Simple Event Logger is a fully customizable SmartApp that allows you to accurately log all device activity to a Google Sheets Spreadsheet.  Each event is stored on a separate row so that you have their exact time and details.</p>
@@ -75,7 +75,7 @@
 <li>Click "Review Permissions" button on the "Authorization Required" popup.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-auth.png?raw=true" /><br><br></li>
 <li>Click the "Allow" button on the permissions screen popup.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-allow.png?raw=true" /><br><br></li>
 <li>Copy the "Current Web App Url" and click "OK".<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-url.png?raw=true" /><br><br></li>
-<li>Navigate to the Web App Url you copied and you should see a message that starts with "Version: " which indicates that the Web App has been configured properly.<br><br></li>
+<li>Log out of Google and navigate to the Web App Url you copied<br><ul><li>You should see a message that starts with "Version: " which indicates that the Web App has been configured properly.</li><li><b>Don't copy the url from this page</b> because it's NOT the same as the url you previously copied from the Script Editor Publish screen.</li><li>The url that's needed for the SmartApp starts with "https://script.google.com/macros/s/".</li></ul><br><br></li>
 <li>That completes the Google Sheets installation, but you should paste the Web App Url somewhere that you can access from your mobile device because you'll need to paste it into the SmartApp's settings.<br><br></li>
 </ol>
 
@@ -95,7 +95,8 @@
 <li>If you want to log an event for some devices and not others you can use to corresponding "Device Exclusion" fields to exclude those devices.<br><br></li>
 <li>Change the "Logging Options" (if needed)<br><ul><li><b>Log Events Every:</b> Determines the schedule interval for posting new events to the google sheet.</li>
 <li><b>Maximum number of events to log for each device per section:</b> When the SmartApp Executes it retrieves between (1 and 50) events from the device since it last ran depending on this setting.  Setting this number too high may cause the SmartApp to reach the 20 second execution limit and setting it too low may result in some events not getting logged.</li><li><b>Log Event Description:</b> Determines whether the event's description is logged.  Google Sheets is limited to 2 million cells so it can hold about 400,000 events with the description or 500,000 events without it.</li></ul><br><br></li>
-<li>Paste the Web App Url you previously copied into the "Google Web App Url" field and fill in the rest of the settings.<br><br></li>
+<li>Paste the Web App Url you previously copied from the <b>"Google Web App Url"</b> field.<br>
+<ul><li>The url should start with "https://script.google.com/macros/s/"</li><li>If your url does not start like that, the SmartApp won't work so you need to go back into the Google Sheets Script Editor and copy the url from the publish screen.</li></ul><br><br></li>
 <li>Once you've filled in all the required information and tapped done, it will initialize the logging schedule for the interval specified.  After that scheduled amount of time, you should see new events logged to the spreadsheet and if you open the SmartApp, you will see information about the last time start it executed.<br><br></li>
 </ol>
 
