@@ -150,8 +150,22 @@ Supports the Tamper Alert Capability.<br /></li>
 <h3><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/leaksmart-water-valve.src/leaksmart-water-valve.groovy">LeakSmart Water Valve</a></h3>
 
 <ul>
-<li>DTH foor the LeakSmart Water Valve and it polls regularly so you can use a SmartApp like the Simple Device Viewer to monitor it and receive notifications if it stops reporting.<br /></li>
+<li>DTH for the LeakSmart Water Valve and it polls regularly so you can use a SmartApp like the Simple Device Viewer to monitor it and receive notifications if it stops reporting.<br /></li>
 <li><a href="https://community.smartthings.com/t/release-leaksmart-water-valve/48669?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
+</ul>
+
+<hr />
+
+<h3><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/monoprice-zwave-plus-door-window-sensor.src/monoprice-zwave-plus-door-window-sensor.groovy">Monoprice Z-Wave Plus Door/Window Sensor</a></h3>
+
+<ul>
+<li>This is a device handler for the Monoprice Z-Wave Plus Door/Window Sensor (Model: P/N 15270)</li>
+<li>It has the setting <b>Enable External Sensor</b> which enables the terminals so you can attach an external sensor.</li>
+<li>The device wakes up every 6 hours by default, but there's a setting for <em>Minimum Check-in Interval (Hours)</em> which accepts the range 1 to 167.</li>
+<li>There's also a setting for <em>Battery Reporting Interval (Hours)</em> which accepts the same range of values.</li>
+<li>When the cover of the device is opened, it raises the "tamper" event with the value "detected".</li>
+<li>The setting <em>Automatically Clear Tamper</em> allows you to choose whether it raises the tamper clear event when the device cover is closed or if you have to press the "Refresh" button to clear it.<br></li>
+<li><a href="https://community.smartthings.com/t/release-monoprice-z-wave-plus-door-window-sensor/70478?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
 </ul>
 
 <hr />
