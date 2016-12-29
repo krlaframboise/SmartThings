@@ -1,5 +1,5 @@
 /**
- *  Monoprice Z-Wave Plus Door/Window Sensor 0.0.3
+ *  Monoprice Z-Wave Plus Door/Window Sensor 1.0
  *  (P/N 15270)
  *
  *  Author: 
@@ -10,11 +10,8 @@
  *
  *  Changelog:
  *
- *    0.0.3 (12/28/2016)
- *      - Bug fix for wakup interval / battery reporting.
- *
- *    0.0.2 (12/27/2016)
- *      - Beta Release
+ *    1.0 (12/29/2016)
+ *      - Initial Release
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -65,6 +62,12 @@ metadata {
 		input "enableExternalSensor", "bool", 
 			title: "Enable External Sensor?",
 			description: "The Monoprice Door/Window Sensor includes terminals that allow you to attach an external sensor.",
+			defaultValue: false,
+			displayDuringSetup: true, 
+			required: false
+		input "autoClearTamper", "bool", 
+			title: "Automatically Clear Tamper?",
+			description: "The tamper detected event is raised when the device is opened.  This setting allows you to decide whether or not to have the clear event automatically raised when the device closes.",
 			defaultValue: false,
 			displayDuringSetup: true, 
 			required: false
@@ -124,6 +127,11 @@ def updated() {
 def configure() {	
 	logTrace "configure()"
 	def cmds = []
+	
+	if (!device.currentValue("contact")) {
+		sendEvent(name: "contact", value: "open", isStateChange: true, displayed: false)
+	}
+	
 	if (!state.isConfigured) {
 		logTrace "Waiting 1 second because this is the first time being configured"
 		// Give inclusion time to finish.
@@ -148,8 +156,6 @@ private getCheckinIntervalSetting() {
 def parse(String description) {
 	def result = []
 	
-	//logTrace "description: $description"
-	
 	if (description.startsWith("Err 106")) {
 		state.useSecureCmds = false
 		log.warn "Secure Inclusion Failed: ${description}"
@@ -162,7 +168,6 @@ def parse(String description) {
 	else {
 		def cmd = zwave.parse(description, getCommandClassVersions())
 		if (cmd) {
-			//logTrace "cmd: $cmd"
 			result += zwaveEvent(cmd)
 		}
 		else {
@@ -185,16 +190,18 @@ private canCheckin() {
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
 	def encapCmd = cmd.encapsulatedCommand(getCommandClassVersions())
-	
-	//logTrace "encapsulated cmd: $encapCmd"
+		
 	def result = []
 	if (encapCmd) {
 		state.useSecureCmds = true
 		result += zwaveEvent(encapCmd)
 	}
+	else if (cmd.commandClassIdentifier == 0x5E) {
+		logTrace "Unable to parse ZwaveplusInfo cmd"
+	}
 	else {
 		log.warn "Unable to extract encapsulated cmd from $cmd"
-		result << createEvent(descriptionText: cmd.toString())
+		result << createEvent(descriptionText: "$cmd")
 	}
 	return result
 }
@@ -298,8 +305,10 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	return []
 }
 
+
+
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
-	logTrace "BasicReport: $cmd"
+	logTrace "BasicReport: $cmd"	
 	return []
 }
 
@@ -310,23 +319,55 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
 
 
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
-	def result = []
-	
+	def result = []	
 	logTrace "NotificationReport: $cmd"
-	if (cmd.notificationType == 0x06 && (cmd.event == 0x16 || cmd.event == 0x17)) {		
-		// Contact Event
-		result << createEvent(getEventMap("contact", ((cmd.event == 0x16) ? "open" : "closed")))
+	if (cmd.notificationType == 0x06) {
+		result += handleContactEvent(cmd.event)
 	}
-	else if (cmd.notificationType == 0x07 && cmd.event == 0x03) {
-		// Tamper Event
-		result << createEvent(getEventMap("tamper", "detected"))
-	}		
+	else if (cmd.notificationType == 0x07) {		
+		result += handleTamperEvent(cmd.event)
+	}
 	return result
 }
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	logDebug "Unhandled Command: $cmd"
 	return []
+}
+
+private handleContactEvent(event) {
+	def result = []
+	def val
+	if (event == 0xFF || event == 0x16) {
+		val = "open"
+	}
+	else if(event == 0 || event == 0x17) {
+		val = "closed"
+	}
+	if (val) {
+		result << createEvent(getEventMap("contact", val))
+	}
+	return result
+}
+
+private handleTamperEvent(event) {
+	def result = []
+	def val
+	if (event == 0x03) {
+		val = "detected"
+	}
+	else if (event == 0) {
+		if (settings?.autoClearTamper) {
+			val = "clear"
+		}
+		else {
+			logDebug "Tamper is Clear"
+		}
+	}
+	if (val) {
+		result << createEvent(getEventMap("tamper", val))
+	}
+	return result
 }
 
 // Resets the tamper attribute to clear and requests the device to be refreshed.
@@ -336,7 +377,7 @@ def refresh() {
 	}
 	else {
 		logDebug "The configuration and attributes will be refresh the next time the device wakes up.  If you want this to happen immediately, open the back cover of the device, wait until the red light turns solid, and then put the cover back on."
-		state.refreshPending = true
+		state.pendingRefresh = true
 	}
 }
 
