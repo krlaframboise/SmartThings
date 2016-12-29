@@ -7,6 +7,40 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 
 <hr />
 
+<ul>
+	<li><p><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#smartapps">SmartApps</a></p>
+		<ul>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#blink-system-connector">Blink System Connector</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#home-presence-manager">Home Presence Manager</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#simple-device-viewer">Simple Device Viewer</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#simple-event-logger">Simple Event Logger</a></li>
+		</ul>
+	</li>
+</ul>
+<ul>
+	<li><p><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#device-type-handlers">Device Type Handlers</a></p>
+		<ul>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#aeon-labs-aeotec-doorbell">Aeon Labs Aeotec Doorbell</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#aeon-labs-multifunction-siren">Aeon Labs Multifunction Siren</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#alarm-switch">Alarm Switch</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#blink-wireless-camera">Blink Wireless Camera</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#forcible-mobile-presence">Forcible Mobile Presence</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-doorwindow-sensor">GoControl/Linear Door/Window Sensor</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-motion-sensor">GoControl/Linear Motion Sensor</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-multifunction-siren">GoControl/Linear/Vision Multifunction Siren</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#leaksmart-water-valve">LeakSmart Water Valve</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#monoprice-z-wave-plus-doorwindow-sensor">Monoprice Z-Wave Plus Door/Window Sensor</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#polling-cree-bulb">Polling Cree Bulb</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#polling-ge-link-bulb">Polling GE Link Bulb</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#thingshield-timer">ThingShield Timer</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zipato-multisound-siren">Zipato Multisound Siren</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zooz-z-wave-power-strip">Zooz Z-Wave Power Strip</a></li>
+		</ul>
+	</li>
+</ul>
+
+<hr />
+
 <h2>SmartApps</h2>
 
 <h3>Blink System Connector</h3>
@@ -64,6 +98,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/smartapps/krlaframboise/simple-event-logger.src/ReadMe.md#simple-event-logger">View Installation Instructions and Documentation</a></li>
 <li><a href="https://community.smartthings.com/t/release-simple-event-logger/69879?u=krlaframboise">View SmartThings Forum Topic</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy">View Simple Event Logger - SmartApp Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/smartapps/krlaframboise/simple-event-logger.src/Code.gs">View Simple Event Logger - Google Sheets Web App Code</a></li>
 </ul>
 
 <hr />
