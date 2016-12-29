@@ -51,6 +51,19 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 
 <hr />
 
+<h3><a href="https://github.com/krlaframboise/SmartThings/blob/master/smartapps/krlaframboise/simple-event-logger.src/simple-event-logger.groovy">Simple Event Logger</a></h3>
+
+<ul>
+<li>Simple Event Logger is a fully customizable SmartApp that allows you to accurately log all device activity to a Google Sheets Spreadsheet.</li>
+<li>Each event is stored on a separate row so that you have their exact time and details.</li>
+<li>Google Sheets has an easy to use filter feature which allows you to do things like view all events for specific device(s), in a specified date/range and/or specific types of events like temperature.</li>
+<li>Since all of your data will be stored in one spreadsheet, advanced users can easily generate pivot tables and graphs for any information they need. It also eliminates the need to update the code in multiple spreadsheets every time a new version is released.</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/smartapps/krlaframboise/simple-event-logger.src/ReadMe.md#simple-event-logger">View Installation Instructions and Documentation</a></li>
+<li><a href="https://community.smartthings.com/t/release-simple-event-logger/69879?u=krlaframboise">View SmartThings Forum Topic</a></li>
+</ul>
+
+<hr />
+
 <h2>Device Type Handlers</h2>
 
 <h3><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/aeotec-doorbell.src">Aeon Labs Aeotec Doorbell</a></h3>
@@ -160,7 +173,7 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <ul>
 <li>This is a device handler for the Monoprice Z-Wave Plus Door/Window Sensor (Model: P/N 15270)</li>
-<li>It has the setting <b>Enable External Sensor</b> which enables the terminals so you can attach an external sensor.</li>
+<li>It has the setting <em>Enable External Sensor</em> which enables the terminals so you can attach an external sensor.</li>
 <li>The device wakes up every 6 hours by default, but there's a setting for <em>Minimum Check-in Interval (Hours)</em> which accepts the range 1 to 167.</li>
 <li>There's also a setting for <em>Battery Reporting Interval (Hours)</em> which accepts the same range of values.</li>
 <li>When the cover of the device is opened, it raises the "tamper" event with the value "detected".</li>
