@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - SmartApp v 1.0.1
+ *  Simple Event Logger - SmartApp v 1.0.2
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,9 @@
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
+ *
+ *    1.0.2 (12/29/2016)
+ *      - Added additional logging and verification of the Web App Url.
  *
  *    1.0.1 (12/28/2016)
  *      - Bug fix for devices with null attributes
@@ -51,7 +54,7 @@ preferences {
 	page(name: "createTokenPage")
 }
 
-def version() { return "01.00.01" }
+def version() { return "01.00.02" }
 def gsVersion() { return "01.00.00" }
 
 def mainPage() {
@@ -88,7 +91,7 @@ def mainPage() {
 			label title: "Assign a name", required: false
 			mode title: "Set for specific mode(s)", required: false
 			if (state.installed) {		
-				getPageLink("aboutPageLink", "About Simple Event Logger", "aboutPage", null, "Tap to view documentation, version and additional information.")
+				getPageLink("aboutPageLink", "About Simple Event Logger", "aboutPage", null, "Tap to view documentation, version and additional information.", "https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-event-logger/app-SimpleEventLogger@3x.png")
 			}
 		}
 		section("  ") {
@@ -183,7 +186,7 @@ private getAttributesPageContent() {
 				paragraph "If there are some events that should't be logged for specific devices, use the corresponding event fields below to exclude them."
 				paragraph "You can also use the fields below to see which devices support each event."
 				
-				settings.allowedAttributes.sort().each { attr ->
+				settings?.allowedAttributes?.sort()?.each { attr ->
 					def attrDevices = getSelectedDevices()?.findAll{ device ->
 							device.hasAttribute("${attr}")
 						}?.collect { it.displayName }?.unique()?.sort()
@@ -228,10 +231,12 @@ private getOptionsPageContent() {
 			defaultValue: true,
 			required: false
 	}
-	section("Google Sheets Web App") {
+	section("${getWebAppName()}") {		
 		input "googleWebAppUrl", "text",
-			title: "Google Sheets Web App Url:\n\n(A popup box with a URL is shown after Deploying the Google Sheets Script.  Copy and paste that entire URL into this field.)",
+			title: "${getWebAppName()} Url",
 			required: true
+		paragraph "The url you enter into this field needs to start with: ${getWebAppBaseUrl()}"
+		paragraph "If your url does not start like that, go back and copy it from the Script Editor Publish screen in the Google Sheet."		
 	}
 	
 	if (state.installed) {
@@ -267,7 +272,7 @@ def createTokenPage() {
 	}
 }
 
-private getPageLink(linkName, linkText, pageName, args=null,desc="") {
+private getPageLink(linkName, linkText, pageName, args=null,desc="",image=null) {
 	def map = [
 		name: "$linkName", 
 		title: "$linkText",
@@ -277,6 +282,9 @@ private getPageLink(linkName, linkText, pageName, args=null,desc="") {
 	]
 	if (args) {
 		map.params = args
+	}
+	if (image) {
+		map.image = image
 	}
 	href(map)
 }
@@ -302,7 +310,7 @@ private disposeAppEndpoint() {
 			revokeAccessToken()
 		}
 		catch (e) {
-			log.warn "Unable to remove access token: $e"
+			logWarn "Unable to remove access token: $e"
 		}
 		state.endpoint = ""
 	}
@@ -323,11 +331,12 @@ def updated() {
 	
 	initializeAppEndpoint()
 	
-	if (settings?.logFrequency && settings?.maxEvents && settings?.logDesc != null && settings?.googleWebAppUrl) {
+	if (settings?.logFrequency && settings?.maxEvents && settings?.logDesc != null && verifyWebAppUrl(settings?.googleWebAppUrl)) {
 		state.optionsConfigured = true
 	}
 	else {
 		logDebug "Unconfigured - Options"
+		state.optionsConfigured = false
 	}
 	
 	if (settings?.allowedAttributes) {
@@ -358,28 +367,47 @@ def updated() {
 	}
 }
 
+private verifyWebAppUrl(url) {
+	if (!url) {
+		logDebug "The ${getWebAppName()} Url field is required"
+		return false
+	}
+	else if ("$url"?.toLowerCase()?.startsWith(getWebAppBaseUrl())) {
+		return true
+	}
+	else {		
+		logWarn "The ${getWebAppName()} Url is not valid.  Go back and copy the url from the Google Sheets Script Editor Publish page."
+		return false
+	}
+}
+
 // Requests the version from the Google Script and displays a warning if it's not the expected version.
 private verifyGSVersion() {
 	def actualGSVersion = ""
 	
-	logTrace "Retrieving Google Script Code version of the Google Sheets Web App."
+	logTrace "Retrieving Google Script Code version of the ${getWebAppName()}"
+	try {
+		def params = [
+			uri: settings?.googleWebAppUrl
+		]
 	
-	def params = [
-		uri: settings?.googleWebAppUrl
-	]	
-	httpGet(params) { objResponse ->
-		if (objResponse?.status == 200) {
-			if ("${objResponse.data}" == "Version ${gsVersion()}") {
-				logTrace "The Google Web App is using the correct version of the Google Script code."
+		httpGet(params) { objResponse ->
+			if (objResponse?.status == 200) {
+				if ("${objResponse.data}" == "Version ${gsVersion()}") {
+					logTrace "The ${getWebAppName()} is using the correct version of the Google Script code."
+				}
+				else {
+					logWarn "The ${getWebAppName()} is not using version ${gsVersion()} of the Google Script code which is required by version ${version()} of the Simple Event Logger SmartApp.\n\nPlease update to the latest version of this SmartApp and the Google Script code to ensure that everything works properly.\n\nWhen deploying a new version of the Google Script Code in the Google Sheet, make sure you change the 'Product Version' field to 'New'."
+				}
 			}
 			else {
-				log.warn "The Google Sheet's Web App is not using version ${gsVersion()} of the Google Script code which is required by version ${version()} of the Simple Event Logger SmartApp.\n\nPlease update to the latest version of this SmartApp and the Google Script code to ensure that everything works properly.\n\nWhen deploying a new version of the Google Script Code in the Google Sheet, make sure you change the 'Product Version' field to 'New'."
+				logWarn "Unable to connect to the ${getWebAppName()}.  Make sure you followed the instructions for setting up and testing it."
 			}
 		}
-		else {
-			log.warn "Unable to connect to the Google Sheets Web App.  Make sure you followed the instructions for setting up and testing it."
-		}
-	}				
+	}
+	catch(e) {
+		logWarn "Failed to retrieve Google Script Version.  Error: ${e.message}"
+	}	
 }
 
 def logNewEvents() {	
@@ -404,9 +432,9 @@ def logNewEvents() {
 
 	def events = getNewEvents(startDate, endDate)
 	def eventCount = events?.size ?: 0
-	def actionMsg = eventCount > 0 ? ", posting them to Google Web App" : ""
+	def actionMsg = eventCount > 0 ? ", posting them to ${getWebAppName()}" : ""
 	
-	logDebug "Found ${String.format('%,d', eventCount)} events between ${getFormattedLocalTime(startDate.time)} and ${getFormattedLocalTime(endDate.time)}${actionMsg}"
+	logDebug "SmartThings found ${String.format('%,d', eventCount)} events between ${getFormattedLocalTime(startDate.time)} and ${getFormattedLocalTime(endDate.time)}${actionMsg}"
 	
 	if (events) {
 		postEventsToGoogleSheets(events)
@@ -436,7 +464,12 @@ private postEventsToGoogleSheets(events) {
 
 // Google Sheets redirects the post to a temporary url so the response is usually 302 which is page moved.
 def processLogEventsResponse(response, data) {
-	logTrace "Google Sheets Logging Response: ${response?.status}"
+	if (response?.status == 302) {
+		logTrace "${getWebAppName()} Response: ${response.status}"
+	}
+	else {
+		logWarn "Unexpected response from ${getWebAppName()}: ${response?.errorMessage}"
+	}
 }
 
 private initializeAppEndpoint() {		
@@ -450,7 +483,7 @@ private initializeAppEndpoint() {
 		}		
 	} 
 	catch(e) {
-		log.warn "${getInitializeEndpointErrorMessage()}"
+		logWarn "${getInitializeEndpointErrorMessage()}"
 		state.endpoint = null
 	}
 }
@@ -479,12 +512,12 @@ def api_updateLoggingStatus() {
 		status.freeSpace = data.freeSpace
 		
 		if (data.error) {
-			logDebug "Google Sheets Reported: ${data.error}"
+			logDebug "${getWebAppName()} Reported: ${data.error}"
 		}
 	}
 	else {
 		status.success = false
-		logDebug "Logging Postback was empty."
+		logDebug "The ${getWebAppName()} postback has no data."
 	}	
 	state.loggingStatus = status
 	logLoggingStatus()
@@ -493,10 +526,10 @@ def api_updateLoggingStatus() {
 private logLoggingStatus() {
 	def status = getFormattedLoggingStatus()	
 	if (state.loggingStatus?.success) {
-		logDebug "Logged ${status.eventsLogged} events between ${status.start} and ${status.end} in ${status.runTime}."
+		logDebug "${getWebAppName()} logged ${status.eventsLogged} events between ${status.start} and ${status.end} in ${status.runTime}."
 	}
 	else {
-		logDebug "Failed to log events between ${status.start} and ${status.end}."
+		logWarn "${getWebAppName()} failed to log events between ${status.start} and ${status.end}."
 	}	
 	
 	logTrace "Google Script Version: ${state.loggingStatus?.gsVersion}, Total Events Logged: ${status.totalEventsLogged}, Remaining Space Available: ${status.freeSpace}"
@@ -521,15 +554,15 @@ private getNewEvents(startDate, endDate) {
 
 	logTrace "Retrieving Events from ${startDate} to ${endDate}"
 	
-	getSelectedDevices().each  { device ->
+	getSelectedDevices()?.each  { device ->
 
-		def deviceAllowedAttrs = getDeviceAllowedAttrs(device.displayName)
+		def deviceAllowedAttrs = getDeviceAllowedAttrs(device?.displayName)
 				
-		device.eventsBetween(startDate, endDate, [max: maxEvents])?.flatten().each { event ->
+		device?.eventsBetween(startDate, endDate, [max: maxEvents])?.flatten()?.each { event ->
 			
 			if ("${event?.source}" == "DEVICE" && deviceAllowedAttrs?.find { attr -> attr?.toLowerCase() == event?.name?.toLowerCase() }) {				
 				events << [
-					time: getFormattedLocalTime(event.date.time),
+					time: getFormattedLocalTime(event.date?.time),
 					device: event.displayName,
 					name: event.name,
 					value: event.value,
@@ -539,7 +572,7 @@ private getNewEvents(startDate, endDate) {
 		}
 	}
 
-	return events.unique().sort { it.time }
+	return events?.unique()?.sort { it.time }
 }
 
 private getFormattedLocalTime(utcTime) {
@@ -554,7 +587,7 @@ private getFormattedLocalTime(utcTime) {
 }
 
 private getEventDesc(desc) {
-	if (settings?.logDesc && !desc.contains("device.displayName")) {
+	if (settings?.logDesc && !desc?.contains("device.displayName")) {
 		return desc
 	}
 	else {
@@ -566,9 +599,9 @@ private getDeviceAllowedAttrs(deviceName) {
 	def deviceAllowedAttrs = []
 		
 	settings?.allowedAttributes?.each { attr ->
-		def attrExcludedDevices = settings."${attr}Exclusions"
+		def attrExcludedDevices = settings?."${attr}Exclusions"
 		
-		if (!attrExcludedDevices.find { it.toLowerCase() == deviceName.toLowerCase() }) {
+		if (!attrExcludedDevices.find { it?.toLowerCase() == deviceName?.toLowerCase() }) {
 			deviceAllowedAttrs << "${attr}"
 		}			
 	}
@@ -580,27 +613,27 @@ private getSupportedAttributes() {
 	def devices = getSelectedDevices()
 	
 	if (devices) {
-		getAllAttributes().each { attr ->
-			if (devices?.find { it.hasAttribute("${attr}") }) {
+		getAllAttributes()?.each { attr ->
+			if (devices?.find { it?.hasAttribute("${attr}") }) {
 				supportedAttributes << "${attr}"
 			}
 		}
 	}
 	
-	return supportedAttributes.unique().sort()
+	return supportedAttributes?.unique()?.sort()
 }
 
 private getAllAttributes() {
 	def attributes = []	
 	getCapabilities().each { cap ->
-		if (cap.attr) {
+		if (cap?.attr) {
 			if (cap.attr instanceof Collection) {
 				cap.attr.each { attr ->
 					attributes << "${attr}"
 				}
 			}
 			else {
-				attributes << "${cap.attr}"				
+				attributes << "${cap?.attr}"				
 			}
 		}
 	}	
@@ -608,12 +641,12 @@ private getAllAttributes() {
 }
 
 private getSelectedDeviceNames() {
-	return getSelectedDevices()?.collect { it.displayName}?.sort()
+	return getSelectedDevices()?.collect { it?.displayName }?.sort()
 }
 
 private getSelectedDevices() {
 	def devices = []
-	getCapabilities().each {
+	getCapabilities()?.each {
 		if (settings?."${it.cap}Pref") {
 			devices << settings?."${it.cap}Pref"
 		}
@@ -700,6 +733,14 @@ private averageSupportedAttributes() {
 	]
 }
 
+private getWebAppName() {
+	return "Google Sheets Web App"
+}
+
+private getWebAppBaseUrl() {
+	return "https://script.google.com/macros/s/"
+}
+
 long safeToLong(val, defaultVal=0) {
 	try {
 		if (val && (val instanceof Long || "${val}".isLong())) {
@@ -730,6 +771,10 @@ private logInfo(msg) {
 	if (loggingTypeEnabled("info")) {
 		log.info msg
 	}
+}
+
+private logWarn(msg) {
+	log.warn msg
 }
 
 private loggingTypeEnabled(loggingType) {
