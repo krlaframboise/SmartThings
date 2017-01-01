@@ -5,7 +5,7 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:  
+ *  URL to documentation:  https://community.smartthings.com/t/release-dome-wireless-z-wave-plus-siren/71091?u=krlaframboise
  *    
  *
  *  Changelog:
