@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - SmartApp v 1.0.2
+ *  Simple Event Logger - SmartApp v 1.0.3
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,10 @@
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
+ *
+ *    1.0.3 (01/01/2017)
+ *      - Disabled submit on change behavior for device selection page and made the select events field display all events instead of just the supported ones.
+ *      - Added additional error handling and logging in case the other change doesn't fix the reported error.
  *
  *    1.0.2 (12/29/2016)
  *      - Added additional logging and verification of the Web App Url.
@@ -54,7 +58,7 @@ preferences {
 	page(name: "createTokenPage")
 }
 
-def version() { return "01.00.02" }
+def version() { return "01.00.03" }
 def gsVersion() { return "01.00.00" }
 
 def mainPage() {
@@ -73,7 +77,7 @@ def mainPage() {
 		
 		if (state.attributesConfigured) {
 			section("Selected Events") {
-				getPageLink("attributesPageLink", "Tap to change", "attributesPage", null, buildSummary(settings?.allowedAttributes))
+				getPageLink("attributesPageLink", "Tap to change", "attributesPage", null, buildSummary(settings?.allowedAttributes?.sort()))
 			}			
 		}
 		else {
@@ -150,12 +154,16 @@ private getDevicesPageContent() {
 		paragraph "There's a field below for every capability, but you should be able to locate most of your devices in either the 'Actuators' or 'Sensors' fields at the top."		
 		
 		getCapabilities().each { 
-			input "${it.cap}Pref", "capability.${it.cap}",
-				title: "${it.title}:",
-				multiple: true,
-				submitOnChange: true,
-				hideWhenEmpty: true,
-				required: false
+			try {
+				input "${it.cap}Pref", "capability.${it.cap}",
+					title: "${it.title}:",
+					multiple: true,
+					hideWhenEmpty: true,
+					required: false
+			}
+			catch (e) {
+				logTrace "Failed to create input for ${it}: ${e.message}"
+			}
 		}
 			
 	}
@@ -168,7 +176,7 @@ def attributesPage() {
 }
 
 private getAttributesPageContent() {
-	def supportedAttr = getSupportedAttributes()
+	def supportedAttr = getAllAttributes()?.sort()
 	if (supportedAttr) {
 		section("Choose Events") {
 			paragraph "Select all the events that should get logged for all devices that support them."
@@ -187,15 +195,21 @@ private getAttributesPageContent() {
 				paragraph "You can also use the fields below to see which devices support each event."
 				
 				settings?.allowedAttributes?.sort()?.each { attr ->
-					def attrDevices = getSelectedDevices()?.findAll{ device ->
-							device.hasAttribute("${attr}")
-						}?.collect { it.displayName }?.unique()?.sort()
-					if (attrDevices) {
-						input "${attr}Exclusions", "enum",
-							title: "Exclude ${attr} events:",
-							required: false,
-							multiple: true,
-							options: attrDevices
+				
+					try {						
+						def attrDevices = getSelectedDevices()?.findAll{ device ->
+								device.hasAttribute("${attr}")
+							}?.collect { it.displayName }?.unique()?.sort()
+						if (attrDevices) {
+							input "${attr}Exclusions", "enum",
+								title: "Exclude ${attr} events:",
+								required: false,
+								multiple: true,
+								options: attrDevices
+						}
+					}
+					catch (e) {
+						logWarn "Error while getting device exclusion list for attribute ${attr}: ${e.message}"
 					}
 				}
 			}
@@ -577,9 +591,15 @@ private getNewEvents(startDate, endDate) {
 
 private getFormattedLocalTime(utcTime) {
 	if (utcTime) {
-		def localTZ = TimeZone.getTimeZone(location.timeZone.ID)
-		def localDate = new Date(utcTime + localTZ.getOffset(utcTime))	
-		return localDate.format("MM/dd/yyyy HH:mm:ss")
+		try {
+			def localTZ = TimeZone.getTimeZone(location.timeZone.ID)
+			def localDate = new Date(utcTime + localTZ.getOffset(utcTime))	
+			return localDate.format("MM/dd/yyyy HH:mm:ss")
+		}
+		catch (e) {
+			logWarn "Unable to get formatted local time for ${utcTime}: ${e.message}"
+			return "${utcTime}"
+		}
 	}
 	else {
 		return ""
@@ -597,13 +617,22 @@ private getEventDesc(desc) {
 
 private getDeviceAllowedAttrs(deviceName) {
 	def deviceAllowedAttrs = []
-		
-	settings?.allowedAttributes?.each { attr ->
-		def attrExcludedDevices = settings?."${attr}Exclusions"
-		
-		if (!attrExcludedDevices.find { it?.toLowerCase() == deviceName?.toLowerCase() }) {
-			deviceAllowedAttrs << "${attr}"
-		}			
+	try {
+		settings?.allowedAttributes?.each { attr ->
+			try {
+				def attrExcludedDevices = settings?."${attr}Exclusions"
+				
+				if (!attrExcludedDevices?.find { it?.toLowerCase() == deviceName?.toLowerCase() }) {
+					deviceAllowedAttrs << "${attr}"
+				}
+			}
+			catch (e) {
+				logWarn "Error while getting device allowed attributes for ${device?.displayName} and attribute ${attr}: ${e.message}"
+			}
+		}
+	}
+	catch (e) {
+		logWarn "Error while getting device allowed attributes for ${device.displayName}: ${e.message}"
 	}
 	return deviceAllowedAttrs
 }
@@ -614,9 +643,15 @@ private getSupportedAttributes() {
 	
 	if (devices) {
 		getAllAttributes()?.each { attr ->
-			if (devices?.find { it?.hasAttribute("${attr}") }) {
-				supportedAttributes << "${attr}"
+			try {
+				if (devices?.find { it?.hasAttribute("${attr}") }) {
+					supportedAttributes << "${attr}"
+				}
 			}
+			catch (e) {
+				logWarn "Error while finding supported devices for ${attr}: ${e.message}"
+			}
+			
 		}
 	}
 	
@@ -626,32 +661,48 @@ private getSupportedAttributes() {
 private getAllAttributes() {
 	def attributes = []	
 	getCapabilities().each { cap ->
-		if (cap?.attr) {
-			if (cap.attr instanceof Collection) {
-				cap.attr.each { attr ->
-					attributes << "${attr}"
+		try {
+			if (cap?.attr) {
+				if (cap.attr instanceof Collection) {
+					cap.attr.each { attr ->
+						attributes << "${attr}"
+					}
+				}
+				else {
+					attributes << "${cap?.attr}"
 				}
 			}
-			else {
-				attributes << "${cap?.attr}"				
-			}
+		}
+		catch (e) {
+			logWarn "Error while getting attributes for capability ${cap}: ${e.message}"
 		}
 	}	
 	return attributes
 }
 
 private getSelectedDeviceNames() {
-	return getSelectedDevices()?.collect { it?.displayName }?.sort()
+	try {
+		return getSelectedDevices()?.collect { it?.displayName }?.sort()
+	}
+	catch (e) {
+		logWarn "Error while getting selected device names: ${e.message}"
+		return []
+	}
 }
 
 private getSelectedDevices() {
 	def devices = []
-	getCapabilities()?.each {
-		if (settings?."${it.cap}Pref") {
-			devices << settings?."${it.cap}Pref"
+	getCapabilities()?.each {	
+		try {
+			if (settings?."${it.cap}Pref") {
+				devices << settings?."${it.cap}Pref"
+			}
+		}
+		catch (e) {
+			logWarn "Error while getting selected devices for capability ${it}: ${e.message}"
 		}
 	}	
-	return devices?.flatten()?.unique()
+	return devices?.flatten()?.unique { it.displayName }
 }
 
 private getCapabilities() {
