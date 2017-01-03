@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - SmartApp v 1.0.3
+ *  Simple Event Logger - SmartApp v 1.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,10 @@
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
+ *
+ *    1.1.0 (01/02/2017)
+ *      - Moved Event Exclusions to another page to prevent timeout and added abort feature so that it stops adding exclusion fields if it runs out of time.
+ *      - Fixed log space calculation and added setting to the options section that when enabled, deletes extra columns in the spreadsheet which allows you to log more.
  *
  *    1.0.3 (01/01/2017)
  *      - Disabled submit on change behavior for device selection page and made the select events field display all events instead of just the supported ones.
@@ -53,13 +57,14 @@ preferences {
 	page(name: "mainPage")
 	page(name: "devicesPage")
 	page(name: "attributesPage")
+	page(name: "attributeExclusionsPage")
 	page(name: "optionsPage")
 	page(name: "aboutPage")
 	page(name: "createTokenPage")
 }
 
-def version() { return "01.00.03" }
-def gsVersion() { return "01.00.00" }
+def version() { return "01.01.00" }
+def gsVersion() { return "01.01.00" }
 
 def mainPage() {
 	dynamicPage(name:"mainPage", uninstall:true, install:true) {
@@ -78,7 +83,10 @@ def mainPage() {
 		if (state.attributesConfigured) {
 			section("Selected Events") {
 				getPageLink("attributesPageLink", "Tap to change", "attributesPage", null, buildSummary(settings?.allowedAttributes?.sort()))
-			}			
+			}
+			section ("Event Device Exclusions") {
+				getPageLink("attributeExclusionsPageLink", "Select devices to exclude for specific events.", "attributeExclusionsPage")
+			}
 		}
 		else {
 			getAttributesPageContent()
@@ -176,7 +184,8 @@ def attributesPage() {
 }
 
 private getAttributesPageContent() {
-	def supportedAttr = getAllAttributes()?.sort()
+	//def supportedAttr = getAllAttributes()?.sort()
+	def supportedAttr = getSupportedAttributes()?.sort()
 	if (supportedAttr) {
 		section("Choose Events") {
 			paragraph "Select all the events that should get logged for all devices that support them."
@@ -188,36 +197,50 @@ private getAttributesPageContent() {
 				submitOnChange: true,
 				options: supportedAttr
 		}
-	
-		if (settings?.allowedAttributes) {
-			section ("Device Exclusions (Optional)") {
-				paragraph "If there are some events that should't be logged for specific devices, use the corresponding event fields below to exclude them."
-				paragraph "You can also use the fields below to see which devices support each event."
-				
-				settings?.allowedAttributes?.sort()?.each { attr ->
-				
-					try {						
-						def attrDevices = getSelectedDevices()?.findAll{ device ->
-								device.hasAttribute("${attr}")
-							}?.collect { it.displayName }?.unique()?.sort()
-						if (attrDevices) {
-							input "${attr}Exclusions", "enum",
-								title: "Exclude ${attr} events:",
-								required: false,
-								multiple: true,
-								options: attrDevices
-						}
-					}
-					catch (e) {
-						logWarn "Error while getting device exclusion list for attribute ${attr}: ${e.message}"
-					}
-				}
-			}
-		}
 	}
 	else {
 		section("Choose Events") {
 			paragraph "You need to select devices before you can choose events."
+		}
+	}
+}
+
+def attributeExclusionsPage() {
+	dynamicPage(name:"attributeExclusionsPage") {		
+		section ("Device Exclusions (Optional)") {
+			
+			def startTime = new Date().time
+			
+			if (settings?.allowedAttributes) {
+				
+				paragraph "If there are some events that should't be logged for specific devices, use the corresponding event fields below to exclude them."
+				paragraph "You can also use the fields below to see which devices support each event."
+					
+				settings?.allowedAttributes?.sort()?.each { attr ->
+				
+					if (startTime && (new Date().time - startTime) > 15000) {
+						paragraph "The SmartApp was able to load all the fields within the allowed time.  If the event you're looking for didn't get loaded, select less devices or attributes."
+						startTime = null
+					}
+					else if (startTime) {				
+						try {						
+							def attrDevices = getSelectedDevices()?.findAll{ device ->
+								device.hasAttribute("${attr}")
+							}?.collect { it.displayName }?.unique()?.sort()
+							if (attrDevices) {
+								input "${attr}Exclusions", "enum",
+									title: "Exclude ${attr} events:",
+									required: false,
+									multiple: true,
+									options: attrDevices
+							}
+						}
+						catch (e) {
+							logWarn "Error while getting device exclusion list for attribute ${attr}: ${e.message}"
+						}
+					}
+				}
+			}
 		}
 	}
 }
@@ -243,6 +266,11 @@ private getOptionsPageContent() {
 		input "logDesc", "bool",
 			title: "Log Event Descripion?",
 			defaultValue: true,
+			required: false
+		input "deleteExtraColumns", "bool",
+			title: "Delete Extra Columns?",
+			description: "Enable this setting to increase the log size.",
+			defaultValue: false,
 			required: false
 	}
 	section("${getWebAppName()}") {		
@@ -464,6 +492,7 @@ private postEventsToGoogleSheets(events) {
 	def jsonData = jsonOutput.toJson([
 		postBackUrl: "${state.endpoint}update-logging-status",
 		logDesc: (settings?.logDesc != false),
+		deleteExtraColumns: (settings?.deleteExtraColumns == true),
 		events: events
 	])
 
