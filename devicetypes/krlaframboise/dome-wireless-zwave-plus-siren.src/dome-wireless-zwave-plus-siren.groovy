@@ -1,5 +1,5 @@
 /**
- *  Dome Wireless Z-Wave Plus Siren v1.0
+ *  Dome Wireless Z-Wave Plus Siren v1.0.1
  *  (Model: DMS01)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.1 (01/03/2016)
+ *      - Bug fix for settings not saving properly.
  *
  *    1.0 (12/31/2016)
  *      - Initial Release
@@ -59,8 +62,8 @@ metadata {
 		input "sirenSound", "number",
 			title: "Siren Sound (1-10):",
 			range: "1..10",
-			required: true,
-			displayDuringSetup: true
+			displayDuringSetup: true,
+			defaultValue: sirenSoundSetting
 		input "sirenVolume", "enum",
 			title: "Siren Volume:",
 			options: volumeOptions,
@@ -74,23 +77,26 @@ metadata {
 		input "onChimeSound", "number",
 			title: "Switch On Chime Sound (1-10):",
 			range: "1..10",
-			required: true,
-			displayDuringSetup: true
+			required: false,
+			displayDuringSetup: true,
+			defaultValue: onChimeSoundSetting
 		input "beepChimeSound", "number",
 			title: "Beep Chime Sound (1-10):",
 			range: "1..10",
-			required: true,
-			displayDuringSetup: true
+			required: false,
+			displayDuringSetup: true,
+			defaultValue: beepChimeSoundSetting
 		input "chimeVolume", "enum",
 			title: "Chime Volume:",
 			options: volumeOptions,
 			required: true,
-			displayDuringSetup: true		
+			displayDuringSetup: true
 		input "reportBatteryEvery", "number", 
 			title: "Battery Reporting Interval (Hours)", 
 			range: "1..167",
-			required: true,
-			displayDuringSetup: true
+			required: false,
+			displayDuringSetup: true,
+			defaultValue: reportBatteryEverySetting
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -199,12 +205,18 @@ def updated() {
 		state.lastUpdated = new Date().time
 		state.activeEvents = []
 		logTrace "updated()"
-	
-		def result = []
-		result += configure()
-		if (result) {
-			return response(result)
-		}		
+		
+		if (state.firstUpdate == false) {
+			def result = []
+			result += configure()
+			if (result) {
+				return response(result)
+			}
+		}
+		else {
+			// Skip first time updating because it calls the configure method while it's already running.
+			state.firstUpdate = false
+		}
 	}	
 }
 
@@ -217,31 +229,32 @@ def configure() {
 		logTrace "Waiting 1 second because this is the first time being configured"		
 		cmds << "delay 1000"			
 	}
-		
-	cmds += updateConfigVal(sirenSoundParamNum, sirenSoundSetting, refreshAll)
+
+	// Chime Volume (param 4) must be changed before Siren Sound (param 5) because the device has a bug that causes param 5 to change every time param 4 is updated.  Setting the value of param 5 has no effect on param 4.
+	cmds += updateConfigVal(chimeVolumeParamNum, convertVolumeNameToVal(chimeVolumeSetting), refreshAll)
 	
 	cmds += updateConfigVal(sirenVolumeParamNum, convertVolumeNameToVal(sirenVolumeSetting), refreshAll)
 	
 	cmds += updateConfigVal(sirenLengthParamNum, convertSirenLengthNameToVal(sirenLengthSetting), refreshAll)
 	
-	cmds += updateConfigVal(chimeVolumeParamNum, convertVolumeNameToVal(chimeVolumeSetting), refreshAll)
+	cmds += updateConfigVal(sirenSoundParamNum, sirenSoundSetting, cmds ? true : false)
+		
+	// Not providing Toggle Secondary Chime feature so there's no reason to set these setting.
+	// if (toggleSecondaryChimeSetting == 2) {		
+		// cmds += updateConfigVal(chimeSoundParamNum, chimeSoundSetting, refreshAll)
 	
-	if (toggleSecondaryChimeSetting == 2) {
-		// Not providing Toggle Secondary Chime feature so this setting is not needed
-		cmds += updateConfigVal(chimeSoundParamNum, chimeSoundSetting, refreshAll)
-	
-		cmds += updateConfigVal(chimeLengthParamNum, convertChimeLengthNameToVal(chimeLengthSetting), refreshAll)	
-	}
-	
-	if (refreshAll || canReportBattery()) {
-		cmds << batteryGetCmd()
-	}
+		// cmds += updateConfigVal(chimeLengthParamNum, convertChimeLengthNameToVal(chimeLengthSetting), refreshAll)	
+	// }
 	
 	if (refreshAll) {
 		cmds += updateConfigVal(toggleSecondaryChimeParamNum, toggleSecondaryChimeSetting, refreshAll)
 		cmds << switchBinaryGetCmd()
 	}
-	
+		
+	if (refreshAll || canReportBattery()) {
+		cmds << batteryGetCmd()
+	}
+		
 	if (cmds) {
 		logDebug "Sending configuration to device."
 		return delayBetween(cmds, 250)
@@ -256,7 +269,6 @@ private updateConfigVal(paramNum, val, refreshAll) {
 	def configVal = state["configVal${paramNum}"]
 	
 	if (refreshAll || (configVal != val)) {
-		logTrace "paramNum: ${paramNum}, configVal: ${configVal}, val: ${val}"
 		result << configSetCmd(paramNum, val)
 		result << configGetCmd(paramNum)
 	}
@@ -298,7 +310,12 @@ def strobe() { return both() }
 def both() {
 	logDebug "Playing Siren (#${sirenSoundSetting})"
 	addPendingSound("alarm", "both")
-	return sirenToggleCmds(0xFF)
+
+	def result = []
+	result << configGetCmd(sirenSoundParamNum)
+	result << "delay 1000"
+	result += sirenToggleCmds(0xFF)
+	return result
 }
 
 private addPendingSound(name, value) {
@@ -593,7 +610,7 @@ private getSirenLengthSetting() {
 	return settings?.sirenLength ?: "1 Minute"
 }
 private getOnChimeSoundSetting() {
-	 return validateSound(settings?.onChimeSound, 1)
+	return validateSound(settings?.onChimeSound, 1)
 }
 private getBeepChimeSoundSetting() {
 	 return validateSound(settings?.beepChimeSound, 3)
@@ -618,7 +635,7 @@ private getToggleSecondaryChimeSetting() {
 	return 1		
 }
 
-private validateSound(sound, defaulVal) {
+private validateSound(sound, defaultVal) {
 	def val = safeToInt(sound, defaultVal)
 	if (val > 10) {
 		val = 10
