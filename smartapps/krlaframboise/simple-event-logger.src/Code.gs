@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - Google Script Code v 1.0
+ *  Simple Event Logger - Google Script Code v 1.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,9 @@
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
+ *
+ *    1.1 (01/02/2017)
+ *      - Fixed Log Size calculation and added option to delete extra columns which will drastically increase the amount of clolumns that can be stored.
  *
  *    1.0.0 (12/26/2016)
  *      - Initial Release
@@ -26,7 +29,7 @@
  *  permissions and limitations under the License.
  *
  */
-function getVersion() { return "01.00.00"; }
+function getVersion() { return "01.01.00"; }
  
 function doGet(e) {
 	var output = "Version " + getVersion()
@@ -47,6 +50,10 @@ function doPost(e) {
 			
 			try {
 				result.totalEventsLogged = sheet.getLastRow() - 1;
+				
+				if (data.deleteExtraColumns) {
+					deleteExtraColumns(sheet)
+				}
 				
 				for each (event in data.events) {
 					logEvent(sheet, data.logDesc, event);
@@ -69,7 +76,6 @@ function doPost(e) {
 	
 	return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);	
 }
-
 
 function logEvent(sheet, logDesc, event) {
 	if (sheet.getLastRow() == 0) {		
@@ -101,8 +107,19 @@ function getHeader(logDesc) {
 		return header;
 }
 
+function deleteExtraColumns(sheet) {
+	try {
+	  if (sheet.getMaxColumns() > 5) {
+      sheet.deleteColumns(6, (sheet.getMaxColumns() - 5));
+    }
+	}
+	catch (e) {
+	
+	}
+}
+
 function calculateAvailableLogSpace(sheet) {
-	var cellsUsed = (sheet.getLastRow() * sheet.getLastColumn());
+	var cellsUsed = (sheet.getMaxRows() * sheet.getMaxColumns());
 	var spaceUsed = (cellsUsed / 2000000) * 100;
 	return (100 - spaceUsed).toFixed(2) + "%";
 }
