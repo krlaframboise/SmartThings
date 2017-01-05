@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - SmartApp v 1.1
+ *  Simple Event Logger - SmartApp v 1.1.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,9 @@
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
+ *
+ *    1.1.1 (01/04/2017)
+ *      - Enabled submit on change for device lists so that the event list populates on initial install. 
  *
  *    1.1.0 (01/02/2017)
  *      - Moved Event Exclusions to another page to prevent timeout and added abort feature so that it stops adding exclusion fields if it runs out of time.
@@ -63,7 +66,7 @@ preferences {
 	page(name: "createTokenPage")
 }
 
-def version() { return "01.01.00" }
+def version() { return "01.01.01" }
 def gsVersion() { return "01.01.00" }
 
 def mainPage() {
@@ -167,7 +170,8 @@ private getDevicesPageContent() {
 					title: "${it.title}:",
 					multiple: true,
 					hideWhenEmpty: true,
-					required: false
+					required: false,
+					submitOnChange: true
 			}
 			catch (e) {
 				logTrace "Failed to create input for ${it}: ${e.message}"
