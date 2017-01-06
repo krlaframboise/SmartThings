@@ -366,7 +366,7 @@ def otherSettingsPage() {
 				defaultValue: true,
 				required: false
 			input "tempSortByValue", "bool",
-				title: "Sort by Temperature Value?",
+				title: "Sort by Measurement Value?",
 				defaultValue: true,
 				required: false
 			input "lastEventSortByValue", "bool",
