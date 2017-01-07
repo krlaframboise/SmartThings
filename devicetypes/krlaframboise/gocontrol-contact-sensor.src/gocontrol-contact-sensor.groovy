@@ -1,5 +1,5 @@
 /**
- *  GoControl Contact Sensor v1.6.1
+ *  GoControl Contact Sensor v1.7
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -10,15 +10,17 @@
  *
  *  Changelog:
  *
+ *    1.7 (01/07/2017)
+ *      - Added Configuration command class to initialize the battery and contact values during installation.
+ *      - Added setting that controls the behavior of the main contact based on the state of the internal and/or external contacts.
+ *      - Removed lastPoll attribute and added lastCheckin since the device doesn't support polling.
+ *
  *    1.6.1 (08/02/2016)
- *      - Fixed iOS UI issue caused by using multiple states
- *        with a value tile.
+ *      - Fixed iOS UI issue caused by using multiple states with a value tile.
  *
  *    1.6 (06/22/2016)
  *      - Added support for the external contact.
- *      - Added attributes for internal and external contact
- *        so you can use them independently, but the main
- *        contact reflects the last state of either contact.
+ *      - Added attributes for internal and external contact so you can use them independently, but the main contact reflects the last state of either contact.
  *
  *    1.5 (06/19/2016)
  *      -  Bug with initial battery reporting.
@@ -27,8 +29,7 @@
  *      -  Fixed issue with battery level being debug logged.
  *
  *    1.4.2 (05/21/2016)
- *      -  Fixing polling so that it doesn't require forcing
- *         state changes or always displaying events.
+ *      -  Fixing polling so that it doesn't require forcing state changes or always displaying events.
  *
  *    1.4.1 (05/5/2016)
  *      -  UI Enhancements
@@ -52,17 +53,19 @@ metadata {
 		author: "Kevin LaFramboise"
 	) {
 		capability "Sensor"
+		capability "Configuration"
 		capability "Contact Sensor"
 		capability "Battery"
 		capability "Tamper Alert"
 		capability "Refresh"
 		
-		attribute "internalContact", "enum", ["open", "close"]
-		attribute "externalContact", "enum", ["open", "close"]
-		attribute "lastPoll", "number"
+		attribute "internalContact", "enum", ["open", "closed"]
+		attribute "externalContact", "enum", ["open", "closed"]
+		attribute "lastCheckin", "number"
 
-		fingerprint deviceId: "0x2001", 
-			inClusters: "0x71,0x85,0x80,0x72,0x30,0x86,0x84"
+		fingerprint deviceId: "0x2001", inClusters: "0x71,0x85,0x80,0x72,0x30,0x86,0x84"			
+		fingerprint type:"2001", cc:"71,85,80,72,30,86,84"
+		fingerprint mfr:"014F", prod:"2001", model:"0102"
 	}
 
 	// simulator metadata
@@ -78,6 +81,11 @@ metadata {
 			range: "4..167",
 			displayDuringSetup: true, 
 			required: false
+		input "mainContactBehavior", "enum",
+			title: "Main Contact Behavior:",
+			defaultValue: "Last Changed",
+			required: false,
+			options: ["Last Changed Contact (Default)", "Internal Contact Only", "External Contact Only", "Both Contacts Closed", "Both Contacts Open"]
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: false, 
@@ -116,41 +124,111 @@ metadata {
 	}
 }
 
+def configure() {	
+	logTrace "configure()"
+	def cmds = []
+	
+	if (!device.currentValue("contact")) {
+		sendEvent(name: "contact", value: "open", isStateChange: true, displayed: false)
+	}
+	
+	if (!state.isConfigured) {
+		logTrace "Waiting 1 second because this is the first time being configured"
+		// Give inclusion time to finish.
+		cmds << "delay 1000"			
+	}
+		
+	cmds << batteryGetCmd()
+	cmds << basicGetCmd()
+	return delayBetween(cmds, 250)
+}
+
+// Resets the tamper attribute to clear and requests the device to be refreshed.
+def refresh() {	
+	if (device.currentValue("tamper") != "clear") {
+		sendEvent(getEventMap("tamper", "clear"))		
+	}
+	else {
+		logDebug "The battery will be refresh the next time the device wakes up.  If you want the battery to update immediately, open the back cover of the device, wait until the red light turns solid, and then put the cover back on."
+		state.lastBatteryReport = null
+	}
+}
+
 def parse(String description) {		
 	def result = []
 	if (description.startsWith("Err")) {
-		result << createEvent(descriptionText:description, displayed:true)
+		log.warn "Parse Error: $description"
+		result << createEvent(descriptionText: "$device.displayName $description", isStateChange: true)
 	} 
 	else {		
-		def cmd = zwave.parse(description, [0x20: 1, 0x30: 2, 0x80: 1, 0x84: 2, 0x71: 3, 0x86: 1, 0x85: 2, 0x72: 2])		
+		def cmd = zwave.parse(description, getCommandClassVersions())		
 		if (cmd) {		
 			result += zwaveEvent(cmd)
 		}
+		else {
+			logDebug "Unable to parse description: $description"
+		}
 	}
-		result << createEvent(name: "lastPoll",value: new Date().time, isStateChange: true, displayed: false)
+	
+	if (canCheckin()) {
+		result << createEvent(name: "lastCheckin",value: new Date().time, isStateChange: true, displayed: false)
+	}		
 	return result
+}
+
+private getCommandClassVersions() {
+	[
+		0x20: 1,  // Basic
+		0x30: 2,  // Sensor Binary
+		0x71: 3,  // Alarm v1 or Notification v4
+		0x72: 2,  // ManufacturerSpecific
+		0x80: 1,  // Battery
+		0x84: 2,  // WakeUp
+		0x85: 2,  // Association
+		0x86: 1,  // Version (2)
+	]
+}
+
+private canCheckin() {
+	// Only allow the event to be created once per minute.
+	def lastCheckin = device.currentValue("lastCheckin")
+	return (!lastCheckin || lastCheckin < (new Date().time - 60000))
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 {
-	def reportEveryHours = settings.reportBatteryEvery ?: 4
-	def reportEveryMS = (reportEveryHours * 60 * 60 * 1000)
-
+	logTrace "WakeUpNotification: $cmd"
 	def result = []
-	if (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) {
-		logDebug "Requesting battery level"
-		result << response(zwave.batteryV1.batteryGet().format())
-		result << response("delay 3000")  
+	
+	if (!state.isConfigured) {
+		result += configure()
+	}
+	else if (canReportBattery()) {
+		result << batteryGetCmd()
+		result << "delay 2000"
 	}
 	else {
-		logDebug "Skipping battery check because it was already checked within the last $reportEveryHours hours."
+		logDebug "Skipping battery check because it was already checked within the last ${settings?.reportBatteryEvery} hours."
 	}
-	result << response(zwave.wakeUpV1.wakeUpNoMoreInformation().format())
 	
-	return result
+	if (result) {
+		result << "delay 5000"
+	}
+	
+	result << wakeUpNoMoreInfoCmd()
+	
+	return response(delayBetween(result, 250))
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {	
+private canReportBattery() {
+	def reportEveryHours = settings?.reportBatteryEvery ?: 6
+	def reportEveryMS = (reportEveryHours * 60 * 60 * 1000)
+		
+	return (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) 
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
+	logTrace "BatteryReport: $cmd"
 	def map = [ 
 		name: "battery", 		
 		unit: "%"
@@ -168,108 +246,138 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 		map.isStateChange = isNew
 		logDebug "Battery is ${cmd.batteryLevel}%"
 	}	
-	
+	state.isConfigured = true
 	state.lastBatteryReport = new Date().time	
 	[
 		createEvent(map)
 	]
-}
+}	
 
-def installed() {
-	return response([
-		zwave.batteryV1.batteryGet().format(),
-		zwave.basicV1.basicGet().format()
-	])
-}
-
-def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd)
-{	
-	return createContactEvents(cmd.value, null)
-}
-
-def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd)
-{	
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
+	logTrace "BasicReport: $cmd"	
+	def result = []
 	
+	if (device.currentValue("internalContact")) {
+		result += handleContactEvent("internalContact", cmd.value)
+	}
+	if (device.currentValue("externalContact")) {
+		result += handleContactEvent("externalContact", cmd.value)
+	}
+	return result
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
+	logTrace "Basic Set: $cmd"	
+	return []
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
 	def result = []	
-
+	logTrace "NotificationReport: $cmd"
 	if (cmd.notificationType == 7) {
 		switch (cmd.event) {
-			case 3:
-				if (cmd.notificationStatus == 0xFF) {
-					logDebug "Tamper is detected"
-					state.lastBatteryReport = null
-					result << createEvent(getTamperEventMap("detected"))		
-				}
+			case 0x02:
+				result += handleContactEvent(cmd.v1AlarmLevel, "internalContact")				
 				break
-			case 2:
-				result += createContactEvents(cmd.v1AlarmLevel, "internalContact")
+			case 0x03:
+				result += handleTamperEvent(cmd.v1AlarmLevel)
 				break
 			case 0xFE:
-				result += createContactEvents(cmd.v1AlarmLevel, "externalContact")
+				result += handleContactEvent(cmd.v1AlarmLevel, "externalContact")
 				break
 		}
-	}	
+	}
 	return result
 }
 
-private createContactEvents(val, contactType) {
-	def contactVal = (val == 0xFF) ? "open" : "closed"
-	def desc = "Contact is $contactVal"
+private handleTamperEvent(alarmLevel) {
+	def result = []		
+	
+	if (alarmLevel == 0xFF) {
+		state.lastBatteryReport = null
+		logDebug "Tamper Detected"
+		result << createEvent(getEventMap("tamper", "detected"))
+	}	
+	
+	return result
+}
 
-	def result = []	
+private handleContactEvent(alarmLevel, attr) {
+	def result = []
+	def val = (alarmLevel == 0xFF) ? "open" : "closed"
+	def otherVal = device.currentValue((attr == "internalContact") ? "externalContact" : "internalContact")
 	
-	result << createEvent(name: "contact", value: contactVal, isStateChange: true, descriptionText: desc)
+	result << createEvent(getEventMap("$attr", val))
 	
-	if (contactType) {
-		logDebug "$desc ($contactType)"
-		result << createEvent(name: contactType, value: contactVal, isStateChange: true, descriptionText: desc, displayed: false)
+	def mainVal = getMainContactVal(attr, val, otherVal)	
+	if (mainVal) {
+		result << createEvent(getEventMap("contact", mainVal))
 	}
-	else {
-		logDebug desc
-	}
-		
-	if (device.currentValue("tamper") != "clear") {
-		logDebug "Tamper is clear"
-		result << createEvent(getTamperEventMap("clear"))
-	}
-	return result	
+	return result
+}
+
+private getMainContactVal(activeAttr, activeVal, otherVal) {
+	def mainVal
+	switch (settings?.mainContactBehavior) {
+		case "Last Changed Contact (Default)":
+			mainVal = activeVal
+			break
+		case "Internal Contact Only":
+			if (activeAttr == "internalContact") {
+				mainVal = activeVal
+			}
+			break
+		case "External Contact Only":
+			if (activeAttr == "externalContact") {
+				mainVal = activeVal
+			}
+			break
+		case "Both Contacts Closed":
+			mainVal = (activeVal == "closed" && otherVal == "closed") ? "closed" : "open"
+			break
+		case "Both Contacts Open":
+			mainVal = (activeVal == "open" && otherVal == "open") ? "open" : "closed"
+			break
+		default:
+			mainVal = activeVal
+	}	
+	return mainVal
+}
+
+private getEventMap(eventName, newVal) {	
+	def isNew = device.currentValue(eventName) != newVal
+	def desc = "${eventName.capitalize()} is ${newVal}"
+	logDebug "${desc}"
+	[
+		name: eventName, 
+		value: newVal, 
+		displayed: isNew,
+		descriptionText: desc
+	]
 }
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	logDebug "Unhandled Command: $cmd"
 }
 
-// Resets the tamper attribute to clear.
-def refresh() {	
-	state.lastBatteryReport = null
-	
-	if (device.currentValue("tamper") != "clear") {
-		sendEvent(getTamperEventMap("clear"))		
+private wakeUpNoMoreInfoCmd() {
+	return zwave.wakeUpV2.wakeUpNoMoreInformation().format()
+}
+private basicGetCmd() {
+	return zwave.basicV1.basicGet().format()
+}
+
+private batteryGetCmd() {
+	logTrace "Requesting battery report"
+	return zwave.batteryV1.batteryGet().format()
+}
+
+private logDebug(msg) {
+	if (settings?.debugOutput || settings?.debugOutput == null) {
+		log.debug "$msg"
 	}
-	
-	logDebug "The Battery level will be refreshed the next time the device wakes up.  If you want this change to happen immediately, open the back cover of the device, wait until the red light turns solid, and then put the cover back on."
-	return [zwave.batteryV1.batteryGet().format()]
 }
 
-def getTamperEventMap(val) {	
-	def isNew = currentTamper() != val
-	[
-		name: "tamper", 
-		value: val, 
-		displayed: isNew,
-		descriptionText: "Tamper is $val"
-	]
-}
-
-private currentTamper() {
-	return device.currentValue("tamper")
-}
-
-def logDebug(msg) {
-	if (settings.debugOutput) {
-		log.debug "${device.displayName}: $msg"
-	}
+private logTrace(msg) {
+	//log.trace "$msg"
 }

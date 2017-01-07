@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.6.1
+ *  GoControl Multifunction Siren v 1.6.2
  *
  *  Devices:
  *    GoControl/Linear (Model#: WA105DBZ-1)
@@ -25,7 +25,10 @@
  *
  *  Changelog:
  *
- *    1.6 (08/28/2016)
+ *    1.6.2 (08/??/2016)
+ *      - Added another model# to header.
+ *
+ *    1.6.1 (08/28/2016)
  *      - Added support for turning on the alarm while a
  *        different alarm type is already playing.
  *
@@ -185,7 +188,7 @@ metadata {
 			state "alarmPending", label:'Cancel', action: "off", backgroundColor: "#99c2ff", icon:"st.alarm.alarm.alarm"
 		}	
 		standardTile("testBeep", "device.status", width: 2, height: 2) {
-			state "default", label:' Beep ', action:"beep", icon:"st.Entertainment.entertainment2", backgroundColor: "#99ff99"
+			state "default", label:' Beep ', action:"beep", icon:"st.Entertainment.entertainment2", backgroundColor: "#99ff99", defaultState: true
 			state "beep", label:'Beeping', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor: "#99c2ff"			
 		}					
 		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2) {
