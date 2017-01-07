@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 2.3
+ *  Simple Device Viewer v 2.3.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,7 +9,10 @@
  *
  *  Changelog:
  *
- *    2.3 (01/06/2017)
+ *    2.3.1 (01/07/2017)
+ *      - Fixed problem with All Devices - States screen.
+ *
+ *    2.3.0 (01/06/2017)
  *      - Added support for Energy Meter, Illuminance Measurement, Power Meter, Relative Humidity Measurement, Valve
  *      - Added abort to "All Device - States" to prevent timeout errors.
  *
@@ -589,12 +592,14 @@ def capabilityPage(params) {
 				def aborted = false
 				def capListItems = []
 				
+				def selectedCapSettings = getSelectedCapabilitySettings()
+				
 				getAllDevices().each {
 					if (new Date().time - startTime > 15000) {
 						aborted = true
 					}
 					else {
-						capListItems << getDeviceAllCapabilitiesListItem(it)
+						capListItems << getDeviceAllCapabilitiesListItem(selectedCapSettings, it)
 					}
 				}
 				
@@ -665,14 +670,14 @@ private getDevicesByCapability(name, excludeList=null) {
 		.sort() { it.displayName.toLowerCase() }, excludeList)	
 }
 
-private getDeviceAllCapabilitiesListItem(device) {
+private getDeviceAllCapabilitiesListItem(selectedCapSettings, device) {
 	def listItem = [
 		sortValue: device.displayName
-	]	
-	getSelectedCapabilitySettings().each {
-		//if (device.hasCapability(getCapabilityName(it))) {
+	]		
+	selectedCapSettings.each {
+		if (device.hasCapability(getCapabilityName(it))) {
 			listItem.status = (listItem.status ? "${listItem.status}, " : "").concat(getDeviceCapabilityStatusItem(device, it).status)
-		//}
+		}
 	}
 	listItem.title = getDeviceStatusTitle(device, listItem.status)
 	return listItem
