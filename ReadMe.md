@@ -24,12 +24,14 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#aeon-labs-multifunction-siren">Aeon Labs Multifunction Siren</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#alarm-switch">Alarm Switch</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#blink-wireless-camera">Blink Wireless Camera</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-wireless-z-wave-plus-siren">Dome Wireless Z-Wave Plus Siren</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#forcible-mobile-presence">Forcible Mobile Presence</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-doorwindow-sensor">GoControl/Linear Door/Window Sensor</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-motion-sensor">GoControl/Linear Motion Sensor</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-multifunction-siren">GoControl/Linear/Vision Multifunction Siren</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#leaksmart-water-valve">LeakSmart Water Valve</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#monoprice-z-wave-plus-doorwindow-sensor">Monoprice Z-Wave Plus Door/Window Sensor</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#monoprice-z-wave-plus-doorwindow-sensor">Monoprice/Zooz Z-Wave Plus 4-in-1 Multisensor</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#polling-cree-bulb">Polling Cree Bulb</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#polling-ge-link-bulb">Polling GE Link Bulb</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#thingshield-timer">ThingShield Timer</a></li>
@@ -150,6 +152,17 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/blink-wireless-camera.src">View Blink Wireless Camera - Device Handler Code</a></li>
 </ul>
 
+<hr />
+
+<h3>Dome Wireless Z-Wave Plus Siren</h3>
+
+<ul>
+<li>DTH for the Dome Wireless Z-Wave Plus Siren (DMS01)</li>
+<li>Supports all functionality that the device offers</li>
+<li><a href="https://community.smartthings.com/t/release-dome-wireless-z-wave-plus-siren/71091?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-wireless-zwave-plus-siren.src/dome-wireless-zwave-plus-siren.groovy">View Dome Wireless Z-Wave Plus Siren - Device Handler Code</a></li>
+</ul>
+
 
 <hr />
 <h3>Forcible Mobile Presence</h3>
@@ -220,6 +233,22 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>The setting <em>Automatically Clear Tamper</em> allows you to choose whether it raises the tamper clear event when the device cover is closed or if you have to press the "Refresh" button to clear it.<br></li>
 <li><a href="https://community.smartthings.com/t/release-monoprice-z-wave-plus-door-window-sensor/70478?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/monoprice-zwave-plus-door-window-sensor.src/monoprice-zwave-plus-door-window-sensor.groovy">View Monoprice Z-Wave Plus Door/Window Sensor - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Monoprice/Zooz Z-Wave Plus 4-in-1 Multisensor</h3>
+
+<ul>
+<li>This is a device handler for the Monoprice Z-Wave Plus 4-in-1 Motion Sensor with Temperature, Humidity, and Light Sensors (P/N 15902)</li>
+<li>It's also a device handler for the Zooz Z-Wave 4-in-1 Sensor (ZSE40)</li>
+<li><strong>After updating the settings, pressing the button on the bottom with a paperclip will automatically apply them.</strong></li>
+<li>If you want to force all the values to refresh, tap the refresh button and then press the button on the bottom with a paperclip.</li> 
+<li>The device wakes up every 6 hours by default, but there's a setting for <em>Minimum Check-in Interval (Hours)</em> which accepts the range 1 to 167.</li>
+<li>There's also a setting for <em>Battery Reporting Interval (Hours)</em> which accepts the same range of values.</li>
+<li>When the cover of the device is opened, it raises the "tamper" event with the value "detected".</li>
+<li>The setting <em>Automatically Clear Tamper</em> allows you to choose whether it raises the tamper clear event when the device cover is closed or if you have to press the "Refresh" button to clear it.<br></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/monoprice-zwave-plus-4-in-1-multisensor.src/monoprice-zwave-plus-4-in-1-multisensor.groovy">View Monoprice/Zooz Z-Wave Plus 4-in-1 Multisensor - Device Handler Code</a></li>
 </ul>
 
 <hr />
