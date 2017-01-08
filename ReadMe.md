@@ -31,7 +31,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-multifunction-siren">GoControl/Linear/Vision Multifunction Siren</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#leaksmart-water-valve">LeakSmart Water Valve</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#monoprice-z-wave-plus-doorwindow-sensor">Monoprice Z-Wave Plus Door/Window Sensor</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#monoprice-z-wave-plus-doorwindow-sensor">Monoprice/Zooz Z-Wave Plus 4-in-1 Multisensor</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#monopricezooz-z-wave-plus-4-in-1-multisensor">Monoprice/Zooz Z-Wave Plus 4-in-1 Multisensor</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#polling-cree-bulb">Polling Cree Bulb</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#polling-ge-link-bulb">Polling GE Link Bulb</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#thingshield-timer">ThingShield Timer</a></li>
