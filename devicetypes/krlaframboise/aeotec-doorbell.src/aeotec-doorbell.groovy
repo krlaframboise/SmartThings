@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell v 1.10.1
+ *  Aeotec Doorbell v 1.11
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
@@ -12,6 +12,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.11 (01/08/2017)
+ *    - Made playText support messages like "track,repeat" which will play track at the specified number of times.
  *
  *  1.10.1 (10/08/2016)
  *    - Added speech synthesis capability so that the
@@ -477,11 +480,20 @@ private getTextFromTTSUrl(URI) {
 
 //Plays the track specified as the message at the specified volume.
 def playText(message, volume=null) {
+	def items = "${message}".split(",")
+	def track = validateTrack(items[0])
+	def repeat = null
+	
+	if (items.size() > 1) {
+		repeat = validateRange(items[1], 1, 1, 300, "Repeat")
+	}
+	
 	if ("${volume}" == "0") {
 		volume = null
 	}
+	
 	logTrace "Executing playText($message, $volume)"
-	return startTrack([track: message, volume: volume])
+	return startTrack([track: track, repeat: repeat, volume: volume])
 }
 
 // Plays specified track for specified repeat
