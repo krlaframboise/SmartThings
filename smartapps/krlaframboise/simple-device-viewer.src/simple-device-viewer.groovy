@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 2.3.1
+ *  Simple Device Viewer v 2.3.2
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,9 @@
  *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    2.3.2 (01/09/2017)
+ *      - Fixed attribute for valve capability.
  *
  *    2.3.1 (01/07/2017)
  *      - Fixed problem with All Devices - States screen.
@@ -1699,7 +1702,8 @@ private capabilitySettings() {
 		],		
 		[
 			name: "Valve",
-			activeState: "open"
+			activeState: "open",
+			attributeName: "contact"
 		],
 		[
 			name: "Water Sensor",
