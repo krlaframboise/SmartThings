@@ -1,5 +1,5 @@
 /**
- *  GoControl Contact Sensor v1.7
+ *  GoControl Contact Sensor v1.7.1
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.7.1 (01/10/2017)
+ *      - Stopped displaying the internal/external events when the Main Contact Behavior is set to one of the "Only" options.
  *
  *    1.7 (01/07/2017)
  *      - Added Configuration command class to initialize the battery and contact values during installation.
@@ -306,8 +309,12 @@ private handleContactEvent(alarmLevel, attr) {
 	def result = []
 	def val = (alarmLevel == 0xFF) ? "open" : "closed"
 	def otherVal = device.currentValue((attr == "internalContact") ? "externalContact" : "internalContact")
-	
-	result << createEvent(getEventMap("$attr", val))
+	def displayed = null
+	if (settings?.mainContactBehavior?.contains("Only")) {
+		displayed = false
+	}
+
+	result << createEvent(getEventMap("$attr", val, displayed))
 	
 	def mainVal = getMainContactVal(attr, val, otherVal)	
 	if (mainVal) {
@@ -344,14 +351,14 @@ private getMainContactVal(activeAttr, activeVal, otherVal) {
 	return mainVal
 }
 
-private getEventMap(eventName, newVal) {	
+private getEventMap(eventName, newVal, displayed=null) {	
 	def isNew = device.currentValue(eventName) != newVal
 	def desc = "${eventName.capitalize()} is ${newVal}"
 	logDebug "${desc}"
 	[
 		name: eventName, 
 		value: newVal, 
-		displayed: isNew,
+		displayed: (displayed != null) ? displayed : isNew,
 		descriptionText: desc
 	]
 }
