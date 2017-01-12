@@ -13,6 +13,9 @@
  *
  *  Changelog:
  *
+ *    1.0.1 (01/12/2017)
+ *      - Changed illuminance from lux to %.
+ *
  *    1.0 (01/08/2017)
  *      - Initial Release
  *
@@ -150,7 +153,7 @@ metadata {
 		}
 		
 		valueTile("illuminance", "device.illuminance", decoration: "flat", width: 2, height: 2){
-			state "illuminance", label:'${currentValue} lx', unit:""
+			state "illuminance", label:'${currentValue}% lux', unit:""
 		}		
 		
 		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2){
@@ -377,7 +380,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	else {
 		logTrace "Skipping battery check because it was already checked within the last $reportEveryHours hours."
 	}
-	
+
 	if (result) {
 		result << "delay 5000"
 	}
