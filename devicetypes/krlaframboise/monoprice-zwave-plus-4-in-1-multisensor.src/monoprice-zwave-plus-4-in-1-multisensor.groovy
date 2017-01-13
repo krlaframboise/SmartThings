@@ -1,5 +1,5 @@
 /**
- *  Monoprice Z-Wave Plus 4-in-1 Multisensor 1.0
+ *  Monoprice Z-Wave Plus 4-in-1 Multisensor 1.0.2
  *
  *  Monoprice Z-Wave Plus 4-in-1 Motion Sensor with Temperature, Humidity, and Light Sensors (P/N 15902)
  *
@@ -12,6 +12,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.2 (01/12/2017)
+ *      - Fixed light tile text and changed minimum light threshold to 5 because that's the lowest value supported by the latest firmware version of the zooz 4-in-1 sensor.
  *
  *    1.0.1 (01/12/2017)
  *      - Changed illuminance from lux to %.
@@ -77,7 +80,7 @@ metadata {
 			displayDuringSetup: true,
 			required:false,
 			defaultValue: lightTriggerSetting,
-			range: "1..50"
+			range: "5..50"
 		input "motionTime", "number",
 			title: "Motion Retrigger Time (Minutes)",
 			displayDuringSetup: true,
@@ -153,7 +156,7 @@ metadata {
 		}
 		
 		valueTile("illuminance", "device.illuminance", decoration: "flat", width: 2, height: 2){
-			state "illuminance", label:'${currentValue}% lux', unit:""
+			state "illuminance", label:'${currentValue}% light', unit:""
 		}		
 		
 		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2){
