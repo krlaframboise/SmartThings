@@ -249,7 +249,7 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>There's also a setting for <em>Battery Reporting Interval (Hours)</em> which accepts the same range of values.</li>
 <li>When the cover of the device is opened, it raises the "tamper" event with the value "detected".</li>
 <li>The setting <em>Automatically Clear Tamper</em> allows you to choose whether it raises the tamper clear event when the device cover is closed or if you have to press the "Refresh" button to clear it.<br></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/monoprice-zwave-plus-4-in-1-multisensor.src/monoprice-zwave-plus-4-in-1-multisensor.groovy">View Monoprice/Zooz Z-Wave Plus 4-in-1 Multisensor - Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-monoprice-4-in-1-multisensor.src/zooz-monoprice-4-in-1-multisensor.groovy">View Monoprice/Zooz Z-Wave Plus 4-in-1 Multisensor - Device Handler Code</a></li>
 </ul>
 
 <hr />
