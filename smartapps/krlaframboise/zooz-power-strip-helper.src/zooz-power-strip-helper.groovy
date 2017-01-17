@@ -4,7 +4,7 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:
+ *  URL to documentation:  https://community.smartthings.com/t/release-zooz-power-strip/68860?u=krlaframboise
  *
  *  Changelog:
  *
