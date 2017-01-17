@@ -1,5 +1,5 @@
 /**
- *  Zooz Power Strip Helper - v 1.0
+ *  Zooz Power Strip Helper - v 1.0.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -7,6 +7,10 @@
  *  URL to documentation:
  *
  *  Changelog:
+ *
+ *    1.0.1 (01/16/2017)
+ *      - Bug fix for when virtual devices no longer exist.
+ *      - Added icon.
  *
  *    1.0.0 (01/14/2017)
  *      - Initial Release
@@ -32,9 +36,9 @@ definition(
     author: "Kevin LaFramboise",
     description: "Allows you to control the Zooz Power Strip as 5 separate devices.",
     category: "My Apps",
-    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
-    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
-    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
+    iconUrl: "https://raw.githubusercontent.com/krlaframboise/Resources/master/zooz-power-strip-helper/app-ZoozPowerStripHelper.png",
+    iconX2Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/zooz-power-strip-helper/app-ZoozPowerStripHelper@2x.png",
+    iconX3Url: "https://raw.githubusercontent.com/krlaframboise/Resources/master/zooz-power-strip-helper/app-ZoozPowerStripHelper@3x.png")
 		
 preferences {
 	page(name: "mainPage")
@@ -130,7 +134,7 @@ private createVirtualDevice(chDevice) {
 private syncVirtualSwitch(chDevice) {
 	def actualSwitch = zoozPS."currentCh${chDevice?.ch}Switch"
 	def vDevice = getChildDevice(chDevice?.dni)
-	if (vDevice?.currentSwiitch != actualSwitch) {
+	if (vDevice && vDevice?.currentSwiitch != actualSwitch) {
 		logDebug "Turning Virtual ${vDevice?.displayName} ${actualSwitch}"
 		vDevice?."${actualSwitch}"()
 	}
@@ -196,7 +200,7 @@ def mainSwitchHandler(evt) {
 		if (evt.name == "ch${ch}Switch") {
 			
 			def device = getChildDevice(dniFromCH("${ch}"))
-			if (device?.currentSwitch != evt.value) {
+			if (device && device?.currentSwitch != evt.value) {
 				logDebug "Turning ${evt.value} ${device.displayName}"
 				device."${evt.value}"()
 			}
