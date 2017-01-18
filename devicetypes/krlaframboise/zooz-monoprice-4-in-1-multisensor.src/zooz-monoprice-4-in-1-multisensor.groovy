@@ -1,5 +1,5 @@
 /**
- *  Zooz/Monoprice 4-in-1 Multisensor 1.1
+ *  Zooz/Monoprice 4-in-1 Multisensor 1.1.2
  *
  *  Zooz Z-Wave 4-in-1 Sensor (ZSE40)
  *
@@ -13,7 +13,11 @@
  *
  *  Changelog:
  *
- *    1.1 (01/15/2017)
+ *    1.1.2 (01/17/2017)
+ *      - Removed device join names from fingerprint.
+ *      = Added association line to config.
+ *
+ *    1.1.0 (01/15/2017)
  *      - Added firmware attribute
  *			- Added new fingerprint for latest model of the Zooz 4-in-1 sensor.
  *			- Added new LED Indicator Mode for updated Zooz model.
@@ -58,11 +62,11 @@ metadata {
 		attribute "lastCheckin", "number"		
 		attribute "firmwareVersion", "string"
 						
-		fingerprint deviceId: "0x0701", inClusters: "0x5E, 0x98, 0x86, 0x72, 0x5A, 0x85, 0x59, 0x73, 0x80, 0x71, 0x31, 0x70, 0x84, 0x7A"
+		fingerprint deviceId: "0x0701", inClusters: "0x86, 0x72, 0x5A, 0x85, 0x59, 0x73, 0x80, 0x71, 0x31, 0x70, 0x84, 0x7A"
 		
-		fingerprint mfr:"027A", prod:"2021", model:"2101", deviceJoinName: "Zooz 4-in-1 Multisensor"
+		fingerprint mfr:"027A", prod:"2021", model:"2101"
 		
-		fingerprint mfr:"0109", prod:"2021", model:"2101", deviceJoinName: "Zooz/Monoprice 4-in-1 Multisensor"
+		fingerprint mfr:"0109", prod:"2021", model:"2101"
 	}
 	
 	simulator { }
@@ -219,8 +223,9 @@ def configure() {
 	if (!device.currentValue("firmwareVersion")) {
 		// Give inclusion time to finish.
 		logTrace "Waiting 1 second because this is the first time being configured"		
-		cmds << "delay 500"		
+		cmds << associationSetCmd()
 		cmds << versionGetCmd()
+
 	}
 	
 	if (state.pendingChanges) {
@@ -428,7 +433,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	}
 	
 	if (result) {
-		result << "delay 2000"
+		result << "delay 1000"
 	}
 	result << wakeUpNoMoreInfoCmd()
 	
@@ -639,6 +644,10 @@ private manufacturerSpecificGetCmd() {
 
 private versionGetCmd() {
 	return secureCmd(zwave.versionV1.versionGet())
+}
+
+private associationSetCmd() {
+	return secureCmd(zwave.associationV2.associationSet(groupingIdentifier:1, nodeId:zwaveHubNodeId))
 }
 
 private basicGetCmd() {
