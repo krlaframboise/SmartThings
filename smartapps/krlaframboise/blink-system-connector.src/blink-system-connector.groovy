@@ -1,5 +1,5 @@
 /**
- *  Blink System Connector v 1.5.2
+ *  Blink System Connector v 1.5.3
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
@@ -7,7 +7,7 @@
  *
  *  Changelog:
  *
- *    1.5.2 (01/18/2017)
+ *    1.5.3 (01/18/2017)
  *      - Added Disable setting can be used to prevent the errors in live logging.  Hopefully at some point I'll be able to get the information eneded to get this SmartApp working again.
  *
  *    1.5.1 (9/29/2016)
@@ -84,7 +84,7 @@ def mainPage() {
 	dynamicPage(name:"mainPage", uninstall:true, install:true) {
 		if (state.completedSetup) {
 			section() {
-				input "disable", "bool",
+				input "disableSmartApp", "bool",
 					title: "Disable SmartApp",
 					required: false
 			}
@@ -417,7 +417,7 @@ private initialize() {
 		state.completedSetup = true
 		logDebug "${addCameras()}"
 	}
-	if (state.completedSetup && settings?.disabled != true) {		
+	if (state.completedSetup && settings?.disableSmartApp != true) {		
 		if (shmEnabled()) {
 			subscribe(location, "alarmSystemStatus", shmHandler)
 		}		
@@ -775,6 +775,7 @@ private buildRequest(path, requestHeaders, requestBody) {
 }
 
 private getFromBlink(request) {
+	if (settings?.disableSmartApp != true) {
 	try {
 		httpGet(request) { objResponse ->
 			return objResponse
@@ -789,9 +790,11 @@ private getFromBlink(request) {
 			return null
 		}		
   }
+	}
 }
 
 private postToBlink(request) {
+	if (settings?.disableSmartApp != true) {
 	try {
 		httpPostJson(request) { objResponse ->
 			return objResponse
@@ -806,6 +809,7 @@ private postToBlink(request) {
 			return null
 		}
   }
+	}
 }
 
 private canRetryRequest(errorMsg) {	
