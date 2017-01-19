@@ -10,7 +10,6 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <ul>
 	<li><p><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#smartapps">SmartApps</a></p>
 		<ul>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#blink-system-connector">Blink System Connector</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#home-presence-manager">Home Presence Manager</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#simple-device-viewer">Simple Device Viewer</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#simple-event-logger">Simple Event Logger</a></li>
@@ -23,7 +22,6 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#aeon-labs-aeotec-doorbell">Aeon Labs Aeotec Doorbell</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#aeon-labs-multifunction-siren">Aeon Labs Multifunction Siren</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#alarm-switch">Alarm Switch</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#blink-wireless-camera">Blink Wireless Camera</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-wireless-z-wave-plus-siren">Dome Wireless Z-Wave Plus Siren</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#forcible-mobile-presence">Forcible Mobile Presence</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-doorwindow-sensor">GoControl/Linear Door/Window Sensor</a></li>
@@ -45,24 +43,6 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <hr />
 
 <h2>SmartApps</h2>
-
-<h3>Blink System Connector</h3>
-
-<ul>
-<li>Allows you to use your Blink Cameras with SmartThings.<br /></li>
-<li>Provides summary information about the Blink sync module and cameras.<br /></li>
-
-<li>Add/remove and view the status of your Blink Cameras<br /></li>
-
-<li>Manually Arm and Disarm all the cameras.<br /></li>
-
-<li>Automatically Arm/Disarm your cameras when Smart Home Monitor arms and disarms (optional).<br /></li>
-
-<li><a href="https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/smartapps/krlaframboise/blink-system-connector.src/blink-system-connector.groovy">View Blink System Connector - SmartApp Code</a></li>
-</ul>
-
-<hr />
 
 <h3>Home Presence Manager</h3>
 <ul>
@@ -135,22 +115,6 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li>You can set it to automatically turn off after a specified amount of time.<br /></li>
 <li>You can choose which alarm event should be raised when the alarm is activiated (strobe, siren, strobe & siren).</li>
 <li><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/alarm-switch.src">View Alarm Switch - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Blink Wireless Camera</h3>
-
-<ul>
-<li>Allows you to enable/disable cameras independently.<br /></li>
-<li>The device's arm/disarm button will arm/disarm all of the cameras.<br /></li>
-<li>Displays image from blink homescreen<br /></li>
-<li>Allows you to take photos.<br /></li>
-<li>Displays time of last 5 motion events<br /></li>
-<li>Can display thumbnail associated with each event<br /></li>
-<li>Displays and raises events for Temperature, Battery, Motion, WiFI Signal, Sync Module Signal, Camera Status, System Status, and Switch status<br /></li>
-<li><a href="https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/blink-wireless-camera.src">View Blink Wireless Camera - Device Handler Code</a></li>
 </ul>
 
 <hr />
