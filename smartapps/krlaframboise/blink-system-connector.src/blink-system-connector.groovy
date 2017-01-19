@@ -1,5 +1,5 @@
 /**
- *  Blink System Connector v 1.5.3
+ *  Blink System Connector v 1.5.4
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
@@ -7,7 +7,7 @@
  *
  *  Changelog:
  *
- *    1.5.3 (01/18/2017)
+ *    1.5.4 (01/18/2017)
  *      - Added Disable setting can be used to prevent the errors in live logging.  Hopefully at some point I'll be able to get the information eneded to get this SmartApp working again.
  *
  *    1.5.1 (9/29/2016)
@@ -728,6 +728,7 @@ private getNetworks() {
 }
 
 private getAuthToken() {
+	if (settings.disableSmartApp != true) {
 	if (!state.authToken) {
 		logDebug "Retrieving AuthToken"
 		def requestBody = [
@@ -743,6 +744,7 @@ private getAuthToken() {
 		}
 	}
 	return state.authToken
+	}
 }
 
 private buildRequest(path) {
