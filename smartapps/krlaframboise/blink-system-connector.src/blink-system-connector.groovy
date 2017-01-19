@@ -1,11 +1,14 @@
 /**
- *  Blink System Connector v 1.5.1
+ *  Blink System Connector v 1.5.2
  *  (https://community.smartthings.com/t/release-blink-camera-device-handler-smartapp/44100?u=krlaframboise)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.5.2 (01/18/2017)
+ *      - Added Disable setting can be used to prevent the errors in live logging.  Hopefully at some point I'll be able to get the information eneded to get this SmartApp working again.
  *
  *    1.5.1 (9/29/2016)
  *      - Fixed uninstall bug, but still can't uninstall
@@ -80,7 +83,11 @@ preferences {
 def mainPage() {
 	dynamicPage(name:"mainPage", uninstall:true, install:true) {
 		if (state.completedSetup) {
-	
+			section() {
+				input "disable", "bool",
+					title: "Disable SmartApp",
+					required: false
+			}
 			section() {
 				getDashboardHref()
 				getToggleArmedPageLink()
@@ -410,7 +417,7 @@ private initialize() {
 		state.completedSetup = true
 		logDebug "${addCameras()}"
 	}
-	if (state.completedSetup) {		
+	if (state.completedSetup && settings?.disabled != true) {		
 		if (shmEnabled()) {
 			subscribe(location, "alarmSystemStatus", shmHandler)
 		}		
