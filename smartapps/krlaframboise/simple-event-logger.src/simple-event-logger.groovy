@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - SmartApp v 1.1.1
+ *  Simple Event Logger - SmartApp v 1.1.3
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,11 @@
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
+ *
+ *    1.1.3 (01/19/2017)
+ *      - Retrieve events from state instead of event history.
+ *      - Retrieves up to 200 events per attribute for each device instead of a total of 50 events per device.
+ *      - Changed first run to previous hour instead of previous 24 hours to prevent warnings caused by the large number of events that get logged.
  *
  *    1.1.1 (01/04/2017)
  *      - Enabled submit on change for device lists so that the event list populates on initial install. 
@@ -66,7 +71,7 @@ preferences {
 	page(name: "createTokenPage")
 }
 
-def version() { return "01.01.01" }
+def version() { return "01.01.03" }
 def gsVersion() { return "01.01.00" }
 
 def mainPage() {
@@ -263,9 +268,9 @@ private getOptionsPageContent() {
 			defaultValue: "5 Minutes",
 			options: ["5 Minutes", "10 Minutes", "15 Minutes", "30 Minutes", "1 Hour", "3 Hours"]
 		input "maxEvents", "number",
-			title: "Maximum number of events to log for each device per execution. (1 - 50)",
-			range: "1..50",
-			defaultValue: 10,
+			title: "Maximum number of events to log for each device per execution. (1 - 200)",
+			range: "1..200",
+			defaultValue: 200,
 			required: false
 		input "logDesc", "bool",
 			title: "Log Event Descripion?",
@@ -468,7 +473,7 @@ def logNewEvents() {
 	status.finished = null
 	status.eventsLogged = 0
 	status.started = new Date().time	
-	status.firstEventTime = safeToLong(status.lastEventTime) ?: (new Date() - 1).time
+	status.firstEventTime = safeToLong(status.lastEventTime) ?: (new Date(new Date().time - (60 * 60 * 1000))).time
 	status.lastEventTime = status.started
 	
 	def startDate = new Date(status.firstEventTime + 1000)
@@ -594,7 +599,7 @@ private getFormattedLoggingStatus() {
 		freeSpace: status.freeSpace
 	]
 }
-	
+
 private getNewEvents(startDate, endDate) {	
 	def events = []
 	def maxEvents = settings?.maxEvents ?: 10
@@ -602,26 +607,21 @@ private getNewEvents(startDate, endDate) {
 	logTrace "Retrieving Events from ${startDate} to ${endDate}"
 	
 	getSelectedDevices()?.each  { device ->
-
-		def deviceAllowedAttrs = getDeviceAllowedAttrs(device?.displayName)
-				
-		device?.eventsBetween(startDate, endDate, [max: maxEvents])?.flatten()?.each { event ->
-			
-			if ("${event?.source}" == "DEVICE" && deviceAllowedAttrs?.find { attr -> attr?.toLowerCase() == event?.name?.toLowerCase() }) {				
+		getDeviceAllowedAttrs(device?.displayName)?.each { attr ->
+			device.statesBetween("${attr}", startDate, endDate, [max: 200])?.each { event ->
 				events << [
 					time: getFormattedLocalTime(event.date?.time),
-					device: event.displayName,
-					name: event.name,
+					device: device.displayName,
+					name: "${attr}",
 					value: event.value,
-					desc: getEventDesc(event.descriptionText)
+					desc: "${event.value} ${event.unit}"
 				]
 			}
 		}
 	}
-
 	return events?.unique()?.sort { it.time }
 }
-
+	
 private getFormattedLocalTime(utcTime) {
 	if (utcTime) {
 		try {
