@@ -1,5 +1,5 @@
 /**
- *  Dome Wireless Z-Wave Plus Siren v1.0.3
+ *  Dome Wireless Z-Wave Plus Siren v1.0.4
  *  (Model: DMS01)
  *
  *  Author: 
@@ -9,6 +9,11 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.4 (01/20/2016)
+ *      - Added device join name and removed switch capability.
+ *      - Replaced chime repeat with dropdown
+ *      - 
  *
  *    1.0.3 (01/20/2016)
  *      - Split chime tiles/commands into bells, chimes, and sirens.
@@ -51,7 +56,7 @@ metadata {
 		capability "Battery"
 		capability "Configuration"
 		capability "Refresh"
-		capability "Switch"
+		//capability "Switch"
 		capability "Tone"
 		capability "Polling"
 		capability "Speech Synthesis"
@@ -60,13 +65,16 @@ metadata {
 		
 		
 		attribute "lastCheckin", "number"
-		attribute "status", "enum", ["alarm", "beep", "off", "on", "custom"]
+		attribute "status", "enum", ["alarm", "delayed", "off", "bell", "chime"]
+		
+		//attribute "status", "enum", ["alarm", "beep", "off", "on", "custom"]
+		
 		
 		// Required for Speaker notify with sound
 		command "playSoundAndTrack"
 		command "playTrackAtVolume"		
 
-		command "customChime"
+		//command "customChime"
 		command "bell1"
 		command "bell2"
 		command "bell3"
@@ -80,9 +88,9 @@ metadata {
 		
 		fingerprint deviceId: "0x1005", inClusters: "0x25, 0x59, 0x5A, 0x5E, 0x70, 0x71, 0x72, 0x73, 0x80, 0x85, 0x86, 0x87"
 		
-		fingerprint mfr:"021F", prod:"0003", model:"0088" 
+		fingerprint mfr:"021F", prod:"0003", model:"0088", deviceJoinName: "Dome Siren"
 		
-		fingerprint type:"1005", cc: "25,59,5A,5E,70,71,72,73,80,85,86,87"
+		fingerprint type:"1005", cc: "25,59,5A,5E,70,71,72,73,80,85,86,87", deviceJoinName: "Dome Siren"
 	}
 	
 	simulator { }
@@ -91,25 +99,25 @@ metadata {
 		input "sirenSound", "enum",
 			title: "Siren Sound:",
 			displayDuringSetup: true,
-			required: true,
+			required: false,
 			defaultValue: sirenSoundSetting,
 			options: sirenOptions.collect { it.name }
 		input "sirenVolume", "enum",
 			title: "Siren Volume:",
-			required: true,
+			required: false,
 			defaultValue: sirenVolumeSetting,			
 			displayDuringSetup: true,
 			options: volumeOptions.collect { it.name }
 		input "sirenLength", "enum",
 			title: "Siren Duration:",
 			defaultValue: sirenLengthSetting,
-			required: true,
+			required: false,
 			displayDuringSetup: true,
 			options: sirenLengthOptions.collect { it.name }
 		input "sirenLED", "enum",
 			title: "Siren LED:",
 			defaultValue: sirenLEDSetting,
-			required: true,
+			required: false,
 			displayDuringSetup: true,
 			options: ledOptions.collect { it.name }
 		// input "onChimeSound", "number",
@@ -130,16 +138,16 @@ metadata {
 			defaultValue: chimeVolumeSetting,
 			displayDuringSetup: true,
 			options: volumeOptions.collect { it.name }
-		input "chimeRepeat", "number",
-			title: "Chime Repeat [1-255]:\n(1-254 = # of Cycles)\n(255 = ${noLengthMsg})",
-			range: "1..255",
+		input "chimeRepeat", "enum",
+			title: "Chime Repeat:",
 			required: false,
 			displayDuringSetup: true,
-			defaultValue: chimeRepeatSetting
+			defaultValue: chimeRepeatSetting,
+			options: chimeRepeatOptions.collect { it.name }
 		input "chimeLED", "enum",
 			title: "Chime LED:",
 			defaultValue: chimeLEDSetting,
-			required: true,
+			required: false,
 			displayDuringSetup: true,
 			options: ledOptions.collect { it.name }
 		input "reportBatteryEvery", "number", 
@@ -163,7 +171,12 @@ metadata {
 					icon: "st.security.alarm.clear",
 					backgroundColor:"#ffffff"
 				attributeState "alarm", 
-					label:'Siren!', 
+					label:'Alarm!', 
+					action: "off", 
+					icon:"st.alarm.alarm.alarm", 
+					backgroundColor:"#ff9999"
+				attributeState "pending", 
+					label:'Alarm Pending!', 
 					action: "off", 
 					icon:"st.alarm.alarm.alarm", 
 					backgroundColor:"#ff9999"
@@ -177,11 +190,11 @@ metadata {
 					action: "off", 
 					icon:"st.Seasonal Winter.seasonal-winter-002", 
 					backgroundColor:"#99ff99"
-				attributeState "custom", 
-					label:'Chime (Custom)!', 
-					action: "off", 
-					icon:"st.Entertainment.entertainment2", 
-					backgroundColor:"#cc99cc"
+				// attributeState "custom", 
+					// label:'Chime!', 
+					// action: "off", 
+					// icon:"st.Entertainment.entertainment2", 
+					// backgroundColor:"#cc99cc"
 				// attributeState "on", 
 					// label:'Chime (On)!', 
 					// action: "off", 
@@ -198,19 +211,6 @@ metadata {
 		standardTile("playAlarm", "device.alarm", width: 2, height: 2) {
 			state "default", 
 				label:'Alarm', 
-				action:"alarm.both", 
-				icon:"st.security.alarm.clear", 
-				backgroundColor:"#ff9999"
-			state "both",
-				label:'Turn Off',
-				action:"alarm.off",
-				icon:"st.alarm.alarm.alarm", 
-				background: "#ffffff"	
-		}
-		
-		standardTile("playSiren", "device.alarm", width: 2, height: 2) {
-			state "default", 
-				label:'Siren', 
 				action:"alarm.siren", 
 				icon:"st.security.alarm.clear", 
 				backgroundColor:"#ff9999"
@@ -220,6 +220,19 @@ metadata {
 				icon:"st.alarm.alarm.alarm", 
 				background: "#ffffff"	
 		}
+		
+		// standardTile("playSiren", "device.alarm", width: 2, height: 2) {
+			// state "default", 
+				// label:'Siren', 
+				// action:"alarm.siren", 
+				// icon:"st.security.alarm.clear", 
+				// backgroundColor:"#ff9999"
+			// state "siren",
+				// label:'Turn Off',
+				// action:"alarm.off",
+				// icon:"st.alarm.alarm.alarm", 
+				// background: "#ffffff"	
+		// }
 				
 		// standardTile("playOn", "device.switch", width: 2, height: 2) {
 			// state "default", 
@@ -250,11 +263,11 @@ metadata {
 		standardTile("turnOff", "device.off", width: 2, height: 2) {
 			state "default", 
 				label:'Off', 
-				action:"switch.off", 
+				action:"alarm.off", 
+				icon:"st.security.alarm.clear",
 				backgroundColor: "#ffffff"			
 		}
-		
-		
+				
 		standardTile("playBell1", "device.status", width: 2, height: 2) {
 			state "default", label:'Bell 1', action:"bell1", icon:"st.Seasonal Winter.seasonal-winter-002",backgroundColor: "#99FF99"
 		}
@@ -304,7 +317,7 @@ metadata {
 		}		
 				
 		main "status"
-		details(["status", "playAlarm", "playSiren", "turnOff", "playSiren1", "playSiren2", "playChime1", "playBell1", "playBell2", "playChime2", "playBell3", "playBell4", "playChime3", "playBell5", "refresh", "battery"])
+		details(["status", "playAlarm", "turnOff", "refresh", "playSiren1", "playSiren2", "playChime1", "playBell1", "playBell2", "playChime2", "playBell3", "playBell4", "playChime3", "playBell5", "battery"])
 	}
 }
 
@@ -385,24 +398,24 @@ private logUnsupportedCommand(cmdName) {
  
 // Audio Notification Capability Commands
 def playSoundAndTrack(URI, duration=null, track, volume=null) {	
-	playTrack(URI, volume)
+	playText(URI, volume)
 }
-def playTrackAtVolume(URI, volume) {
-	playTrack(URI, volume)
+def playTrackAtVolume(URI, volume=null) {
+	playText(URI, volume)
 }
 def playTrackAndResume(URI, volume=null, otherVolume=null) {
 	if (otherVolume) {
 		// Fix for Speaker Notify w/ Sound not using command as documented.
 		volume = otherVolume
 	}
-	playTrack(URI, volume)
+	playText(URI, volume)
 }	
 def playTrackAndRestore(URI, volume=null, otherVolume=null) {
 	if (otherVolume) {
 		// Fix for Speaker Notify w/ Sound not using command as documented.
 		volume = otherVolume
 	}
-	playTrack(URI, volume)
+	playText(URI, volume)
 }	
 def playTextAndResume(message, volume=null) {
 	playText(message, volume)
@@ -410,40 +423,33 @@ def playTextAndResume(message, volume=null) {
 def playTextAndRestore(message, volume=null) {
 	playText(message, volume)
 }
-
-def speak(message) {
-	// Using playTrack in case url is passed in.
-	playTrack("$message", null)
-}
-
-// Extracts the track number from the URI and passes it and
-// the volume to the playText command.
 def playTrack(URI, volume=null) {
-	logTrace "Executing playTrack($URI, $volume)"
-	def text = getTextFromTTSUrl(URI)
-	playText(!text ? URI : text, volume)	
+	playText(URI, volume)	
 }
+def speak(message) {
+	playText(message, null)
+}
+def playText(message, volume=null) {
+	logTrace "Executing playText($message)"
+	def text = getTextFromTTSUrl(message) ?: message
+	
+	def sound = soundMessages.find { it.name == "${text?.toLowerCase()?.replace('_', '')}" }?.value
+	
+	return customChime(validateSound(sound ?: text, 1))
+}
+
 private getTextFromTTSUrl(URI) {
 	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
 	def urlPrefix2 = "http://s3.amazonaws.com/smartapp-media/sonos/"
 	
-	def message = ""	
+	def text = ""	
 	[urlPrefix, urlPrefix2].each {
 		if (URI?.toString()?.toLowerCase()?.contains(it)) {
-			message = URI.replace(it,"").replace(".mp3","")
+			text = URI.replace(it, "").replace(".mp3", "")
 		}
 	}	
-	return message ?: URI
+	return text ?: URI
 }
-
-def playText(message, volume=null) {
-	logTrace "Executing playText($message)"
-	
-	def sound = soundMessages.find { it.name == "${message}".toLowerCase() }?.value
-	
-	return customChime(validateSound(sound ?: message, 1))
-}
-
 
 
 def pause() { return off() }
@@ -460,33 +466,32 @@ def on() {
 	return chimePlayCmds(onChimeSoundSetting)
 }
 
-def beep() {
-	logDebug "Playing Beep Chime (#${beepChimeSoundSetting})"	
-	addPendingSound("status", "beep")
-	return chimePlayCmds(beepChimeSoundSetting)
-}
+// def beep() {
+	// logDebug "Playing Beep Chime (#${beepChimeSoundSetting})"	
+	// addPendingSound("status", "beep")
+	// return chimePlayCmds(beepChimeSoundSetting)
+// }
 
+def bell1() { playText("bell1") }
+def bell2() { playText("bell2") }
+def bell3() { playText("bell3") }
+def bell4() { playText("bell4") }
+def bell5() { playText("bell5") }
+def chime1() { playText("chime1") }
+def chime2() { playText("chime2") }
+def chime3() { playText("chime3") }
+def siren1() { playText("siren1") }
+def siren2() { playText("siren2") }
 
-def bell1() { customChime(1) }
-def bell2() { customChime(2) }
-def bell3() { customChime(3) }
-def bell4() { customChime(5) }
-def bell5() { customChime(6) }
-def chime1() { customChime(4) }
-def chime2() { customChime(9) }
-def chime3() { customChime(10) }
-def siren1() { customChime(7) }
-def siren2() { customChime(8) }
-
-def customChime(sound) {	
-	def val = validateSound(sound, beepChimeSoundSetting)
+private customChime(sound) {	
+	def val = validateSound(sound, 1)
 	if ("${sound}" != "${val}") {
-		logDebug "Playing Custom Chime (#${val}) - (${sound} is not a valid sound number)"
+		logDebug "Playing Chime (#${val}) - (${sound} is not a valid sound number)"
 	}
 	else {
-		logDebug "Playing Custom Chime (#${val})"	
+		logDebug "Playing Chime (#${val})"	
 	}	
-	addPendingSound("status", "custom")	
+	addPendingSound("status", "chime")	
 	return chimePlayCmds(val)
 }
 
@@ -577,7 +582,7 @@ private canReportBattery() {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
-	//logTrace "BatteryReport: $cmd"
+	logTrace "BatteryReport: $cmd"
 	def map = [ 
 		name: "battery", 		
 		unit: "%"
@@ -794,7 +799,7 @@ private getConfigData() {
 		[paramNum: 2, name: "Siren Length", value: convertOptionSettingToInt(sirenLengthOptions, sirenLengthSetting, 2)],
 		[paramNum: 8, name: "Siren LED", value: convertOptionSettingToInt(ledOptions, sirenLEDSetting, 1)],
 		[paramNum: 4, name: "Chime Volume", value: convertOptionSettingToInt(volumeOptions, chimeVolumeSetting, 2)],
-		[paramNum: 3, name: "Chime Repeat", value: chimeRepeatSetting],
+		[paramNum: 3, name: "Chime Repeat", value: convertOptionSettingToInt(chimeRepeatOptions, chimeRepeatSetting, 1)],
 		[paramNum: 9, name: "Chime LED", value: convertOptionSettingToInt(ledOptions, chimeLEDSetting, 0)],
 		[paramNum: 7, name: "Chime Mode", value: chimeModeSetting]
 	]	
@@ -826,7 +831,7 @@ private getChimeVolumeSetting() {
 	return settings?.chimeVolume ?: "Medium"
 }
 private getChimeRepeatSetting() {
-	return safeToInt(settings?.chimeRepeat, 1)
+	return settings?.chimeRepeat ?: "1"
 }
 private getChimeLEDSetting() {
 	return settings?.chimeLED ?: "Off"
@@ -850,6 +855,14 @@ private getSoundMessages() {
 	[
 		[name: "bell1", value: 1],
 		[name: "bell2", value: 3],
+		[name: "bell3", value:2],
+		[name: "bell4", value:5],
+		[name: "bell5", value:6],
+		[name: "chime1", value:4],
+		[name: "chime2", value:9],
+		[name: "chime3", value:10],
+		[name: "siren1", value:7],
+		[name: "siren2", value:8],
 		[name: "alarm", value: 7],
 		[name: "the+mail+has+arrived", value: 4],
 		[name: "a+door+opened", value: 9],
@@ -859,6 +872,14 @@ private getSoundMessages() {
 		[name: "someone+is+arriving", value: 4],
 		[name: "piano2", value: 2]
 	]
+}
+
+private getChimeRepeatOptions() {
+	def options = []
+	(1..25).each { 
+		options << [name: "$it", value: it]
+	}
+	return options
 }
 
 private getSirenOptions() {
@@ -918,5 +939,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	//log.trace "$msg"
+	log.trace "$msg"
 }
