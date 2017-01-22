@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 2.4
+ *  Simple Device Viewer v 2.4.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,10 +9,11 @@
  *
  *  Changelog:
  *
- *    2.4 (01/21/2017)
+ *    2.4.1 (01/21/2017)
  *      - Switched to SmartThings last activity field and only use the device's event history and state history if the device activity is null.
  *      - Added Acceleration Sensor Capability
  *      - Added Dashboard Layout options for condensed and multiple columns.
+ *      - Added setting that allows you to choose which one is used.
  *
  *    2.3.2 (01/09/2017)
  *      - Fixed attribute for valve capability.
@@ -386,6 +387,11 @@ def otherSettingsPage() {
 				required: false			
 		}	
 		section ("Last Event Accuracy") {
+			input "checkHistoryThreshold", "number",
+				title: "Check History Threshold: (Hours)\n(This SmartApp uses the device's last activity field, but this setting allows you to specify the number of hours the last activity has to be behind before manually retrieving the last event from the device history.)",
+				defaultValue: 12,
+				range: "1..168",
+				required: false
 			input "lastEventAccuracy", "number",
 				title: "Accuracy Level (1-25)\n(Setting this to a higher number will improve the accuracy for devices that generate a lot of events, but if you're seeing timeout errors in Live Logging, you should set this to a lower number.)",
 				defaultValue: 8,
@@ -1252,22 +1258,17 @@ void refreshDeviceActivityTypeCache(activityType) {
 		
 		def deviceIndex = (safeToInteger(state."${activityType}DeviceIndex", -1))
 		
+		def checkHistoryCutoff = (new Date().time - (safeToInteger(settings?.checkHistoryThreshold, 12) * 60 * 60 * 1000))
+		
 		for (int i= 0; i < deviceCount; i++) {
 			
 			deviceIndex += 1
 			deviceIndex = (deviceIndex >= deviceCount) ? 0 : deviceIndex
 			def device = devices[deviceIndex]
 			
-					// return [
-			// name: lastEvent.name,
-			// value: lastEvent.value,			
-			// time: lastEvent.date.time,
-			// type: "event"
-		// ]
-			
 			def lastActivity
-			def lastActivityDate = device.getLastActivity()			
-			if (lastActivityDate) {
+			def lastActivityDate = device.getLastActivity()
+			if (lastActivityDate && (lastActivityDate.time >= checkHistoryCutoff)) {
 				lastActivity = [
 					name: "unknown",
 					value: "",
