@@ -1,5 +1,5 @@
 /**
- *  Dome Wireless Z-Wave Plus Siren v1.0.4
+ *  Dome Wireless Z-Wave Plus Siren v1.0.5
  *  (Model: DMS01)
  *
  *  Author: 
@@ -10,10 +10,15 @@
  *
  *  Changelog:
  *
+ *    1.0.5 (01/21/2016)
+ *      - Added settings for Alarm Delay and Alarm Delay Beep.
+ *      - Made siren turn the siren on immediately and both turn it on after the specified durationn.
+ *      - Added beep feature during the alarm delay.
+ *
  *    1.0.4 (01/20/2016)
  *      - Added device join name and removed switch capability.
  *      - Replaced chime repeat with dropdown
- *      - 
+ *      - Removed switch capability
  *
  *    1.0.3 (01/20/2016)
  *      - Split chime tiles/commands into bells, chimes, and sirens.
@@ -65,7 +70,7 @@ metadata {
 		
 		
 		attribute "lastCheckin", "number"
-		attribute "status", "enum", ["alarm", "delayed", "off", "bell", "chime"]
+		attribute "status", "enum", ["alarm", "pending", "off", "chime"]
 		
 		//attribute "status", "enum", ["alarm", "beep", "off", "on", "custom"]
 		
@@ -97,29 +102,41 @@ metadata {
 	
 	preferences {
 		input "sirenSound", "enum",
-			title: "Siren Sound:",
+			title: "Alarm Sound:",
 			displayDuringSetup: true,
 			required: false,
 			defaultValue: sirenSoundSetting,
 			options: sirenOptions.collect { it.name }
 		input "sirenVolume", "enum",
-			title: "Siren Volume:",
+			title: "Alarm Volume:",
 			required: false,
 			defaultValue: sirenVolumeSetting,			
 			displayDuringSetup: true,
 			options: volumeOptions.collect { it.name }
 		input "sirenLength", "enum",
-			title: "Siren Duration:",
+			title: "Alarm Duration:",
 			defaultValue: sirenLengthSetting,
 			required: false,
 			displayDuringSetup: true,
 			options: sirenLengthOptions.collect { it.name }
 		input "sirenLED", "enum",
-			title: "Siren LED:",
+			title: "Alarm LED:",
 			defaultValue: sirenLEDSetting,
 			required: false,
 			displayDuringSetup: true,
-			options: ledOptions.collect { it.name }
+			options: offOnOptions.collect { it.name }
+		input "sirenDelay", "enum",
+			title: "Alarm Delay:",
+			defaultValue: sirenDelaySetting,
+			required: false,
+			displayDuringSetup: true,
+			options: sirenDelayOptions.collect { it.name }
+		input "sirenDelayBeep", "enum",
+			title: "Alarm Delay Beep:",
+				defaultValue: sirenDelayBeepSetting,
+				required: false,
+				displayDuringSetup: true,
+				options: offOnOptions.collect { it.name }
 		// input "onChimeSound", "number",
 			// title: "Switch On Chime Sound (1-10):",
 			// range: "1..10",
@@ -149,7 +166,7 @@ metadata {
 			defaultValue: chimeLEDSetting,
 			required: false,
 			displayDuringSetup: true,
-			options: ledOptions.collect { it.name }
+			options: offOnOptions.collect { it.name }
 		input "reportBatteryEvery", "number", 
 			title: "Battery Reporting Interval (Hours)", 
 			range: "1..167",
@@ -185,11 +202,11 @@ metadata {
 					action: "off", 
 					icon:"st.Entertainment.entertainment2", 					
 					backgroundColor: "#cc99cc"
-				attributeState "bell", 
-					label:'Bell!', 
-					action: "off", 
-					icon:"st.Seasonal Winter.seasonal-winter-002", 
-					backgroundColor:"#99ff99"
+				// attributeState "bell", 
+					// label:'Bell!', 
+					// action: "off", 
+					// icon:"st.Seasonal Winter.seasonal-winter-002", 
+					// backgroundColor:"#99ff99"
 				// attributeState "custom", 
 					// label:'Chime!', 
 					// action: "off", 
@@ -220,19 +237,6 @@ metadata {
 				icon:"st.alarm.alarm.alarm", 
 				background: "#ffffff"	
 		}
-		
-		// standardTile("playSiren", "device.alarm", width: 2, height: 2) {
-			// state "default", 
-				// label:'Siren', 
-				// action:"alarm.siren", 
-				// icon:"st.security.alarm.clear", 
-				// backgroundColor:"#ff9999"
-			// state "siren",
-				// label:'Turn Off',
-				// action:"alarm.off",
-				// icon:"st.alarm.alarm.alarm", 
-				// background: "#ffffff"	
-		// }
 				
 		// standardTile("playOn", "device.switch", width: 2, height: 2) {
 			// state "default", 
@@ -435,7 +439,7 @@ def playText(message, volume=null) {
 	
 	def sound = soundMessages.find { it.name == "${text?.toLowerCase()?.replace('_', '')}" }?.value
 	
-	return customChime(validateSound(sound ?: text, 1))
+	return startChime(validateSound(sound ?: text, 1))
 }
 
 private getTextFromTTSUrl(URI) {
@@ -456,6 +460,8 @@ def pause() { return off() }
 def stop() { return off() }
 def off() {
 	logDebug "Turning Off()"
+	state.pendingSiren = false
+	state.sirenStartTime = null
 	return sirenToggleCmds(0x00)
 }
 
@@ -466,11 +472,21 @@ def on() {
 	return chimePlayCmds(onChimeSoundSetting)
 }
 
-// def beep() {
-	// logDebug "Playing Beep Chime (#${beepChimeSoundSetting})"	
-	// addPendingSound("status", "beep")
-	// return chimePlayCmds(beepChimeSoundSetting)
-// }
+def beep() {
+	def beepSound = 10
+	logDebug "Beeping (#${beepSound})"
+	if (state.pendingSiren) {	
+		return [
+			indicatorSetCmd(beepSound),
+			"delay 1000",
+			indicatorGetCmd()
+		]
+	}
+	else {
+		addPendingSound("status", "chime")
+		return chimePlayCmds(beepSound)
+	}
+}
 
 def bell1() { playText("bell1") }
 def bell2() { playText("bell2") }
@@ -483,29 +499,59 @@ def chime3() { playText("chime3") }
 def siren1() { playText("siren1") }
 def siren2() { playText("siren2") }
 
-private customChime(sound) {	
-	def val = validateSound(sound, 1)
-	if ("${sound}" != "${val}") {
-		logDebug "Playing Chime (#${val}) - (${sound} is not a valid sound number)"
+private startChime(sound) {	
+	if (!state.sirenStartTime) {
+		def val = validateSound(sound, 1)
+		if ("${sound}" != "${val}") {
+			logDebug "Playing Chime (#${val}) - (${sound} is not a valid sound number)"
+		}
+		else {
+			logDebug "Playing Chime (#${val})"	
+		}	
+		addPendingSound("status", "chime")	
+		return chimePlayCmds(val)
 	}
 	else {
-		logDebug "Playing Chime (#${val})"	
-	}	
-	addPendingSound("status", "chime")	
-	return chimePlayCmds(val)
+		logDebug "Unable to start chime because alarm is on or pending."
+	}
 }
 
-def siren() { return both() }
-def strobe() { return both() }
-def both() {
-	logDebug "Playing Siren (#${sirenSoundSetting})"
-	addPendingSound("alarm", "both")
+def strobe() { 
+	return siren() 
+}
 
+def both() {
+	def delayMS = (convertOptionSettingToInt(sirenDelayOptions, sirenDelaySetting) * 1000)
+	
+	if (delayMS != 0) {		
+		state.pendingSound = []		
+		sendEvent(name: "status", value: "pending")
+
+		state.pendingSiren = true
+		state.sirenStartTime = new Date().time + delayMS
+		
+		def result = []
+		if (sirenDelayBeepSetting == "On") {
+			result += beep()
+		}		
+		result << "delay ${delayMS}"
+		result << basicGetCmd()
+		return result
+	}
+	else {
+		return siren()
+	}
+}
+
+def siren() { 
+	state.sirenStartTime = new Date().time
+	state.pendingSiren = false
+	logDebug "Turning on Siren (${sirenSoundSetting})"
+	addPendingSound("alarm", "siren")
+	
 	def result = []
-	// result << configGetCmd(sirenSoundParamNum)
-	// result << "delay 1000"
 	result += sirenToggleCmds(0xFF)
-	return result
+	return result	 
 }
 
 private addPendingSound(name, value) {
@@ -627,10 +673,19 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	return []
 }
 
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
+	if (state.pendingSiren) {
+		state.pendingSiren = false
+		return response(siren())
+	}
+	else {
+		return []
+	}
+}
+
 def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
-	def result = []
-		
-	if (cmd.value == 0x00) {
+	def result = []	
+	if (cmd.value == 0x00 && !state.pendingSiren) {
 		result += handleDeviceOff()
 	}
 	else {
@@ -641,7 +696,18 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.indicatorv1.IndicatorReport cmd) {
-	return handleDeviceOn(state.activeSound, state.pendingSound)
+	def beepDelayMS = 2000
+	if (state.pendingSiren) {
+		if ((state.sirenStartTime - beepDelayMS) > new Date().time) {
+			def result = []
+			result << "delay ${beepDelayMS}"
+			result += beep()
+			return response(result)
+		}
+	}
+	else {
+		return handleDeviceOn(state.activeSound, state.pendingSound)
+	}
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
@@ -653,11 +719,13 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 			if (state.pendingSound?.name == "alarm") {
 				result += handleDeviceOn(state.activeSound, state.pendingSound)
 			}
-			else if (!state.pendingSound) {
-				logTrace "Unable to handle 'on' notification event because the pending sound has not been set."
-			}
-			else {
-				logTrace "Ignored 'on' notification event for chime."
+			else if (!state.pendingSiren) {
+				if (!state.pendingSound) {
+					logTrace "Unable to handle 'on' notification event because the pending sound has not been set."
+				}
+				else {
+					logTrace "Ignored 'on' notification event for chime."
+				}
 			}
 		}
 		else {
@@ -714,7 +782,8 @@ private handleDeviceOff() {
 			result << createEvent(getEventMap([name: "$n", value: "off"], displayed))
 		}
 	}
-
+	state.pendingSiren = false
+	state.sirenStartTime = null
 	return result
 }
 
@@ -759,14 +828,21 @@ private indicatorSetCmd(val) {
 	return zwave.indicatorV1.indicatorSet(value: val).format()
 }
 
+private basicGetCmd() {
+	return zwave.basicV1.basicGet().format()
+}
+
 private sirenToggleCmds(val) {
-	def cmds = [
+	def cmds = []
+	
+	if (val == 0x00) {
+		cmds << indicatorSetCmd(0xFF)		
+	}
+	cmds += [
 		switchBinarySetCmd(val),
 		switchBinaryGetCmd()
 	]
-	if (val == 0x00) {	
-		cmds << indicatorSetCmd(0xFF)
-	}
+	
 	return delayBetween(cmds, 100)		
 }
 private switchBinaryGetCmd() {
@@ -785,7 +861,6 @@ private configGetCmd(paramNum) {
 }
 
 private configSetCmd(paramNum, val) {
-//	logTrace "configSetCmd($paramNum, $val)"
 	return zwave.configurationV1.configurationSet(parameterNumber: paramNum, size: 1, scaledConfigurationValue: val).format()
 }
 
@@ -794,13 +869,13 @@ private configSetCmd(paramNum, val) {
 private getConfigData() {
 	// [paramNum: 6, name: "Chime Sound"]
 	return [		
-		[paramNum: 5, name: "Siren Sound", value: convertOptionSettingToInt(sirenOptions, sirenSoundSetting, 9)],
-		[paramNum: 1, name: "Siren Volume", value: convertOptionSettingToInt(volumeOptions, sirenVolumeSetting, 2)],
-		[paramNum: 2, name: "Siren Length", value: convertOptionSettingToInt(sirenLengthOptions, sirenLengthSetting, 2)],
-		[paramNum: 8, name: "Siren LED", value: convertOptionSettingToInt(ledOptions, sirenLEDSetting, 1)],
-		[paramNum: 4, name: "Chime Volume", value: convertOptionSettingToInt(volumeOptions, chimeVolumeSetting, 2)],
-		[paramNum: 3, name: "Chime Repeat", value: convertOptionSettingToInt(chimeRepeatOptions, chimeRepeatSetting, 1)],
-		[paramNum: 9, name: "Chime LED", value: convertOptionSettingToInt(ledOptions, chimeLEDSetting, 0)],
+		[paramNum: 5, name: "Siren Sound", value: convertOptionSettingToInt(sirenOptions, sirenSoundSetting)],
+		[paramNum: 1, name: "Siren Volume", value: convertOptionSettingToInt(volumeOptions, sirenVolumeSetting)],
+		[paramNum: 2, name: "Siren Length", value: convertOptionSettingToInt(sirenLengthOptions, sirenLengthSetting)],
+		[paramNum: 8, name: "Siren LED", value: convertOptionSettingToInt(offOnOptions, sirenLEDSetting)],
+		[paramNum: 4, name: "Chime Volume", value: convertOptionSettingToInt(volumeOptions, chimeVolumeSetting)],
+		[paramNum: 3, name: "Chime Repeat", value: convertOptionSettingToInt(chimeRepeatOptions, chimeRepeatSetting)],
+		[paramNum: 9, name: "Chime LED", value: convertOptionSettingToInt(offOnOptions, chimeLEDSetting)],
 		[paramNum: 7, name: "Chime Mode", value: chimeModeSetting]
 	]	
 }
@@ -820,6 +895,12 @@ private getSirenLengthSetting() {
 }
 private getSirenLEDSetting() {
 	return settings?.sirenLED ?: "On"
+}
+private getSirenDelaySetting() {
+	return settings?.sirenDelay ?: "Off"
+}
+private getSirenDelayBeepSetting() {
+	return settings?.sirenDelayBeep ?: "Off"
 }
 // private getOnChimeSoundSetting() {
 	// return validateSound(settings?.onChimeSound, 1)
@@ -900,7 +981,17 @@ private getVolumeOptions() {
 	]
 }
 
-private getLedOptions() { 
+private getSirenDelayOptions() { 
+	[
+		[name: "Off", value: 0],
+		[name: "15 Seconds", value: 15],
+		[name: "30 Seconds", value: 30],
+		[name: "60 Seconds", value: 60],
+		[name: "90 Seconds", value: 90]
+	]
+}
+
+private getOffOnOptions() { 
 	[
 		[name: "Off", value: 0],
 		[name: "On", value: 1]
@@ -920,8 +1011,8 @@ private getNoLengthMsg() {
 	return "Play until battery is depleted" 
 }
 
-private convertOptionSettingToInt(options, settingVal, defaultVal) {
-	return safeToInt(options?.find { "${settingVal}" == it.name }?.value, defaultVal)
+private convertOptionSettingToInt(options, settingVal) {
+	return safeToInt(options?.find { "${settingVal}" == it.name }?.value, 1)
 }
 
 private safeToInt(val, defaultVal=-1) {
@@ -939,5 +1030,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	log.trace "$msg"
+	// log.trace "$msg"
 }
