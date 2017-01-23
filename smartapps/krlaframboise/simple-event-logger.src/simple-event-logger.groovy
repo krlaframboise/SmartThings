@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - SmartApp v 1.1.3
+ *  Simple Event Logger - SmartApp v 1.2
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,9 @@
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
+ *
+ *    1.2 (01/22/2017)
+ *      - Added archive functionality for when the sheet is full or by specific number of events.
  *
  *    1.1.3 (01/19/2017)
  *      - Retrieve events from state instead of event history.
@@ -71,8 +74,8 @@ preferences {
 	page(name: "createTokenPage")
 }
 
-def version() { return "01.01.03" }
-def gsVersion() { return "01.01.00" }
+def version() { return "01.02.00" }
+def gsVersion() { return "01.02.00" }
 
 def mainPage() {
 	dynamicPage(name:"mainPage", uninstall:true, install:true) {
@@ -279,8 +282,21 @@ private getOptionsPageContent() {
 		input "deleteExtraColumns", "bool",
 			title: "Delete Extra Columns?",
 			description: "Enable this setting to increase the log size.",
-			defaultValue: false,
+			defaultValue: true,
 			required: false
+		input "archiveType", "enum",
+			title: "Archive Type:",
+			defaultValue: "None",
+			submitOnChange: true,
+			required: false,
+			options: ["None", "Out of Space", "Events"]
+		if (settings?.archiveType && !(settings?.archiveType in ["None", "Out of Space"])) {
+			input "archiveInterval", "number",
+				title: "Archive After How Many Events?",
+				defaultValue: 50000,
+				required: false,
+				range: "100..100000"
+		}
 	}
 	section("${getWebAppName()}") {		
 		input "googleWebAppUrl", "text",
@@ -464,16 +480,17 @@ private verifyGSVersion() {
 def logNewEvents() {	
 	def status = state.loggingStatus ?: [:]
 	
-	// Move the date range to the next position unless the google script failed.
-	if (!status.success) {
+	// Move the date range to the next position unless the google script failed last time or was skipped due to the sheet being archived.
+	if (!status.success || status.eventsArchived) {
 		status.lastEventTime = status.firstEventTime
 	}
 	
 	status.success = null
 	status.finished = null
+	status.eventsArchived = null
 	status.eventsLogged = 0
 	status.started = new Date().time	
-	status.firstEventTime = safeToLong(status.lastEventTime) ?: (new Date(new Date().time - (60 * 60 * 1000))).time
+	status.firstEventTime = safeToLong(status.lastEventTime) ?: (new Date(new Date().time - (5 * 60 * 1000))).time
 	status.lastEventTime = status.started
 	
 	def startDate = new Date(status.firstEventTime + 1000)
@@ -500,6 +517,7 @@ private postEventsToGoogleSheets(events) {
 	def jsonOutput = new groovy.json.JsonOutput()
 	def jsonData = jsonOutput.toJson([
 		postBackUrl: "${state.endpoint}update-logging-status",
+		archiveOptions: getArchiveOptions(),
 		logDesc: (settings?.logDesc != false),
 		deleteExtraColumns: (settings?.deleteExtraColumns == true),
 		events: events
@@ -512,6 +530,14 @@ private postEventsToGoogleSheets(events) {
 	]	
 	
 	asynchttp_v1.post(processLogEventsResponse, params)
+}
+
+private getArchiveOptions() {
+	return [
+		logIsFull: (state.loggingStatus?.logIsFull ? true : false),
+		type: (settings?.archiveType ?: ""),
+		interval: safeToLong(settings?.archiveInterval, 50000)
+	]
 }
 
 // Google Sheets redirects the post to a temporary url so the response is usually 302 which is page moved.
@@ -557,6 +583,8 @@ def api_updateLoggingStatus() {
 	def data = request.JSON
 	if (data) {
 		status.success = data.success
+		status.eventsArchived = data.eventsArchived
+		status.logIsFull = data.logIsFull
 		status.gsVersion = data.version
 		status.finished = new Date().time
 		status.eventsLogged = data.eventsLogged
@@ -576,9 +604,17 @@ def api_updateLoggingStatus() {
 }
 
 private logLoggingStatus() {
-	def status = getFormattedLoggingStatus()	
+	def status = getFormattedLoggingStatus()
+	if (status.logIsFull) {
+		logWarn "The Google Sheet is Out of Space"
+	}
 	if (state.loggingStatus?.success) {
-		logDebug "${getWebAppName()} logged ${status.eventsLogged} events between ${status.start} and ${status.end} in ${status.runTime}."
+		if (status.eventsArchived) {
+			logDebug "${getWebAppName()} archived events in ${status.runTime}."
+		}
+		else {
+			logDebug "${getWebAppName()} logged ${status.eventsLogged} events between ${status.start} and ${status.end} in ${status.runTime}."			
+		}		
 	}
 	else {
 		logWarn "${getWebAppName()} failed to log events between ${status.start} and ${status.end}."
@@ -608,13 +644,13 @@ private getNewEvents(startDate, endDate) {
 	
 	getSelectedDevices()?.each  { device ->
 		getDeviceAllowedAttrs(device?.displayName)?.each { attr ->
-			device.statesBetween("${attr}", startDate, endDate, [max: 200])?.each { event ->
+			device.statesBetween("${attr}", startDate, endDate, [max: maxEvents])?.each { event ->
 				events << [
 					time: getFormattedLocalTime(event.date?.time),
 					device: device.displayName,
 					name: "${attr}",
 					value: event.value,
-					desc: "${event.value} ${event.unit}"
+					desc: "${event.value}" + (event.unit ? " ${event.unit}" : "")
 				]
 			}
 		}
@@ -794,28 +830,38 @@ private getCapabilities() {
 	]
 }
 
-private averageSupportedAttributes() {
+// private averageSupportedAttributes() {
+	// [
+		// "battery",
+		// "carbonDioxide",
+		// "colorTemperature",
+		// "coolingSetpoint",
+		// "energy",
+		// "heatingSetpoint",
+		// "humidity",
+		// "illuminance",
+		// "level",
+		// "lqi",
+		// "pH",
+		// "power",
+		// "rssi",
+		// "soundPressureLevel",
+		// "temperature",
+		// "thermostatSetpoint",
+		// "ultravioletIndex",
+		// "voltage"
+	// ]
+// }
+
+private getArchiveTypeOptions() {
 	[
-		"battery",
-		"carbonDioxide",
-		"colorTemperature",
-		"coolingSetpoint",
-		"energy",
-		"heatingSetpoint",
-		"humidity",
-		"illuminance",
-		"level",
-		"lqi",
-		"pH",
-		"power",
-		"rssi",
-		"soundPressureLevel",
-		"temperature",
-		"thermostatSetpoint",
-		"ultravioletIndex",
-		"voltage"
+		[name: "None"],
+		[name: "Out of Space"],
+		[name: "Weeks", defaultVal: 2, range: "1..52"],
+		[name: "Events", defaultVal: 25000, range: "1000..100000"]
 	]
 }
+
 
 private getWebAppName() {
 	return "Google Sheets Web App"
