@@ -5,12 +5,12 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:  https://community.smartthings.com/t/release-dome-siren-official/?u=krlaframboise
+ *  URL to documentation:  
  *    
  *
  *  Changelog:
  *
- *    1.0 (01/23/2017)
+ *    1.0 (01/24/2017)
  *      - Initial Release
  *
  *
@@ -78,7 +78,7 @@ metadata {
 			required: false,
 			defaultValue: sirenVolumeSetting,			
 			displayDuringSetup: true,
-			options: volumeOptions.collect { it.name }
+			options: sirenVolumeOptions.collect { it.name }
 		input "sirenLength", "enum",
 			title: "Alarm Duration:",
 			defaultValue: sirenLengthSetting,
@@ -108,7 +108,7 @@ metadata {
 			required: false,
 			defaultValue: chimeVolumeSetting,
 			displayDuringSetup: true,
-			options: volumeOptions.collect { it.name }
+			options: chimeVolumeOptions.collect { it.name }
 		input "chimeRepeat", "enum",
 			title: "Chime Repeat:",
 			required: false,
@@ -776,10 +776,10 @@ private getConfigData() {
 	// [paramNum: 6, name: "Chime Sound"]
 	return [		
 		[paramNum: 5, name: "Siren Sound", value: convertOptionSettingToInt(sirenSoundOptions, sirenSoundSetting)],
-		[paramNum: 1, name: "Siren Volume", value: convertOptionSettingToInt(volumeOptions, sirenVolumeSetting)],
+		[paramNum: 1, name: "Siren Volume", value: convertOptionSettingToInt(sirenVolumeOptions, sirenVolumeSetting)],
 		[paramNum: 2, name: "Siren Length", value: convertOptionSettingToInt(sirenLengthOptions, sirenLengthSetting)],
 		[paramNum: 8, name: "Siren LED", value: convertOptionSettingToInt(ledOptions, sirenLEDSetting)],
-		[paramNum: 4, name: "Chime Volume", value: convertOptionSettingToInt(volumeOptions, chimeVolumeSetting)],
+		[paramNum: 4, name: "Chime Volume", value: convertOptionSettingToInt(chimeVolumeOptions, chimeVolumeSetting)],
 		[paramNum: 3, name: "Chime Repeat", value: convertOptionSettingToInt(chimeRepeatOptions, chimeRepeatSetting)],
 		[paramNum: 9, name: "Chime LED", value: convertOptionSettingToInt(ledOptions, chimeLEDSetting)],
 		[paramNum: 7, name: "Chime Mode", value: chimeModeSetting]
@@ -794,7 +794,7 @@ private getSirenSoundSetting() {
 	return settings?.sirenSound ?: findDefaultOptionName(sirenSoundOptions)
 }
 private getSirenVolumeSetting() {
-	return settings?.sirenVolume ?: findDefaultOptionName(volumeOptions)
+	return settings?.sirenVolume ?: findDefaultOptionName(sirenVolumeOptions)
 }
 private getSirenLengthSetting() {
 	return settings?.sirenLength ?: findDefaultOptionName(sirenLengthOptions)
@@ -809,7 +809,7 @@ private getSirenDelayBeepSetting() {
 	return settings?.sirenDelayBeep ?: findDefaultOptionName(sirenDelayBeepOptions)
 }
 private getChimeVolumeSetting() {
-	return settings?.chimeVolume ?: findDefaultOptionName(volumeOptions)
+	return settings?.chimeVolume ?: findDefaultOptionName(chimeVolumeOptions)
 }
 private getChimeRepeatSetting() {
 	return settings?.chimeRepeat ?: findDefaultOptionName(chimeRepeatOptions)
@@ -868,16 +868,24 @@ private getSirenSoundOptions() {
 	[
 		[name: "Alarm 1", value: 1],
 		[name: "Alarm 2", value: 7],
-		[name: "Alarm 3", value: 8],
-		[name: formatDefaultOptionName("Alarm 4"), value: 9],
+		[name: formatDefaultOptionName("Alarm 3"), value: 8],
+		[name: "Alarm 4", value: 9],
 		[name: "Alarm 5", value: 10]
 	]
 }
 
-private getVolumeOptions() { 
+private getSirenVolumeOptions() { 
 	[
 		[name: "Low", value: 1],
-		[name: formatDefaultOptionName("Medium"), value: 2],
+		[name: "Medium", value: 2],
+		[name: formatDefaultOptionName("High"), value: 3]
+	]
+}
+
+private getChimeVolumeOptions() { 
+	[
+		[name: formatDefaultOptionName("Low"), value: 1],
+		[name: "Medium", value: 2],
 		[name: "High", value: 3]
 	]
 }
