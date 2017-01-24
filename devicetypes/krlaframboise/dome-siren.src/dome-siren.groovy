@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.0.1
+ *  Dome Siren v1.0.2
  *  (Model: DMS01)
  *
  *  Author: 
@@ -9,6 +9,10 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.2 (01/24/2017)
+ *      - Added delay to beep interval to stop the beeps from randomly stopping.
+ *      - Fixed race condition for when SHM turns the siren on and plays a chime at the same time.
  *
  *    1.0.1 (01/24/2017)
  *      - Main tile toggle siren.
@@ -51,6 +55,7 @@ metadata {
 		command "playSoundAndTrack"
 		command "playTrackAtVolume"		
 
+		command "on"
 		command "bell1"
 		command "bell2"
 		command "bell3"
@@ -350,7 +355,7 @@ def playText(message, volume=null) {
 	
 	def sound = soundMessages.find { it.name == "${text?.toLowerCase()?.replace('_', '')}" }?.value
 	
-	return startChime(validateSound(sound ?: text, 1))
+	return startChime(sound ?: text)
 }
 
 private getTextFromTTSUrl(URI) {
@@ -378,9 +383,10 @@ def off() {
 
 def play() { return on() }
 def on() {	
-	logDebug "Playing On Chime (#${onChimeSoundSetting})"	
-	addPendingSound("switch", "on")
-	return chimePlayCmds(onChimeSoundSetting)
+	logDebug "Playing Default Chime"	
+	// addPendingSound("switch", "on")
+	// return chimePlayCmds(onChimeSoundSetting)
+	return startChime(null)
 }
 
 def beep() {
@@ -394,8 +400,9 @@ def beep() {
 		]
 	}
 	else {
-		addPendingSound("status", "chime")
-		return chimePlayCmds(beepSound)
+		// addPendingSound("status", "chime")
+		// return chimePlayCmds(beepSound)
+		return startChime(beepSound)
 	}
 }
 
@@ -410,9 +417,10 @@ def chime3() { playText("chime3") }
 def siren1() { playText("siren1") }
 def siren2() { playText("siren2") }
 
-private startChime(sound) {	
-	if (!state.sirenStartTime) {
+private startChime(sound) {		
+	if (!state.sirenStartTime) {		
 		def val = validateSound(sound, 1)
+		
 		if ("${sound}" != "${val}") {
 			logDebug "Playing Chime (#${val}) - (${sound} is not a valid sound number)"
 		}
@@ -437,10 +445,9 @@ def both() {
 	if (delayMS != 0) {		
 		state.pendingSound = []		
 		sendEvent(name: "status", value: "pending")
-
 		state.pendingSiren = true
 		state.sirenStartTime = new Date().time + delayMS
-		
+	
 		def result = []
 		if (sirenDelayBeepSetting == "On") {
 			result += beep()
@@ -583,7 +590,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
-	if (state.pendingSiren) {
+	if (state.pendingSiren || (state.sirenStartTime && device.currentValue("status") != "alarm")) {
 		state.pendingSiren = false
 		return response(siren())
 	}
@@ -605,9 +612,9 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.indicatorv1.IndicatorReport cmd) {
-	def beepDelayMS = 2000
+	def beepDelayMS = 2500
 	if (state.pendingSiren) {
-		if ((state.sirenStartTime - beepDelayMS) > new Date().time) {
+		if (((state.sirenStartTime - beepDelayMS) > new Date().time) && (sirenDelayBeepSetting == "On")){
 			def result = []
 			result << "delay ${beepDelayMS}"
 			result += beep()
@@ -723,7 +730,7 @@ private chimePlayCmds(sound) {
 		indicatorSetCmd(sound),
 		indicatorGetCmd()
 	]
-	if (sound == 9 || sound == 10) {
+	if (sound == 1 || sound == 9 || sound == 10) {
 		// Fixes problem where these sounds stop playing before the on/beep events are raised causing the off events to never get raised.
 		cmds << "delay 3000"
 		cmds << switchBinaryGetCmd()
@@ -744,14 +751,20 @@ private basicGetCmd() {
 private sirenToggleCmds(val) {
 	def cmds = []
 	
-	if (val == 0x00) {
-		cmds << indicatorSetCmd(0xFF)		
-	}
 	cmds += [
 		switchBinarySetCmd(val),
 		switchBinaryGetCmd()
 	]
-	
+	if (val == 0x00) {
+		cmds << indicatorSetCmd(0xFF)		
+	}
+	else {
+		// If the chime and siren are setup in SHM a race condition often causes the alarm to get cancelled by the siren.  If that happens the basic report handler will turn it back on.
+		cmds += [
+			"delay 2000",
+			basicGetCmd()
+		]
+	}	
 	return delayBetween(cmds, 100)		
 }
 private switchBinaryGetCmd() {
