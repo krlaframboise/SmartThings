@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.0
+ *  Dome Siren v1.0.1
  *  (Model: DMS01)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.1 (01/24/2017)
+ *      - Main tile toggle siren.
  *
  *    1.0 (01/24/2017)
  *      - Initial Release
@@ -138,7 +141,7 @@ metadata {
 			tileAttribute ("device.status", key: "PRIMARY_CONTROL") {
 				attributeState "off", 
 					label:'Off', 
-					action: "off", 
+					action: "siren", 
 					icon: "st.security.alarm.clear",
 					backgroundColor:"#ffffff"
 				attributeState "alarm", 
