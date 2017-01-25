@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.0 (01/24/2017)
+ *    1.0 (01/25/2017)
  *      - Initial Release
  *
  *
@@ -176,7 +176,7 @@ private toggleValve(pending) {
 	return [		
 		switchBinarySetCmd(pending.cmdValue),
 		switchBinaryGetCmd(),
-		"delay 7000",
+		"delay 9000",
 		switchBinaryGetCmd()
 	]
 }
