@@ -237,6 +237,7 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	logTrace "BatteryReport: $cmd"
 	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
 	state.lastBatteryReport = new Date().time	
+	logDebug "Battery ${val}%"
 	[
 		createEvent(getEventMap("battery", val, null, "%"))
 	]
@@ -290,7 +291,7 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
-	logDebug "SensorBinaryReport: $cmd"
+	logTrace "SensorBinaryReport: $cmd"
 	return []
 }
 
