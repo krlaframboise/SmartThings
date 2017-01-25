@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.0.2
+ *  Dome Siren v1.0
  *  (Model: DMS01)
  *
  *  Author: 
@@ -10,14 +10,7 @@
  *
  *  Changelog:
  *
- *    1.0.2 (01/24/2017)
- *      - Added delay to beep interval to stop the beeps from randomly stopping.
- *      - Fixed race condition for when SHM turns the siren on and plays a chime at the same time.
- *
- *    1.0.1 (01/24/2017)
- *      - Main tile toggle siren.
- *
- *    1.0 (01/24/2017)
+ *    1.0 (01/25/2017)
  *      - Initial Release
  *
  *
