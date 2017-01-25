@@ -57,6 +57,10 @@
 	tiles(scale: 2) {
 		multiAttributeTile(name:"status", type: "generic", width: 6, height: 4, canChangeIcon: true){
 			tileAttribute ("device.status", key: "PRIMARY_CONTROL") {
+				attributeState "default", 
+					label:'', 
+					icon:"st.valves.water.closed", 
+					backgroundColor:"#ffffff"				
 				attributeState "closing", 
 					label:'Closing', 
 					action: "valve.open", 
