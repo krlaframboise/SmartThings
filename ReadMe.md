@@ -36,8 +36,8 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#thingshield-timer">ThingShield Timer</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zipato-multisound-siren">Zipato Multisound Siren</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zoozmonoprice-4-in-1-multisensor">Zooz 4-in-1 Multisensor</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zooz-smart-chime">Zooz Smart Chime</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zooz-z-wave-power-strip">Zooz Z-Wave Power Strip</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zooz-power-strip">Zooz Power Strip</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zooz-smart-chime">Zooz Smart Chime</a></li>			
 		</ul>
 	</li>
 </ul>
@@ -127,9 +127,8 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li>This is a device handler for the Dome Siren (DMS01)</li>
 <li>Supports all functionality that the device offers</li>
 <li><a href="https://community.smartthings.com/t/release-dome-wireless-z-wave-plus-siren/71091?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/devicetypes/krlaframboise/dome-siren.src/dome-siren.groovy">View Dome Siren - Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-siren.src/dome-siren.groovy">View Dome Siren - Device Handler Code</a></li>
 </ul>
-
 
 <hr />
 
@@ -139,7 +138,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li>This is a device handler for the Dome Water Shut Off (DMWV1)</li>
 <li>You can open the valve with either Valve.open or Switch.on</li>
 <li>You can close the valve with either Valve.close or Switch.off</li>
-<li><a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/devicetypes/krlaframboise/dome-water-shut-off.src/dome-water-shut-off.groovy">View Dome Water Shut Off - Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-water-shut-off.src/dome-water-shut-off.groovy">View Dome Water Shut Off - Device Handler Code</a></li>
 </ul>
 
 
@@ -268,26 +267,12 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>There's also a setting for <em>Battery Reporting Interval (Hours)</em> which accepts the same range of values.</li>
 <li>When the cover of the device is opened, it raises the "tamper" event with the value "detected".</li>
 <li>The setting <em>Automatically Clear Tamper</em> allows you to choose whether it raises the tamper clear event when the device cover is closed or if you have to press the "Refresh" button to clear it.<br></li>
-<li><a href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/devicetypes/krlaframboise/zooz-monoprice-4-in-1-multisensor.src/zooz-monoprice-4-in-1-multisensor.groovy">View Zooz/Monoprice 4-in-1 Multisensor - Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-monoprice-4-in-1-multisensor.src/zooz-monoprice-4-in-1-multisensor.groovy">View Zooz/Monoprice 4-in-1 Multisensor - Device Handler Code</a></li>
 </ul>
 
 <hr />
 
-<h3>Zooz Smart Chime</h3>
-
-<ul>
-<li>This is a device handler for the Zooz Smart Chime (ZSE33).<br /></li>
-<li>Has 10 sounds that can be used as chimes or sirens</li>
-<li>Has 3 volume settings that can be set for chime and siren.</li>
-<li>Optionally use flashing LED for chime and siren.</li>
-<li>Use device as alarm to play the siren sound, switch to play the chime.</li>
-<li>Use the customChime command to play a sound by number.</li>
-<li><a id="ZoozSmartChime" href="https://raw.githubusercontent.com/krlaframboise/SmartThings/master/devicetypes/krlaframboise/zooz-smart-chime.src/zooz-smart-chime.groovy">View Zooz Smart Chime - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Zooz Z-Wave Power Strip</h3>
+<h3>Zooz Power Strip</h3>
 
 <ul>
 <li>This is a device handler for the Zooz Z-Wave Power Strip (ZEN20).<br /></li>
@@ -305,5 +290,19 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>The Main Switch shows "off" when ALL of the outlets with the Main Switch Behavior set to "off" or "on/off" are off.</li>
 <li>Main Switch Delay setting allows the Main Switch to turn the outlets on/off gradually instead of all at once.</li>
 <li><a href="https://community.smartthings.com/t/release-zooz-power-strip/68860?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
-<li><a id="ZoozPowerStrip" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-strip.src/zooz-power-strip.groovy">View Zooz Z-Wave Power Strip - Device Handler Code</a></li>
+<li><a id="ZoozPowerStrip" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-strip.src/zooz-power-strip.groovy">View Zooz Power Strip - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Zooz Smart Chime</h3>
+
+<ul>
+<li>This is a device handler for the Zooz Smart Chime (ZSE33).<br /></li>
+<li>Has 10 sounds that can be used as chimes or sirens</li>
+<li>Has 3 volume settings that can be set for chime and siren.</li>
+<li>Optionally use flashing LED for chime and siren.</li>
+<li>Use device as alarm to play the siren sound, switch to play the chime.</li>
+<li>Use the customChime command to play a sound by number.</li>
+<li><a id="ZoozSmartChime" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-smart-chime.src/zooz-smart-chime.groovy">View Zooz Smart Chime - Device Handler Code</a></li>
 </ul>
