@@ -166,7 +166,7 @@ def refresh() {
 }
 
 private logForceWakeupMessage(msg) {
-	logDebug "${msg}  You can force the device to wake up immediately by using a paper clip to push the button on the bottom of the device."
+	logDebug "${msg}  You can force the device to wake up immediately by pressing the connect button twice."
 }
 
 def parse(String description) {
@@ -338,7 +338,7 @@ private configGetCmd(paramNum) {
 }
 
 private configSetCmd(paramNum, val) {
-	return zwave.configurationV1.configurationSet(parameterNumber: paramNum, size: 2, scaledConfigurationValue: val).format()
+	return zwave.configurationV1.configurationSet(parameterNumber: paramNum, size: 1, scaledConfigurationValue: val).format()
 }
 
 // Settings
@@ -395,7 +395,7 @@ private getWakeUpIntervalOptions() {
 }
 
 private convertOptionSettingToInt(options, settingVal) {
-	return safeToInt(options?.find { "${settingVal}" == it.name }?.value, 1)
+	return safeToInt(options?.find { "${settingVal}" == it.name }?.value, 0)
 }
 
 private formatDefaultOptionName(val) {
