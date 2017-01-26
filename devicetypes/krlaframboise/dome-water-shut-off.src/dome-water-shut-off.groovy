@@ -5,12 +5,12 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:  
+ *  URL to documentation:  https://community.smartthings.com/t/release-dome-water-main-shut-off-official/75500?u=krlaframboise
  *    
  *
  *  Changelog:
  *
- *    1.0 (01/25/2017)
+ *    1.0 (01/26/2017)
  *      - Initial Release
  *
  *
