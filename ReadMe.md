@@ -23,7 +23,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#aeon-labs-multifunction-siren">Aeon Labs Multifunction Siren</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#alarm-switch">Alarm Switch</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-siren">Dome Siren</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-water-shut-off">Dome Water Shut Off</a></li>			
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-water-shut-off">Dome Water Shut-Off</a></li>			
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#forcible-mobile-presence">Forcible Mobile Presence</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-doorwindow-sensor">GoControl/Linear Door/Window Sensor</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-motion-sensor">GoControl/Linear Motion Sensor</a></li>
@@ -132,13 +132,13 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 
 <hr />
 
-<h3>Dome Water Shut Off</h3>
+<h3>Dome Water Shut-Off</h3>
 
 <ul>
-<li>This is a device handler for the Dome Water Shut Off (DMWV1)</li>
+<li>This is a device handler for the Dome Water Shut-Off (DMWV1)</li>
 <li>You can open the valve with either Valve.open or Switch.on</li>
 <li>You can close the valve with either Valve.close or Switch.off</li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-water-shut-off.src/dome-water-shut-off.groovy">View Dome Water Shut Off - Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-water-shut-off.src/dome-water-shut-off.groovy">View Dome Water Shut-Off - Device Handler Code</a></li>
 </ul>
 
 
