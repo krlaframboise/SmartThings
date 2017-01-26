@@ -5,7 +5,7 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:  
+ *  URL to documentation:  https://community.smartthings.com/t/release-dome-siren-official/75499?u=krlaframboise
  *    
  *
  *  Changelog:
