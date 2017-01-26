@@ -1,5 +1,5 @@
 /**
- *  Dome Mouser v0.0
+ *  Dome Mouser v0.0.1
  *  (Model: DMMZ1)
  *
  *  Author: 
@@ -9,6 +9,10 @@
  *    
  *
  *  Changelog:
+ *
+ *    0.0.1 (01/25/2017)
+ *      - Added secondary text to main tile
+ *      - Changed motion active icon.
  *
  *    0.0 (01/25/2017)
  *      - Initial Release
@@ -86,7 +90,21 @@ metadata {
 					backgroundColor:"#79b821"
 				attributeState "tripped", 
 					label:'Tripped', 
-					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/dome-mouser.png", 
+					icon:"https://github.com/krlaframboise/Resources/blob/master/dome-mouser/dome-rip.png", 
+					backgroundColor:"#bc2323"
+			}
+			tileAttribute ("device.status", key: "SECONDARY_CONTROL") {
+				attributeState "disarmed", 
+					label:'Contact Open', 
+					icon: "st.contact.contact.open",
+					backgroundColor:"#ffffff"
+				attributeState "armed", 
+					label:'Contact Closed', 
+					icon:"st.contact.contact.closed", 
+					backgroundColor:"#79b821"
+				attributeState "tripped", 
+					label:'Motion Active', 
+					icon:"st.motion.motion.active", 
 					backgroundColor:"#bc2323"
 			}
 		}	
@@ -97,7 +115,11 @@ metadata {
 		
 		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2){
 			state "battery", label:'${currentValue}% battery', unit:""
-		}		
+		}
+		
+	standardTile("misc", "general", width: 6, height: 2) {
+			state "misc", label:'Refresh', action: "refresh", icon:"st.secondary.refresh-icon"
+		}
 				
 		main "status"
 		details(["status", "refresh", "battery"])
@@ -239,7 +261,7 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	state.lastBatteryReport = new Date().time	
 	logDebug "Battery ${val}%"
 	[
-		createEvent(getEventMap("battery", val, null, "%"))
+		createEvent(getEventMap("battery", val, null, null, "%"))
 	]
 }	
 
@@ -266,23 +288,24 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 	if (cmd.notificationType == 0x13) {
 		switch (cmd.event) {
 			case 0:
-				logDebug "Trap has been reset"
-				result << createEvent(getEventMap("status", "disarmed"))
+				logDebug "Trap Reset"
+				result << createEvent(getEventMap("status", "disarmed", null, "Trap Reset/Contact Open/Motion Inactive"))
 				result << createEvent(getEventMap("motion", "inactive", false))
+				result << createEvent(getEventMap("contact", "closed", false))
 				break
 			case 2:
 				logDebug "Trap is armed"
-				result << createEvent(getEventMap("status", "armed"))
+				result << createEvent(getEventMap("status", "armed", null, "Armed/Contact Closed"))
 				result << createEvent(getEventMap("contact", "closed", false))
 				break
 			case 4:
-				logDebug "Trap is unarmed"
-				result << createEvent(getEventMap("status", "disarmed"))
+				logDebug "Trap is disarmed"
+				result << createEvent(getEventMap("status", "disarmed", null, "Disarmed/Contact Open"))
 				result << createEvent(getEventMap("contact", "open", false))
 				break
 			case 8:
 				logDebug "Trap has been tripped"
-				result << createEvent(getEventMap("status", "tripped"))
+				result << createEvent(getEventMap("status", "tripped", null, "Tripped/Motion Active"))
 				result << createEvent(getEventMap("motion", "active", false))
 				break
 		}
@@ -300,7 +323,7 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	return []
 }
 
-private getEventMap(name, value, displayed=null, unit=null) {	
+private getEventMap(name, value, displayed=null, desc=null, unit=null) {	
 	def isStateChange = (device.currentValue(name) != value)
 	displayed = (displayed == null ? isStateChange : displayed)
 	def eventMap = [
@@ -309,9 +332,12 @@ private getEventMap(name, value, displayed=null, unit=null) {
 		displayed: displayed,
 		isStateChange: isStateChange
 	]
+	if (desc) {
+		eventMap.descriptionText = desc
+	}
 	if (unit) {
 		eventMap.unit = unit
-	}
+	}	
 	logTrace "Creating Event: ${eventMap}"
 	return eventMap
 }
