@@ -1,5 +1,5 @@
 /**
- *  Dome Mouser v0.0.1
+ *  Dome Mouser v0.0.2
  *  (Model: DMMZ1)
  *
  *  Author: 
@@ -9,6 +9,10 @@
  *    
  *
  *  Changelog:
+ *
+ *    0.0.2 (01/26/2017)
+ *      - Updated icons.
+ *      - Changed secondary tiles.
  *
  *    0.0.1 (01/25/2017)
  *      - Added secondary text to main tile
@@ -78,33 +82,33 @@ metadata {
 	}
 
 	tiles(scale: 2) {
-		multiAttributeTile(name:"status", type: "generic", width: 6, height: 4, canChangeIcon: true){
+		multiAttributeTile(name:"status", type: "generic", width: 6, height: 4, canChangeIcon: false){
 			tileAttribute ("device.status", key: "PRIMARY_CONTROL") {
 				attributeState "disarmed", 
 					label:'Disarmed', 
-					icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/dome-mouser.png",
+					icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/mouse.png",
 					backgroundColor:"#ffffff"
 				attributeState "armed", 
 					label:'Armed', 
-					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/dome-mouser.png", 
+					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/mouse.png", 
 					backgroundColor:"#79b821"
 				attributeState "tripped", 
 					label:'Tripped', 
-					icon:"https://github.com/krlaframboise/Resources/blob/master/dome-mouser/dome-rip.png", 
+					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/rip.png", 
 					backgroundColor:"#bc2323"
 			}
 			tileAttribute ("device.status", key: "SECONDARY_CONTROL") {
 				attributeState "disarmed", 
-					label:'Contact Open', 
+					label:'\"Contact Open\"', 
 					icon: "st.contact.contact.open",
 					backgroundColor:"#ffffff"
 				attributeState "armed", 
-					label:'Contact Closed', 
+					label:'\"Contact Closed\"', 
 					icon:"st.contact.contact.closed", 
 					backgroundColor:"#79b821"
 				attributeState "tripped", 
-					label:'Motion Active', 
-					icon:"st.motion.motion.active", 
+					label:'\"Motion Active\"',
+					icon:"st.motion.motion.active",
 					backgroundColor:"#bc2323"
 			}
 		}	
