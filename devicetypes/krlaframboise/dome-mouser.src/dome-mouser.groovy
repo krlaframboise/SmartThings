@@ -1,5 +1,5 @@
 /**
- *  Dome Mouser v0.0.3
+ *  Dome Mouser v0.0.4
  *  (Model: DMMZ1)
  *
  *  Author: 
@@ -10,12 +10,9 @@
  *
  *  Changelog:
  *
- *    0.0.3 (01/26/2017)
- *      - Removed secondary icons and added 25px padding around mouse and rip icon.
- *
- *    0.0.2 (01/26/2017)
+ *    0.0.2 - 0.0.4 (01/26/2017)
  *      - Updated icons.
- *      - Changed secondary tiles.
+ *      - Fixed fingerprint for Hub v1.
  *
  *    0.0.1 (01/25/2017)
  *      - Added secondary text to main tile
@@ -52,7 +49,7 @@ metadata {
 		attribute "lastCheckin", "number"
 		attribute "status", "enum", ["armed", "disarmed", "tripped"]
 		
-		fingerprint deviceId: "0x1005", inClusters: "0x30, 0x59, 0x5A, 0x5E, 0x70, 0x71, 0x72, 0x73, 0x80, 0x84, 0x85, 0x86"
+		fingerprint deviceId: "0x0701", inClusters: "0x30, 0x59, 0x5A, 0x5E, 0x70, 0x71, 0x72, 0x73, 0x80, 0x84, 0x85, 0x86"
 		
 		fingerprint mfr:"021F", prod:"0003", model:"0104"
 	}
@@ -124,10 +121,6 @@ metadata {
 			state "battery", label:'${currentValue}% battery', unit:""
 		}
 		
-	standardTile("misc", "general", width: 6, height: 2) {
-			state "misc", label:'Refresh', action: "refresh", icon:"st.secondary.refresh-icon"
-		}
-				
 		main "status"
 		details(["status", "refresh", "battery"])
 	}
