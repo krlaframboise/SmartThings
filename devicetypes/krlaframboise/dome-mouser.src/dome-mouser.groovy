@@ -1,5 +1,5 @@
 /**
- *  Dome Mouser v0.0.4
+ *  Dome Mouser v0.0.5
  *  (Model: DMMZ1)
  *
  *  Author: 
@@ -10,9 +10,10 @@
  *
  *  Changelog:
  *
- *    0.0.2 - 0.0.4 (01/26/2017)
+ *    0.0.2 - 0.0.5 (01/26/2017)
  *      - Updated icons.
  *      - Fixed fingerprint for Hub v1.
+ *      - iOS fix for secondary icons.
  *
  *    0.0.1 (01/25/2017)
  *      - Added secondary text to main tile
@@ -100,15 +101,12 @@ metadata {
 			tileAttribute ("device.status", key: "SECONDARY_CONTROL") {
 				attributeState "disarmed", 
 					label:'\"Contact Open\"', 
-					icon: "",
 					backgroundColor:"#ffffff"
 				attributeState "armed", 
 					label:'\"Contact Closed\"', 
-					icon:"", 
 					backgroundColor:"#79b821"
 				attributeState "tripped", 
 					label:'\"Motion Active\"',
-					icon:"",
 					backgroundColor:"#bc2323"
 			}
 		}	
@@ -362,10 +360,6 @@ private wakeUpNoMoreInfoCmd() {
 
 private batteryGetCmd() {
 	return zwave.batteryV1.batteryGet().format()
-}
-
-private basicGetCmd() {
-	return zwave.basicV1.basicGet().format()
 }
 
 private configGetCmd(paramNum) {
