@@ -93,7 +93,7 @@ metadata {
 					backgroundColor:"#ffffff"
 				attributeState "armed", 
 					label:'Armed', 
-					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/mouse-outline-250px.png", 
+					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/mouse-250px.png", 
 					backgroundColor:"#79b821"
 				attributeState "tripped", 
 					label:'Tripped', 
