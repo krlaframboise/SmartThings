@@ -1,5 +1,5 @@
 /**
- *  Dome Mouser v0.0.5
+ *  Dome Mouser v0.0.6
  *  (Model: DMMZ1)
  *
  *  Author: 
@@ -10,10 +10,11 @@
  *
  *  Changelog:
  *
- *    0.0.2 - 0.0.5 (01/26/2017)
+ *    0.0.2 - 0.0.6 (01/26/2017)
  *      - Updated icons.
  *      - Fixed fingerprint for Hub v1.
  *      - iOS fix for secondary icons.
+ *      - wakeup bug fix.
  *
  *    0.0.1 (01/25/2017)
  *      - Added secondary text to main tile
@@ -374,10 +375,10 @@ private configSetCmd(paramNum, val) {
 private getLedAlarmSetting() {
 	return settings?.ledAlarm ?: findDefaultOptionName(ledAlarmOptions)
 }
-private wakeUpIntervalSetting() {
+private getWakeUpIntervalSetting() {
 	return settings?.wakeUpInterval ?: findDefaultOptionName(wakeUpIntervalOptions)
 }
-private batteryReportingIntervalSetting() {
+private getBatteryReportingIntervalSetting() {
 	return settings?.batteryReportingInterval ?: findDefaultOptionName(wakeUpIntervalOptions)
 }
 
