@@ -415,8 +415,8 @@ private getWakeUpIntervalOptions() {
 	[
 		[name: "2 Hours", value: 2],
 		[name: "4 Hours", value: 4],
-		[name: "6 Hours", value: 4],
-		[name: "8 Hours", value: 4],
+		[name: "6 Hours", value: 6],
+		[name: "8 Hours", value: 8],
 		[name: formatDefaultOptionName("12 Hours"), value: 12],
 		[name: "18 Hours", value: 18],
 		[name: "24 Hours", value: 24]
