@@ -1,5 +1,5 @@
 /**
- *  Dome Mouser v0.0.2
+ *  Dome Mouser v0.0.3
  *  (Model: DMMZ1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    0.0.3 (01/26/2017)
+ *      - Removed secondary icons and added 25px padding around mouse and rip icon.
  *
  *    0.0.2 (01/26/2017)
  *      - Updated icons.
@@ -86,29 +89,29 @@ metadata {
 			tileAttribute ("device.status", key: "PRIMARY_CONTROL") {
 				attributeState "disarmed", 
 					label:'Disarmed', 
-					icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/mouse.png",
+					icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/mouse-250px.png",
 					backgroundColor:"#ffffff"
 				attributeState "armed", 
 					label:'Armed', 
-					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/mouse.png", 
+					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/mouse-outline-250px.png", 
 					backgroundColor:"#79b821"
 				attributeState "tripped", 
 					label:'Tripped', 
-					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/rip.png", 
+					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/rip-250px.png", 
 					backgroundColor:"#bc2323"
 			}
 			tileAttribute ("device.status", key: "SECONDARY_CONTROL") {
 				attributeState "disarmed", 
 					label:'\"Contact Open\"', 
-					icon: "st.contact.contact.open",
+					icon: "",
 					backgroundColor:"#ffffff"
 				attributeState "armed", 
 					label:'\"Contact Closed\"', 
-					icon:"st.contact.contact.closed", 
+					icon:"", 
 					backgroundColor:"#79b821"
 				attributeState "tripped", 
 					label:'\"Motion Active\"',
-					icon:"st.motion.motion.active",
+					icon:"",
 					backgroundColor:"#bc2323"
 			}
 		}	
@@ -185,10 +188,19 @@ private updateConfigVal(paramNum, val, refreshAll) {
 }
 
 
-// Resets the tamper attribute to clear and requests the device to be refreshed.
+// Forces the configuration to be resent to the device the next time it wakes up.
 def refresh() {	
 	logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."
 	state.pendingRefresh = true
+    if (device.currentValue("status") == "disarmed") {
+    	sendEvent(name: "status", value: "armed")
+    }
+    else if (device.currentValue("status") == "armed") {
+    	sendEvent(name: "status", value: "tripped")
+    }
+    else {
+    	sendEvent(name: "status", value: "disarmed")
+    }
 }
 
 private logForceWakeupMessage(msg) {
