@@ -1,5 +1,5 @@
 /**
- *  Dome Mouser v0.0.6
+ *  Dome Mouser v1.0
  *  (Model: DMMZ1)
  *
  *  Author: 
@@ -10,17 +10,7 @@
  *
  *  Changelog:
  *
- *    0.0.2 - 0.0.6 (01/26/2017)
- *      - Updated icons.
- *      - Fixed fingerprint for Hub v1.
- *      - iOS fix for secondary icons.
- *      - wakeup bug fix.
- *
- *    0.0.1 (01/25/2017)
- *      - Added secondary text to main tile
- *      - Changed motion active icon.
- *
- *    0.0 (01/25/2017)
+ *    1.0 (01/27/2017)
  *      - Initial Release
  *
  *
@@ -88,15 +78,15 @@ metadata {
 			tileAttribute ("device.status", key: "PRIMARY_CONTROL") {
 				attributeState "disarmed", 
 					label:'Disarmed', 
-					icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/mouse-250px.png",
+					icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/mouse.png",
 					backgroundColor:"#ffffff"
 				attributeState "armed", 
 					label:'Armed', 
-					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/mouse-250px.png", 
+					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/mouse.png", 
 					backgroundColor:"#79b821"
 				attributeState "tripped", 
 					label:'Tripped', 
-					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/rip-250px.png", 
+					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/rip.png", 
 					backgroundColor:"#bc2323"
 			}
 			tileAttribute ("device.status", key: "SECONDARY_CONTROL") {
@@ -184,15 +174,6 @@ private updateConfigVal(paramNum, val, refreshAll) {
 def refresh() {	
 	logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."
 	state.pendingRefresh = true
-    if (device.currentValue("status") == "disarmed") {
-    	sendEvent(name: "status", value: "armed")
-    }
-    else if (device.currentValue("status") == "armed") {
-    	sendEvent(name: "status", value: "tripped")
-    }
-    else {
-    	sendEvent(name: "status", value: "disarmed")
-    }
 }
 
 private logForceWakeupMessage(msg) {
