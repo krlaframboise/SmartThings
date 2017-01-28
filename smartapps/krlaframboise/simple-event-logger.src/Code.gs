@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - Google Script Code v 1.2
+ *  Simple Event Logger - Google Script Code v 1.2.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,9 @@
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
+ *
+ *    1.2.1 (01/28/2017)
+ *      - Fixed issue with archive process when rows are frozen.
  *
  *    1.2 (01/22/2017)
  *      - Added archive functional for out of space and event limit.
@@ -34,7 +37,7 @@
  *
  */
  
-var getVersion = function() { return "01.02.00"; }
+var getVersion = function() { return "01.02.01"; }
  
 function doGet(e) {
 	var output = "Version " + getVersion()
@@ -230,7 +233,7 @@ var clearSheet = function(sheet) {
 		sheet.deleteColumns(6, (sheet.getMaxColumns() - 5));
 	}
 	if (sheet.getMaxRows() > 2) {
-		sheet.deleteRows(2, (sheet.getMaxRows() - 1));
+		sheet.deleteRows(3, (sheet.getMaxRows() - 2));
 	}
 	sheet.getRange(2, 1, 1, sheet.getLastColumn()).clearContent();
 }  
