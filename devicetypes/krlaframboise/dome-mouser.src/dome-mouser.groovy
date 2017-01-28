@@ -5,7 +5,7 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:  
+ *  URL to documentation:  https://community.smartthings.com/t/release-dome-mouser-official/75732
  *    
  *
  *  Changelog:
