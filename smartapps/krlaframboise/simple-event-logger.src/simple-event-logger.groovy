@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - SmartApp v 1.2
+ *  Simple Event Logger - SmartApp v 1.2.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,9 @@
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
+ *
+ *    1.2.1 (01/28/2017)
+ *      - New version of Google Script.
  *
  *    1.2 (01/22/2017)
  *      - Added archive functionality for when the sheet is full or by specific number of events.
@@ -74,8 +77,8 @@ preferences {
 	page(name: "createTokenPage")
 }
 
-def version() { return "01.02.00" }
-def gsVersion() { return "01.02.00" }
+def version() { return "01.02.01" }
+def gsVersion() { return "01.02.01" }
 
 def mainPage() {
 	dynamicPage(name:"mainPage", uninstall:true, install:true) {
