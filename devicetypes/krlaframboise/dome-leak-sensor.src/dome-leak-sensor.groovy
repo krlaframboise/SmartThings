@@ -1,5 +1,5 @@
 /**
- *  Dome Leak Sensor v0.0.0
+ *  Dome Leak Sensor v0.0.1
  *  (Model: DMWS1)
  *
  *  Author: 
@@ -10,8 +10,11 @@
  *
  *  Changelog:
  *
+ *    0.0.1 (01/28/2017)
+ *      - Fixed battery reporting so that it doesn't go above 100%.
+ *
  *    0.0.0 (01/27/2017)
- *      - Initial Release
+ *      - Test Release
  *
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -258,6 +261,9 @@ private canReportBattery() {
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	logTrace "BatteryReport: $cmd"
 	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
+	if (val > 100) {
+		val = 100
+	}
 	state.lastBatteryReport = new Date().time	
 	logDebug "Battery ${val}%"
 	[
