@@ -35,6 +35,7 @@ metadata {
 		capability "Presence Sensor"
 		capability "Sensor"
 		capability "Actuator"
+		capability "Media Controller"
 		
 		command "forcePresent"
 		command "arrived"
