@@ -1,5 +1,5 @@
 /**
- *  Dome Leak Sensor v1.0
+ *  Dome Leak Sensor v1.0.1
  *  (Model: DMWS1)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.0 (01/30/2017)
+ *    1.0.1 (01/30/2017)
  *      - Initial Release
  *
  *
@@ -35,7 +35,6 @@ metadata {
 		capability "Battery"
 		capability "Configuration"
 		capability "Refresh"
-		capability "Polling"
 		
 		attribute "lastCheckin", "number"
 		
