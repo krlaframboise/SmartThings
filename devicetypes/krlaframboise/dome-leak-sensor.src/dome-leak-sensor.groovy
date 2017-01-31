@@ -1,5 +1,5 @@
 /**
- *  Dome Leak Sensor v0.0.1
+ *  Dome Leak Sensor v1.0
  *  (Model: DMWS1)
  *
  *  Author: 
@@ -10,11 +10,8 @@
  *
  *  Changelog:
  *
- *    0.0.1 (01/28/2017)
- *      - Fixed battery reporting so that it doesn't go above 100%.
- *
- *    0.0.0 (01/27/2017)
- *      - Test Release
+ *    1.0 (01/30/2017)
+ *      - Initial Release
  *
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -50,12 +47,6 @@ metadata {
 	simulator { }
 	
 	preferences {
-		// input "alarmEnabled", "enum",
-			// title: "Enable/Disable Alarm:",
-			// defaultValue: alarmEnabledSetting,
-			// required: false,
-			// displayDuringSetup: true,
-			// options: alarmEnabledOptions.collect { it.name }
 		input "audibleAlarmEnabled", "enum",
 			title: "Enable/Disable Audible Alarm:",
 			defaultValue: audibleAlarmEnabledSetting,
