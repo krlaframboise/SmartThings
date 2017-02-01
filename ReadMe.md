@@ -161,7 +161,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <ul>
 <li>This is the official device handler for the Dome Siren (DMS01)</li>
 <li>Supports all functionality that the device offers</li>
-<li><a href="https://community.smartthings.com/t/release-dome-wireless-z-wave-plus-siren/71091?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://community.smartthings.com/t/release-dome-siren-official/75499?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-siren.src/dome-siren.groovy">View Dome Siren - Device Handler Code</a></li>
 </ul>
 
