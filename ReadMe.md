@@ -22,6 +22,9 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#aeon-labs-aeotec-doorbell">Aeon Labs Aeotec Doorbell</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#aeon-labs-multifunction-siren">Aeon Labs Multifunction Siren</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#alarm-switch">Alarm Switch</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-door-sensor">Dome Door Sensor</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-leak-sensor">Dome Leak Sensor</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-mouser">Dome Mouser</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-siren">Dome Siren</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-water-shut-off">Dome Water Shut-Off</a></li>			
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#forcible-mobile-presence">Forcible Mobile Presence</a></li>
@@ -121,10 +124,42 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 
 <hr />
 
+<h3>Dome Door Sensor</h3>
+
+<ul>
+<li>This is the official device handler for the Dome Door Sensor (DMWD1)</li>
+<li>Supports all functionality that the device offers</li>
+<li><a href="https://community.smartthings.com/t/release-dome-door-sensor-official/76321?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-door-sensor.src/dome-door-sensor.groovy">View Dome Door Sensor - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Dome Leak Sensor</h3>
+
+<ul>
+<li>This is the official device handler for the Dome Leak Sensor (DMWS1)</li>
+<li>Supports all functionality that the device offers</li>
+<li><a href="https://community.smartthings.com/t/release-dome-leak-sensor-official/76154?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-leak-sensor.src/dome-leak-sensor.groovy">View Dome Leak Sensor - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Dome Mouser</h3>
+
+<ul>
+<li>This is the official device handler for the Dome Mouser (DMMZ1)</li>
+<li><a href="https://community.smartthings.com/t/release-dome-mouser-official/75732?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-mouser.src/dome-mouser.groovy">View Dome Mouser - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
 <h3>Dome Siren</h3>
 
 <ul>
-<li>This is a device handler for the Dome Siren (DMS01)</li>
+<li>This is the official device handler for the Dome Siren (DMS01)</li>
 <li>Supports all functionality that the device offers</li>
 <li><a href="https://community.smartthings.com/t/release-dome-wireless-z-wave-plus-siren/71091?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-siren.src/dome-siren.groovy">View Dome Siren - Device Handler Code</a></li>
@@ -135,9 +170,10 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <h3>Dome Water Shut-Off</h3>
 
 <ul>
-<li>This is a device handler for the Dome Water Shut-Off (DMWV1)</li>
+<li>This is the official device handler for the Dome Water Shut-Off (DMWV1)</li>
 <li>You can open the valve with either Valve.open or Switch.on</li>
 <li>You can close the valve with either Valve.close or Switch.off</li>
+<li><a href="https://community.smartthings.com/t/release-dome-water-main-shut-off-official/75500?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-water-shut-off.src/dome-water-shut-off.groovy">View Dome Water Shut-Off - Device Handler Code</a></li>
 </ul>
 
