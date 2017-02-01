@@ -1,5 +1,5 @@
 /**
- *  Dome Door Sensor v0.0.0
+ *  Dome Door Sensor v1.0
  *  (Model: DMWD1)
  *
  *  Author: 
@@ -10,8 +10,8 @@
  *
  *  Changelog:
  *
- *    0.0.0 (01/31/2017)
- *      - Test Release
+ *    1.0 (02/01/2017)
+ *      - Initial Release
  *
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -326,5 +326,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	// log.trace "$msg"
+	log.trace "$msg"
 }
