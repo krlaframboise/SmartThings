@@ -1,5 +1,5 @@
 /**
- *  Dome On Off Plug v0.0.0
+ *  Dome On Off Plug v0.0.1
  *  (Model: DMOF1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    0.0.1 (02/01/2017)
+ *      - Initial Release
  *
  *    0.0.0 (01/29/2017)
  *      - Initial Release
@@ -32,11 +35,13 @@ metadata {
 	) {
 		capability "Actuator"
 		capability "Sensor"
-		capability "Switch"
+		capability "Switch"		
 		capability "Outlet"
 		capability "Power Meter"
 		capability "Energy Meter"
 		capability "Voltage Measurement"
+		capability "Acceleration Sensor"
+		capability "Contact Sensor"
 		capability "Configuration"
 		capability "Refresh"
 		capability "Polling"
@@ -51,6 +56,7 @@ metadata {
 		attribute "powerL", "number"
 		attribute "powerH", "number"
 		attribute "energyCost", "number"
+		attribute "energyStatus", "string"
 		attribute "energySince", "string"
 		
 		command "resetEnergy"
@@ -126,16 +132,45 @@ metadata {
 	}
 
 	tiles(scale: 2) {
-		standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
+			multiAttributeTile(name:"status", type: "generic", width: 6, height: 4, canChangeIcon: false){
+			tileAttribute ("device.status", key: "PRIMARY_CONTROL") {
+				attributeState "off", 
+					label:'Off', 
+					action: "switch.on",
+					icon: "st.switches.switch.off",
+					backgroundColor:"#ffffff"
+				attributeState "on", 
+					label:'On', 
+					action: "switch.off",
+					icon:"st.switches.switch.on", 
+					backgroundColor:"#79b821"
+				attributeState "overload", 
+					label:'Overload', 
+					action: "switch.off",
+					icon:"st.switches.switch.off", 
+					backgroundColor:"#bc2323"					
+			}
+			tileAttribute ("device.acceleration", key: "SECONDARY_CONTROL") {
+				attributeState "inactive", 
+					label:'Attached Device is Off', 
+					icon: "st.switches.switch.off",
+					backgroundColor:"#ffffff"
+				attributeState "active", 
+					label:'Attached Device is On',  
+					icon: "st.switches.switch.on",
+					backgroundColor:"#79b821"
+			}
+		}	
+	
+		standardTile("switch", "device.switch", width: 2, height: 2) {
 			state "off", label: 'off', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
 			state "on", label: 'on', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#79b821"
 		}
 		standardTile("refresh", "device.refresh", width: 2, height: 2, decoration: "flat") {
 			state "refresh", label:'Refresh All', action: "refresh", icon:"st.secondary.refresh-icon", defaultState: true
 		}
-    valueTile("status", "device.status", width: 2, height: 2, decoration: "flat") {
+    valueTile("energyStatus", "device.energyStatus", width: 2, height: 2, decoration: "flat") {
 			state "default", label:'Energy Reset:\n${currentValue}', defaultState: true
-      state "overload", label:'Overload Detected'
     }
 		standardTile("resetEnergy", "general", width: 2, height: 2, decoration: "flat") {
 			state "default", label:'Reset Energy', action: "resetEnergy", icon:"st.secondary.refresh-icon", defaultState: true
@@ -182,8 +217,8 @@ metadata {
 		valueTile("currentH", "device.currentH", width: 2, height: 1) {
 			state "val", label:'H: ${currentValue} A', unit: "A", defaultState: true
 		}
-		main "switch"
-		details(["switch", "refresh", "status", "resetEnergy", "energy", "energyCost", "resetTotal", "resetPower", "power", "powerL", "powerH", "resetVoltage", "voltage", "voltageL", "voltageH", "resetCurrent", "current", "currentL", "currentH"])
+		main "status"
+		details(["status", "switch", "refresh", "energyStatus", "resetEnergy", "energy", "energyCost", "resetTotal", "resetPower", "power", "powerL", "powerH", "resetVoltage", "voltage", "voltageL", "voltageH", "resetCurrent", "current", "currentL", "currentH"])
 	}
 }
 
@@ -277,7 +312,7 @@ def resetEnergy() {
 private updateEnergySince() {
 	def val = convertToLocalTimeString(new Date())
 	sendEvent(getEventMap("energySince", val, false))
-	sendEvent(getEventMap("status", val, true, "Energy Reset"))
+	sendEvent(getEventMap("energyStatus", val, true, "Energy Reset"))
 }
 
 def resetPower() {
@@ -368,11 +403,13 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 		switch (cmd.event) {
 			case 0x08:
 				logDebug "Overload Detected"
-				result << createEvent(getEventMap("status", "overload"))
+				result << createEvent(getEventMap("contact", "closed", false))
+				result << createEvent(getEventMap("status", "overload", true, "Overload Detected"))
 				break
 			case 0x00:
 				logDebug "Overload Clear"
-				result << createEvent(getEventMap("status", device.currentValue("energySince")))
+				result << createEvent(getEventMap("contact", "open", false))
+				result << createEvent(getEventMap("status", device.currentValue("switch"), true, "Overload Cleared"))
 				break
 		}
 	}
@@ -413,9 +450,13 @@ def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd) {
 		else {
 			result += createMeterHistoryEvents(name, val, unit, true)
 			result += createMeterHistoryEvents(name, val, unit, false)
+			
+			if (name != "voltage") {
+				result += createAttachedDeviceEvents(name, val)
+			}
 		}
 		if (device.currentValue("$name") != val) {
-			result << createEvent(getEventMap(name, val, null, "${name} is ${val} ${unit}", unit))
+			result << createEvent(getEventMap(name, val, false, "${name} is ${val} ${unit}", unit))
 		}
 	}
 	return result
@@ -443,6 +484,26 @@ private createEnergyCostEvents(energyVal) {
 	return result
 }
 
+private createAttachedDeviceEvents(name, val) {
+	def newVal 
+	if (safeToDec(val, 0) > 0) {
+		newVal = "active"
+	}
+	else if (!name) {
+		newVal = "inactive"
+	}
+	else {
+		def otherName = (name == "power") ? "current" : "power"
+		newVal = (safeToDec(device.currentValue("${otherName}"), 0) > 0) ? "active" : "inactive"		
+	}
+	
+	def result = []
+	if (device.currentValue("acceleration") != newVal) {
+		result << createEvent(getEventMap("acceleration", newVal,  true, "Attached device is ${newVal == 'active' ? 'on' : 'off'}"))
+	}
+	return result
+}
+
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	def result = []
 	logTrace "BasicReport: ${cmd}"
@@ -454,7 +515,11 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 	logTrace "SwitchBinaryReport: ${cmd}"
 	def val = (cmd.value == 0xFF) ? "on" : "off"
 		
-	result << createEvent(getEventMap("switch", val))
+	result << createEvent(getEventMap("switch", val, null, "Switch is ${val}"))
+	result << createEvent(getEventMap("status", val, false))
+	// if (val == "off") {
+		// result += createAttachedDeviceEvents(null, 0)
+	// }
 	return result
 }
 
