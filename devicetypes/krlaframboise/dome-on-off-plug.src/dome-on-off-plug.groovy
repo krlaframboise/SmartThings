@@ -126,7 +126,7 @@ metadata {
 			required: false,
 			displayDuringSetup: true,
 			options: overloadWarningOptions.collect { it.name }
-		input "energyPrice", "number",
+		input "energyPrice", "decimal",
 			title: "\$/kWH Cost:",
 			defaultValue: energyPriceSetting,
 			required: false,
