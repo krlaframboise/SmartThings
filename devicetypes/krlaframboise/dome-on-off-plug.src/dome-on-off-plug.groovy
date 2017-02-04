@@ -1,5 +1,5 @@
 /**
- *  Dome On Off Plug v0.0.1
+ *  Dome On Off Plug v0.0.2
  *  (Model: DMOF1)
  *
  *  Author: 
@@ -10,8 +10,13 @@
  *
  *  Changelog:
  *
+ *    0.0.2 (02/03/2017)
+ *      - Added previous energy section
+ *
  *    0.0.1 (02/01/2017)
- *      - Initial Release
+ *      - Added main tile and overload support
+ *      - Added contact/acceleration capabilities
+ *      - Stopped displaying energy measurements.
  *
  *    0.0.0 (01/29/2017)
  *      - Initial Release
@@ -56,8 +61,9 @@ metadata {
 		attribute "powerL", "number"
 		attribute "powerH", "number"
 		attribute "energyCost", "number"
-		attribute "energyStatus", "string"
 		attribute "energySince", "string"
+		attribute "prevEnergyCost", "number"
+		attribute "prevEnergySince", "string"
 		
 		command "resetEnergy"
 		command "resetPower"
@@ -166,20 +172,26 @@ metadata {
 			state "off", label: 'off', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
 			state "on", label: 'on', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#79b821"
 		}
-		standardTile("refresh", "device.refresh", width: 2, height: 2, decoration: "flat") {
-			state "refresh", label:'Refresh All', action: "refresh", icon:"st.secondary.refresh-icon", defaultState: true
-		}
-    valueTile("energyStatus", "device.energyStatus", width: 2, height: 2, decoration: "flat") {
-			state "default", label:'Energy Reset:\n${currentValue}', defaultState: true
+		valueTile("prevEnergySince", "device.prevEnergySince", width: 2, height: 2, decoration: "flat") {
+			state "default", label:'Previous Energy\n${currentValue}', defaultState: true
     }
+		valueTile("prevEnergy", "device.prevEnergy", width: 2, height: 1, decoration: "flat") {
+			state "val", label:'${currentValue} kWh', unit: "kWh", defaultState: true
+		}
+		valueTile("prevEnergyCost", "device.prevEnergyCost", width: 2, height: 1, decoration: "flat") {
+			state "val", label:'\$${currentValue}', unit: "", defaultState: true
+		}
 		standardTile("resetEnergy", "general", width: 2, height: 2, decoration: "flat") {
 			state "default", label:'Reset Energy', action: "resetEnergy", icon:"st.secondary.refresh-icon", defaultState: true
 		}
-		valueTile("energy", "device.energy", width: 2, height: 2) {
-			state "val", label:'${currentValue} kWh', unit: "kWh", defaultState: true, backgroundColor: "#CCCCCC"
+		valueTile("energySince", "device.energySince", width: 2, height: 2, decoration: "flat") {
+			state "default", label:'Current Energy\n${currentValue}', defaultState: true
+    }
+		valueTile("energy", "device.energy", width: 2, height: 1, decoration: "flat") {
+			state "val", label:'${currentValue} kWh', unit: "kWh", defaultState: true
 		}
-		valueTile("energyCost", "device.energyCost", width: 2, height: 2) {
-			state "val", label:'\$${currentValue}', unit: "", defaultState: true, backgroundColor: "#CCCCCC"
+		valueTile("energyCost", "device.energyCost", width: 2, height: 1, decoration: "flat") {
+			state "val", label:'\$${currentValue}', unit: "", defaultState: true
 		}
 		standardTile("resetPower", "general", width: 2, height: 2, decoration: "flat") {
 			state "default", label:'Reset Power', action: "resetPower", icon:"st.secondary.refresh-icon", defaultState: true
@@ -217,8 +229,11 @@ metadata {
 		valueTile("currentH", "device.currentH", width: 2, height: 1) {
 			state "val", label:'H: ${currentValue} A', unit: "A", defaultState: true
 		}
+		standardTile("refresh", "device.refresh", width: 2, height: 2, decoration: "flat") {
+			state "refresh", label:'Refresh All', action: "refresh", icon:"st.secondary.refresh-icon", defaultState: true
+		}
 		main "status"
-		details(["status", "switch", "refresh", "energyStatus", "resetEnergy", "energy", "energyCost", "resetTotal", "resetPower", "power", "powerL", "powerH", "resetVoltage", "voltage", "voltageL", "voltageH", "resetCurrent", "current", "currentL", "currentH"])
+		details(["status", "switch", "prevEnergySince", "prevEnergy", "prevEnergyCost", "resetEnergy", "energySince", "energy", "energyCost", "resetPower", "power", "powerL", "powerH", "resetVoltage", "voltage", "voltageL", "voltageH", "resetCurrent", "current", "currentL", "currentH", "refresh"])
 	}
 }
 
@@ -305,14 +320,21 @@ def off() {
 
 def resetEnergy() {
 	logDebug "Resetting Energy"
+	resetPrevEnergy("energySince")
+	resetPrevEnergy("energy")
+	resetPrevEnergy("energyCost")	
 	updateEnergySince()
 	return delayBetween([meterResetCmd(), meterGetCmd(0)], 1000)
 }
 
+private resetPrevEnergy(name) {
+	def lastName = "prev${name.capitalize()}"
+	sendEvent(name: "${lastName}", value: device.currentValue("${name}"), displayed: false)
+}
+
 private updateEnergySince() {
 	def val = convertToLocalTimeString(new Date())
-	sendEvent(getEventMap("energySince", val, false))
-	sendEvent(getEventMap("energyStatus", val, true, "Energy Reset"))
+	sendEvent(getEventMap("energySince", val, true, "Energy Reset"))	
 }
 
 def resetPower() {
