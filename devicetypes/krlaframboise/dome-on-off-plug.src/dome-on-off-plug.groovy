@@ -1,5 +1,5 @@
 /**
- *  Dome On Off Plug v0.0.2
+ *  Dome On Off Plug v0.0.3
  *  (Model: DMOF1)
  *
  *  Author: 
@@ -9,6 +9,13 @@
  *    
  *
  *  Changelog:
+ *
+ *    0.0.3 (02/04/2017)
+ *      - Changed energy cost field to decimal.
+ *      - Changed secondary fb to active/inactive and removed icon.
+ *      - Added Inactive Attached Device Current setting and changed active/inactive event so that it only changes to active if the amps are above that setting.
+ *      - Fixed bug that caused it to repeatedly create low events when the values were 0.
+ *      - Set low threshold of current threshold to 2% because it doesn't accept 1%.
  *
  *    0.0.2 (02/03/2017)
  *      - Added previous energy section
@@ -131,6 +138,12 @@ metadata {
 			defaultValue: energyPriceSetting,
 			required: false,
 			displayDuringSetup: true
+		input "inactiveCurrent", "enum",
+			title: "Inactive Attached Device Current:",
+			defaultValue: inactiveCurrentSetting,
+			required: false,
+			displayDuringSetup: true,
+			options: inactiveCurrentOptions.collect { it.name }
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -158,12 +171,10 @@ metadata {
 			}
 			tileAttribute ("device.acceleration", key: "SECONDARY_CONTROL") {
 				attributeState "inactive", 
-					label:'Attached Device is Off', 
-					icon: "st.switches.switch.off",
+					label:'Attached Device is Inactive', 
 					backgroundColor:"#ffffff"
 				attributeState "active", 
-					label:'Attached Device is On',  
-					icon: "st.switches.switch.on",
+					label:'Attached Device is Active',
 					backgroundColor:"#79b821"
 			}
 		}	
@@ -262,6 +273,11 @@ def configure() {
 		cmds += updateConfigVal(it.paramNum, it.value, it.size, refreshAll)	
 	}
 	
+	if (inactiveCurrentSetting != state.inactiveCurrent) {
+		cmds << meterGetCmd(meterScaleCurrent)
+		state.inactivecurrent = inactiveCurrentSetting
+	}
+	
 	if (cmds) {
 		logDebug "Sending configuration to device."
 		return delayBetween(cmds, 1000)
@@ -299,7 +315,7 @@ def refresh() {
 	(0..5).each {
 		result << meterGetCmd(it)
 	}	
-	return delayBetween(result, 1000)	
+	return delayBetween(result, 1000)
 }
 
 def on() {
@@ -324,7 +340,7 @@ def resetEnergy() {
 	resetPrevEnergy("energy")
 	resetPrevEnergy("energyCost")	
 	updateEnergySince()
-	return delayBetween([meterResetCmd(), meterGetCmd(0)], 1000)
+	return delayBetween([meterResetCmd(), meterGetCmd(meterScaleEnergy)], 1000)
 }
 
 private resetPrevEnergy(name) {
@@ -397,7 +413,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	if (name) {	
 		def val = hexToInt(cmd.configurationValue, cmd.size)
 	
-		logDebug "${name} = ${val}"
+		logDebug "${name}(${cmd.parameterNumber}) = ${val}"
 	
 		state."configVal${cmd.parameterNumber}" = val
 	}
@@ -419,7 +435,7 @@ private hexToInt(hex, size) {
 
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
 	def result = []	
-	logTrace "NotificationReport: $cmd"
+	// logTrace "NotificationReport: $cmd"
 	
 	if (cmd.notificationType == 0x08) {
 		switch (cmd.event) {
@@ -433,36 +449,42 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 				result << createEvent(getEventMap("contact", "open", false))
 				result << createEvent(getEventMap("status", device.currentValue("switch"), true, "Overload Cleared"))
 				break
+			default:
+				logDebug "Unknown Notification Event: $cmd"
 		}
+	}
+	else {
+		logDebug "Unknown Notification Type: $cmd"
 	}
 	return result
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd) {
+	// logTrace "MeterReport: $cmd"
 	def result = []	
 	def name
 	def unit 
 	def val = cmd.scaledMeterValue
 	
 	switch (cmd.scale) {
-		case 0:
+		case meterScaleEnergy:
 			name = "energy"
 			unit = "kWh"
 			break
-		case 2:
+		case meterScalePower:
 			name = "power"
 			unit = "W"
 			break
-		case 4:
+		case meterScaleVoltage:
 			name = "voltage"
 			unit = "V"
 			break
-		case 5:
+		case meterScaleCurrent:
 			name = "current"
 			unit = "A"
 			break
 		default:
-			logTrace "unknown scale ${cmd.scale}: ${val}"
+			logDebug "Unknown Meter Scale: $cmd"
 	}
 	
 	if (name) {
@@ -473,8 +495,8 @@ def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd) {
 			result += createMeterHistoryEvents(name, val, unit, true)
 			result += createMeterHistoryEvents(name, val, unit, false)
 			
-			if (name != "voltage") {
-				result += createAttachedDeviceEvents(name, val)
+			if (name == "current") {
+				result += createAttachedDeviceEvents(val)
 			}
 		}
 		if (device.currentValue("$name") != val) {
@@ -484,12 +506,18 @@ def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd) {
 	return result
 }
 
+// Meter Scales
+private getMeterScaleEnergy() { return 0 }
+private getMeterScalePower() { return 2 }
+private getMeterScaleVoltage() { return 4 }
+private getMeterScaleCurrent() { return 5 }
+
 private createMeterHistoryEvents(mainName, mainVal, unit, lowEvent) {
 	def name = "${mainName}${lowEvent ? 'L' : 'H'}"
-	def val = safeToDec(device.currentValue("${name}"), mainVal)
+	def val = device.currentValue("${name}")
 	
 	def result = []
-	if ((lowEvent && (mainVal <= val)) || (!lowEvent && (mainVal >= val))) {
+	if ((val == null) || (lowEvent && (mainVal < val)) || (!lowEvent && (mainVal > val))) {
 		result << createEvent(getEventMap(name, mainVal, false, "", unit))
 	}
 	return result
@@ -506,22 +534,15 @@ private createEnergyCostEvents(energyVal) {
 	return result
 }
 
-private createAttachedDeviceEvents(name, val) {
-	def newVal 
-	if (safeToDec(val, 0) > 0) {
+private createAttachedDeviceEvents(val) {
+	def newVal = "inactive"
+	if (safeToDec(val, 0) > convertOptionSettingToDec(inactiveCurrentOptions, inactiveCurrentSetting)) {
 		newVal = "active"
 	}
-	else if (!name) {
-		newVal = "inactive"
-	}
-	else {
-		def otherName = (name == "power") ? "current" : "power"
-		newVal = (safeToDec(device.currentValue("${otherName}"), 0) > 0) ? "active" : "inactive"		
-	}
-	
+		
 	def result = []
 	if (device.currentValue("acceleration") != newVal) {
-		result << createEvent(getEventMap("acceleration", newVal,  true, "Attached device is ${newVal == 'active' ? 'on' : 'off'}"))
+		result << createEvent(getEventMap("acceleration", newVal,  true, "Attached device is ${newVal}"))
 	}
 	return result
 }
@@ -539,9 +560,6 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 		
 	result << createEvent(getEventMap("switch", val, null, "Switch is ${val}"))
 	result << createEvent(getEventMap("status", val, false))
-	// if (val == "off") {
-		// result += createAttachedDeviceEvents(null, 0)
-	// }
 	return result
 }
 
@@ -609,7 +627,7 @@ private getConfigData() {
 		[paramNum: 3, name: "Overload Shut-Off Threshold", value: getOverloadOffSettingVal(), size: 1],
 		[paramNum: 4, name: "Overload Warning Threshold", value: getOverloadWarningSettingVal(), size: 1],
 		[paramNum: 5, name: "Enable/Disable LED", value: convertOptionSettingToInt(ledEnabledOptions, ledEnabledSetting), size: 1],	
-		[paramNum: 6, name: "Meter Reporting Threshold (amps)", value: convertOptionSettingToInt(meterThresholdOptions, meterThresholdSetting), size: 1],
+		[paramNum: 6, name: "Meter Reporting Threshold (% change in amps)", value: convertOptionSettingToInt(meterThresholdOptions, meterThresholdSetting), size: 1],
 		[paramNum: 7, name: "Enable/Disable Memory", value: convertOptionSettingToInt(memoryEnabledOptions, memoryEnabledSetting), size: 1],
 		[paramNum: 8, name: "Auto-Off Timer Enabled", value: ((timerIntervalSetting?.contains("Disabled")) ? 0 : 1), size: 1],
 		[paramNum: 9, name: "Auto-Off Timer Interval:", value: convertOptionSettingToInt(timerIntervalOptions, timerIntervalSetting), size: 2],
@@ -665,6 +683,10 @@ private getOverloadWarningSetting() {
 	return settings?.overloadWarning ?: findDefaultOptionName(overloadWarningOptions)
 }
 
+private getInactiveCurrentSetting() {
+	return settings?.inactiveCurrent ?: findDefaultOptionName(inactiveCurrentOptions)
+}
+
 
 // Setting Options
 private getLedEnabledOptions() {
@@ -710,9 +732,20 @@ private getAmpOptions(min, max, defaultVal) {
 	return options
 }
 
+private getInactiveCurrentOptions() {
+	return [
+		[name: formatDefaultOptionName("0 Amps"), value: 0],
+		[name: "Less than 1 Amp", value: 0.99],
+		[name: "Less than 2 Amps", value: 1.99],
+		[name: "Less than 3 Amps", value: 2.99],
+		[name: "Less than 4 Amps", value: 3.99],
+		[name: "Less than 5 Amps", value: 4.99]
+	]	
+}
+
 private getMeterThresholdOptions() {
 	return [
-		[name: "1%", value: 1],
+		[name: "2%", value: 2],
 		[name: formatDefaultOptionName("5%"), value: 5],		
 		[name: "10%", value: 10],
 		[name: "15%", value: 15],
@@ -761,6 +794,10 @@ private getTimerIntervalOptions() {
 
 private convertOptionSettingToInt(options, settingVal) {
 	return safeToInt(options?.find { "${settingVal}" == it.name }?.value, 0)
+}
+
+private convertOptionSettingToDec(options, settingVal) {
+	return safeToDec(options?.find { "${settingVal}" == it.name }?.value, 0)
 }
 
 private formatDefaultOptionName(val) {
