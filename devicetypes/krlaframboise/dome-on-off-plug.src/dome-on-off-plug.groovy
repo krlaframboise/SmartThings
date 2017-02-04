@@ -1,5 +1,5 @@
 /**
- *  Dome On Off Plug v0.0.3
+ *  Dome On Off Plug v0.0.4
  *  (Model: DMOF1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    0.0.4 (02/04/2017)
+ *      - Added automatic energy reset.
  *
  *    0.0.3 (02/04/2017)
  *      - Changed energy cost field to decimal.
@@ -138,6 +141,12 @@ metadata {
 			defaultValue: energyPriceSetting,
 			required: false,
 			displayDuringSetup: true
+		input "energyResetInterval", "enum",
+			title: "kWh Auto Reset Interval:",
+			defaultValue: energyResetIntervalSetting,
+			required: false,
+			displayDuringSetup: true,
+			options: energyResetIntervalOptions.collect { it.name }
 		input "inactiveCurrent", "enum",
 			title: "Inactive Attached Device Current:",
 			defaultValue: inactiveCurrentSetting,
@@ -253,6 +262,16 @@ def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {		
 		state.lastUpdated = new Date().time
 		logTrace "updated()"
+		
+		unschedule()
+		
+		def energyResetCronExp = convertOptionSettingToString(energyResetIntervalOptions, energyResetIntervalSetting)
+		
+		if (energyResetCronExp) {
+			logDebug "Starting Schedule: ${energyResetCronExp}"
+			schedule(energyResetCronExp, resetEnergy)
+		}
+		
 		return response(configure())		
 	}		
 }
@@ -275,7 +294,7 @@ def configure() {
 	
 	if (inactiveCurrentSetting != state.inactiveCurrent) {
 		cmds << meterGetCmd(meterScaleCurrent)
-		state.inactivecurrent = inactiveCurrentSetting
+		state.inactiveCurrent = inactiveCurrentSetting
 	}
 	
 	if (cmds) {
@@ -651,6 +670,9 @@ private getOverloadOffSettingVal() {
 private getEnergyPriceSetting() {
 	return safeToDec(settings?.energyPrice, 0.12)
 }
+private getEnergyResetIntervalSetting() {
+	return settings?.energyResetInterval ?: findDefaultOptionName(energyResetIntervalOptions)
+}
 private getLedEnabledSetting() {
 	return settings?.ledEnabled ?: findDefaultOptionName(ledEnabledOptions)
 }
@@ -771,6 +793,16 @@ private getMeterIntervalOptions() {
 	]	
 }
 
+private getEnergyResetIntervalOptions() {
+	return [		
+		[name: formatDefaultOptionName("Disabled"), value: ""],
+		[name: "Hourly", value: "0 0 0/1 1/1 * ? *"],
+		[name: "Daily", value: "0 0 12 1/1 * ? *"],
+		[name: "Weekly", value: "0 0 12 ? * SUN *"],
+		[name: "Monthly", value: "0 0 12 ? 1/1 MON#1 *"]
+	]
+}
+
 private getTimerIntervalOptions() {
 	return [
 		[name: formatDefaultOptionName("Disabled"), value: 1],
@@ -790,6 +822,10 @@ private getTimerIntervalOptions() {
 		[name: "2 Weeks", value: 20160],
 		[name: "3 Weeks", value: 30240]		
 	]	
+}
+
+private convertOptionSettingToString(options, settingVal) {
+	return options?.find { "${settingVal}" == it.name }?.value?.toString() ?: ""
 }
 
 private convertOptionSettingToInt(options, settingVal) {
