@@ -1,5 +1,5 @@
 /**
- *  Dome On Off Plug v0.0.4
+ *  Dome On Off Plug v0.0.5
  *  (Model: DMOF1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    0.0.5 (02/04/2017)
+ *      - Changed energy fields from time to duration.
  *
  *    0.0.4 (02/04/2017)
  *      - Added automatic energy reset.
@@ -70,10 +73,11 @@ metadata {
 		attribute "voltageH", "number"
 		attribute "powerL", "number"
 		attribute "powerH", "number"
+		attribute "energyTime", "number"
 		attribute "energyCost", "number"
-		attribute "energySince", "string"
+		attribute "energyDuration", "string"
 		attribute "prevEnergyCost", "number"
-		attribute "prevEnergySince", "string"
+		attribute "prevEnergyDuration", "string"
 		
 		command "resetEnergy"
 		command "resetPower"
@@ -192,8 +196,8 @@ metadata {
 			state "off", label: 'off', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
 			state "on", label: 'on', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#79b821"
 		}
-		valueTile("prevEnergySince", "device.prevEnergySince", width: 2, height: 2, decoration: "flat") {
-			state "default", label:'Previous Energy\n${currentValue}', defaultState: true
+		valueTile("prevEnergyDuration", "device.prevEnergyDuration", width: 2, height: 2, decoration: "flat") {
+			state "default", label:'Previous\nEnergy Duration\n${currentValue}', defaultState: true
     }
 		valueTile("prevEnergy", "device.prevEnergy", width: 2, height: 1, decoration: "flat") {
 			state "val", label:'${currentValue} kWh', unit: "kWh", defaultState: true
@@ -204,8 +208,8 @@ metadata {
 		standardTile("resetEnergy", "general", width: 2, height: 2, decoration: "flat") {
 			state "default", label:'Reset Energy', action: "resetEnergy", icon:"st.secondary.refresh-icon", defaultState: true
 		}
-		valueTile("energySince", "device.energySince", width: 2, height: 2, decoration: "flat") {
-			state "default", label:'Current Energy\n${currentValue}', defaultState: true
+		valueTile("energyDuration", "device.energyDuration", width: 2, height: 2, decoration: "flat") {
+			state "default", label:'Energy Duration\n${currentValue}', defaultState: true
     }
 		valueTile("energy", "device.energy", width: 2, height: 1, decoration: "flat") {
 			state "val", label:'${currentValue} kWh', unit: "kWh", defaultState: true
@@ -253,7 +257,7 @@ metadata {
 			state "refresh", label:'Refresh All', action: "refresh", icon:"st.secondary.refresh-icon", defaultState: true
 		}
 		main "status"
-		details(["status", "switch", "prevEnergySince", "prevEnergy", "prevEnergyCost", "resetEnergy", "energySince", "energy", "energyCost", "resetPower", "power", "powerL", "powerH", "resetVoltage", "voltage", "voltageL", "voltageH", "resetCurrent", "current", "currentL", "currentH", "refresh"])
+		details(["status", "switch", "prevEnergyDuration", "prevEnergy", "prevEnergyCost", "resetEnergy", "energyDuration", "energy", "energyCost", "resetPower", "power", "powerL", "powerH", "resetVoltage", "voltage", "voltageL", "voltageH", "resetCurrent", "current", "currentL", "currentH", "refresh"])
 	}
 }
 
@@ -283,9 +287,8 @@ def configure() {
 	
 	if (!state.isConfigured) {
 		logTrace "Waiting 1 second because this is the first time being configured"		
-		updateEnergySince()
 		cmds << "delay 1000"
-		cmds << meterResetCmd()
+		cmds += resetEnergy()
 	}
 	
 	configData.sort { it.paramNum }.each { 
@@ -355,21 +358,16 @@ def off() {
 
 def resetEnergy() {
 	logDebug "Resetting Energy"
-	resetPrevEnergy("energySince")
+	resetPrevEnergy("energyDuration")
 	resetPrevEnergy("energy")
 	resetPrevEnergy("energyCost")	
-	updateEnergySince()
+	sendEvent(getEventMap("energyTime", new Date().time, false))
 	return delayBetween([meterResetCmd(), meterGetCmd(meterScaleEnergy)], 1000)
 }
 
 private resetPrevEnergy(name) {
-	def lastName = "prev${name.capitalize()}"
-	sendEvent(name: "${lastName}", value: device.currentValue("${name}"), displayed: false)
-}
-
-private updateEnergySince() {
-	def val = convertToLocalTimeString(new Date())
-	sendEvent(getEventMap("energySince", val, true, "Energy Reset"))	
+	def prevName = "prev${name.capitalize()}"
+	sendEvent(name: "${prevName}", value: device.currentValue("${name}"), displayed: false)
 }
 
 def resetPower() {
@@ -508,7 +506,7 @@ def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd) {
 	
 	if (name) {
 		if (name == "energy"){
-			result += createEnergyCostEvents(val)
+			result += createEnergyEvents(val)
 		}
 		else {
 			result += createMeterHistoryEvents(name, val, unit, true)
@@ -542,15 +540,36 @@ private createMeterHistoryEvents(mainName, mainVal, unit, lowEvent) {
 	return result
 }
 
-private createEnergyCostEvents(energyVal) {
-	def val = safeToDec(energyVal, 0) * energyPriceSetting
-	val = Math.round(val * 100) / 100 // Round to 2 places
-	
+private createEnergyEvents(energyVal) {
 	def result = []
-	if (device.currentValue("energyCost") != val) {
-		result << createEvent(getEventMap("energyCost", val, false, ""))
-	}	
+	
+	def cost = roundTwoPlaces(energyVal * energyPriceSetting)
+	if (device.currentValue("energyCost") != cost) {
+		result << createEvent(getEventMap("energyCost", cost, false))		
+	}
+	
+	result << createEvent(getEventMap("energyDuration", calculateEnergyDuration(), false))	
 	return result
+}
+
+private calculateEnergyDuration() {
+	def energyTimeMS = safeToDec(device.currentValue("energyTime"), 0)
+	if (!energyTimeMS) {
+		return "Unknown"
+	}
+	else {
+		def duration = roundTwoPlaces((new Date().time - energyTimeMS) / 60000) // minutes
+
+		if (duration >= (24 * 60)) {			
+			return "${roundTwoPlaces(duration / (24 * 60))} Days"
+		}
+		else if (duration >= 60) {
+			return "${roundTwoPlaces(duration / 60)} Hours"
+		}
+		else {
+			return "${duration} Minutes"
+		}
+	}
 }
 
 private createAttachedDeviceEvents(val) {
@@ -857,9 +876,13 @@ private safeToDec(val, defaultVal=-1) {
 	return "${val}"?.isBigDecimal() ? "${val}".toBigDecimal() : defaultVal
 }
 
-private convertToLocalTimeString(dt) {
-	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
+private roundTwoPlaces(val) {
+	return Math.round(safeToDec(val) * 100) / 100
 }
+
+// private convertToLocalTimeString(dt) {
+	// return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
+// }
 
 private canCheckin() {
 	// Only allow the event to be created once per minute.
