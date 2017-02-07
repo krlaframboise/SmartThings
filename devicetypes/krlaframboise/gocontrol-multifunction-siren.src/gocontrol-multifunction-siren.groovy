@@ -1,8 +1,8 @@
 /**
- *  GoControl Multifunction Siren v 1.6.2
+ *  GoControl Multifunction Siren v 1.6.3
  *
  *  Devices:
- *    GoControl/Linear (Model#: WA105DBZ-1)
+ *    GoControl/Linear (Model#: WA105DBZ-1 / ZM1601US-3)
  *    Vision Home Security (Model#: ZM1601US-5)
  *  	LinearLinc Z-Wave Siren/Strobe (Model#: 1LIWA105DBZ-2)
  *
@@ -25,7 +25,10 @@
  *
  *  Changelog:
  *
- *    1.6.2 (08/??/2016)
+ *    1.6.3 (02/06/2017)
+ *      - Fixed audio commands for speaker notify w/ sound because it doesn't use the capabilities as documented.
+ *
+ *    1.6.2 (08/30/2016)
  *      - Added another model# to header.
  *
  *    1.6.1 (08/28/2016)
@@ -765,15 +768,20 @@ def playSoundAndTrack(String URI, Number duration=null, String track, Number vol
 	playTrack(URI, volume)
 }
 
-def playTrackAndRestore(String URI, Number volume=null) {
-	logTrace "playTrackAndRestore($URI, $volume)"
-	playTrack(URI, volume) 
-}
-
-def playTrackAndResume(String URI, Number volume=null) {
-	logTrace "playTrackAndResume($URI, $volume)"
+def playTrackAndResume(URI, volume=null, otherVolume=null) {
+	if (otherVolume) {
+		// Fix for Speaker Notify w/ Sound not using command as documented.
+		volume = otherVolume
+	}
 	playTrack(URI, volume)
-}
+}	
+def playTrackAndRestore(URI, volume=null, otherVolume=null) {
+	if (otherVolume) {
+		// Fix for Speaker Notify w/ Sound not using command as documented.
+		volume = otherVolume
+	}
+	playTrack(URI, volume)
+}	
 
 def playTrack(String URI, Number volume=null) {
 	logTrace "playTrack($URI, $volume)"
