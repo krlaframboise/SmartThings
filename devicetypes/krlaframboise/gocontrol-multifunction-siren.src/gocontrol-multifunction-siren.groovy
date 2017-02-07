@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.6.3
+ *  GoControl Multifunction Siren v 1.6.4
  *
  *  Devices:
  *    GoControl/Linear (Model#: WA105DBZ-1 / ZM1601US-3)
@@ -24,6 +24,9 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.6.4 (02/07/2017)
+ *      - Fixed all audio commands so that they don't use explit types due to SmartApps not following documented capabilities.
  *
  *    1.6.3 (02/06/2017)
  *      - Fixed audio commands for speaker notify w/ sound because it doesn't use the capabilities as documented.
@@ -758,12 +761,12 @@ def mute() { off() }
 def play() { both() }
 
 // Audio Notification commands
-def playTrackAtVolume(String URI, Number volume) {
+def playTrackAtVolume(URI, volume) {
 	logTrace "playTrackAtVolume($URI, $volume)"
 	playTrack(URI, volume)
 }
 
-def playSoundAndTrack(String URI, Number duration=null, String track, Number volume=null) {
+def playSoundAndTrack(URI, duration=null, track, volume=null) {
 	logTrace "playSoundAndTrack($URI, $duration, $track, $volume)"
 	playTrack(URI, volume)
 }
@@ -783,7 +786,7 @@ def playTrackAndRestore(URI, volume=null, otherVolume=null) {
 	playTrack(URI, volume)
 }	
 
-def playTrack(String URI, Number volume=null) {
+def playTrack(URI, volume=null) {
 	logTrace "playTrack($URI, $volume)"
 	playText(getTextFromTTSUrl(URI), volume)
 }
@@ -796,17 +799,17 @@ def getTextFromTTSUrl(ttsUrl) {
 	return ttsUrl
 }
 
-def playTextAndResume(String message, Number volume=null) {
+def playTextAndResume(message, volume=null) {
 	logTrace "playTextAndResume($message, $volume)"
 	playText(message, volume) 
 }
 
-def playTextAndRestore(String message, Number volume=null) {
+def playTextAndRestore(message, volume=null) {
 	logTrace "playTextAndRestore($message, $volume)"
 	playText(message, volume=null) 
 }
 
-def playText(String message, Number volume=null) {
+def playText(message, volume=null) {
 	logTrace "playText($message, $volume)"
 	logDebug "Executing playText($message) Command"
 	message = cleanMessage(message)
