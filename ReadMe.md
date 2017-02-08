@@ -24,7 +24,9 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#alarm-switch">Alarm Switch</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-door-sensor">Dome Door Sensor</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-leak-sensor">Dome Leak Sensor</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-mouser">Dome Mouser</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-motion-sensor">Dome Motion Sensor</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-mouser">Dome Mouser</a></li>			
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-on-off-plug">Dome On Off Plug</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-siren">Dome Siren</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-water-shut-off">Dome Water Shut-Off</a></li>			
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#forcible-mobile-presence">Forcible Mobile Presence</a></li>
@@ -146,12 +148,33 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 
 <hr />
 
+<h3>Dome Motion Sensor</h3>
+
+<ul>
+<li>Coming Soon</li>
+<!--<li>This is the official device handler for the Dome Motion Sensor (DMMS1)</li>
+<li><a href="">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-motion-sensor.src/dome-motion-sensor.groovy">View Dome Motion Sensor - Device Handler Code</a></li>-->
+</ul>
+
+<hr />
+
 <h3>Dome Mouser</h3>
 
 <ul>
 <li>This is the official device handler for the Dome Mouser (DMMZ1)</li>
 <li><a href="https://community.smartthings.com/t/release-dome-mouser-official/75732?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-mouser.src/dome-mouser.groovy">View Dome Mouser - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Dome On Off Plug</h3>
+
+<ul>
+<li>This is the official device handler for the Dome On Off Plug (DMOF1)</li>
+<!--<li><a href="">View Documentation in SmartThings Forum</a></li>-->
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-on-off-plug.src/dome-on-off-plug.groovy">View Dome On Off Plug - Device Handler Code</a></li>
 </ul>
 
 <hr />
@@ -340,5 +363,6 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>Optionally use flashing LED for chime and siren.</li>
 <li>Use device as alarm to play the siren sound, switch to play the chime.</li>
 <li>Use the customChime command to play a sound by number.</li>
+<li><a href="https://community.smartthings.com/t/release-zooz-smart-chime/77152?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a id="ZoozSmartChime" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-smart-chime.src/zooz-smart-chime.groovy">View Zooz Smart Chime - Device Handler Code</a></li>
 </ul>
