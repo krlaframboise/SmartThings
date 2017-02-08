@@ -1,5 +1,5 @@
 /**
- *  Dome On Off Plug v0.0.5
+ *  Dome On Off Plug v1.0
  *  (Model: DMOF1)
  *
  *  Author: 
@@ -10,28 +10,7 @@
  *
  *  Changelog:
  *
- *    0.0.5 (02/04/2017)
- *      - Changed energy fields from time to duration.
- *
- *    0.0.4 (02/04/2017)
- *      - Added automatic energy reset.
- *
- *    0.0.3 (02/04/2017)
- *      - Changed energy cost field to decimal.
- *      - Changed secondary fb to active/inactive and removed icon.
- *      - Added Inactive Attached Device Current setting and changed active/inactive event so that it only changes to active if the amps are above that setting.
- *      - Fixed bug that caused it to repeatedly create low events when the values were 0.
- *      - Set low threshold of current threshold to 2% because it doesn't accept 1%.
- *
- *    0.0.2 (02/03/2017)
- *      - Added previous energy section
- *
- *    0.0.1 (02/01/2017)
- *      - Added main tile and overload support
- *      - Added contact/acceleration capabilities
- *      - Stopped displaying energy measurements.
- *
- *    0.0.0 (01/29/2017)
+ *    1.0 (02/07/2017)
  *      - Initial Release
  *
  *
