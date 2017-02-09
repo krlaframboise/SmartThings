@@ -1,14 +1,18 @@
 /**
- *  Dome Water Shut-Off v1.0
+ *  Dome Water Shut-Off v1.1
  *  (Model: DMWV1)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:  https://community.smartthings.com/t/release-dome-water-main-shut-off-official/75500?u=krlaframboise
+ *  URL to Forum Topic:  https://community.smartthings.com/t/release-dome-water-main-shut-off-official/75500?u=krlaframboise
  *    
+ *  URL to Manual:  https://s3-us-west-2.amazonaws.com/dome-manuals/SmartThings/SmartThings+Water+Main+Shut-Off+Device+Handler.pdf
  *
  *  Changelog:
+ *
+ *    1.1 (02/09/2017)
+ *      - Cleaned code for publication.
  *
  *    1.0 (01/26/2017)
  *      - Initial Release
@@ -139,7 +143,7 @@ def updated() {
 // Refreshes the valve status.
 def poll() {
 	logTrace "poll()"
-	if (canCheckin()) {		
+	if (canCheckin()) {			
 		return refresh()
 	}
 	else {
@@ -157,6 +161,8 @@ def refresh() {
 def on() {
 	return open()
 }
+
+// Opens the valve.
 def open() {
 	logTrace "Executing open()"
 	return toggleValve(openStatus)
@@ -166,6 +172,8 @@ def open() {
 def off() {
 	return close()
 }
+
+// Closes the valve.
 def close() {
 	logTrace "Executing close()"
 	return toggleValve(closedStatus)
@@ -183,6 +191,7 @@ private toggleValve(pending) {
 	]
 }
 
+// Handles device response.
 def parse(String description) {
 	def result = []
 
@@ -210,10 +219,11 @@ private getCommandClassVersions() {
 		0x73: 1,  // Powerlevel
 		0x85: 2,  // Association
 		0x86: 1,  // Version (2)
-		0x25: 1,  // Switch Binary
+		0x25: 1  // Switch Binary
 	]
 }
 
+// Creates events based on state of valve.
 def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
 	logTrace "SwitchBinaryReport: $cmd"
 	def result = []
@@ -234,6 +244,7 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 	return result
 }
 
+// Handles unexpected device event.
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	logDebug "Unhandled Command: $cmd"
 	return []
