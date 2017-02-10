@@ -1,5 +1,5 @@
 /**
- *  Dome Mouser v1.0
+ *  Dome Mouser v1.1
  *  (Model: DMMZ1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1 (02/09/2017)
+ *      - Cleaned code for publication.
  *
  *    1.0 (01/27/2017)
  *      - Initial Release
@@ -77,16 +80,16 @@ metadata {
 		multiAttributeTile(name:"status", type: "generic", width: 6, height: 4, canChangeIcon: false){
 			tileAttribute ("device.status", key: "PRIMARY_CONTROL") {
 				attributeState "disarmed", 
-					label:'Disarmed', 
-					icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/mouse.png",
+					label:'Disarmed',					
+					icon:"https://raw.githubusercontent.com/krlaframboise/SmartThingsPublic/master/devicetypes/krlaframboise/dome-mouser.src/mouse.png",
 					backgroundColor:"#ffffff"
 				attributeState "armed", 
 					label:'Armed', 
-					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/mouse.png", 
+					icon:"https://raw.githubusercontent.com/krlaframboise/SmartThingsPublic/master/devicetypes/krlaframboise/dome-mouser.src/mouse.png", 
 					backgroundColor:"#79b821"
 				attributeState "tripped", 
 					label:'Tripped', 
-					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/dome-mouser/rip.png", 
+					icon:"https://raw.githubusercontent.com/krlaframboise/SmartThingsPublic/master/devicetypes/krlaframboise/dome-mouser.src/rip.png", 
 					backgroundColor:"#bc2323"
 			}
 			tileAttribute ("device.status", key: "SECONDARY_CONTROL") {
@@ -126,6 +129,7 @@ def updated() {
 	}		
 }
 
+// Sends the configuration settings to the device.
 def configure() {
 	logTrace "configure()"
 	def cmds = []
@@ -180,6 +184,7 @@ private logForceWakeupMessage(msg) {
 	logDebug "${msg}  You can force the device to wake up immediately by pressing the connect button twice."
 }
 
+// Handles message from device.
 def parse(String description) {
 	def result = []
 
@@ -215,6 +220,7 @@ private getCommandClassVersions() {
 	]
 }
 
+// Send outstanding configuration changes to device and report battery level.
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 {
 	logTrace "WakeUpNotification: $cmd"
@@ -244,6 +250,7 @@ private canReportBattery() {
 	return (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) 
 }
 
+// Creates event for the battery level.
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	logTrace "BatteryReport: $cmd"
 	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
@@ -254,6 +261,7 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	]
 }	
 
+// Displays configuration value in live logging.
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {	
 	def name = configData.find { it.paramNum == cmd.parameterNumber }?.name
 	if (name) {	
@@ -297,16 +305,20 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 				result << createEvent(getEventMap("status", "tripped", null, "Tripped/Motion Active"))
 				result << createEvent(getEventMap("motion", "active", false))
 				break
+			default:
+				logDebug "Unknown notification type: ${cmd}"
 		}
 	}
 	return result
 }
 
+// Ignores sensor binary report since it uses the notification report to detect activity.
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
 	logTrace "SensorBinaryReport: $cmd"
 	return []
 }
 
+// Handles unexpected command.
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	logDebug "Unhandled Command: $cmd"
 	return []
