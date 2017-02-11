@@ -1,5 +1,5 @@
 /**
- *  Dome Motion Sensor v0.0.1
+ *  Dome Motion Sensor v0.0.2
  *  (Model: DMMS1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    0.0.2 (02/11/2017)
+ *      - Changed labels of light tile and feedback.
  *
  *    0.0.1 (02/10/2017)
  *      - Removed enable/disable setting.
@@ -112,13 +115,13 @@ metadata {
 			}			
 			tileAttribute ("device.illuminance", key: "SECONDARY_CONTROL") {
 				attributeState "illuminance", 
-					label:'Illuminance is ${currentValue} lx', 
+					label:'Light is ${currentValue} lux', 
 					backgroundColor:"#ffffff"
 			}
 		}	
 		
 		valueTile("illuminance", "device.illuminance", decoration: "flat", width: 2, height: 2){
-			state "illuminance", label:'${currentValue} lx', unit: ""
+			state "illuminance", label:'Light\n${currentValue} lx', unit: ""
 		}	
 		
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
@@ -532,10 +535,6 @@ private hexToInt(hex, size) {
 		return hex[0]
 	}
 }
-
-// private roundTwoPlaces(val) {
-	// return Math.round(safeToDec(val) * 100) / 100
-// }
 
 private canCheckin() {
 	// Only allow the event to be created once per minute.
