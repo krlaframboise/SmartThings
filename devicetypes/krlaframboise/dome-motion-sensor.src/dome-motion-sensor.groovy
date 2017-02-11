@@ -1,5 +1,5 @@
 /**
- *  Dome Motion Sensor v0.0.0
+ *  Dome Motion Sensor v0.0.1
  *  (Model: DMMS1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    0.0.1 (02/10/2017)
+ *      - Removed enable/disable setting.
  *
  *    0.0.0 (02/09/2017)
  *      - Test Release
@@ -53,12 +56,6 @@ metadata {
 			required: false,
 			displayDuringSetup: true,
 			options: ledEnabledOptions.collect { it.name }
-		input "motionEnabled", "enum",
-			title: "Enable/Disable Motion Detection:",
-			defaultValue: motionEnabledSetting,
-			required: false,
-			displayDuringSetup: true,
-			options: motionEnabledOptions.collect { it.name }
 		input "motionClearedDelay", "enum",
 			title: "Motion Cleared Delay:",
 			defaultValue: motionClearedDelaySetting,
@@ -385,10 +382,6 @@ private configSetCmd(paramNum, size, val) {
 
 
 // Settings
-private getMotionEnabledSetting() {
-	return settings?.motionEnabled ?: findDefaultOptionName(motionEnabledOptions)
-}
-
 private getLedEnabledSetting() {
 	return settings?.ledEnabled ?: findDefaultOptionName(ledEnabledOptions)
 }
@@ -423,7 +416,6 @@ private getConfigData() {
 	return [
 		[paramNum: 1, name: "Motion Sensitivity", value: convertOptionSettingToInt(motionSensitivityOptions, motionSensitivitySetting), size: 1],
 		[paramNum: 2, name: "Motion Cleared Delay", value: convertOptionSettingToInt(motionClearedDelayOptions, motionClearedDelaySetting), size: 2],
-		[paramNum: 4, name: "Motion Enabled", value: convertOptionSettingToInt(motionEnabledOptions, motionEnabledSetting), size: 1],
 		[paramNum: 7, name: "Light Reporting Interval", value: convertOptionSettingToInt(lightReportingOptions, lightReportingSetting), size: 2],
 		[paramNum: 9, name: "Light Sensitivity", value: convertOptionSettingToInt(lightSensitivityOptions, lightSensitivitySetting), size: 1],
 		[paramNum: 10, name: "LED Enabled", value: convertOptionSettingToInt(ledEnabledOptions, ledEnabledSetting), size: 1],
@@ -488,12 +480,6 @@ private getMotionClearedDelayOptions() {
 	]
 }
 
-private getMotionEnabledOptions() {
-	[
-		[name: "Disabled", value: 0],
-		[name: formatDefaultOptionName("Enabled"), value: 255]
-	]
-}
 private getLedEnabledOptions() {
 	[
 		[name: "Disabled", value: 0],
