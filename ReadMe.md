@@ -31,6 +31,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-water-shut-off">Dome Water Shut-Off</a></li>			
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#forcible-mobile-presence">Forcible Mobile Presence</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-doorwindow-sensor">GoControl/Linear Door/Window Sensor</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-multifunction-contact-sensor">GoControl/Linear Multifunction Contact Sensor</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-motion-sensor">GoControl/Linear Motion Sensor</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-multifunction-siren">GoControl/Linear/Vision Multifunction Siren</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#leaksmart-water-valve">LeakSmart Water Valve</a></li>
@@ -219,6 +220,21 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 Supports the Tamper Alert Capability.<br /></li>
 <li><a href="https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/gocontrol-contact-sensor.src/gocontrol-contact-sensor.groovy">View GoControl/Linear Door/Window Sensor - Device Handler Code</a></li>
+</ul>
+
+<hr />
+<h3>GoControl/Linear Multifunction Contact Sensor</h3>
+
+<ul>
+<li>Advanced device handler for the GoControl/Linear Contact Sensor (WADWAZ-1) that allows you to use the internal and external sensors as different capabilities.<br /></li>
+<li>Supports the Contact Sensor, Water Sensor and Motion Sensor capabilities.<br></li>
+<li>Choose which contact (internal/external/main) and which state (open/close) go with each of the motion and water states (wet/dry/active/inactive).<br></li>
+<li>Choose which capability to use for the main tile.<br></li>
+<li>Choose which capability to use for the secondary status on the main tile.<br></li>
+<li>Choose default state to use for the capabilities that are not being used.<br></li>
+<li>Has all the features that the basic version has like the ability to decide if the internal, external or a combination of both cause the Contact Capability to change.<br></li>
+<li><a href="https://community.smartthings.com/t/release-gocontrol-linear-multifunction-contact-sensor/77659?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/gocontrol-multifunction-contact-sensor.src/gocontrol-multifunction-contact-sensor.groovy">View GoControl/Linear Multifunction Contact Sensor - Device Handler Code</a></li>
 </ul>
 
 <hr />
