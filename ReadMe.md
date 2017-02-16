@@ -152,10 +152,9 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <h3>Dome Motion Sensor</h3>
 
 <ul>
-<li>Coming Soon</li>
-<!--<li>This is the official device handler for the Dome Motion Sensor (DMMS1)</li>
-<li><a href="">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-motion-sensor.src/dome-motion-sensor.groovy">View Dome Motion Sensor - Device Handler Code</a></li>-->
+<li>This is the official device handler for the Dome Motion Sensor (DMMS1)</li>
+<li><a href="https://community.smartthings.com/t/release-dome-motion-sensor-official/78092?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-motion-sensor.src/dome-motion-sensor.groovy">View Dome Motion Sensor - Device Handler Code</a></li>
 </ul>
 
 <hr />
@@ -174,7 +173,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 
 <ul>
 <li>This is the official device handler for the Dome On Off Plug (DMOF1)</li>
-<!--<li><a href="">View Documentation in SmartThings Forum</a></li>-->
+<li><a href="https://community.smartthings.com/t/release-dome-motion-sensor-official/78092?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-on-off-plug.src/dome-on-off-plug.groovy">View Dome On Off Plug - Device Handler Code</a></li>
 </ul>
 
