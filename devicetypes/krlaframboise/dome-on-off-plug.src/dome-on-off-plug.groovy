@@ -5,7 +5,7 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:  
+ *  URL to documentation:  https://community.smartthings.com/t/release-dome-on-off-plug-official/78088?u=krlaframboise
  *    
  *
  *  Changelog:
@@ -120,7 +120,7 @@ metadata {
 			displayDuringSetup: true,
 			options: overloadWarningOptions.collect { it.name }
 		input "energyPrice", "decimal",
-			title: "\$/kWH Cost:",
+			title: "\$/kWh Cost:",
 			defaultValue: energyPriceSetting,
 			required: false,
 			displayDuringSetup: true
