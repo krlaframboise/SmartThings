@@ -1,5 +1,5 @@
 /**
- *  Dome Motion Sensor v0.0.2
+ *  Dome Motion Sensor v1.0
  *  (Model: DMMS1)
  *
  *  Author: 
@@ -10,14 +10,8 @@
  *
  *  Changelog:
  *
- *    0.0.2 (02/11/2017)
- *      - Changed labels of light tile and feedback.
- *
- *    0.0.1 (02/10/2017)
- *      - Removed enable/disable setting.
- *
- *    0.0.0 (02/09/2017)
- *      - Test Release
+ *    1.0 (02/15/2017)
+ *      - Initial Release
  *
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
