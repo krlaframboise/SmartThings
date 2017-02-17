@@ -43,7 +43,8 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zipato-multisound-siren">Zipato Multisound Siren</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zoozmonoprice-4-in-1-multisensor">Zooz 4-in-1 Multisensor</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zooz-power-strip">Zooz Power Strip</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zooz-smart-chime">Zooz Smart Chime</a></li>			
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zooz-smart-chime">Zooz Smart Chime</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zooz-water-sensor">Zooz Water Sensor</a></li>
 		</ul>
 	</li>
 </ul>
@@ -380,4 +381,16 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>Use the customChime command to play a sound by number.</li>
 <li><a href="https://community.smartthings.com/t/release-zooz-smart-chime/77152?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a id="ZoozSmartChime" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-smart-chime.src/zooz-smart-chime.groovy">View Zooz Smart Chime - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Zooz Water Sensor</h3>
+
+<ul>
+<li>This is a device handler for the Zooz Water Sensor (ZSE30).<br /></li>
+<li>Red LED and optional audbile alarm when water is detected.</li>
+<li>Specify the first alarm beep duration, reminder beep duration, interval between beeps, and the total length of time it should send reminders.</li>
+<li><a href="https://community.smartthings.com/t/release-zooz-water-sensor/78223?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
+<li><a id="ZoozWaterSensor" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-water-sensor.src/zooz-water-sensor.groovy">View Zooz Water Sensor - Device Handler Code</a></li>
 </ul>
