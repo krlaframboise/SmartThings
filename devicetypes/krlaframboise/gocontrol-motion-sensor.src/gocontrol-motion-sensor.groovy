@@ -1,5 +1,5 @@
 /**
- *  GoControl Motion Sensor v1.2.1
+ *  GoControl Motion Sensor v1.2.2
  *    (Model: WAPIRZ-1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.2.2 (12/??/2016)
+ *      - Fixed temperature conversion bug that occurs when temperature drops below 32° F.
  *
  *    1.2.1 (07/31/2016)
  *      - Fix iOS UI bug with tamper tile.
@@ -147,6 +150,7 @@ def parse(String description) {
 	
 	def cmd = zwave.parse(description, [0x71: 2, 0x80: 1, 0x30: 1, 0x31: 2, 0x70: 1, 0x84: 1])
 	if (cmd) {
+	log.debug "cmd: $cmd"
 		result += zwaveEvent(cmd)
 	}
 	else {
