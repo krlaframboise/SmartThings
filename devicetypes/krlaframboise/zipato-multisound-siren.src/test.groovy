@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.5 (TEST)
+ *  Zipato Multisound Siren v1.5 (TEST4)
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02)
  *  
@@ -53,6 +53,7 @@ metadata {
 		capability "Configuration"
 		capability "Alarm"
 		capability "Audio Notification"
+		capability "Music Player"
 		capability "Speech Synthesis"
 		capability "Switch"
 		capability "Tone"
@@ -320,7 +321,7 @@ def refresh() {
 	logDebug "\nStrobe Sound: ${settings.strobeSound}\nSiren Sound: ${settings.sirenSound}\nBoth Sound: ${settings.bothSound}\nOn Sound: ${settings.switchOnSound}\nBeep Sound: ${settings.beepSound}"
 	
 	if (device.currentValue("tamper") != "clear") {
-		sendEvent(getTamperEventMap("detected"))
+		sendEvent(getTamperEventMap("clear"))
 	}
 	
 	delayBetween([
@@ -331,9 +332,27 @@ def refresh() {
 	], 250)
 }
 
+// Unsuported Music Player commands
+def unmute() { handleUnsupportedCommand("unmute") }
+def nextTrack() { handleUnsupportedCommand("nextTrack") }
+def setLevel(number) { handleUnsupportedCommand("setLevel") }
+def previousTrack() { handleUnsupportedCommand("previousTrack") }
+
+
+private handleUnsupportedCommand(cmd) {
+	log.info "Command $cmd is not supported"
+}
+
+// Turns siren off
+def pause() { off() }
+def stop() { off() }
+def mute() { off() }
+
+// Turns siren on
+def play() { both() }
 
 // Audio Notification Capability Commands
-def playSoundAndTrack(URI, duration=0, track, volume=0) {
+def playSoundAndTrack(URI, duration=null, track=null, volume=null) {
 	speak(URI)
 }
 def playText(message, volume=null) {
@@ -522,7 +541,7 @@ def parse(String description) {
 	else {
 		logDebug "Unknown Description: $description"
 	}	
-	result << createEvent(name: "lastCheckin", value: new Date(), displayed: false)
+	result << createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
 	return result
 }
 
@@ -843,6 +862,10 @@ private secureCmd(physicalgraph.zwave.Command cmd) {
 	}
 }
 
+private convertToLocalTimeString(dt) {
+	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
+}
+
 int validateRange(val, int defaultVal, int minVal, int maxVal) {
 	def intVal = safeToInteger(val, defaultVal)
 		
@@ -893,5 +916,5 @@ private logInfo(msg) {
 }
 
 private logTrace(msg) {
-	// log.trace "${msg}"
+//	log.trace "${msg}"
 }
