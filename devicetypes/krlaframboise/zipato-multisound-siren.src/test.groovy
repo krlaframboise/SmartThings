@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.5.test
+ *  Zipato Multisound Siren v1.5.test2
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02.US)
  *  
@@ -13,6 +13,10 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.5.test2 (02/18/2017)
+ *    - Removed switch multilevel because that's the EU version behaves the same way as the US.
+ 
  *
  *  1.5.test (02/17/2017)
  *    - Added command declaration for playSoundAndTrack.
@@ -398,15 +402,33 @@ def off() {
 }
 
 def strobe() {
-	playAlarm(settings.strobeSound, "strobe")
+	// playAlarm(settings.strobeSound, "strobe")
+	def result = []
+	result << basicSetCmd(6)	
+	state.lastSound = 6
+	result << "delay 50"
+	result << basicGetCmd()
+	return result
 }
 
 def siren() {
-	playAlarm(settings.sirenSound, "siren")
+//	playAlarm(settings.sirenSound, "siren")
+	def result = []
+	result << basicSetCmd(5)
+	state.lastSound = 5
+	result << "delay 50"
+	result << basicGetCmd()
+	return result
 }
 
 def both() {	
-	playAlarm(settings.bothSound, "both")
+	// playAlarm(settings.bothSound, "both")
+	def result = []
+	result << zwave.basicV1.basicSet(value: 5).format()
+	state.lastSound = 5
+	result << "delay 50"
+	result << zwave.basicV1.basicGet().format()
+	return result
 }
 
 private playAlarm(soundName, alarmType) {
@@ -488,8 +510,7 @@ private playSound(soundNumber) {
 	}
 	else {
 		logInfo "Playing Sound #$soundNumber"
-		// result << basicSetCmd(soundNumber)
-		result << switchMultilevelSetCmd(soundNumber)
+		result << basicSetCmd(soundNumber)	
 	}
 	state.lastSound = soundNumber	
 	result << basicGetCmd()
@@ -686,10 +707,6 @@ private basicSetCmd(val) {
 
 private basicGetCmd() {
 	return secureCmd(zwave.basicV1.basicGet())
-}
-
-private switchMultilevelSetCmd(val) {
-	return secureCmd(zwave.switchMultilevelV1.switchMultilevelSet(value: val))
 }
 
 private alarmDurationSetCmd() {	
