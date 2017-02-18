@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.5
+ *  Zipato Multisound Siren v1.5.1
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02)
  *  
@@ -14,7 +14,7 @@
  *
  *  Changelog:
  *
- *  1.5 (02/18/2017)
+ *  1.5.1 (02/18/2017)
  *    - Switched from basic to notification for playing sounds.
  *    - Added Health Check Capability with hourly self polling.
  *
@@ -60,6 +60,7 @@ metadata {
 		capability "Tamper Alert"
 		capability "Refresh"
 		capability "Health Check"
+		capability "Polling"
 
 		attribute "status", "enum", ["off", "on", "alarm", "beep"]
 		attribute "alarmState", "enum", ["enabled", "disabled"]
@@ -129,7 +130,13 @@ metadata {
 			title: "Beep Delay in Milliseconds:", 
 			defaultValue: "2000",
 			displayDuringSetup: true, 
-			required: false		
+			required: false
+		input "checkinInterval", "enum",
+			title: "Checkin Interval:",
+			defaultValue: checkinIntervalSetting,
+			required: false,
+			displayDuringSetup: true,
+			options: checkinIntervalOptions.collect { it.name }
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -258,11 +265,8 @@ def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
 		state.lastUpdated = new Date().time
 		
-		unschedule()
-    runEvery1Hour("healthPoll")
-    // Device-Watch allows 2 check-in misses from device + ping
-    sendEvent(name: "checkInterval", value: (60 * 60 * 2) + 5, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
-						
+		initializeCheckin()
+	
 		def cmds = []
 		if (!state.isConfigured) {
 			state.useSecureCmds = false
@@ -283,14 +287,57 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
 }
 
+private initializeCheckin() {
+	// Set the Health Check interval so that it pings the device if it's skipped 2 checkins.
+	def checkInterval = (checkinIntervalSettingValue * 60) * 2
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+	
+	unschedule(healthPoll)
+	switch (checkinIntervalSettingValue) {
+		case 5:
+			runEvery5Minutes(healthPoll)
+			break
+		case 10:
+			runEvery10Minutes(healthPoll)
+			break
+		case 15:
+			runEvery15Minutes(healthPoll)
+			break
+		case 30:
+			runEvery30Minutes(healthPoll)
+			break
+		case [60, 120]:
+			runEvery1Hour(healthPoll)
+			break
+		default:
+			runEvery3Hours(healthPoll)			
+	}
+}
+
 def healthPoll() {
 	logTrace "healthPoll()"
-	sendHubCommand(new physicalgraph.device.HubAction(sensorBinaryGetCmd()))
+	def cmd = poll()
+	if (cmd) {		
+		sendHubCommand([new physicalgraph.device.HubAction(cmd)], 100)
+	}	
 }
 
 def ping() {
 	logTrace "ping()"
-	return sensorBinaryGetCmd()
+	if (canCheckin()) {
+		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
+		initializeCheckin()		
+	}
+	return poll()	
+}
+
+def poll() {
+	logTrace "poll()"
+	if (canCheckin()) {
+		logDebug "Polling Device"
+		return versionGetCmd()
+	}
 }
 
 // Initializes variables and sends settings to device
@@ -522,8 +569,8 @@ private playSound(soundNumber) {
 		result << basicSetCmd(0x00)
 	}
 	else if (state.playStatus?.status == "beep") {
-		def beepCount = safeToInteger(settings.repeatBeepSound, 0)
-		def repeatDelay = safeToInteger(settings.repeatBeepDelay, 2000)
+		def beepCount = safeToInt(settings.repeatBeepSound, 0)
+		def repeatDelay = safeToInt(settings.repeatBeepDelay, 2000)
 		logInfo "Playing sound #$soundNumber $beepCount time(s)"
 		for (int beep = 0; beep <= beepCount; beep++) {
 			result << notificationReportCmd(soundNumber)
@@ -549,7 +596,10 @@ def parse(String description) {
 	else {
 		logDebug "Unknown Description: $description"
 	}	
-	result << createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
+	
+	if (canCheckin()) {
+		result << createLastCheckinEvent()
+	}
 	return result
 }
 
@@ -642,12 +692,21 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
 	logTrace "SensorBinaryReport: $cmd"
+	// Ignoring these reports.	
+	return []
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
+	logTrace "VersionReport: $cmd"	
 	// Using this event for health monitoring to update lastCheckin
 	def result = []
-	
-	result << createEvent(name: "lastCheckin", value: new Date(), displayed: false)
-	
+	result << createLastCheckinEvent()
 	return result
+}
+
+private createLastCheckinEvent() {
+	state.lastCheckinTime = new Date().time
+	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
 }
 
 def createStatusEvents(val, forceEvent) {
@@ -775,8 +834,8 @@ private basicGetCmd() {
 	return secureCmd(zwave.basicV1.basicGet())
 }
 
-private sensorBinaryGetCmd() {
-	return secureCmd(zwave.sensorBinaryV2.sensorBinaryGet())
+private versionGetCmd() {
+	return secureCmd(zwave.versionV1.versionGet())
 }
 
 private alarmDurationSetCmd() {	
@@ -870,12 +929,58 @@ private secureCmd(physicalgraph.zwave.Command cmd) {
 	}
 }
 
+private getCheckinIntervalSettingValue() {
+	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting)
+}
+
+private getCheckinIntervalSetting() {
+	return settings?.checkinInterval ?: findDefaultOptionName(checkinIntervalOptions)
+}
+
+private canCheckin() {
+	return (!state.lastCheckinTime || ((new Date().time - state.lastCheckinTime) >= checkinIntervalSettingValue))	
+}
+
+private getCheckinIntervalOptions() {
+	[
+		[name: "5 Minutes", value: 5],
+		[name: "10 Minutes", value: 10],
+		[name: "15 Minutes", value: 15],
+		[name: "30 Minutes", value: 30],
+		[name: "1 Hour", value: 60],
+		[name: "2 Hours", value: 120],
+		[name: "3 Hours", value: 180],
+		[name: "6 Hours", value: 360],
+		[name: "9 Hours", value: 540],
+		[name: formatDefaultOptionName("12 Hours"), value: 720],
+		[name: "18 Hours", value: 1080],
+		[name: "24 Hours", value: 1440]
+	]
+}
+
+private convertOptionSettingToInt(options, settingVal) {
+	return safeToInt(options?.find { "${settingVal}" == it.name }?.value, 0)
+}
+
+private formatDefaultOptionName(val) {
+	return "${val}${defaultOptionSuffix}"
+}
+
+private findDefaultOptionName(options) {
+	def option = options?.find { it.name?.contains("${defaultOptionSuffix}") }
+	return option?.name ?: ""
+}
+
+private getDefaultOptionSuffix() {
+	return "   (Default)"
+}
+
 private convertToLocalTimeString(dt) {
 	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
 }
 
 int validateRange(val, int defaultVal, int minVal, int maxVal) {
-	def intVal = safeToInteger(val, defaultVal)
+	def intVal = safeToInt(val, defaultVal)
 		
 	if ("$val" != "$intVal") {
 		logDebug "Using $defaultVal because $val is invalid"
@@ -894,23 +999,8 @@ int validateRange(val, int defaultVal, int minVal, int maxVal) {
 	}
 }
 
-private int safeToInteger(val, int defaultVal=0) {
-	try {
-		val = "$val"
-		if (val?.isFloat()) {
-			return val.toFloat().round().toInteger()
-		}
-		else if (val?.isInteger()){
-			return val.toInteger()
-		}
-		else {
-			return defaultVal
-		}
-	}
-	catch (e) {
-		logDebug "safeToInteger($val, $defaultVal) failed with error $e"
-		return defaultVal
-	}
+private int safeToInt(val, int defaultVal=0) {
+	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
 }
 
 private logDebug(msg) {
