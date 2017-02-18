@@ -1,7 +1,7 @@
 /**
- *  Zipato Multisound Siren v1.4.2
+ *  Zipato Multisound Siren v1.5
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
- *        Model:PH-PSE02.US)
+ *        Model:PH-PSE02)
  *  
  *https://community.smartthings.com/t/release-zipato-phileo-multisound-siren-ph-pse02-us/53748?u=krlaframboise
  *
@@ -13,6 +13,10 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.5 (02/18/2017)
+ *    - Switched from basic to notification for playing sounds.
+ *    - Added Health Check Capability with hourly self polling.
  *
  *  1.4.2 (08/06/2016)
  *    - Adjusted chirp timing resulting in 97% accuracy.
@@ -49,16 +53,20 @@ metadata {
 		capability "Configuration"
 		capability "Alarm"
 		capability "Audio Notification"
+		capability "Music Player"
 		capability "Speech Synthesis"
 		capability "Switch"
 		capability "Tone"
 		capability "Tamper Alert"
 		capability "Refresh"
+		capability "Health Check"
 
 		attribute "status", "enum", ["off", "on", "alarm", "beep"]
 		attribute "alarmState", "enum", ["enabled", "disabled"]
+		attribute "lastCheckin", "string"
 
 		command "playTrackAtVolume"
+		command "playSoundAndTrack"
 		command "enableAlarm"
 		command "disableAlarm"
 		
@@ -250,6 +258,11 @@ def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
 		state.lastUpdated = new Date().time
 		
+		unschedule()
+    runEvery1Hour("healthPoll")
+    // Device-Watch allows 2 check-in misses from device + ping
+    sendEvent(name: "checkInterval", value: (60 * 60 * 2) + 5, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+						
 		def cmds = []
 		if (!state.isConfigured) {
 			state.useSecureCmds = false
@@ -270,6 +283,16 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
 }
 
+def healthPoll() {
+	logTrace "healthPoll()"
+	sendHubCommand(new physicalgraph.device.HubAction(sensorBinaryGetCmd()))
+}
+
+def ping() {
+	logTrace "ping()"
+	return sensorBinaryGetCmd()
+}
+
 // Initializes variables and sends settings to device
 def configure() {
 	def cmds = []
@@ -283,7 +306,7 @@ def configure() {
 		disableAlarmGetCmd(),
 		notificationTypeGetCmd(),
 		basicGetCmd()
-	], 200)
+	], 500)
 	
 	if (!state.useSecureCmds) {
 		cmds << supportedSecurityGetCmd()
@@ -293,12 +316,12 @@ def configure() {
 }
 
 def refresh() {
-	logDebug "Executing refresh()"
+	logTrace "Executing refresh()"
 	
 	logDebug "\nStrobe Sound: ${settings.strobeSound}\nSiren Sound: ${settings.sirenSound}\nBoth Sound: ${settings.bothSound}\nOn Sound: ${settings.switchOnSound}\nBeep Sound: ${settings.beepSound}"
 	
 	if (device.currentValue("tamper") != "clear") {
-		sendEvent(getTamperEventMap("detected"))
+		sendEvent(getTamperEventMap("clear"))
 	}
 	
 	delayBetween([
@@ -306,35 +329,54 @@ def refresh() {
 		disableAlarmGetCmd(),
 		notificationTypeGetCmd(),
 		basicGetCmd()
-	], 100)
+	], 250)
 }
 
+// Unsuported Music Player commands
+def unmute() { handleUnsupportedCommand("unmute") }
+def nextTrack() { handleUnsupportedCommand("nextTrack") }
+def setLevel(number) { handleUnsupportedCommand("setLevel") }
+def previousTrack() { handleUnsupportedCommand("previousTrack") }
+
+
+private handleUnsupportedCommand(cmd) {
+	log.info "Command $cmd is not supported"
+}
+
+// Turns siren off
+def pause() { off() }
+def stop() { off() }
+def mute() { off() }
+
+// Turns siren on
+def play() { both() }
+
 // Audio Notification Capability Commands
-def playSoundAndTrack(String URI, Number duration=0, String track, Number volume=0) {
+def playSoundAndTrack(URI, duration=null, track=null, volume=null) {
 	speak(URI)
 }
-def playText(String message, Number volume=0) {
+def playText(message, volume=null) {
 	speak(message)
 }
-def playTextAndResume(String message, Number volume=0) {
+def playTextAndResume(message, volume=null, otherVolume=null) {
 	speak(message)
 }	
-def playTextAndRestore(String message, Number volume=0) {
+def playTextAndRestore(message, volume=null, otherVolume=null) {
 	speak(message)
 }
-def playTrack(String URI, Number volume=0) {
+def playTrack(URI, volume=null) {
 	speak(URI)
 }	
-def playTrackAndResume(String URI, Number volume=0) {
+def playTrackAndResume(URI, volume=null, otherVolume=null) {
 	speak(URI)
 }	
-def playTrackAndRestore(String URI, Number volume=0) {
+def playTrackAndRestore(URI, volume=null, otherVolume=null) {
 	speak(URI)
 }	
 
 // Documented as part of the Audio Notification capability
 // but not actually part of it so it must be declared.
-def playTrackAtVolume(String URI, Number volume) {
+def playTrackAtVolume(URI, volume) {
 	speak(URI)
 }
 
@@ -359,7 +401,7 @@ def speak(text) {
 }
 
 def enableAlarm() {
-	logDebug "Executing enableAlarm()"	
+	logTrace "Executing enableAlarm()"	
 	[
 		disableAlarmSetCmd(false),
 		"delay 200",
@@ -368,7 +410,7 @@ def enableAlarm() {
 }
 
 def disableAlarm() {
-	logDebug "Executing disableAlarm()"
+	logTrace "Executing disableAlarm()"
 	[
 		disableAlarmSetCmd(true),
 		"delay 200",
@@ -377,13 +419,13 @@ def disableAlarm() {
 }
 
 def on() {
-	logDebug "Executing on()"
+	logTrace "Executing on()"
 	setPlayStatus("on", "off", "on")	
 	return playSound(getSoundNumber(settings.switchOnSound))
 }
 
 def off() {
-	logDebug "Executing off()"
+	logTrace "Executing off()"
 	setPlayStatus("off", "off", "off")	
 	[
 		basicSetCmd(0x00),
@@ -392,11 +434,11 @@ def off() {
 }
 
 def strobe() {
-	playAlarm(settings.strobeSound, "strobe")
+	playAlarm(settings.strobeSound, "strobe")	
 }
 
 def siren() {
-	playAlarm(settings.sirenSound, "siren")
+	playAlarm(settings.sirenSound, "siren")	
 }
 
 def both() {	
@@ -404,13 +446,13 @@ def both() {
 }
 
 private playAlarm(soundName, alarmType) {
-	logDebug "Executing ${alarmType}()"	
+	logTrace "Executing ${alarmType}()"	
 	setPlayStatus("alarm", alarmType, "off")	
 	playSound(getSoundNumber(soundName))
 }
 
 def beep() {
-	logDebug "Executing beep()"	
+	logTrace "Executing beep()"	
 	setPlayStatus("beep", "off", "off")	
 	playSound(getSoundNumber(settings.beepSound))
 }
@@ -431,30 +473,38 @@ private getSoundNumber(soundName) {
 		soundName = soundName?.replace(urlPrefix,"").replace(".mp3","")
 	}
 	
-	switch (soundName?.toString()?.toLowerCase()) {
+	soundName = soundName?.toString()?.toLowerCase()
+	
+	switch (soundName) {
 		case ["stop", "off", "0"]:
 			return 0
 			break
-		case ["emergency", "1", "255"]:
+		case ["emergency", "1", "255"]: // 0x01, 0x07
 			return 1
 			break
-		case ["fire", "2"]:
+		case ["fire", "2"]: // 0x02, 0x0A
 			return 2
 			break
-		case ["ambulance", "3"]:
+		case ["ambulance", "3"]: // 0x03, 0x0A
 			return 3
 			break
-		case ["police", "4"]:
+		case ["police", "4"]: // 0x01, 0x0A
 			return 4
 			break
-		case ["door", "5"]:
+		case ["door", "5"]: // 0x16, 0x06
 			return 5
 			break
-		case ["beep", "6"]:
+		case ["beep", "6"]: // 0x05, 0x0A
 			return 6
 			break
 		case ["chirp", "7"]:
 			return 7
+			break
+		case ["siren", "strobe", "both"]:
+			return getSoundNumber(settings?."${soundName}Sound")
+			break
+		case "on":
+			return getSoundNumber(settings?.switchOnSound)
 			break
 		default:
 			return 1
@@ -467,7 +517,7 @@ private playSound(soundNumber) {
 	soundNumber = validateRange(soundNumber, 1, 1, 7)	
 	if (soundNumber == 7) {
 		logInfo "Chirping"
-		result << basicSetCmd(1)
+		result << notificationReportCmd(1)		
 		result << "delay 100"
 		result << basicSetCmd(0x00)
 	}
@@ -476,13 +526,13 @@ private playSound(soundNumber) {
 		def repeatDelay = safeToInteger(settings.repeatBeepDelay, 2000)
 		logInfo "Playing sound #$soundNumber $beepCount time(s)"
 		for (int beep = 0; beep <= beepCount; beep++) {
-			result << basicSetCmd(soundNumber)
+			result << notificationReportCmd(soundNumber)
 			result << "delay $repeatDelay"
 		}
 	}
 	else {
 		logInfo "Playing Sound #$soundNumber"
-		result << basicSetCmd(soundNumber)
+		result << notificationReportCmd(soundNumber)
 	}
 	state.lastSound = soundNumber	
 	result << basicGetCmd()
@@ -490,27 +540,48 @@ private playSound(soundNumber) {
 }
 
 def parse(String description) {	
-	def result = null
-	def cmd = zwave.parse(description, [0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])
+	def result = []
+	def cmd = zwave.parse(description, commandClassVersions)
 	
 	if (cmd) {
-		result = zwaveEvent(cmd)		
+		result += zwaveEvent(cmd)		
 	}
 	else {
 		logDebug "Unknown Description: $description"
 	}	
+	result << createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
 	return result
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
-	def encapsulatedCmd = cmd.encapsulatedCommand([0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])	
+	def encapsulatedCmd = cmd.encapsulatedCommand(commandClassVersions)	
 	
+	def result = []
 	if (encapsulatedCmd) {
-		return zwaveEvent(encapsulatedCmd)
+		result += zwaveEvent(encapsulatedCmd)
 	}
 	else {
 		log.warn "Unable to extract encapsulated cmd from $cmd"
 	}
+	return result
+}
+
+private getCommandClassVersions() {
+	[
+		0x25: 1,	// Switch Binary
+		0x30: 2,  // Sensor Binary
+		0x59: 1,  // AssociationGrpInfo
+		0x5A: 1,  // DeviceResetLocally
+		0x5E: 2,  // ZwaveplusInfo
+		0x70: 1,  // Configuration
+		0x71: 3,  // Notification v4
+		0x72: 2,  // ManufacturerSpecific
+		0x73: 1,  // Powerlevel
+		0x7A: 2,  // Firmware Update Md
+		0x85: 2,  // Association
+		0x86: 1,  // Version (2)
+		0x98: 1   // Security
+	]
 }
 
 // Acknowledges secure commands and configures device using secure commands.
@@ -570,7 +641,13 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
-	// This doesn't get called for the sounds "beep" or "door" so ignoring these events and using basic report instead.	
+	logTrace "SensorBinaryReport: $cmd"
+	// Using this event for health monitoring to update lastCheckin
+	def result = []
+	
+	result << createEvent(name: "lastCheckin", value: new Date(), displayed: false)
+	
+	return result
 }
 
 def createStatusEvents(val, forceEvent) {
@@ -619,10 +696,12 @@ private canForceOffEvent(forceEvent, playStatusVal) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
-	logDebug "NotificationReport: $cmd"	
+	def result = []
+	logDebu "NotificationReport: $cmd"	
 	if (cmd.notificationType == 7 && cmd.event == 3) {
-		return createTamperEvent(cmd.notificationStatus)
+		result << createTamperEvent(cmd.notificationStatus)
 	}	
+	return result
 }
 
 def createTamperEvent(val) {
@@ -645,21 +724,59 @@ def getTamperEventMap(val) {
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	logDebug "Unhandled zwaveEvent: $cmd"
+	return []
 }
 
 private basicSetCmd(val) {	
-	// 1 or 255: Emergency sound.
-	// 2: Fire alert.
-	// 3: Ambulance sound.
-	// 4: Police car sound.
-	// 5: Door chime.
-	// 6~99: Beep Beep.
-	// 0: means stop the sound.
 	return secureCmd(zwave.basicV1.basicSet(value: val))
+}
+
+private notificationReportCmd(sound) {
+	return secureCmd(zwave.notificationV3.notificationReport(event: getSoundEvent(sound), notificationType: getSoundNotificationType(sound)))
+}
+
+private getSoundEvent(sound) {
+	def result
+	switch (sound) {
+		case 2:
+			result = 0x02			
+			break
+		case 3:
+			result = 0x03
+			break
+		case 5:
+			result = 0x16
+			break
+		case 6:
+			result = 0x05
+			break
+		default:
+			result = 0x01
+	}
+	return result
+}
+
+private getSoundNotificationType(sound) {
+	def result
+	switch (sound) {
+		case 1:
+			result = 0x07
+			break
+		case 5:
+			result = 0x06
+			break
+		default:
+			result = 0x0A
+	}
+	return result
 }
 
 private basicGetCmd() {
 	return secureCmd(zwave.basicV1.basicGet())
+}
+
+private sensorBinaryGetCmd() {
+	return secureCmd(zwave.sensorBinaryV2.sensorBinaryGet())
 }
 
 private alarmDurationSetCmd() {	
@@ -753,6 +870,10 @@ private secureCmd(physicalgraph.zwave.Command cmd) {
 	}
 }
 
+private convertToLocalTimeString(dt) {
+	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
+}
+
 int validateRange(val, int defaultVal, int minVal, int maxVal) {
 	def intVal = safeToInteger(val, defaultVal)
 		
@@ -799,5 +920,9 @@ private logDebug(msg) {
 }
 
 private logInfo(msg) {
-	log.info "${device.displayName} $msg"
+	log.info "$msg"
+}
+
+private logTrace(msg) {
+	// log.trace "${msg}"
 }
