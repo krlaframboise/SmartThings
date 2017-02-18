@@ -473,7 +473,9 @@ private getSoundNumber(soundName) {
 		soundName = soundName?.replace(urlPrefix,"").replace(".mp3","")
 	}
 	
-	switch (soundName?.toString()?.toLowerCase()) {
+	soundName = soundName?.toString()?.toLowerCase()
+	
+	switch (soundName) {
 		case ["stop", "off", "0"]:
 			return 0
 			break
@@ -497,6 +499,12 @@ private getSoundNumber(soundName) {
 			break
 		case ["chirp", "7"]:
 			return 7
+			break
+		case ["siren", "strobe", "both"]:
+			return getSoundNumber(settings?."${soundName}Sound")
+			break
+		case "on":
+			return getSoundNumber(settings?.switchOnSound)
 			break
 		default:
 			return 1
@@ -916,5 +924,5 @@ private logInfo(msg) {
 }
 
 private logTrace(msg) {
-//	log.trace "${msg}"
+	// log.trace "${msg}"
 }
