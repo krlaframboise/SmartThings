@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.5.test2
+ *  Zipato Multisound Siren v1.5.test3
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02.US)
  *  
@@ -414,20 +414,22 @@ def strobe() {
 def siren() {
 //	playAlarm(settings.sirenSound, "siren")
 	def result = []
-	result << basicSetCmd(5)
+	//result << basicSetCmd(5)
+	result << secureCmd(zwave.notificationV3.notificationReport(event: 0x16, notificationType: 0x06))
 	state.lastSound = 5
 	result << "delay 50"
 	result << basicGetCmd()
+
 	return result
 }
 
 def both() {	
 	// playAlarm(settings.bothSound, "both")
 	def result = []
-	result << zwave.basicV1.basicSet(value: 5).format()
+	result << secureCmd(zwave.notificationV3.notificationReport(event: 0x01, notificationType: 0x0A))
 	state.lastSound = 5
 	result << "delay 50"
-	result << zwave.basicV1.basicGet().format()
+	result << basicGetCmd()
 	return result
 }
 
