@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.6.4
+ *  GoControl Multifunction Siren v 1.7
  *
  *  Devices:
  *    GoControl/Linear (Model#: WA105DBZ-1 / ZM1601US-3)
@@ -24,6 +24,9 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.7 (02/19/2017)
+ *      - Added Health Check and self polling.
  *
  *    1.6.4 (02/07/2017)
  *      - Fixed all audio commands so that they don't use explit types due to SmartApps not following documented capabilities.
@@ -106,11 +109,12 @@ metadata {
 		capability "Music Player"
 		capability "Audio Notification"
 		capability "Speech Synthesis"
-		capability "Polling"		
+		capability "Polling"
+		capability "Health Check"
 		capability "Switch"
 		capability "Tone"
 		
-		attribute "lastPoll", "number"
+		attribute "lastCheckin", "string"
 
 		command "customBeep" // beepLengthMS, delaySeconds, useStobe
 		command "customBoth" // delaySeconds, autoOffSeconds, useStrobe
@@ -170,6 +174,12 @@ metadata {
 			defaultValue: 0, 
 			displayDuringSetup: true, 
 			required: false
+		input "checkinInterval", "enum",
+			title: "Checkin Interval:",
+			defaultValue: checkinIntervalSetting,
+			required: false,
+			displayDuringSetup: true,
+			options: checkinIntervalOptions.collect { it.name }
 		input "debugOutput", "bool", 
 			title: "8. Enable debug logging?", 
 			defaultValue: true, 
@@ -227,6 +237,8 @@ def updated() {
 		state.alarmDelayStrobe = validateBoolean(settings.alarmDelayStrobe, false)
 		logDebug "Updating"
 
+		initializeCheckin()
+		
 		def cmds = []		
 		
 		if (!state.useSecureCommands) {
@@ -239,6 +251,60 @@ def updated() {
 		cmds += configure()
 		
 		response(delayBetween(cmds, 200))
+	}
+}
+
+private initializeCheckin() {
+	// Set the Health Check interval so that it pings the device if it's 1 minute past the scheduled checkin.
+	def checkInterval = ((checkinIntervalSettingMinutes * 60) + 60)
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+	
+	unschedule(healthPoll)
+	switch (checkinIntervalSettingMinutes) {
+		case 5:
+			runEvery5Minutes(healthPoll)
+			break
+		case 10:
+			runEvery10Minutes(healthPoll)
+			break
+		case 15:
+			runEvery15Minutes(healthPoll)
+			break
+		case 30:
+			runEvery30Minutes(healthPoll)
+			break
+		case [60, 120]:
+			runEvery1Hour(healthPoll)
+			break
+		default:
+			runEvery3Hours(healthPoll)			
+	}
+}
+
+def healthPoll() {
+	logTrace "healthPoll()"
+	sendHubCommand([new physicalgraph.device.HubAction(batteryGetCmd())], 100)
+}
+
+def ping() {
+	logTrace "ping()"
+	if (canCheckin()) {
+		logDebug "Attempting to ping device."
+		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
+		initializeCheckin()
+		
+		return poll()	
+	}	
+}
+
+def poll() {
+	if (canCheckin()) {
+		logTrace "Polling Device"
+		return batteryGetCmd()
+	}
+	else {
+		logTrace "Skipped Poll"
 	}
 }
 
@@ -280,20 +346,6 @@ private getAutoOffTimeValue() {
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
 	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
-}
-
-def poll() {
-	def result = []
-	def minimumPollMinutes = 30
-	def lastPoll = device.currentValue("lastPoll")
-	if ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000)) {
-		logDebug "Poll: Refreshing because lastPoll was more than ${minimumPollMinutes} minutes ago."
-		result << batteryGetCmd()
-	}
-	else {
-		logDebug "Poll: Skipped because lastPoll was within ${minimumPollMinutes} minutes"		
-	}
-	return result
 }
 
 // Turns on siren and strobe
@@ -607,9 +659,26 @@ def parse(String description) {
 		else {
 			logDebug "Unable to parse: $cmd"
 		}
+	}	
+	if (canCheckin()) {
+		result << createLastCheckinEvent()
 	}
-	result << createEvent(name:"lastPoll", value: new Date().time, displayed: false, isStateChange: true)
 	return result
+}
+
+private canCheckin() {
+	def minimumCheckinInterval = ((checkinIntervalSettingMinutes * 60 * 1000) - 5000)
+	return (!state.lastCheckinTime || ((new Date().time - state.lastCheckinTime) >= minimumCheckinInterval))
+}
+
+private createLastCheckinEvent() {
+	logDebug "Device Checked In"
+	state.lastCheckinTime = new Date().time
+	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
+}
+
+private convertToLocalTimeString(dt) {
+	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
@@ -710,6 +779,7 @@ private getLastAlarmStateValue() {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
+	logTrace "BatteryReport: $cmd"
 	def map = [ 
 		name: "battery", 
 		unit: "%"
@@ -889,6 +959,52 @@ private removeCmdPrefix(message) {
 	return message
 }
 
+private getCheckinIntervalSettingMinutes() {
+	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting)
+}
+
+private getCheckinIntervalSetting() {
+	return settings?.checkinInterval ?: findDefaultOptionName(checkinIntervalOptions)
+}
+
+private getCheckinIntervalOptions() {
+	[
+		[name: "5 Minutes", value: 5],
+		[name: "10 Minutes", value: 10],
+		[name: "15 Minutes", value: 15],
+		[name: "30 Minutes", value: 30],
+		[name: "1 Hour", value: 60],
+		[name: "2 Hours", value: 120],
+		[name: "3 Hours", value: 180],
+		[name: "6 Hours", value: 360],
+		[name: "9 Hours", value: 540],
+		[name: formatDefaultOptionName("12 Hours"), value: 720],
+		[name: "18 Hours", value: 1080],
+		[name: "24 Hours", value: 1440]
+	]
+}
+
+private convertOptionSettingToInt(options, settingVal) {
+	return safeToInt(options?.find { "${settingVal}" == it.name }?.value, 0)
+}
+
+private formatDefaultOptionName(val) {
+	return "${val}${defaultOptionSuffix}"
+}
+
+private findDefaultOptionName(options) {
+	def option = options?.find { it.name?.contains("${defaultOptionSuffix}") }
+	return option?.name ?: ""
+}
+
+private getDefaultOptionSuffix() {
+	return "   (Default)"
+}
+
+private safeToInt(val, defaultVal=-1) {
+	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
+}
+
 private isNumeric(val) {
 	return val?.toString()?.isNumber()
 }
@@ -949,10 +1065,10 @@ def describeCommands() {
 
 private logDebug(msg) {
 	if (state.debugOutput || state.debugOutput == null) {
-		log.debug "${device.displayName}: $msg"
+		log.debug "$msg"
 	}
 }
 
 private logTrace(msg) {
-	//log.trace "$msg"
+	// log.trace "$msg"
 }

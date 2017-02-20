@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.8.5
+ *  Aeon Labs Multifunction Siren v 1.9
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -12,6 +12,9 @@
  *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *	1.9.0 (02/19/2017)
+ *    - Added health check and self polling.
  *
  *	1.8.5 (09/22/2016)
  *    - Bug fix for TTS commands.
@@ -93,10 +96,11 @@ metadata {
 		capability "Audio Notification"
 		capability "Speech Synthesis"
 		capability "Polling"
+		capability "Health Check"
 
 		attribute "status", "enum", ["off", "alarm", "customAlarm", "delayedAlarm", "beepDelayedAlarm", "beep", "beepSchedule", "customBeep", "customBeepSchedule"]
 		
-		attribute "lastPoll", "number"
+		attribute "lastCheckin", "string"
 
 		command "playSoundAndTrack"
 		command "playTrackAtVolume" 
@@ -191,6 +195,12 @@ metadata {
 			defaultValue: false,
 			displayDuringSetup: true,
 			required: false
+		input "checkinInterval", "enum",
+			title: "Checkin Interval:",
+			defaultValue: checkinIntervalSetting,
+			required: false,
+			displayDuringSetup: true,
+			options: checkinIntervalOptions.collect { it.name }
 		input "logging", "enum",
 			title: "Types of messages to log:",
 			multiple: true,
@@ -245,22 +255,6 @@ metadata {
 		main "status"
 		details(["status", "playAlarm", "playBeep", "playBeepSchedule", "playCustomBeep1", "playCustomBeep2", "playCustomBeep3", "playCustomBeep4", "playCustomBeep5", "playCustomBeep6"])
 	}
-}
-
-def poll() {
-	logTrace "poll()"
-	def result = []
-	def minimumPollMinutes = 5
-	def lastPoll = device.currentValue("lastPoll")
-	if ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000)) {
-		logDebug "Poll: Refreshing because lastPoll was more than ${minimumPollMinutes} minutes ago."
-		result << versionGetCmd()
-		result << response(versionGetCmd())
-	}
-	else {
-		logDebug "Poll: Skipped because lastPoll was within ${minimumPollMinutes} minutes"
-	}
-	return result
 }
 
 def speak(text) {
@@ -845,6 +839,8 @@ def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 1000)) {
 		state.lastUpdated = new Date().time
 		
+		initializeCheckin()
+		
 		def cmds = []		
 		if (!state.useSecureCommands) {
 			cmds << supportedSecurityGetCmd()	
@@ -858,6 +854,60 @@ def updated() {
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
 	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
+}
+
+private initializeCheckin() {
+	// Set the Health Check interval so that it pings the device if it's 1 minute past the scheduled checkin.
+	def checkInterval = ((checkinIntervalSettingMinutes * 60) + 60)
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+	
+	unschedule(healthPoll)
+	switch (checkinIntervalSettingMinutes) {
+		case 5:
+			runEvery5Minutes(healthPoll)
+			break
+		case 10:
+			runEvery10Minutes(healthPoll)
+			break
+		case 15:
+			runEvery15Minutes(healthPoll)
+			break
+		case 30:
+			runEvery30Minutes(healthPoll)
+			break
+		case [60, 120]:
+			runEvery1Hour(healthPoll)
+			break
+		default:
+			runEvery3Hours(healthPoll)			
+	}
+}
+
+def healthPoll() {
+	logTrace "healthPoll()"
+	sendHubCommand([new physicalgraph.device.HubAction(versionGetCmd())], 100)
+}
+
+def ping() {
+	logTrace "ping()"
+	if (canCheckin()) {
+		logDebug "Attempting to ping device."
+		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
+		initializeCheckin()
+		
+		return poll()	
+	}	
+}
+
+def poll() {
+	if (canCheckin()) {
+		logTrace "Polling Device"
+		return versionGetCmd()
+	}
+	else {
+		logTrace "Skipped Poll"
+	}
 }
 
 def configure() {
@@ -877,21 +927,37 @@ def configure() {
 }
 
 // Parses incoming message warns if not paired securely
-def parse(String description) {		
+def parse(String description) {
+	def result = []
 	if (description != null && description != "updated") {
 		def cmd = zwave.parse(description, [0x25:1, 0x59:1, 0x70:1, 0x72:2, 0x85:2, 0x86:1, 0x98:1])
 
 		if (cmd) {
-			def result = zwaveEvent(cmd)
-			
-			result << createEvent(name: "lastPoll", value: new Date().time, displayed: false, isStateChange: true)
-			
-			return result
+			result += zwaveEvent(cmd)
 		}
 		else {
 			logDebug "Unable to parse: $description"
 		}
 	}
+	if (canCheckin()) {
+		result << createLastCheckinEvent()
+	}
+	return result
+}
+
+private canCheckin() {
+	def minimumCheckinInterval = ((checkinIntervalSettingMinutes * 60 * 1000) - 5000)
+	return (!state.lastCheckinTime || ((new Date().time - state.lastCheckinTime) >= minimumCheckinInterval))
+}
+
+private createLastCheckinEvent() {
+	logDebug "Device Checked In"
+	state.lastCheckinTime = new Date().time
+	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
+}
+
+private convertToLocalTimeString(dt) {
+	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
 }
 
 // Unencapsulates the secure command.
@@ -926,7 +992,8 @@ def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerS
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
-	logDebug("$cmd")
+	logTrace "VersionReport: $cmd"
+	// Used for polling only.
 	return []
 }   
 
@@ -1011,6 +1078,52 @@ private secureCmd(physicalgraph.zwave.Command cmd) {
 	} else {		
 		cmd.format()
 	}
+}
+
+private getCheckinIntervalSettingMinutes() {
+	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting)
+}
+
+private getCheckinIntervalSetting() {
+	return settings?.checkinInterval ?: findDefaultOptionName(checkinIntervalOptions)
+}
+
+private getCheckinIntervalOptions() {
+	[
+		[name: "5 Minutes", value: 5],
+		[name: "10 Minutes", value: 10],
+		[name: "15 Minutes", value: 15],
+		[name: "30 Minutes", value: 30],
+		[name: "1 Hour", value: 60],
+		[name: "2 Hours", value: 120],
+		[name: "3 Hours", value: 180],
+		[name: "6 Hours", value: 360],
+		[name: "9 Hours", value: 540],
+		[name: formatDefaultOptionName("12 Hours"), value: 720],
+		[name: "18 Hours", value: 1080],
+		[name: "24 Hours", value: 1440]
+	]
+}
+
+private convertOptionSettingToInt(options, settingVal) {
+	return safeToInt(options?.find { "${settingVal}" == it.name }?.value, 0)
+}
+
+private formatDefaultOptionName(val) {
+	return "${val}${defaultOptionSuffix}"
+}
+
+private findDefaultOptionName(options) {
+	def option = options?.find { it.name?.contains("${defaultOptionSuffix}") }
+	return option?.name ?: ""
+}
+
+private getDefaultOptionSuffix() {
+	return "   (Default)"
+}
+
+private safeToInt(val, defaultVal=-1) {
+	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
 }
 
 private int validateSound(sound, int defaultSound=1) {

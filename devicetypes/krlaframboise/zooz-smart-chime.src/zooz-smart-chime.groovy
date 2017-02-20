@@ -1,5 +1,5 @@
 /**
- *  Zooz Smart Chime v1.0
+ *  Zooz Smart Chime v1.1
  *  (Model: ZSE33)
  *
  *  Author: 
@@ -10,10 +10,11 @@
  *
  *  Changelog:
  *
+ *    1.1 (02/19/2017)
+ *      - Added Health Check and self polling.
+ *
  *    1.0 (01/16/2017)
  *      - Initial Release
- *
- *
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -38,9 +39,11 @@ metadata {
 		capability "Refresh"
 		capability "Switch"
 		capability "Tone"
+		capability "Health Check"
 		capability "Polling"
-
-		attribute "lastCheckin", "number"
+		
+		attribute "lastCheckin", "string"
+		
 		attribute "status", "enum", ["alarm", "beep", "off", "on", "custom"]
 		
 		command "customChime"
@@ -105,13 +108,13 @@ metadata {
 			range: "0..1",
 			defaultValue: chimeLEDSetting,
 			required: false,
-			displayDuringSetup: true		
-		input "reportBatteryEvery", "number", 
-			title: "Battery Reporting Interval [1-167]:\n(1 = 1 Hour)\n(167 = 7 Days)", 
-			range: "1..167",
+			displayDuringSetup: true
+		input "checkinInterval", "enum",
+			title: "Checkin Interval:",
+			defaultValue: checkinIntervalSetting,
 			required: false,
 			displayDuringSetup: true,
-			defaultValue: reportBatteryEverySetting
+			options: checkinIntervalOptions.collect { it.name }
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -215,6 +218,8 @@ def updated() {
 		state.activeEvents = []
 		logTrace "updated()"
 		
+		initializeCheckin()
+		
 		if (state.firstUpdate == false) {
 			def result = []
 			result += configure()
@@ -227,6 +232,60 @@ def updated() {
 			state.firstUpdate = false
 		}
 	}	
+}
+
+private initializeCheckin() {
+// Set the Health Check interval so that it pings the device if it's 1 minute past the scheduled checkin.
+	def checkInterval = ((checkinIntervalSettingMinutes * 60) + 60)
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+	
+	unschedule(healthPoll)
+	switch (checkinIntervalSettingMinutes) {
+		case 5:
+			runEvery5Minutes(healthPoll)
+			break
+		case 10:
+			runEvery10Minutes(healthPoll)
+			break
+		case 15:
+			runEvery15Minutes(healthPoll)
+			break
+		case 30:
+			runEvery30Minutes(healthPoll)
+			break
+		case [60, 120]:
+			runEvery1Hour(healthPoll)
+			break
+		default:
+			runEvery3Hours(healthPoll)			
+	}
+}
+
+def healthPoll() {
+	logTrace "healthPoll()"
+	sendHubCommand([new physicalgraph.device.HubAction(batteryGetCmd())], 100)
+}
+
+def ping() {
+	logTrace "ping()"
+	if (canCheckin()) {
+		logDebug "Attempting to ping device."
+		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
+		initializeCheckin()
+		
+		return poll()	
+	}	
+}
+
+def poll() {
+	if (canCheckin()) {
+		logTrace "Polling Device"
+		return batteryGetCmd()
+	}
+	else {
+		logTrace "Skipped Poll"
+	}
 }
 
 def configure() {
@@ -245,9 +304,6 @@ def configure() {
 	
 	if (refreshAll) {
 		cmds << switchBinaryGetCmd()
-	}
-		
-	if (refreshAll || canReportBattery()) {
 		cmds << batteryGetCmd()
 	}
 		
@@ -329,16 +385,7 @@ def refresh() {
 	return configure()
 }
 
-def poll() {
-	if (canCheckin() && canReportBattery()) {
-		logDebug "Requesting battery report because device was polled."
-		return [batteryGetCmd()]
-	}
-	else {
-		logDebug "Ignored poll request because it hasn't been long enough since the last poll."
-	}
-}
-		
+	
 def parse(String description) {
 	def result = []
 	
@@ -354,19 +401,11 @@ def parse(String description) {
 		else {
 			logDebug "Unable to parse description: $description"
 		}
-	}
-	
+	}	
 	if (canCheckin()) {
-		result << createEvent(name: "lastCheckin",value: new Date().time, isStateChange: true, displayed: false)
-	}
-	
+		result << createLastCheckinEvent()
+	}	
 	return result
-}
-
-private canCheckin() {
-	// Only allow the event to be created once per minute.
-	def lastCheckin = device.currentValue("lastCheckin")
-	return (!lastCheckin || lastCheckin < (new Date().time - 60000))
 }
 
 private getCommandClassVersions() {
@@ -386,23 +425,31 @@ private getCommandClassVersions() {
 	]
 }
 
-private canReportBattery() {	
-	def reportEveryMS = (reportBatteryEverySetting * 60 * 60 * 1000)
-		
-	return (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) 
+private canCheckin() {
+	def minimumCheckinInterval = ((checkinIntervalSettingMinutes * 60 * 1000) - 5000)
+	return (!state.lastCheckinTime || ((new Date().time - state.lastCheckinTime) >= minimumCheckinInterval))
+}
+
+private createLastCheckinEvent() {
+	logDebug "Device Checked In"
+	state.lastCheckinTime = new Date().time
+	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
+}
+
+private convertToLocalTimeString(dt) {
+	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
+	logTrace "BatteryReport: $cmd"
 	def isNew = (device.currentValue("battery") != cmd.batteryLevel)
 	
 	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
-	state.lastBatteryReport = new Date().time	
-	
-	logDebug "Battery is ${val}%"
-	[
-		createEvent(name: "battery", value: val, unit: "%", displayed: isNew, isStateChange: true)
-	]	
-}	
+		
+	def result = []
+	result << createEvent(name: "battery", value: val, unit: "%", displayed: isNew, isStateChange: true)
+	return result
+}
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {	
 	def name = configData.find { it.paramNum == cmd.parameterNumber }?.name
@@ -579,9 +626,6 @@ private getConfigData() {
 }
 
 // Settings
-private getReportBatteryEverySetting() {
-	return safeToInt(settings?.reportBatteryEvery, 8)
-}
 private getDebugOutputSetting() {
 	return (settings?.debugOutput != false)
 }
@@ -614,6 +658,14 @@ private getChimeLEDSetting() {
 }
 private getChimeModeSetting() {
 	return 1 // Chime Mode should always be disabled.
+}
+
+private getCheckinIntervalSettingMinutes() {
+	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting)
+}
+
+private getCheckinIntervalSetting() {
+	return settings?.checkinInterval ?: findDefaultOptionName(checkinIntervalOptions)
 }
 
 private validateSound(sound, defaultVal) {
@@ -664,6 +716,40 @@ private getNameValueSettingDesc(nameValueMap) {
 	return desc
 }
 
+private getCheckinIntervalOptions() {
+	[
+		[name: "5 Minutes", value: 5],
+		[name: "10 Minutes", value: 10],
+		[name: "15 Minutes", value: 15],
+		[name: "30 Minutes", value: 30],
+		[name: "1 Hour", value: 60],
+		[name: "2 Hours", value: 120],
+		[name: "3 Hours", value: 180],
+		[name: "6 Hours", value: 360],
+		[name: "9 Hours", value: 540],
+		[name: formatDefaultOptionName("12 Hours"), value: 720],
+		[name: "18 Hours", value: 1080],
+		[name: "24 Hours", value: 1440]
+	]
+}
+
+private convertOptionSettingToInt(options, settingVal) {
+	return safeToInt(options?.find { "${settingVal}" == it.name }?.value, 0)
+}
+
+private formatDefaultOptionName(val) {
+	return "${val}${defaultOptionSuffix}"
+}
+
+private findDefaultOptionName(options) {
+	def option = options?.find { it.name?.contains("${defaultOptionSuffix}") }
+	return option?.name ?: ""
+}
+
+private getDefaultOptionSuffix() {
+	return "   (Default)"
+}
+
 private safeToInt(val, defaultVal=-1) {
 	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
 }
@@ -679,5 +765,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	//log.trace "$msg"
+	// log.trace "$msg"
 }

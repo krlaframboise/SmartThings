@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.5.2
+ *  Zipato Multisound Siren v1.5.3
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02)
  *  
@@ -14,7 +14,7 @@
  *
  *  Changelog:
  *
- *  1.5.2 (02/19/2017)
+ *  1.5.3 (02/19/2017)
  *    - Minor bug fixes.
  *
  *  1.5.1 (02/18/2017)
@@ -291,8 +291,8 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 }
 
 private initializeCheckin() {
-	// Set the Health Check interval so that it pings the device if it's 30 seconds past the scheduled checkin.
-	def checkInterval = ((checkinIntervalSettingMinutes * 60) + 30)
+	// Set the Health Check interval so that it pings the device if it's 1 minute past the scheduled checkin.
+	def checkInterval = ((checkinIntervalSettingMinutes * 60) + 60)
 	
 	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 	

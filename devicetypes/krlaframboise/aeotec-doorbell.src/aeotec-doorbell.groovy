@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell v 1.11
+ *  Aeotec Doorbell v 1.12
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
@@ -12,6 +12,10 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.12 (02/19/2017)
+ *    - Added Health Check
+ *    - Added tile for secure
  *
  *  1.11 (01/08/2017)
  *    - Made playText support messages like "track,repeat" which will play track at the specified number of times.
@@ -114,9 +118,11 @@ metadata {
 		capability "Battery"
 		capability "Refresh"
 		capability "Polling"
+		capability "Health Check"
 		capability "Speech Synthesis"
 
-		attribute "lastPoll", "number"
+		attribute "lastCheckin", "string"
+		attribute "security", "enum", ["secure", "unsecure"]
 		
 		attribute "status", "enum", ["off", "doorbell", "beep", "alarm", "play"]
 		
@@ -155,6 +161,12 @@ metadata {
 			required: true,
 			range: "1..20",
 			displayDuringSetup: true
+		input "checkinInterval", "enum",
+			title: "Checkin Interval:",
+			defaultValue: checkinIntervalSetting,
+			required: false,
+			displayDuringSetup: true,
+			options: checkinIntervalOptions.collect { it.name }
 		input "logging", "enum",
 			title: "Types of messages to log:",
 			multiple: true,
@@ -219,11 +231,14 @@ metadata {
 		valueTile("battery", "device.battery", height:2, width:2) {
 			state "battery", label: 'Battery ${currentValue}%', backgroundColor: "#cccccc"
 		}
+		valueTile("security", "device.security", height:2, width:2) {
+			state "security", label: '${currentValue}', backgroundColor: "#cccccc"
+		}
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
 			state "refresh", label:'', action: "refresh", icon:"st.secondary.refresh"
 		}		
 		main "statusTile"
-		details(["statusTile", "playDoorbell", "playBeep", "playAlarm", "volume", "volumeSlider", "refresh", "battery"])
+		details(["statusTile", "playDoorbell", "playBeep", "playAlarm", "volume", "volumeSlider", "refresh", "battery", "security"])
 	}
 }
 
@@ -231,7 +246,9 @@ metadata {
 def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {    
 		state.lastUpdated = new Date().time
-				
+		
+		initializeCheckin()
+		
 		if (device.currentValue("numberOfButtons") != 1) {
 			sendEvent(name: "numberOfButtons", value: 1, displayed: false)
 		}
@@ -243,6 +260,9 @@ def updated() {
 		}
 		else {			
 			logDebug "Secure Commands ${state.useSecureCmds ? 'Enabled' : 'Disabled'}"
+			
+			sendEvent(name: "security", value: (state.useSecureCmds ? "secure" : "unsecure"), displayed: false)
+			
 			cmds += updateSettings()
 			if (!cmds) {
 				cmds += refresh()
@@ -271,6 +291,60 @@ private updateSettings() {
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
 	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
+}
+
+private initializeCheckin() {
+	// Set the Health Check interval so that it pings the device if it's 1 minute past the scheduled checkin.
+	def checkInterval = ((checkinIntervalSettingMinutes * 60) + 60)
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+	
+	unschedule(healthPoll)
+	switch (checkinIntervalSettingMinutes) {
+		case 5:
+			runEvery5Minutes(healthPoll)
+			break
+		case 10:
+			runEvery10Minutes(healthPoll)
+			break
+		case 15:
+			runEvery15Minutes(healthPoll)
+			break
+		case 30:
+			runEvery30Minutes(healthPoll)
+			break
+		case [60, 120]:
+			runEvery1Hour(healthPoll)
+			break
+		default:
+			runEvery3Hours(healthPoll)			
+	}
+}
+
+def healthPoll() {
+	logTrace "healthPoll()"
+	sendHubCommand([new physicalgraph.device.HubAction(batteryHealthGetCmd())], 100)
+}
+
+def ping() {
+	logTrace "ping()"
+	if (canCheckin()) {
+		logDebug "Attempting to ping device."
+		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
+		initializeCheckin()
+		
+		return poll()	
+	}	
+}
+
+def poll() {
+	if (canCheckin()) {
+		logTrace "Polling Device"
+		return batteryHealthGetCmd()
+	}
+	else {
+		logTrace "Skipped Poll"
+	}
 }
 
 // Initializes variables and sends settings to device
@@ -562,10 +636,6 @@ private startTrack(Map data) {
 	return delayBetween(result, 50)
 }
 
-def poll() {
-	return batteryHealthGetCmd()
-}
-
 // Re-loads attributes from device configuration.
 def refresh() {
 	logDebug "Executing refresh()"
@@ -582,19 +652,35 @@ def refresh() {
 
 // Parses incoming message
 def parse(String description) {
-	def result = null    
+	def result = []
 	if (description != null && description != "updated") {    
 		def cmd = zwave.parse(description, [0x20:1,0x25:1,0x59:1,0x70:1,0x72:2,0x82:1,0x85:2,0x86:1,0x98:1])
 		if (cmd) {
-			result = zwaveEvent(cmd)
-			
-			result << createEvent(name: "lastPoll", value: new Date().time, displayed: false, isStateChange: true)            
+			result += zwaveEvent(cmd)
 		} 
 		else {
 			logDebug("No Command: $cmd")
 		}
 	}
+	if (canCheckin()) {
+		result << createLastCheckinEvent()
+	}
 	return result
+}
+
+private canCheckin() {
+	def minimumCheckinInterval = ((checkinIntervalSettingMinutes * 60 * 1000) - 5000)
+	return (!state.lastCheckinTime || ((new Date().time - state.lastCheckinTime) >= minimumCheckinInterval))
+}
+
+private createLastCheckinEvent() {
+	logDebug "Device Checked In"
+	state.lastCheckinTime = new Date().time
+	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
+}
+
+private convertToLocalTimeString(dt) {
+	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
 }
 
 // Unencapsulates the secure command.
@@ -615,6 +701,7 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 // Sends secure configuration to the device.
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
 	state.useSecureCmds = true
+	sendEvent(name: "security", value: "secure", displayed: false)
 	logDebug "Secure Inclusion Detected"
 	def result = []
 	result += response(configure())
@@ -754,7 +841,7 @@ private getBatteryEventMap(val) {
 	def batteryVal = (val == 0) ? 100 : 1
 	def batteryLevel = (val == 0) ? "normal" : "low"
 	
-	logDebug("Battery is $batteryLevel")
+	logTrace("Battery is $batteryLevel")
 	
 	return [
 		name: "battery", 
@@ -856,6 +943,52 @@ private secureCmd(physicalgraph.zwave.Command cmd) {
 	else {        
 		return cmd.format()
 	}
+}
+
+private getCheckinIntervalSettingMinutes() {
+	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting)
+}
+
+private getCheckinIntervalSetting() {
+	return settings?.checkinInterval ?: findDefaultOptionName(checkinIntervalOptions)
+}
+
+private getCheckinIntervalOptions() {
+	[
+		[name: "5 Minutes", value: 5],
+		[name: "10 Minutes", value: 10],
+		[name: "15 Minutes", value: 15],
+		[name: "30 Minutes", value: 30],
+		[name: "1 Hour", value: 60],
+		[name: "2 Hours", value: 120],
+		[name: "3 Hours", value: 180],
+		[name: "6 Hours", value: 360],
+		[name: "9 Hours", value: 540],
+		[name: formatDefaultOptionName("12 Hours"), value: 720],
+		[name: "18 Hours", value: 1080],
+		[name: "24 Hours", value: 1440]
+	]
+}
+
+private convertOptionSettingToInt(options, settingVal) {
+	return safeToInt(options?.find { "${settingVal}" == it.name }?.value, 0)
+}
+
+private formatDefaultOptionName(val) {
+	return "${val}${defaultOptionSuffix}"
+}
+
+private findDefaultOptionName(options) {
+	def option = options?.find { it.name?.contains("${defaultOptionSuffix}") }
+	return option?.name ?: ""
+}
+
+private getDefaultOptionSuffix() {
+	return "   (Default)"
+}
+
+private safeToInt(val, defaultVal=-1) {
+	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
 }
 
 private int validateTrack(track) {
