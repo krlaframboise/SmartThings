@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.5.1
+ *  Zipato Multisound Siren v1.5.2
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02)
  *  
@@ -13,6 +13,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.5.2 (02/19/2017)
+ *    - Minor bug fixes.
  *
  *  1.5.1 (02/18/2017)
  *    - Switched from basic to notification for playing sounds.
@@ -288,13 +291,13 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 }
 
 private initializeCheckin() {
-	// Set the Health Check interval so that it pings the device if it's skipped 2 checkins.
-	def checkInterval = (checkinIntervalSettingValue * 60) * 2
+	// Set the Health Check interval so that it pings the device if it's 30 seconds past the scheduled checkin.
+	def checkInterval = ((checkinIntervalSettingMinutes * 60) + 30)
 	
 	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 	
 	unschedule(healthPoll)
-	switch (checkinIntervalSettingValue) {
+	switch (checkinIntervalSettingMinutes) {
 		case 5:
 			runEvery5Minutes(healthPoll)
 			break
@@ -317,26 +320,27 @@ private initializeCheckin() {
 
 def healthPoll() {
 	logTrace "healthPoll()"
-	def cmd = poll()
-	if (cmd) {		
-		sendHubCommand([new physicalgraph.device.HubAction(cmd)], 100)
-	}	
+	sendHubCommand([new physicalgraph.device.HubAction(versionGetCmd())], 100)
 }
 
 def ping() {
 	logTrace "ping()"
 	if (canCheckin()) {
+		logDebug "Attempting to ping device."
 		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
-		initializeCheckin()		
-	}
-	return poll()	
+		initializeCheckin()
+		
+		return poll()	
+	}	
 }
 
 def poll() {
-	logTrace "poll()"
 	if (canCheckin()) {
-		logDebug "Polling Device"
+		logTrace "Polling Device"
 		return versionGetCmd()
+	}
+	else {
+		logTrace "Skipped Poll"
 	}
 }
 
@@ -699,12 +703,11 @@ def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cm
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 	logTrace "VersionReport: $cmd"	
 	// Using this event for health monitoring to update lastCheckin
-	def result = []
-	result << createLastCheckinEvent()
-	return result
+	return []
 }
 
 private createLastCheckinEvent() {
+	logDebug "Device Checked In"
 	state.lastCheckinTime = new Date().time
 	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
 }
@@ -929,7 +932,7 @@ private secureCmd(physicalgraph.zwave.Command cmd) {
 	}
 }
 
-private getCheckinIntervalSettingValue() {
+private getCheckinIntervalSettingMinutes() {
 	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting)
 }
 
@@ -938,7 +941,8 @@ private getCheckinIntervalSetting() {
 }
 
 private canCheckin() {
-	return (!state.lastCheckinTime || ((new Date().time - state.lastCheckinTime) >= checkinIntervalSettingValue))	
+	def minimumCheckinInterval = ((checkinIntervalSettingMinutes * 60 * 1000) - 5000)
+	return (!state.lastCheckinTime || ((new Date().time - state.lastCheckinTime) >= minimumCheckinInterval))
 }
 
 private getCheckinIntervalOptions() {
