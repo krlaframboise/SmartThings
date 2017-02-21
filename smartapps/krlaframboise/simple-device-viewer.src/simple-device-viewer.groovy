@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 2.4.1
+ *  Simple Device Viewer v 2.5
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,10 @@
  *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    2.5 (02/21/2017)
+ *      - Optionally display device's online/offline status in the dashboard.
+ *      - Optionally override last even threshold and send notifications for offline devices.
  *
  *    2.4.1 (01/21/2017)
  *      - Switched to SmartThings last activity field and only use the device's event history and state history if the device activity is null.
@@ -243,7 +247,11 @@ def thresholdsPage() {
 				title: "Choose unit of time:",
 				required: false,
 				defaultValue: "days",
-				options: ["seconds", "minutes", "hours", "days"]			
+				options: ["seconds", "minutes", "hours", "days"]
+			input "lastEventThresholdOverride", "bool",
+				title: "Override Last Event Threshold for Offline Devices?",
+				required: false,
+				defaultValue: false
 		}
 	}
 }
@@ -454,6 +462,10 @@ def dashboardSettingsPage() {
 					defaultValue: "Normal",
 					required: false,
 					options: ["Normal", "Condensed - 1 Column", "Condensed - 2 Column", "Condensed - 3 Column"]
+				input "displayOnlineOfflineStatus", "bool",
+					title: "Display Online/Offline Status:",
+					defaultValue: false,
+					required: false
 				input "customCSS", "text",
 					title:"Enter CSS rules that should be appended to the dashboard's CSS file.",
 					required: false
@@ -766,7 +778,7 @@ private getDeviceLastEventListItem(device) {
 	
 	listItem.title = getDeviceStatusTitle(device, listItem.status)
 	listItem.sortValue = settings.lastEventSortByValue != false ? listItem.value : device.displayName
-	listItem.image = getLastEventImage(lastEventTime)
+	listItem.image = getLastEventImage(lastEventTime, device.status)
 	return listItem
 }
 
@@ -871,11 +883,20 @@ private String getDeviceStatusTitle(device, status) {
 		status = "N/A"
 	}
 	if (state.refreshingDashboard) {
-		return device.displayName
+		return "${device.displayName}${getOnlineOfflineStatus(device.status)}"
 	}
 	else {
 		return "${status} -- ${device.displayName}"
 	}	
+}
+
+private getOnlineOfflineStatus(deviceStatus) {
+	if (settings?.displayOnlineOfflineStatus && deviceStatus?.toLowerCase() in ["online", "offline"]) {
+		return " (${deviceStatus.toLowerCase()})"
+	}
+	else {
+		return ""
+	}
 }
 
 private getDeviceCapabilityStatusItem(device, cap) {
@@ -1015,14 +1036,14 @@ private boolean isDevice(obj) {
 	}
 }
 
-private String getLastEventImage(lastEventTime) {
-	def status = lastEventIsOld(lastEventTime) ? "warning" : "ok"
+private String getLastEventImage(lastEventTime, deviceStatus) {
+	def status = lastEventIsOld(lastEventTime, deviceStatus) ? "warning" : "ok"
 	return getImagePath("${status}.png")
 }
 
-private boolean lastEventIsOld(lastEventTime) {	
+private boolean lastEventIsOld(lastEventTime, deviceStatus) {	
 	try {
-		if (!lastEventTime) {
+		if (!lastEventTime || offlineOverride(deviceStatus)) {
 			return true
 		}
 		else {
@@ -1032,6 +1053,10 @@ private boolean lastEventIsOld(lastEventTime) {
 	catch (e) {
 		return true
 	}
+}
+
+private boolean offlineOverride(deviceStatus) {
+	return (settings?.lastEventThresholdOverride && (deviceStatus?.toLowerCase() == "offline"))
 }
 
 private String getAccelerationImage(currentState) {
@@ -1477,8 +1502,17 @@ def checkLastEvents() {
 	removeExcludedDevices(getAllDevices(), lastEventNotificationsExcluded)?.each {
 		
 		def item = getDeviceLastEventListItem(it)
-		def message = item.value > getLastEventThresholdMS() ? "Last Event Alert - ${getDeviceStatusTitle(it, item.status)}" : null
+
+		def isOld = (item.value > getLastEventThresholdMS() || offlineOverride(it.status))
 		
+		def message = null
+		if (isOld) {
+			message = "Last Event Alert - ${getDeviceStatusTitle(it, item.status)}"
+			if (offlineOverride(it.status)) {
+				message = "${message} (OFFLINE)"
+			}
+		}
+		   		
 		handleDeviceNotification(it, message, "lastEvent", lastEventNotificationsRepeat)
 	}
 }
