@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Contact Sensor v1.1
+ *  GoControl Multifunction Contact Sensor v1.1.1
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -9,7 +9,7 @@
  *    
  *  Changelog:
  *
- *    1.1 (02/21/2017)
+ *    1.1.1 (02/21/2017)
  *      -  Added Health Check
  *
  *    1.0 (02/11/2017)
@@ -624,7 +624,7 @@ private getMainContactBehaviorSetting() {
 }
 
 private getCheckinIntervalSettingMinutes() {
-	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting) ?: 720
+	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting) ?: 360
 }
 
 private getCheckinIntervalSetting() {
@@ -632,7 +632,7 @@ private getCheckinIntervalSetting() {
 }
 
 private getBatteryReportingIntervalSettingMinutes() {
-	return convertOptionSettingToInt(checkinIntervalOptions, batteryReportingIntervalSetting) ?: 720
+	return convertOptionSettingToInt(checkinIntervalOptions, batteryReportingIntervalSetting) ?: 360
 }
 
 private getBatteryReportingIntervalSetting() {
@@ -682,8 +682,8 @@ private getCheckinIntervalOptions() {
 		[name: "30 Minutes", value: 30],
 		[name: "1 Hour", value: 60],
 		[name: "2 Hours", value: 120],
-		[name: formatDefaultOptionName("3 Hours"), value: 180],
-		[name: "6 Hours", value: 360],
+		[name: "3 Hours", value: 180],
+		[name: formatDefaultOptionName("6 Hours"), value: 360],
 		[name: "9 Hours", value: 540],
 		[name: "12 Hours", value: 720],
 		[name: "18 Hours", value: 1080],
