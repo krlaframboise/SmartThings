@@ -1,5 +1,5 @@
 /**
- *  Simple Device Viewer v 2.5
+ *  Simple Device Viewer v 2.5.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,9 +9,10 @@
  *
  *  Changelog:
  *
- *    2.5 (02/21/2017)
+ *    2.5.1 (02/21/2017)
  *      - Optionally display device's online/offline status in the dashboard.
  *      - Optionally override last even threshold and send notifications for offline devices.
+ *      - Fixed timeout problem with Display Settings screen.
  *
  *    2.4.1 (01/21/2017)
  *      - Switched to SmartThings last activity field and only use the device's event history and state history if the device activity is null.
@@ -184,23 +185,36 @@ def displaySettingsPage() {
 				title: "Display Which Capabilities?",
 				multiple: true,
 				options: getCapabilitySettingNames(false),
-				required: false
+				required: false,
+				submitOnChange: true
 		}		
 		section ("Device Capability Exclusions") {
 			paragraph "The capability pages display all the devices that support the capability by default, but these fields allow you to exclude devices from each page."
-			input "lastEventExcludedDevices",
-				"enum",
-				title: "Exclude these devices from the Last Events page:",
+			
+			input "enabledExclusions", "enum",
+				title: "Enable Device Exclusions for Which Capabilities?",
 				multiple: true,
+				options: getCapabilitySettingNames(true),
 				required: false,
-				options:getExcludedDeviceOptions(null)
-			capabilitySettings().each {
-				input "${getPrefName(it)}ExcludedDevices",
+				submitOnChange: true
+			
+			if (settings?.enabledExclusions?.find { it == "Events" }) {
+				input "lastEventExcludedDevices",
 					"enum",
-					title: "Exclude these devices from the ${getPluralName(it)} page:",
+					title: "Exclude these devices from the Last Events page:",
 					multiple: true,
 					required: false,
-					options: getDisplayExcludedDeviceOptions(it)
+					options:getExcludedDeviceOptions(null)
+			}
+			capabilitySettings().each { cap ->
+				if (settings?.enabledExclusions?.find { it == getPluralName(cap) }) {
+					input "${getPrefName(cap)}ExcludedDevices",
+						"enum",
+						title: "Exclude these devices from the ${getPluralName(cap)} page:",
+						multiple: true,
+						required: false,
+						options: getDisplayExcludedDeviceOptions(cap)
+				}
 			}	
 		}
 	}
