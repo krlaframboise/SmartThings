@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - SmartApp v 1.2.1
+ *  Simple Event Logger - SmartApp v 1.3
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,11 @@
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
+ *
+ *    1.3 (02/26/2017)
+ *      - Requires Google Script Update
+ *      - Added maximum catch-up setting that restricts the date range it uses when catching up from missed runs.
+ *      - Added option for Log Reporting so when it's enabled it creates a column for hour and short date. 
  *
  *    1.2.1 (01/28/2017)
  *      - New version of Google Script.
@@ -77,8 +82,8 @@ preferences {
 	page(name: "createTokenPage")
 }
 
-def version() { return "01.02.01" }
-def gsVersion() { return "01.02.01" }
+def version() { return "01.03.00" }
+def gsVersion() { return "01.03.00" }
 
 def mainPage() {
 	dynamicPage(name:"mainPage", uninstall:true, install:true) {
@@ -273,14 +278,23 @@ private getOptionsPageContent() {
 			required: false,
 			defaultValue: "5 Minutes",
 			options: ["5 Minutes", "10 Minutes", "15 Minutes", "30 Minutes", "1 Hour", "3 Hours"]
+		input "logCatchUpFrequency", "enum",
+			title: "Maximum Catch-Up Interval:\n(Must be greater than 'Log Events Every':",
+			required: false,
+			defaultValue: logCatchUpFrequencySetting,
+			options: ["15 Minutes", "30 Minutes", "1 Hour", "2 Hours", "6 Hours"]
 		input "maxEvents", "number",
 			title: "Maximum number of events to log for each device per execution. (1 - 200)",
 			range: "1..200",
-			defaultValue: 200,
+			defaultValue: maxEventsSetting,
 			required: false
 		input "logDesc", "bool",
 			title: "Log Event Descripion?",
 			defaultValue: true,
+			required: false
+		input "logReporting", "bool",
+			title: "Log for Reporting?",
+			defaultValue: false,
 			required: false
 		input "deleteExtraColumns", "bool",
 			title: "Delete Extra Columns?",
@@ -431,6 +445,7 @@ def updated() {
 		"runEvery${logFrequency}"(logNewEvents)
 		
 		verifyGSVersion()
+		runIn(10, startLogNewEvents)
 	}
 	else {
 		logDebug "Event Logging is disabled because there are unconfigured settings."
@@ -480,6 +495,10 @@ private verifyGSVersion() {
 	}	
 }
 
+def startLogNewEvents() {
+	logNewEvents()
+}
+
 def logNewEvents() {	
 	def status = state.loggingStatus ?: [:]
 	
@@ -492,9 +511,11 @@ def logNewEvents() {
 	status.finished = null
 	status.eventsArchived = null
 	status.eventsLogged = 0
-	status.started = new Date().time	
-	status.firstEventTime = safeToLong(status.lastEventTime) ?: (new Date(new Date().time - (5 * 60 * 1000))).time
-	status.lastEventTime = status.started
+	status.started = new Date().time
+	
+	status.firstEventTime = getFirstEventTimeMS(status.lastEventTime)
+	
+	status.lastEventTime = getNewLastEventTimeMS(status.started, (status.firstEventTime + 1000))
 	
 	def startDate = new Date(status.firstEventTime + 1000)
 	def endDate = new Date(status.lastEventTime)
@@ -516,12 +537,55 @@ def logNewEvents() {
 	}
 }
 
+private getFirstEventTimeMS(lastEventTimeMS) {
+	def firstRunMS = (3 * 60 * 60 * 1000) // 3 Hours 
+	return safeToLong(lastEventTimeMS) ?: (new Date(new Date().time - firstRunMS)).time 
+}
+
+private getNewLastEventTimeMS(startedMS, firstEventMS) {
+	if ((startedMS - firstEventMS) > logCatchUpFrequencySettingMS) {
+		return (firstEventMS + logCatchUpFrequencySettingMS)
+	}
+	else {
+		return startedMS
+	}
+}
+
+private getLogCatchUpFrequencySetting() {
+	return settings?.logCatchUpFrequency ?: "1 Hour"
+}
+
+private getLogCatchUpFrequencySettingMS() {
+	def minutesVal
+	switch (logCatchUpFrequencySetting) {
+		case "15 Minutes":
+			minutesVal = 15
+			break
+		case "30 Minutes":
+			minutesVal = 30
+			break
+		case "1 Hour":
+			minutesVal = 60
+			break
+		case "2 Hours":
+			minutesVal = 120
+			break
+		case "6 Hours":
+			minutesVal = 360
+			break
+		default:
+			minutesVal = 60
+	}
+	return (minutesVal * 60 * 1000)
+}
+
 private postEventsToGoogleSheets(events) {
 	def jsonOutput = new groovy.json.JsonOutput()
 	def jsonData = jsonOutput.toJson([
 		postBackUrl: "${state.endpoint}update-logging-status",
 		archiveOptions: getArchiveOptions(),
 		logDesc: (settings?.logDesc != false),
+		logReporting: (settings?.logReporting == true),
 		deleteExtraColumns: (settings?.deleteExtraColumns == true),
 		events: events
 	])
@@ -547,6 +611,9 @@ private getArchiveOptions() {
 def processLogEventsResponse(response, data) {
 	if (response?.status == 302) {
 		logTrace "${getWebAppName()} Response: ${response.status}"
+	}
+	else if ( response?.errorMessage?.contains("Read timeout to script.google.com") ) {
+		logTrace "Timeout while waiting for Google Logging to complete."
 	}
 	else {
 		logWarn "Unexpected response from ${getWebAppName()}: ${response?.errorMessage}"
@@ -641,13 +708,12 @@ private getFormattedLoggingStatus() {
 
 private getNewEvents(startDate, endDate) {	
 	def events = []
-	def maxEvents = settings?.maxEvents ?: 10
-
+	
 	logTrace "Retrieving Events from ${startDate} to ${endDate}"
 	
 	getSelectedDevices()?.each  { device ->
 		getDeviceAllowedAttrs(device?.displayName)?.each { attr ->
-			device.statesBetween("${attr}", startDate, endDate, [max: maxEvents])?.each { event ->
+			device.statesBetween("${attr}", startDate, endDate, [max: maxEventsSetting])?.each { event ->
 				events << [
 					time: getFormattedLocalTime(event.date?.time),
 					device: device.displayName,
@@ -659,6 +725,10 @@ private getNewEvents(startDate, endDate) {
 		}
 	}
 	return events?.unique()?.sort { it.time }
+}
+
+private getMaxEventsSetting() {
+	return settings?.maxEvents ?: 200
 }
 	
 private getFormattedLocalTime(utcTime) {
