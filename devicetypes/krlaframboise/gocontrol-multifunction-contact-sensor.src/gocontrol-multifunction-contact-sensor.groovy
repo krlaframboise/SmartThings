@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Contact Sensor v1.1.1
+ *  GoControl Multifunction Contact Sensor v1.1.2
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation: https://community.smartthings.com/t/release-gocontrol-linear-multifunction-contact-sensor/77659?u=krlaframboise
  *    
  *  Changelog:
+ *
+ *    1.1.2 (02/26/2017)
+ *      -  Removed descriptionText from events so that it uses the default full device name.
  *
  *    1.1.1 (02/21/2017)
  *      -  Added Health Check
@@ -565,8 +568,7 @@ private getEventMap(eventName, newVal, displayed=null) {
 	[
 		name: eventName, 
 		value: newVal, 
-		displayed: (displayed != null) ? displayed : isNew,
-		descriptionText: desc
+		displayed: (displayed != null) ? displayed : isNew
 	]
 }
 
