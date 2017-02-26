@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - Google Script Code v 1.2.1
+ *  Simple Event Logger - Google Script Code v 1.3
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,10 @@
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
+ *
+ *    1.3 (02/26/2017)
+ *      -  Fixed archive issue when invalid or missing date in first column.
+ *      -  Added option for logging short date and hour columns.
  *
  *    1.2.1 (01/28/2017)
  *      - Fixed issue with archive process when rows are frozen.
@@ -36,8 +40,8 @@
  *  permissions and limitations under the License.
  *
  */
- 
-var getVersion = function() { return "01.02.01"; }
+   
+var getVersion = function() { return "01.03.00"; }
  
 function doGet(e) {
 	var output = "Version " + getVersion()
@@ -72,16 +76,18 @@ function doPost(e) {
 var logEvents = function(sheet, data, result) {
 	try {
 		result.totalEventsLogged = sheet.getLastRow() - 1;
+
+		initializeHeaderRow(sheet, data.logDesc, data.logReporting)
+		
+		for each (event in data.events) {
+			logEvent(sheet, data.logDesc, data.logReporting, event);
+			result.eventsLogged++;
+		}
 		
 		if (data.deleteExtraColumns) {
 			deleteExtraColumns(sheet);
 		}
-		
-		for each (event in data.events) {
-			logEvent(sheet, data.logDesc, event);
-			result.eventsLogged++;
-		}
-		
+				
 		result.totalEventsLogged = sheet.getLastRow() - 1;
 		result.success = true;
 	}
@@ -95,41 +101,49 @@ var logEvents = function(sheet, data, result) {
 	return result;
 }
 
-var logEvent = function(sheet, logDesc, event) {
-	if (sheet.getLastRow() == 0) {		
-		sheet.appendRow(getHeader(logDesc));
-	}
-  
+var logEvent = function(sheet, logDesc, logReporting, event) {
 	var newRow = [
 		event.time,
 		event.device,
 		event.name,
 		event.value
 	];
-	if (logDesc) {
+	if (logDesc || logReporting) {
 		newRow.push(event.desc);
+	}
+	if (logReporting) {
+		var dateCell = "A" + (sheet.getLastRow() + 1).toString()
+		newRow.push("=INT(" + dateCell + ")");
+		newRow.push("=HOUR(" + dateCell + ")");
 	}	
 	sheet.appendRow(newRow);
 }
 
-var getHeader = function(logDesc) {
-	var header = [
+var initializeHeaderRow = function(sheet, logDesc, logReporting) {		
+	if (sheet.getLastRow() == 0) {
+		var header = [
 			"Date/Time",
 			"Device",
 			"Event Name",
 			"Event Value"
-		];
-		if (logDesc) {
-			header.push("Description");
-		}
-		return header;
+		];		
+		sheet.appendRow(header);
+		sheet.getRange("A:A").setNumberFormat('MM/dd/yyyy HH:mm:ss');
+	}	
+	if (logDesc || logReporting) {
+		sheet.getRange("E1").setValue("Description")
+	}
+	if (logReporting && sheet.getRange("F1").getValue() != "Date") {
+		sheet.getRange("F1").setValue("Date")
+		sheet.getRange("F:F").setNumberFormat('MM/dd/yyyy');
+		sheet.getRange("G1").setValue("Hour")
+		sheet.getRange("G:G").setNumberFormat('00');
+	}
 }
 
 var deleteExtraColumns = function(sheet) {
 	try {
-	  if (sheet.getMaxColumns() > 5) {
-      sheet.deleteColumns(6, (sheet.getMaxColumns() - 5));
-    }
+		sheet.deleteColumns((sheet.getLastColumn() + 1), (sheet.getMaxColumns() - sheet.getLastColumn()))
 	}
 	catch (e) {
 	
@@ -217,10 +231,15 @@ var getArchiveSheetName = function(name, sheet) {
 }
 
 var getFormattedDate = function(dt) {
-	var yyyy = dt.getFullYear().toString(); 
-	var mm = (dt.getMonth()+1).toString(); 
-	var dd = dt.getDate().toString(); 
-	return yyyy + "-" + (mm[1] ? mm : ("0" + mm[0])) + "-" + (dd[1] ? dd : ("0" + dd[0])); 
+	try {
+		var yyyy = dt.getFullYear().toString(); 
+		var mm = (dt.getMonth()+1).toString(); 
+		var dd = dt.getDate().toString(); 
+		return yyyy + "-" + (mm[1] ? mm : ("0" + mm[0])) + "-" + (dd[1] ? dd : ("0" + dd[0])); 
+	}
+	catch (ex) {
+		return "undetermined"
+	}
 }
 
 var verifyArchiveSheet = function(sheet, archiveSheet) {
@@ -228,10 +247,6 @@ var verifyArchiveSheet = function(sheet, archiveSheet) {
 }
 
 var clearSheet = function(sheet) {
-	if (sheet.getMaxColumns() > 6) {
-		Logger.log("Deleting Columns");
-		sheet.deleteColumns(6, (sheet.getMaxColumns() - 5));
-	}
 	if (sheet.getMaxRows() > 2) {
 		sheet.deleteRows(3, (sheet.getMaxRows() - 2));
 	}
