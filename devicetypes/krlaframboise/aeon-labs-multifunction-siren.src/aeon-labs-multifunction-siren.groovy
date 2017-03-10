@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.9
+ *  Aeon Labs Multifunction Siren v 1.9.1
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -12,6 +12,10 @@
  *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *	1.9.1 (03/10/2017)
+ *    - Improved health check
+ *    - Removed polling capability.
  *
  *	1.9.0 (02/19/2017)
  *    - Added health check and self polling.
@@ -95,7 +99,6 @@ metadata {
 		capability "Music Player"
 		capability "Audio Notification"
 		capability "Speech Synthesis"
-		capability "Polling"
 		capability "Health Check"
 
 		attribute "status", "enum", ["off", "alarm", "customAlarm", "delayedAlarm", "beepDelayedAlarm", "beep", "beepSchedule", "customBeep", "customBeepSchedule"]
@@ -858,10 +861,14 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 
 private initializeCheckin() {
 	// Set the Health Check interval so that it pings the device if it's 1 minute past the scheduled checkin.
-	def checkInterval = ((checkinIntervalSettingMinutes * 60) + 60)
+	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
 	
 	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 	
+	startHealthPollSchedule()
+}
+
+private startHealthPollSchedule() {
 	unschedule(healthPoll)
 	switch (checkinIntervalSettingMinutes) {
 		case 5:
@@ -885,29 +892,20 @@ private initializeCheckin() {
 }
 
 def healthPoll() {
-	logTrace "healthPoll()"
-	sendHubCommand([new physicalgraph.device.HubAction(versionGetCmd())], 100)
+	logTrace "healthPoll()"	
+	sendHubCommand(new physicalgraph.device.HubAction(versionGetCmd()))
 }
 
 def ping() {
 	logTrace "ping()"
-	if (canCheckin()) {
+	// Don't allow it to ping the device more than once per minute.
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		logDebug "Attempting to ping device."
 		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
-		initializeCheckin()
+		startHealthPollSchedule()
 		
-		return poll()	
-	}	
-}
-
-def poll() {
-	if (canCheckin()) {
-		logTrace "Polling Device"
 		return versionGetCmd()
-	}
-	else {
-		logTrace "Skipped Poll"
-	}
+	}	
 }
 
 def configure() {
@@ -939,20 +937,15 @@ def parse(String description) {
 			logDebug "Unable to parse: $description"
 		}
 	}
-	if (canCheckin()) {
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		result << createLastCheckinEvent()
 	}
 	return result
 }
 
-private canCheckin() {
-	def minimumCheckinInterval = ((checkinIntervalSettingMinutes * 60 * 1000) - 5000)
-	return (!state.lastCheckinTime || ((new Date().time - state.lastCheckinTime) >= minimumCheckinInterval))
-}
-
 private createLastCheckinEvent() {
-	logDebug "Device Checked In"
 	state.lastCheckinTime = new Date().time
+	logDebug "Device Checked In"	
 	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
 }
 
@@ -993,7 +986,7 @@ def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerS
 
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 	logTrace "VersionReport: $cmd"
-	// Used for polling only.
+	// Using this event for health monitoring to update lastCheckin
 	return []
 }   
 

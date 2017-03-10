@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.1.1
+ *  Dome Siren v1.1.2
  *  (Model: DMS01)
  *
  *  Author: 
@@ -10,9 +10,10 @@
  *
  *  Changelog:
  *
- *    1.1.1 (03/09/2017)
+ *    1.1.2 (03/09/2017)
  *      - Added health check and switch capabilities.
  *      - Added self polling functionality.
+ *      - Removed polling capability.
  *
  *    1.0 (01/25/2017)
  *      - Initial Release
@@ -40,7 +41,6 @@ metadata {
 		capability "Configuration"
 		capability "Refresh"
 		capability "Tone"
-		capability "Polling"
 		capability "Speech Synthesis"
 		capability "Audio Notification"
 		capability "Music Player"
@@ -270,11 +270,15 @@ def updated() {
 }
 
 private initializeCheckin() {
-	// Set the Health Check interval so that it pings the device if it's 5 minutes past the scheduled checkin.
-	def checkInterval = ((checkinIntervalSettingMinutes * 60) + (5 * 60))
+	// Set the Health Check interval so that it can be skipped twice plus 2 minutes.
+	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
 	
 	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 	
+	startHealthPollSchedule()
+}
+
+private startHealthPollSchedule() {
 	unschedule(healthPoll)
 	switch (checkinIntervalSettingMinutes) {
 		case 5:
@@ -521,30 +525,16 @@ def healthPoll() {
 
 def ping() {
 	logTrace "ping()"
-	if (canCheckin()) {
+	// Don't allow it to ping the device more than once per minute.
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		logDebug "Attempting to ping device."
 		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
-		initializeCheckin()
+		startHealthPollSchedule()
 		
-		return poll()	
+		return versionGetCmd()
 	}	
 }
-
-def poll() {
-	if (canCheckin()) {
-		logTrace "Polling Device"
-		if (canReportBattery()) {
-			return batteryGetCmd()
-		}
-		else {
-			return versionGetCmd()
-		}
-	}
-	else {
-		logTrace "Skipped Poll"
-	}
-}
-		
+	
 def parse(String description) {
 	def result = []
 	
@@ -562,20 +552,15 @@ def parse(String description) {
 		}
 	}
 	
-	if (canCheckin()) {
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		result << createLastCheckinEvent()
 	}	
 	return result
 }
 
-private canCheckin() {
-	def minimumCheckinInterval = ((checkinIntervalSettingMinutes * 60 * 1000) - 5000)
-	return (!state.lastCheckinTime || ((new Date().time - state.lastCheckinTime) >= minimumCheckinInterval))
-}
-
 private createLastCheckinEvent() {
-	logDebug "Device Checked In"
 	state.lastCheckinTime = new Date().time
+	logDebug "Device Checked In"
 	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
 }
 
@@ -618,15 +603,14 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	def isNew = (device.currentValue("battery") != val)
 			
 	def result = []
-	result << createEvent(name: "battery", value: val, unit: "%", display: isNew, isStateChange: isNew)
-	result << createLastCheckinEvent()
+	result << createEvent(name: "battery", value: val, unit: "%", display: isNew, isStateChange: isNew)	
 	return result
 }	
 
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 	logTrace "VersionReport: $cmd"	
 	// Using this event for health monitoring to update lastCheckin
-	return [createLastCheckinEvent()]
+	return []
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {	
