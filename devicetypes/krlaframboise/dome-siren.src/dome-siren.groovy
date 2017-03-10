@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.0
+ *  Dome Siren v1.1
  *  (Model: DMS01)
  *
  *  Author: 
@@ -9,6 +9,10 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1 (03/09/2017)
+ *      - Added health check and switch capabilities.
+ *      - Added self polling functionality.
  *
  *    1.0 (01/25/2017)
  *      - Initial Release
@@ -40,8 +44,10 @@ metadata {
 		capability "Speech Synthesis"
 		capability "Audio Notification"
 		capability "Music Player"
+		capability "Switch"
+		capability "Health Check"
 		
-		attribute "lastCheckin", "number"
+		attribute "lastCheckin", "string"
 		attribute "status", "enum", ["alarm", "pending", "off", "chime"]
 		
 		// Required for Speaker notify with sound
@@ -122,12 +128,18 @@ metadata {
 			required: false,
 			displayDuringSetup: true,
 			options: ledOptions.collect { it.name }
-		input "reportBatteryEvery", "number", 
-			title: "Battery Reporting Interval (Hours)", 
-			range: "1..167",
+		input "checkinInterval", "enum",
+			title: "Checkin Interval:",
+			defaultValue: checkinIntervalSetting,
 			required: false,
 			displayDuringSetup: true,
-			defaultValue: reportBatteryEverySetting
+			options: checkinIntervalOptions.collect { it.name }
+		input "batteryReportingInterval", "enum",
+			title: "Battery Reporting Interval:",
+			defaultValue: batteryReportingIntervalSetting,
+			required: false,
+			displayDuringSetup: true,
+			options: checkinIntervalOptions.collect { it.name }
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -241,6 +253,8 @@ def updated() {
 		state.activeEvents = []
 		logTrace "updated()"
 		
+		initializeCheckin()
+		
 		if (state.firstUpdate == false) {
 			def result = []
 			result += configure()
@@ -253,6 +267,34 @@ def updated() {
 			state.firstUpdate = false
 		}
 	}		
+}
+
+private initializeCheckin() {
+	// Set the Health Check interval so that it pings the device if it's 5 minutes past the scheduled checkin.
+	def checkInterval = ((checkinIntervalSettingMinutes * 60) + (5 * 60))
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+	
+	unschedule(healthPoll)
+	switch (checkinIntervalSettingMinutes) {
+		case 5:
+			runEvery5Minutes(healthPoll)
+			break
+		case 10:
+			runEvery10Minutes(healthPoll)
+			break
+		case 15:
+			runEvery15Minutes(healthPoll)
+			break
+		case 30:
+			runEvery30Minutes(healthPoll)
+			break
+		case [60, 120]:
+			runEvery1Hour(healthPoll)
+			break
+		default:
+			runEvery3Hours(healthPoll)			
+	}
 }
 
 def configure() {
@@ -377,8 +419,6 @@ def off() {
 def play() { return on() }
 def on() {	
 	logDebug "Playing Default Chime"	
-	// addPendingSound("switch", "on")
-	// return chimePlayCmds(onChimeSoundSetting)
 	return startChime(null)
 }
 
@@ -393,8 +433,6 @@ def beep() {
 		]
 	}
 	else {
-		// addPendingSound("status", "chime")
-		// return chimePlayCmds(beepSound)
 		return startChime(beepSound)
 	}
 }
@@ -475,13 +513,35 @@ def refresh() {
 	return configure()
 }
 
+def healthPoll() {
+	logTrace "healthPoll()"
+	def cmd = canReportBattery() ? batteryGetCmd() : versionGetCmd()
+	sendHubCommand(new physicalgraph.device.HubAction(cmd))
+}
+
+def ping() {
+	logTrace "ping()"
+	if (canCheckin()) {
+		logDebug "Attempting to ping device."
+		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
+		initializeCheckin()
+		
+		return poll()	
+	}	
+}
+
 def poll() {
-	if (canCheckin() && canReportBattery()) {
-		logDebug "Requesting battery report because device was polled."
-		return [batteryGetCmd()]
+	if (canCheckin()) {
+		logTrace "Polling Device"
+		if (canReportBattery()) {
+			return batteryGetCmd()
+		}
+		else {
+			return versionGetCmd()
+		}
 	}
 	else {
-		logDebug "Ignored poll request because it hasn't been long enough since the last poll."
+		logTrace "Skipped Poll"
 	}
 }
 		
@@ -503,16 +563,24 @@ def parse(String description) {
 	}
 	
 	if (canCheckin()) {
-		result << createEvent(name: "lastCheckin",value: new Date().time, isStateChange: true, displayed: false)
-	}
-	
+		result << createLastCheckinEvent()
+	}	
 	return result
 }
 
 private canCheckin() {
-	// Only allow the event to be created once per minute.
-	def lastCheckin = device.currentValue("lastCheckin")
-	return (!lastCheckin || lastCheckin < (new Date().time - 60000))
+	def minimumCheckinInterval = ((checkinIntervalSettingMinutes * 60 * 1000) - 5000)
+	return (!state.lastCheckinTime || ((new Date().time - state.lastCheckinTime) >= minimumCheckinInterval))
+}
+
+private createLastCheckinEvent() {
+	logDebug "Device Checked In"
+	state.lastCheckinTime = new Date().time
+	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
+}
+
+private convertToLocalTimeString(dt) {
+	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
 }
 
 private getCommandClassVersions() {
@@ -532,38 +600,34 @@ private getCommandClassVersions() {
 	]
 }
 
-private canReportBattery() {	
-	def reportEveryMS = (reportBatteryEverySetting * 60 * 60 * 1000)
+private canReportBattery() {
+	def reportEveryMS = (convertOptionSettingToInt(checkinIntervalOptions, batteryReportingIntervalSetting) * 60 * 1000)
 		
 	return (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) 
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	logTrace "BatteryReport: $cmd"
-	def map = [ 
-		name: "battery", 		
-		unit: "%"
-	]
-	
-	if (cmd.batteryLevel == 0xFF) {
-		map.value = 1
-		map.descriptionText = "Battery is low"
-		map.isStateChange = true
-		logDebug "${map.descriptionText}"
+	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
+	if (val > 100) {
+		val = 100
 	}
-	else {	
-		def isNew = (device.currentValue("battery") != cmd.batteryLevel)
-		map.value = cmd.batteryLevel
-		map.displayed = isNew
-		map.isStateChange = isNew
-		logDebug "Battery is ${cmd.batteryLevel}%"
-	}	
-	
 	state.lastBatteryReport = new Date().time	
-	[
-		createEvent(map)
-	]
+	logDebug "Battery ${val}%"
+	
+	def isNew = (device.currentValue("battery") != val)
+			
+	def result = []
+	result << createEvent(name: "battery", value: val, unit: "%", display: isNew, isStateChange: isNew)
+	result << createLastCheckinEvent()
+	return result
 }	
+
+def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
+	logTrace "VersionReport: $cmd"	
+	// Using this event for health monitoring to update lastCheckin
+	return [createLastCheckinEvent()]
+}
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {	
 	def name = configData.find { it.paramNum == cmd.parameterNumber }?.name
@@ -771,6 +835,10 @@ private batteryGetCmd() {
 	return zwave.batteryV1.batteryGet().format()
 }
 
+private versionGetCmd() {
+	return zwave.versionV1.versionGet().format()
+}
+
 private configGetCmd(paramNum) {
 	return zwave.configurationV1.configurationGet(parameterNumber: paramNum).format()
 }
@@ -796,9 +864,6 @@ private getConfigData() {
 }
 
 // Settings
-private getReportBatteryEverySetting() {
-	return safeToInt(settings?.reportBatteryEvery, 8)
-}
 private getSirenSoundSetting() {
 	return settings?.sirenSound ?: findDefaultOptionName(sirenSoundOptions)
 }
@@ -828,6 +893,15 @@ private getChimeLEDSetting() {
 }
 private getChimeModeSetting() {
 	return 1 // Chime Mode should always be disabled.
+}
+private getCheckinIntervalSettingMinutes() {
+	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting)
+}
+private getCheckinIntervalSetting() {
+	return settings?.checkinInterval ?: findDefaultOptionName(checkinIntervalOptions)
+}
+private getBatteryReportingIntervalSetting() {
+	return settings?.batteryReportingInterval ?: findDefaultOptionName(checkinIntervalOptions)
 }
 
 private validateSound(sound, defaultVal) {
@@ -929,6 +1003,23 @@ private getSirenLengthOptions() {
 		[name: formatDefaultOptionName("1 Minute"), value: 2],
 		[name: "5 Minutes", value: 3],
 		[name: "${noLengthMsg}", value: 4] // config value is 255
+	]
+}
+
+private getCheckinIntervalOptions() {
+	[
+		[name: "5 Minutes", value: 5],
+		[name: "10 Minutes", value: 10],
+		[name: "15 Minutes", value: 15],
+		[name: "30 Minutes", value: 30],
+		[name: "1 Hour", value: 60],
+		[name: "2 Hours", value: 120],
+		[name: "3 Hours", value: 180],
+		[name: "6 Hours", value: 360],
+		[name: "9 Hours", value: 540],
+		[name: formatDefaultOptionName("12 Hours"), value: 720],
+		[name: "18 Hours", value: 1080],
+		[name: "24 Hours", value: 1440]
 	]
 }
 
