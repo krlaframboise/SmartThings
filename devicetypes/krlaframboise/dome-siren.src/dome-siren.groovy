@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.1
+ *  Dome Siren v1.1.1
  *  (Model: DMS01)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.1 (03/09/2017)
+ *    1.1.1 (03/09/2017)
  *      - Added health check and switch capabilities.
  *      - Added self polling functionality.
  *
@@ -419,7 +419,7 @@ def off() {
 def play() { return on() }
 def on() {	
 	logDebug "Playing Default Chime"	
-	return startChime(null)
+	return both()
 }
 
 def beep() {
