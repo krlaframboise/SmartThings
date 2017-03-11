@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.7
+ *  GoControl Multifunction Siren v 1.7.1
  *
  *  Devices:
  *    GoControl/Linear (Model#: WA105DBZ-1 / ZM1601US-3)
@@ -8,7 +8,7 @@
  *
  *  Capabilities:
  *      Alarm, Tone, Audio Notification, Switch
- *      Battery, Polling
+ *      Battery
  *   
  *   ********************************************* 
  *   ** The Speech Synthesis and Music Player   **
@@ -24,6 +24,10 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.7.1 (03/11/2017)
+ *      - Don't display off status event when already off.
+ *      - Removed polling capability.
  *
  *    1.7 (02/19/2017)
  *      - Added Health Check and self polling.
@@ -109,7 +113,6 @@ metadata {
 		capability "Music Player"
 		capability "Audio Notification"
 		capability "Speech Synthesis"
-		capability "Polling"
 		capability "Health Check"
 		capability "Switch"
 		capability "Tone"
@@ -125,10 +128,18 @@ metadata {
 		// but not in the capability code.
 		command "playTrackAtVolume"
 		command "playSoundAndTrack"
+
+
+		// zw:L type:1000 mfr:014F prod:2009 model:0903 ver:14.03 zwv:3.42 lib:06 cc:25,70,72,86
+		
+		// zw:Fs type:1005 mfr:0109 prod:2005 model:0508 ver:15.10 zwv:4.05 lib:03 cc:5E,80,72,98,86 sec:85,59,70,5A,7A,71,73,25 role:07 ff:8F00 ui:8F00
+		
 		
 		fingerprint mfr: "0109", prod: "2005", model: "0508" //Vision
-		fingerprint mfr: "014F", prod: "2005", model: "0503" //Linear/GoControl
-		fingerprint deviceId: "0x1000", inClusters: "0x25,0x80,0x70,0x72,0x86"
+		fingerprint mfr: "014F", prod: "2005", model: "0503" //Linear/GoControl Battery Only
+		fingerprint mfr: "014F", prod: "2009", model: "0903" //Linear/GoControl Powered (no battery reporting)
+		fingerprint deviceId: "0x1000", inClusters: "0x25,0x70,0x72,0x86"
+		fingerprint deviceId: "0x1005", inClusters: "0x25,0x5E,0x72,0x80,0x86"
 	}
 
 	simulator {
@@ -177,6 +188,12 @@ metadata {
 		input "checkinInterval", "enum",
 			title: "Checkin Interval:",
 			defaultValue: checkinIntervalSetting,
+			required: false,
+			displayDuringSetup: true,
+			options: checkinIntervalOptions.collect { it.name }
+		input "batteryReportingInterval", "enum",
+			title: "Battery Reporting Interval:",
+			defaultValue: batteryReportingIntervalSetting,
 			required: false,
 			displayDuringSetup: true,
 			options: checkinIntervalOptions.collect { it.name }
@@ -232,7 +249,6 @@ metadata {
 def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 5000)) {
 		state.lastUpdated = new Date().time
-		state.debugOutput = validateBoolean(settings.debugOutput, true)
 		state.alarmDelaySeconds = validateRange(settings.alarmDelaySeconds, 0, 0, Integer.MAX_VALUE, "alarmDelaySeconds") 
 		state.alarmDelayStrobe = validateBoolean(settings.alarmDelayStrobe, false)
 		logDebug "Updating"
@@ -255,11 +271,15 @@ def updated() {
 }
 
 private initializeCheckin() {
-	// Set the Health Check interval so that it pings the device if it's 1 minute past the scheduled checkin.
-	def checkInterval = ((checkinIntervalSettingMinutes * 60) + 60)
+	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
+	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
 	
 	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 	
+	startHealthPollSchedule()
+}
+
+private startHealthPollSchedule() {
 	unschedule(healthPoll)
 	switch (checkinIntervalSettingMinutes) {
 		case 5:
@@ -282,30 +302,30 @@ private initializeCheckin() {
 	}
 }
 
+// Executed by internal schedule and requests a report from the device to determine if it's still online.
 def healthPoll() {
 	logTrace "healthPoll()"
-	sendHubCommand([new physicalgraph.device.HubAction(batteryGetCmd())], 100)
+	def cmd = canReportBattery() ? batteryGetCmd() : versionGetCmd()
+	sendHubCommand(new physicalgraph.device.HubAction(cmd))
 }
 
+private canReportBattery() {
+	def reportEveryMS = (batteryReportingIntervalSettingMinutes * 60 * 1000)
+		
+	return (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) 
+}
+
+// Executed by SmartThings if the specified checkInterval is exceeded.
 def ping() {
 	logTrace "ping()"
-	if (canCheckin()) {
+	// Don't allow it to ping the device more than once per minute.
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		logDebug "Attempting to ping device."
 		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
-		initializeCheckin()
+		startHealthPollSchedule()
 		
-		return poll()	
+		return versionGetCmd()
 	}	
-}
-
-def poll() {
-	if (canCheckin()) {
-		logTrace "Polling Device"
-		return batteryGetCmd()
-	}
-	else {
-		logTrace "Skipped Poll"
-	}
 }
 
 private configure() {
@@ -364,7 +384,7 @@ def customBeep(beepLengthMS, delaySeconds=0, useStrobe=false) {
 	useStrobe = validateBoolean(useStrobe, false)
 	
 	state.activeAlarm = null
-	sendEvent(getStatusEventMap("beep"))
+	sendEvent(createStatusEventMap("beep"))
 	
 	def result = []	
 	def delayMsg = ""
@@ -512,7 +532,7 @@ private startDelayedAlarm(currentAlarmType) {
 	
 	result << alarmTypeGetCmd()
 			
-	sendEvent(getStatusEventMap("alarmPending"))
+	sendEvent(createStatusEventMap("alarmPending"))
 	
 	state.activeAlarm.delaySeconds = null
 	state.activeAlarm.useStrobe = null
@@ -600,6 +620,10 @@ private configGetCmd(paramNumber) {
 	secureCmd(zwave.configurationV1.configurationGet(parameterNumber: paramNumber))
 }
 
+private versionGetCmd() {
+	secureCmd(zwave.versionV1.versionGet())
+}
+
 private manufacturerGetCmd() {
 	secureCmd(zwave.manufacturerSpecificV2.manufacturerSpecificGet())
 }
@@ -684,17 +708,20 @@ private convertToLocalTimeString(dt) {
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
 	def encapsulatedCmd = cmd.encapsulatedCommand([0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x80: 1, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])	
 	if (encapsulatedCmd) {	
-		logDebug "encapsulated: $encapsulatedCmd"
+		logTrace "encapsulated: $encapsulatedCmd"
 		zwaveEvent(encapsulatedCmd)
 	}
 }
 
-private versionGetCmd() {
-	secureCmd(zwave.versionV1.versionGet())
+// Requested by health poll to verify that it's still online.
+def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
+	logTrace "VersionReport: $cmd"	
+	// Using this event for health monitoring to update lastCheckin
+	return []
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
-	//logDebug "BinaryReport: $cmd"
+	logTrace "BinaryReport: $cmd"
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {
@@ -729,28 +756,32 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 }
 
 private getCommandEvents(alarmValue, switchValue, statusValue) {
-	[		
-		createEvent(
-			getStatusEventMap(statusValue)
-		),
-		createEvent(
+	def result = []
+	if (device.currentValue("status") != statusValue) {
+		result << createEvent(createStatusEventMap(statusValue))
+	}
+	if (device.currentValue("alarm") != alarmValue) {
+		result << createEvent(
 			name:"alarm",
 			description: "Alarm is $alarmValue",
 			value: alarmValue, 
 			isStateChange: true, 
 			displayed: false
-		),
-		createEvent(
+		)
+	}
+	if (device.currentValue("switch") != switchValue) {
+		result << createEvent(
 			name:"switch", 
 			description: "Switch is $switchValue",
 			value: switchValue, 
 			isStateChange: true, 
 			displayed: false
 		)
-	]	
+	}
+	return result
 }
 
-private getStatusEventMap(statusValue) {
+private createStatusEventMap(statusValue) {
 	return [
 		name: "status",
 		description: "Status is $statusValue",
@@ -778,22 +809,24 @@ private getLastAlarmStateValue() {
 	return result
 }
 
+// Creates the event for the battery level.
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	logTrace "BatteryReport: $cmd"
-	def map = [ 
-		name: "battery", 
-		unit: "%"
-	]
-	if (cmd.batteryLevel == 0xFF) {
-		map.value = 1
-		map.descriptionText = "Battery is low"
-		map.isStateChange = true
-		map.displayed = true
-	} else {
-		map.value = cmd.batteryLevel
-		map.displayed = false
-	}	
-	[createEvent(map)]
+	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
+	if (val > 100) {
+		val = 100
+	}
+	if (val < 1) {
+		val = 1
+	}
+	state.lastBatteryReport = new Date().time	
+	logDebug "Battery ${val}%"
+	
+	def isNew = (device.currentValue("battery") != val)
+			
+	def result = []
+	result << createEvent(name: "battery", value: val, unit: "%", display: isNew, isStateChange: isNew)	
+	return result
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
@@ -960,11 +993,16 @@ private removeCmdPrefix(message) {
 }
 
 private getCheckinIntervalSettingMinutes() {
-	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting)
+	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting) ?: 720
 }
-
 private getCheckinIntervalSetting() {
 	return settings?.checkinInterval ?: findDefaultOptionName(checkinIntervalOptions)
+}
+private getBatteryReportingIntervalSettingMinutes() {
+	return convertOptionSettingToInt(checkinIntervalOptions, batteryReportingIntervalSetting) ?: checkinIntervalSettingMinutes
+}
+private getBatteryReportingIntervalSetting() {
+	return settings?.batteryReportingInterval ?: findDefaultOptionName(checkinIntervalOptions)
 }
 
 private getCheckinIntervalOptions() {
@@ -1054,17 +1092,8 @@ private int validateRange(val, defaultVal, minVal, maxVal, desc) {
 	}
 }
 
-def describeCommands() {
-	return [
-		"customBeep": [ display: "Custom Beep", description: "{0} Beep Length in Milliseconds", parameters:["number", "number", "bool"]], // beepLengthMS, delaySeconds, useStrobe
-		"customBoth": [ display: "Custom Strobe and Siren", description: "(delaySeconds: {0}, autoOffSeconds: {1}, useStrobe: {2})", parameters:["number", "number", "bool"]],
-		"customSiren": [ display: "Custom Siren", description: "", parameters:["number", "number", "bool"]], // delaySeconds, autoOffSeconds, useStrobe
-		"customStrobe": [ display: "Custom Strobe", description: "", parameters:["number", "number"]] // delaySeconds, autoOffSeconds
-	]
-}
-
 private logDebug(msg) {
-	if (state.debugOutput || state.debugOutput == null) {
+	if (settings?.debugOutput || settings?.debugOutput == null) {
 		log.debug "$msg"
 	}
 }

@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Contact Sensor v1.1.2
+ *  GoControl Multifunction Contact Sensor v1.1.3
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation: https://community.smartthings.com/t/release-gocontrol-linear-multifunction-contact-sensor/77659?u=krlaframboise
  *    
  *  Changelog:
+ *
+ *    1.1.3 (03/11/2017)
+ *      -  Adjusted health check to allow it to skip a checkin before going offline. 
  *
  *    1.1.2 (02/26/2017)
  *      -  Removed descriptionText from events so that it uses the default full device name.
@@ -178,7 +181,7 @@ metadata {
 			state "clear", label:"No Tamper", backgroundColor: "#cccccc"			
 		}
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
-			state "default", label: "Refresh", action: "refresh", icon:""
+			state "default", label: "Refresh", action: "refresh", icon:"st.secondary.refresh-icon"
 		}
 		
 		main("mainTile")
@@ -196,18 +199,22 @@ def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 1000)) {
 		state.lastUpdated = new Date().time
 		
-		// Set the Health Check interval so that it pings the device if it's 1 minute past the scheduled checkin.
-		def checkInterval = ((checkinIntervalSettingMinutes * 60) + 60)
-	
-		sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+		initializeCheckin()
 		
 		refreshMainTile()
 	}
 }
 
+private initializeCheckin() {
+	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
+	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+}
+
+// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
 def ping() {
-	logDebug "ping()"
-	// Device can't be pinged because it sleeps, but command needed for Health Check capability.	
+	logDebug "ping()"	
 }
 
 private sendStatusEvent(statusName, statusAttribute) {
@@ -280,15 +287,10 @@ def parse(String description) {
 		}
 	}
 	
-	if (canCheckin()) {
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		result << createLastCheckinEvent()
 	}
 	return result
-}
-
-private canCheckin() {
-	def minimumCheckinInterval = ((checkinIntervalSettingMinutes * 60 * 1000) - 5000)
-	return (!state.lastCheckinTime || ((new Date().time - state.lastCheckinTime) >= minimumCheckinInterval))
 }
 
 private createLastCheckinEvent() {
@@ -337,11 +339,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	}
 	
 	cmds << wakeUpNoMoreInfoCmd()
-	
-	def result = []
-	result += response(delayBetween(cmds, 250))
-	result << createLastCheckinEvent()
-	return result
+	return response(cmds)
 }
 
 private canReportBattery() {
