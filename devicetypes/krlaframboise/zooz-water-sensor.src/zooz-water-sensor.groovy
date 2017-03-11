@@ -1,5 +1,5 @@
 /**
- *  Zooz Water Sensor v1.0
+ *  Zooz Water Sensor v1.0.2
  *  (Model: ZSE30)
  *
  *  Author: 
@@ -9,6 +9,12 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.2 (03/11/2017)
+ *      - Fixed wakeup report so that it doesn't send the configuration every time the device wakes up.
+ *
+ *    1.0.1 (02/18/2017)
+ *      - Added health check
  *
  *    1.0 (02/16/2017)
  *      - Initial Release
@@ -35,8 +41,9 @@ metadata {
 		capability "Battery"
 		capability "Configuration"
 		capability "Refresh"
+		capability "Health Check"
 		
-		attribute "lastCheckin", "number"
+		attribute "lastCheckin", "string"
 		
 		fingerprint deviceId: "0xA102", inClusters: "0x30, 0x59, 0x5A, 0x5E, 0x70, 0x71, 0x72, 0x73, 0x80, 0x84, 0x85, 0x86"
 		
@@ -76,11 +83,11 @@ metadata {
 			displayDuringSetup: true,
 			range: "0..255"
 		input "wakeUpInterval", "number",
-			title: "Wake Up Interval [1-24]\n(1 Hour - 24 Hours)",
-			defaultValue: wakeUpIntervalSetting,
-			required: false,
-			displayDuringSetup: true,
-			range: "1..24"
+			title: "Minimum Check-in Interval [1-167]\n(1 = 1 Hour)\n(167 = 7 Days)",
+			defaultValue: checkinIntervalSetting,
+			range: "1..167",
+			displayDuringSetup: true, 
+			required: false
 		input "batteryReportingInterval", "number",
 			title: "Battery Reporting Interval [1-24]\n(1 Hour - 24 Hours)",
 			defaultValue: batteryReportingIntervalSetting,
@@ -114,9 +121,13 @@ metadata {
 		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2){
 			state "battery", label:'${currentValue}% battery', unit:""
 		}
+		
+		valueTile("lastCheckin", "device.lastCheckin", decoration: "flat", width: 2, height: 2){
+			state "lastCheckin", label:'Last Checkin\n\n${currentValue}', unit:""
+		}
 					
 		main "water"
-		details(["water", "refresh", "battery"])
+		details(["water", "refresh", "battery", "lastCheckin"])
 	}
 }
 
@@ -126,9 +137,23 @@ def updated() {
 		state.lastUpdated = new Date().time
 		logTrace "updated()"
 
+		initializeCheckin()		
+		
 		logForceWakeupMessage "The configuration will be updated the next time the device wakes up."
 		state.pendingChanges = true
 	}		
+}
+
+private initializeCheckin() {
+	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
+	def checkInterval = ((checkinIntervalSettingSeconds * 2) + (2 * 60))
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+}
+
+// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
+def ping() {
+	logDebug "ping()"	
 }
 
 def configure() {
@@ -150,7 +175,7 @@ def configure() {
 		cmds << batteryGetCmd()
 	}
 	
-	cmds << wakeUpIntervalSetCmd(wakeUpIntervalSetting * 60 * 60)
+	cmds << wakeUpIntervalSetCmd(checkinIntervalSettingSeconds)
 		
 	if (cmds) {
 		logDebug "Sending configuration to device."
@@ -192,12 +217,10 @@ def parse(String description) {
 	}
 	else {
 		logDebug "Unable to parse description: $description"
+	}	
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
+		result << createLastCheckinEvent()
 	}
-	
-	if (canCheckin()) {
-		result << createEvent(name: "lastCheckin",value: new Date().time, isStateChange: true, displayed: false)
-	}
-	
 	return result
 }
 
@@ -221,30 +244,38 @@ private getCommandClassVersions() {
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 {
 	logTrace "WakeUpNotification: $cmd"
-	def result = []
-	
+	def cmds = []
 	if (state.pendingChanges != false) {
-		result += configure()
+		cmds += configure()
 	}
 	else if (state.pendingRefresh || canReportBattery()) {
-		result << batteryGetCmd()
+		cmds << batteryGetCmd()
 	}
 	else {
-		logTrace "Skipping battery check because it was already checked within the last ${batteryReportingIntervalSetting}."
+		logTrace "Skipping battery check because it was already checked within the last ${batteryReportingIntervalSetting} hours."
 	}
 	
-	if (result) {
-		result << "delay 2000"
+	if (cmds) {
+		cmds << "delay 2000"
 	}
-	result << wakeUpNoMoreInfoCmd()
-	
-	return response(result)
+	cmds << wakeUpNoMoreInfoCmd()
+	return response(cmds)
 }
 
 private canReportBattery() {
-	def reportEveryMS = (batteryReportingIntervalSetting * 60 * 60 * 1000)
+	def reportEveryMS = (batteryReportingIntervalSettingSeconds * 1000)
 		
 	return (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) 
+}
+
+private createLastCheckinEvent() {
+	logDebug "Device Checked In"
+	state.lastCheckinTime = new Date().time
+	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
+}
+
+private convertToLocalTimeString(dt) {
+	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
@@ -252,6 +283,9 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
 	if (val > 100) {
 		val = 100
+	}
+	if (val < 1) {
+		val = 1
 	}
 	state.lastBatteryReport = new Date().time	
 	logDebug "Battery ${val}%"
@@ -274,6 +308,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	}
 	state.isConfigured = true
 	state.pendingRefresh = false	
+	state.pendingChanges = false
 	return []
 }
 
@@ -371,12 +406,20 @@ private getBeepIntervalSetting() {
 	return safeToInt(settings?.beepInterval, 1)
 }
 
-private getWakeUpIntervalSetting() {
+private getCheckinIntervalSetting() {
 	return safeToInt(settings?.wakeUpInterval, 12)
+}
+
+private getCheckinIntervalSettingSeconds() {
+	return (checkinIntervalSetting * 60 * 60)
 }
 
 private getBatteryReportingIntervalSetting() {
 	return safeToInt(settings?.batteryReportingInterval, 12)
+}
+
+private getBatteryReportingIntervalSettingSeconds() {
+	return (batteryReportingIntervalSetting * 60 * 60)
 }
 
 private getDebugOutputSetting() {
@@ -398,12 +441,6 @@ private getConfigData() {
 
 private safeToInt(val, defaultVal=-1) {
 	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
-}
-
-private canCheckin() {
-	// Only allow the event to be created once per minute.
-	def lastCheckin = device.currentValue("lastCheckin")
-	return (!lastCheckin || lastCheckin < (new Date().time - 60000))
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
