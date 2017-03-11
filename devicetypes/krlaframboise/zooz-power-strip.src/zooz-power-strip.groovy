@@ -1,9 +1,9 @@
 /**
- *  Zooz Power Strip v1.0.2
+ *  Zooz Power Strip v1.0.4
  *     (Model: ZEN20)
  *  
  *  Capabilities:
- *	  Switch, Refresh, Polling
+ *	  Switch, Refresh
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -11,6 +11,13 @@
  *  URL to documentation:  https://community.smartthings.com/t/release-zooz-power-strip/68860?u=krlaframboise
  *
  *  Changelog:
+ *
+ *  1.0.4 (03/11/2016)
+ *    - Adjusted health check to allow it to skip a checkin before going offline.
+ *    - Removed Polling capability.
+ *
+ *  1.0.3 (02/18/2016)
+ *    - Added Health Check and self polling.
  *
  *  1.0.2 (12/19/2016)
  *    - Fixed issue with button events.
@@ -37,9 +44,9 @@ metadata {
 		capability "Actuator"
 		capability "Switch"
 		capability "Refresh"
-		capability "Polling"		
-
-		attribute "lastPoll", "number"
+		capability "Health Check"
+		
+		attribute "lastCheckin", "string"
 		
 		(1..5).each { ch ->
 			attribute "ch${ch}Switch", "enum", ["on", "off"]
@@ -66,6 +73,12 @@ metadata {
 			title: "Main Switch Delay (milliseconds):",
 			defaultValue: 0,
 			required: false
+		input "checkinInterval", "enum",
+			title: "Checkin Interval:",
+			defaultValue: checkinIntervalSetting,
+			required: false,
+			displayDuringSetup: true,
+			options: checkinIntervalOptions.collect { it.name }
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -118,9 +131,11 @@ metadata {
 }
 
 def updated() {	
-	if (!isDuplicateCommand(state.lastUpdated, 1000)) {
+	if (!isDuplicateCommand(state.lastUpdated, 2000)) {
 		state.lastUpdated = new Date().time
 
+		initializeCheckin()
+		
 		def cmds = []
 		if (!state?.isConfigured) {
 			cmds += configure()
@@ -146,16 +161,62 @@ private initializeMainSwitch() {
 	}	
 }
 
+private initializeCheckin() {
+	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
+	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+	
+	startHealthPollSchedule()
+}
+
+private startHealthPollSchedule() {
+	unschedule(healthPoll)
+	switch (checkinIntervalSettingMinutes) {
+		case 5:
+			runEvery5Minutes(healthPoll)
+			break
+		case 10:
+			runEvery10Minutes(healthPoll)
+			break
+		case 15:
+			runEvery15Minutes(healthPoll)
+			break
+		case 30:
+			runEvery30Minutes(healthPoll)
+			break
+		case [60, 120]:
+			runEvery1Hour(healthPoll)
+			break
+		default:
+			runEvery3Hours(healthPoll)			
+	}
+}
+
+// Executed by internal schedule and requests version report to determine if the device is still online.
+def healthPoll() {
+	logTrace "healthPoll()"
+	sendHubCommand(new physicalgraph.device.HubAction(versionGetCmd()))
+}
+
+// Executed by SmartThings if the specified checkInterval is exceeded.
+def ping() {
+	logTrace "ping()"
+	// Don't allow it to ping the device more than once per minute.
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
+		logDebug "Attempting to ping device."
+		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
+		startHealthPollSchedule()
+		
+		return versionGetCmd()
+	}	
+}
+
 def configure() {
 	state.isConfigured = true
 	def cmds = []
 	cmds << switchAllSetCmd(255)		
 	return cmds		
-}
-
-def poll() {
-	logDebug "Executing poll()"
-	return refresh()
 }
 
 def refresh() {
@@ -235,8 +296,20 @@ def parse(String description) {
 	else {
 		logDebug "Unknown Description: $description"
 	}	
-	result << createEvent(name: "lastPoll", value: new Date().time, displayed: false, isStateChange: true)
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
+		result << createLastCheckinEvent()
+	}	
 	return result
+}
+
+private createLastCheckinEvent() {
+	logDebug "Device Checked In"
+	state.lastCheckinTime = new Date().time
+	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
+}
+
+private convertToLocalTimeString(dt) {
+	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap cmd) {
@@ -293,6 +366,12 @@ private createSwitchEvent(newVal, type) {
 	return createEvent(name:"switch", value:newVal,displayed: true, type: "$type")
 }
 
+def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
+	logTrace "VersionReport: $cmd"	
+	// Using this event for health monitoring to update lastCheckin
+	return []
+}
+
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	logDebug "Unhandled zwaveEvent: $cmd"
 	return []
@@ -318,6 +397,10 @@ private basicSetCmd(val, endpoint=null) {
 	return multiChannelEncap(zwave.basicV1.basicSet(value: val), endpoint)
 }
 
+private versionGetCmd() {
+	return zwave.versionV1.versionGet().format()
+}
+
 private multiChannelEncap(cmd, endpoint) {
 	if (endpoint) {
 		return zwave.multiChannelV3.multiChannelCmdEncap(destinationEndPoint:endpoint).encapsulate(cmd).format()
@@ -325,6 +408,53 @@ private multiChannelEncap(cmd, endpoint) {
 	else {
 		return cmd.format()
 	}
+}
+
+
+private getCheckinIntervalSettingMinutes() {
+	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting)
+}
+
+private getCheckinIntervalSetting() {
+	return settings?.checkinInterval ?: findDefaultOptionName(checkinIntervalOptions)
+}
+
+private getCheckinIntervalOptions() {
+	[
+		[name: "5 Minutes", value: 5],
+		[name: "10 Minutes", value: 10],
+		[name: "15 Minutes", value: 15],
+		[name: "30 Minutes", value: 30],
+		[name: "1 Hour", value: 60],
+		[name: "2 Hours", value: 120],
+		[name: "3 Hours", value: 180],
+		[name: "6 Hours", value: 360],
+		[name: "9 Hours", value: 540],
+		[name: formatDefaultOptionName("12 Hours"), value: 720],
+		[name: "18 Hours", value: 1080],
+		[name: "24 Hours", value: 1440]
+	]
+}
+
+private convertOptionSettingToInt(options, settingVal) {
+	return safeToInt(options?.find { "${settingVal}" == it.name }?.value, 0)
+}
+
+private formatDefaultOptionName(val) {
+	return "${val}${defaultOptionSuffix}"
+}
+
+private findDefaultOptionName(options) {
+	def option = options?.find { it.name?.contains("${defaultOptionSuffix}") }
+	return option?.name ?: ""
+}
+
+private getDefaultOptionSuffix() {
+	return "   (Default)"
+}
+
+private safeToInt(val, defaultVal=-1) {
+	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
@@ -335,4 +465,8 @@ private logDebug(msg) {
 	if (settings?.debugOutput || settings?.debugOutput == null) {
 		log.debug "$msg"
 	}
+}
+
+private logTrace(msg) {
+	// log.trace "${msg}"
 }
