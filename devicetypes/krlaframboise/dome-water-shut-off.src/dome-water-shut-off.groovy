@@ -1,5 +1,5 @@
 /**
- *  Dome Water Shut-Off v1.1
+ *  Dome Water Shut-Off v1.2
  *  (Model: DMWV1)
  *
  *  Author: 
@@ -10,6 +10,10 @@
  *  URL to Manual:  https://s3-us-west-2.amazonaws.com/dome-manuals/SmartThings/SmartThings+Water+Main+Shut-Off+Device+Handler.pdf
  *
  *  Changelog:
+ *
+ *    1.2 (03/11/2017)
+ *      - Added health check capability and self polling functionality.
+ *      - Removed Polling capability.
  *
  *    1.1 (02/09/2017)
  *      - Cleaned code for publication.
@@ -39,10 +43,10 @@
 		capability "Valve"
 		capability "Switch"
 		capability "Refresh"
-		capability "Polling"
+		capability "Health Check"
 		
 		attribute "status", "enum", ["open", "closed", "opening", "closing"]
-		attribute "lastCheckin", "number"
+		attribute "lastCheckin", "string"
 		
 		fingerprint deviceId: "0x1006", inClusters: "0x59, 0x5A, 0x5E, 0x72, 0x73, 0x85, 0x86, 0x25"
 		
@@ -52,6 +56,12 @@
 	simulator { }
 	
 	preferences {
+		input "checkinInterval", "enum",
+			title: "Checkin Interval:",
+			defaultValue: checkinIntervalSetting,
+			required: false,
+			displayDuringSetup: true,
+			options: checkinIntervalOptions.collect { it.name }
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -130,25 +140,68 @@
 	}
 }
 
-// Refreshes the valve status.
+// Refreshes the valve status and sets the health check expected interval.
 def updated() {	
 	// This method always gets called twice when preferences are saved.
 	if (!isDuplicateCommand(state.lastUpdated, 2000)) {
 		state.lastUpdated = new Date().time
 		logTrace "updated()"		
+		
+		initializeCheckin()
+		
 		return response(refresh())
 	}
 }
 
-// Refreshes the valve status.
-def poll() {
-	logTrace "poll()"
-	if (canCheckin()) {			
-		return refresh()
+private initializeCheckin() {
+	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
+	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+	
+	startHealthPollSchedule()
+}
+
+private startHealthPollSchedule() {
+	unschedule(healthPoll)
+	switch (checkinIntervalSettingMinutes) {
+		case 5:
+			runEvery5Minutes(healthPoll)
+			break
+		case 10:
+			runEvery10Minutes(healthPoll)
+			break
+		case 15:
+			runEvery15Minutes(healthPoll)
+			break
+		case 30:
+			runEvery30Minutes(healthPoll)
+			break
+		case [60, 120]:
+			runEvery1Hour(healthPoll)
+			break
+		default:
+			runEvery3Hours(healthPoll)			
 	}
-	else {
-		logDebug "Ignored poll request because it hasn't been long enough since the last poll."
-	}
+}
+
+// Executed by internal schedule and requests version report to determine if the device is still online.
+def healthPoll() {
+	logTrace "healthPoll()"
+	sendHubCommand(new physicalgraph.device.HubAction(versionGetCmd()))
+}
+
+// Executed by SmartThings if the specified checkInterval is exceeded.
+def ping() {
+	logTrace "ping()"
+	// Don't allow it to ping the device more than once per minute.
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
+		logDebug "Attempting to ping device."
+		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
+		startHealthPollSchedule()
+		
+		return versionGetCmd()
+	}	
 }
 
 // Refreshes the valve status.
@@ -203,11 +256,80 @@ def parse(String description) {
 		logDebug "Unable to parse description: $description"
 	}
 	
-	if (canCheckin()) {
-		result << createEvent(name: "lastCheckin",value: new Date().time, isStateChange: true, displayed: false)
-	}
-	
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
+		result << createLastCheckinEvent()
+	}	
 	return result
+}
+
+// Requested by health poll to verify that it's still online.
+def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
+	logTrace "VersionReport: $cmd"	
+	return []
+}
+
+// Creates events based on state of valve.
+def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
+	logTrace "SwitchBinaryReport: $cmd"
+	def result = []
+	def reported = (cmd.value == openStatus.cmdValue) ? openStatus : closedStatus
+	
+	if (state.pending?.abortTime && state.pending?.abortTime > new Date().time) {
+		result << createEvent(createEventMap("status", state.pending.pendingValue, false))
+		state.pending = null
+	}
+	else {
+		logDebug "Valve is ${reported.value.capitalize()}"
+		if (device.currentValue("status") != reported.value) {
+			result << createEvent(createEventMap("status", reported.value, false))
+		}
+		result << createEvent(createEventMap("switch", reported.switchValue, false))
+		result << createEvent(createEventMap("valve", reported.value))	
+	}	
+	return result
+}
+
+// Handles unexpected device event.
+def zwaveEvent(physicalgraph.zwave.Command cmd) {
+	logDebug "Unhandled Command: $cmd"
+	return []
+}
+
+
+private versionGetCmd() {
+	return zwave.versionV1.versionGet().format()
+}
+
+private switchBinaryGetCmd() {
+	return zwave.switchBinaryV1.switchBinaryGet().format()
+}
+
+private switchBinarySetCmd(val) {
+	return zwave.switchBinaryV1.switchBinarySet(switchValue: val).format()
+}
+
+
+private createLastCheckinEvent() {
+	logDebug "Device Checked In"
+	state.lastCheckinTime = new Date().time
+	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
+}
+
+private convertToLocalTimeString(dt) {
+	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
+}
+
+private createEventMap(name, value, displayed=null) {	
+	def isStateChange = (device.currentValue(name) != value)
+	displayed = (displayed == null ? isStateChange : displayed)
+	def eventMap = [
+		name: name,
+		value: value,
+		displayed: displayed,
+		isStateChange: isStateChange
+	]
+	logTrace "Creating Event: ${eventMap}"
+	return eventMap
 }
 
 private getCommandClassVersions() {
@@ -221,55 +343,6 @@ private getCommandClassVersions() {
 		0x86: 1,  // Version (2)
 		0x25: 1  // Switch Binary
 	]
-}
-
-// Creates events based on state of valve.
-def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
-	logTrace "SwitchBinaryReport: $cmd"
-	def result = []
-	def reported = (cmd.value == openStatus.cmdValue) ? openStatus : closedStatus
-	
-	if (state.pending?.abortTime && state.pending?.abortTime > new Date().time) {
-		result << createEvent(getEventMap("status", state.pending.pendingValue, false))
-		state.pending = null
-	}
-	else {
-		logDebug "Valve is ${reported.value.capitalize()}"
-		if (device.currentValue("status") != reported.value) {
-			result << createEvent(getEventMap("status", reported.value, false))
-		}
-		result << createEvent(getEventMap("switch", reported.switchValue, false))
-		result << createEvent(getEventMap("valve", reported.value))	
-	}	
-	return result
-}
-
-// Handles unexpected device event.
-def zwaveEvent(physicalgraph.zwave.Command cmd) {
-	logDebug "Unhandled Command: $cmd"
-	return []
-}
-
-
-private switchBinaryGetCmd() {
-	return zwave.switchBinaryV1.switchBinaryGet().format()
-}
-
-private switchBinarySetCmd(val) {
-	return zwave.switchBinaryV1.switchBinarySet(switchValue: val).format()
-}
-
-private getEventMap(name, value, displayed=null) {	
-	def isStateChange = (device.currentValue(name) != value)
-	displayed = (displayed == null ? isStateChange : displayed)
-	def eventMap = [
-		name: name,
-		value: value,
-		displayed: displayed,
-		isStateChange: isStateChange
-	]
-	logTrace "Creating Event: ${eventMap}"
-	return eventMap
 }
 
 private getOpenStatus() {
@@ -292,10 +365,49 @@ private getClosedStatus() {
 	]
 }
 
-private canCheckin() {
-	// Only allow the event to be created once per minute.
-	def lastCheckin = device.currentValue("lastCheckin")
-	return (!lastCheckin || lastCheckin < (new Date().time - 60000))
+private getCheckinIntervalSettingMinutes() {
+	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting) ?: 720
+}
+private getCheckinIntervalSetting() {
+	return settings?.checkinInterval ?: findDefaultOptionName(checkinIntervalOptions)
+}
+
+private getCheckinIntervalOptions() {
+	[
+		[name: "5 Minutes", value: 5],
+		[name: "10 Minutes", value: 10],
+		[name: "15 Minutes", value: 15],
+		[name: "30 Minutes", value: 30],
+		[name: "1 Hour", value: 60],
+		[name: "2 Hours", value: 120],
+		[name: "3 Hours", value: 180],
+		[name: "6 Hours", value: 360],
+		[name: "9 Hours", value: 540],
+		[name: formatDefaultOptionName("12 Hours"), value: 720],
+		[name: "18 Hours", value: 1080],
+		[name: "24 Hours", value: 1440]
+	]
+}
+
+private convertOptionSettingToInt(options, settingVal) {
+	return safeToInt(options?.find { "${settingVal}" == it.name }?.value, 0)
+}
+
+private formatDefaultOptionName(val) {
+	return "${val}${defaultOptionSuffix}"
+}
+
+private findDefaultOptionName(options) {
+	def option = options?.find { it.name?.contains("${defaultOptionSuffix}") }
+	return option?.name ?: ""
+}
+
+private getDefaultOptionSuffix() {
+	return "   (Default)"
+}
+
+private int safeToInt(val, int defaultVal=0) {
+	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {

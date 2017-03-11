@@ -1,5 +1,5 @@
 /**
- *  Dome Door Sensor v1.1.1
+ *  Dome Door Sensor v1.1.2
  *  (Model: DMWD1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.2 (03/11/2017)
+ *      - Adjusted health check to allow it to skip a checkin before going offline.
  *
  *    1.1.1 (03/07/2017)
  *      - Added comments and health check capability.
@@ -106,10 +109,15 @@ def updated() {
 		logForceWakeupMessage "The configuration will be updated the next time the device wakes up."
 		state.pendingChanges = true
 		
-		// Set the Health Check interval so that it pings the device if it's 1 minute past the scheduled checkin.
-		def checkInterval = ((checkinIntervalSettingMinutes * 60) + 60)
-		sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+		initializeCheckin()
 	}		
+}
+
+private initializeCheckin() {
+	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
+	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 }
 
 // Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
@@ -162,16 +170,11 @@ def parse(String description) {
 		logDebug "Unable to parse description: $description"
 	}
 	
-	if (canCheckin()) {
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		result << createLastCheckinEvent()
 	}
 	
 	return result
-}
-
-private canCheckin() {
-	def minimumCheckinInterval = ((checkinIntervalSettingMinutes * 60 * 1000) - 5000)
-	return (!state.lastCheckinTime || ((new Date().time - state.lastCheckinTime) >= minimumCheckinInterval))
 }
 
 private createLastCheckinEvent() {
@@ -225,10 +228,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	}
 	cmds << wakeUpNoMoreInfoCmd()
 	
-	def result = []
-	result += response(delayBetween(cmds, 250))
-	result << createLastCheckinEvent()
-	return result
+	return response(delayBetween(cmds, 250))
 }
 
 private canReportBattery() {

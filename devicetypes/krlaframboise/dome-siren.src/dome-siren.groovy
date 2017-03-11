@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.1.2
+ *  Dome Siren v1.1.3
  *  (Model: DMS01)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.3 (03/11/2017)
+ *      - Cleaned code for publication.
  *
  *    1.1.2 (03/09/2017)
  *      - Added health check and switch capabilities.
@@ -246,6 +249,7 @@ metadata {
 	}
 }
 
+// Initializes the health check interval and sends configuration to device the first time it runs.
 def updated() {	
 	// This method always gets called twice when preferences are saved.
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {		
@@ -270,7 +274,7 @@ def updated() {
 }
 
 private initializeCheckin() {
-	// Set the Health Check interval so that it can be skipped twice plus 2 minutes.
+	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
 	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
 	
 	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
@@ -301,6 +305,27 @@ private startHealthPollSchedule() {
 	}
 }
 
+// Executed by internal schedule and requests a report from the device to determine if it's still online.
+def healthPoll() {
+	logTrace "healthPoll()"
+	def cmd = canReportBattery() ? batteryGetCmd() : versionGetCmd()
+	sendHubCommand(new physicalgraph.device.HubAction(cmd))
+}
+
+// Executed by SmartThings if the specified checkInterval is exceeded.
+def ping() {
+	logTrace "ping()"
+	// Don't allow it to ping the device more than once per minute.
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
+		logDebug "Attempting to ping device."
+		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
+		startHealthPollSchedule()
+		
+		return versionGetCmd()
+	}	
+}
+
+// Initializes the device state when paired and updates the device's configuration.
 def configure() {
 	logTrace "configure()"
 	def cmds = []
@@ -347,6 +372,7 @@ private updateConfigVal(paramNum, val, refreshAll) {
 	return result
 }
 
+// Music Player capability commands that aren't being used.
 def mute() { logUnsupportedCommand("mute()") }
 def unmute() { logUnsupportedCommand("unmute()") }
 def nextTrack() { logUnsupportedCommand("nextTrack()") }
@@ -410,7 +436,7 @@ private getTextFromTTSUrl(URI) {
 	return text ?: URI
 }
 
-
+// Commands that turn the device off.
 def pause() { return off() }
 def stop() { return off() }
 def off() {
@@ -420,12 +446,14 @@ def off() {
 	return sirenToggleCmds(0x00)
 }
 
+// Commands that turn the device on.
 def play() { return on() }
 def on() {	
 	logDebug "Playing Default Chime"	
 	return both()
 }
 
+// Plays beep sound specified in settings.
 def beep() {
 	def beepSound = 10
 	logDebug "Beeping (#${beepSound})"
@@ -441,6 +469,7 @@ def beep() {
 	}
 }
 
+// Plays the sound by name.
 def bell1() { playText("bell1") }
 def bell2() { playText("bell2") }
 def bell3() { playText("bell3") }
@@ -470,10 +499,7 @@ private startChime(sound) {
 	}
 }
 
-def strobe() { 
-	return siren() 
-}
-
+// Starts beeping (if applicable) and turns on siren after delay.
 def both() {
 	def delayMS = (convertOptionSettingToInt(sirenDelayOptions, sirenDelaySetting) * 1000)
 	
@@ -496,6 +522,10 @@ def both() {
 	}
 }
 
+// Immediately turns on the siren.
+def strobe() { 
+	return siren() 
+}
 def siren() { 
 	state.sirenStartTime = new Date().time
 	state.pendingSiren = false
@@ -511,30 +541,14 @@ private addPendingSound(name, value) {
 	state.pendingSound = [name: "$name", value: "$value", time: new Date().time]
 }
 
+// Resends configuration to device.
 def refresh() {	
 	logTrace "refresh()"
 	state.pendingRefresh = true
 	return configure()
 }
 
-def healthPoll() {
-	logTrace "healthPoll()"
-	def cmd = canReportBattery() ? batteryGetCmd() : versionGetCmd()
-	sendHubCommand(new physicalgraph.device.HubAction(cmd))
-}
-
-def ping() {
-	logTrace "ping()"
-	// Don't allow it to ping the device more than once per minute.
-	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
-		logDebug "Attempting to ping device."
-		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
-		startHealthPollSchedule()
-		
-		return versionGetCmd()
-	}	
-}
-	
+// Processes messages received from device.
 def parse(String description) {
 	def result = []
 	
@@ -586,11 +600,12 @@ private getCommandClassVersions() {
 }
 
 private canReportBattery() {
-	def reportEveryMS = (convertOptionSettingToInt(checkinIntervalOptions, batteryReportingIntervalSetting) * 60 * 1000)
+	def reportEveryMS = (batteryReportingIntervalSettingMinutes * 60 * 1000)
 		
 	return (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) 
 }
 
+// Creates the event for the battery level.
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	logTrace "BatteryReport: $cmd"
 	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
@@ -607,12 +622,14 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	return result
 }	
 
+// Requested by health poll to verify that it's still online.
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 	logTrace "VersionReport: $cmd"	
 	// Using this event for health monitoring to update lastCheckin
 	return []
 }
 
+// Stores configuration values so that when it's updated it only has to send the ones that have changed.
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {	
 	def name = configData.find { it.paramNum == cmd.parameterNumber }?.name
 	if (name) {	
@@ -630,6 +647,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	return []
 }
 
+// Used by the delayed alarm feature to turn the siren on after the delay. 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	if (state.pendingSiren || (state.sirenStartTime && device.currentValue("status") != "alarm")) {
 		state.pendingSiren = false
@@ -640,6 +658,7 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	}
 }
 
+// Creates off events.
 def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
 	def result = []	
 	if (cmd.value == 0x00 && !state.pendingSiren) {
@@ -652,6 +671,7 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 	return result
 }
 
+// Executes a beep during the beep delayed alarm and creates events for device turning on.
 def zwaveEvent(physicalgraph.zwave.commands.indicatorv1.IndicatorReport cmd) {
 	def beepDelayMS = 2500
 	if (state.pendingSiren) {
@@ -667,6 +687,7 @@ def zwaveEvent(physicalgraph.zwave.commands.indicatorv1.IndicatorReport cmd) {
 	}
 }
 
+// Creates events for chimes being played.
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
 	def result = []	
 	
@@ -760,6 +781,7 @@ private getEventMap(event, displayed=false) {
 	return eventMap
 }
 
+// Handles unexpected device event.
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	logDebug "Unhandled Command: $cmd"
 	return []
@@ -879,10 +901,13 @@ private getChimeModeSetting() {
 	return 1 // Chime Mode should always be disabled.
 }
 private getCheckinIntervalSettingMinutes() {
-	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting)
+	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting) ?: 720
 }
 private getCheckinIntervalSetting() {
 	return settings?.checkinInterval ?: findDefaultOptionName(checkinIntervalOptions)
+}
+private getBatteryReportingIntervalSettingMinutes() {
+	return convertOptionSettingToInt(checkinIntervalOptions, batteryReportingIntervalSetting) ?: checkinIntervalSettingMinutes
 }
 private getBatteryReportingIntervalSetting() {
 	return settings?.batteryReportingInterval ?: findDefaultOptionName(checkinIntervalOptions)
