@@ -1,5 +1,5 @@
 /**
- *  Monoprice Z-Wave Plus Door/Window Sensor 1.1.1
+ *  Monoprice Z-Wave Plus Door/Window Sensor 1.1.2
  *  (P/N 15270)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.1.1 (03/11/2017)
+ *    1.1.2 (03/12/2017)
  *      - Adjusted health check to allow it to skip a checkin before going offline.
  *
  *    1.1 (02/18/2017)
@@ -123,24 +123,10 @@ def updated() {
 		state.lastUpdated = new Date().time
 		logTrace "updated()"
 		
-		initializeCheckin()
-		
 		if (state.checkinInterval != settings?.checkinInterval || state.enableExternalSensor != settings?.enableExternalSensor) {
 			state.pendingChanges = true
 		}
 	}	
-}
-
-private initializeCheckin() {
-	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
-	def checkInterval = ((checkinIntervalSettingSeconds * 2) + (2 * 60))
-	
-	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
-}
-
-// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
-def ping() {
-	logDebug "ping()"	
 }
 
 def configure() {	
@@ -156,6 +142,8 @@ def configure() {
 		// Give inclusion time to finish.
 		cmds << "delay 1000"			
 	}
+	
+	initializeCheckin()
 		
 	cmds += delayBetween([
 		wakeUpIntervalSetCmd(checkinIntervalSettingSeconds),
@@ -166,6 +154,18 @@ def configure() {
 		
 	logDebug "Sending configuration to device."
 	return cmds
+}
+
+private initializeCheckin() {
+	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
+	def checkInterval = ((checkinIntervalSettingSeconds * 2) + (2 * 60))
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+}
+
+// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
+def ping() {
+	logDebug "ping()"	
 }
 
 private getCheckinIntervalSetting() {
@@ -260,11 +260,9 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	
 	if (canSendConfiguration()) {
 		cmds += configure()
-		cmds << "delay 5000"
 	}
 	else if (canReportBattery()) {
 		cmds << batteryGetCmd()
-		cmds << "delay 2000"
 	}
 	else {
 		logTrace "Skipping battery check because it was already checked within the last $reportEveryHours hours."

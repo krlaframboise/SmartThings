@@ -1,5 +1,5 @@
 /**
- *  GoControl Contact Sensor v1.8.2
+ *  GoControl Contact Sensor v1.8.3
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.8.2 (03/11/2017)
+ *    1.8.3 (03/12/2017)
  *      - Adjusted health check to allow it to skip a checkin before going offline.
  *
  *    1.8.1 (02/21/2017)
@@ -143,21 +143,7 @@ def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
 		state.lastUpdated = new Date().time
 		logTrace "updated()"
-		
-		initializeCheckin()
 	}
-}
-
-private initializeCheckin() {
-	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
-	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
-	
-	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
-}
-
-// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
-def ping() {
-	logDebug "ping()"	
 }
 
 def configure() {	
@@ -173,11 +159,25 @@ def configure() {
 		// Give inclusion time to finish.
 		cmds << "delay 1000"			
 	}
+
+	initializeCheckin()
 	
 	cmds << wakeUpIntervalSetCmd(checkinIntervalSettingMinutes)	
 	cmds << batteryGetCmd()
 	cmds << basicGetCmd()
 	return delayBetween(cmds, 250)
+}
+
+private initializeCheckin() {
+	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
+	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+}
+
+// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
+def ping() {
+	logDebug "ping()"	
 }
 
 // Resets the tamper attribute to clear and requests the device to be refreshed.
@@ -244,14 +244,9 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	if (!state.isConfigured) {
 		cmds += configure()
 	}
-	else {
-		if (state.checkinIntervalMinutes != checkinIntervalSettingMinutes) {
-			cmds << wakeUpIntervalSetCmd(checkinIntervalSettingMinutes)
-		}
-		if (canReportBattery()) {
-			cmds << batteryGetCmd()
-			cmds << "delay 2000"
-		}
+	else if (canReportBattery()) {
+		cmds << batteryGetCmd()
+		cmds << "delay 2000"
 	}
 		
 	if (cmds) {

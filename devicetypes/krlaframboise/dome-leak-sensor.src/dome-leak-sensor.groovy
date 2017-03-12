@@ -1,5 +1,5 @@
 /**
- *  Dome Leak Sensor v1.1
+ *  Dome Leak Sensor v1.1.1
  *  (Model: DMWS1)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.1 (03/11/2017)
+ *    1.1.1 (03/12/2017)
  *      - Cleaned code for publication
  *      - Added health check functionality
  *
@@ -126,7 +126,7 @@ metadata {
 	}
 }
 
-// Initializes the health check interval and sets flag so that configuration is updated the next time it wakes up.
+// Sets flag so that configuration is updated the next time it wakes up.
 def updated() {	
 	// This method always gets called twice when preferences are saved.
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {		
@@ -135,21 +135,7 @@ def updated() {
 
 		logForceWakeupMessage "The configuration will be updated the next time the device wakes up."
 		state.pendingChanges = true
-		
-		initializeCheckin()		
 	}		
-}
-
-private initializeCheckin() {
-	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
-	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
-	
-	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
-}
-
-// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
-def ping() {
-	logDebug "ping()"	
 }
 
 // Initializes the device state when paired and updates the device's configuration.
@@ -172,6 +158,7 @@ def configure() {
 		cmds << batteryGetCmd()
 	}
 	
+	initializeCheckin()
 	cmds << wakeUpIntervalSetCmd(checkinIntervalSettingMinutes)
 		
 	if (cmds) {
@@ -194,6 +181,17 @@ private updateConfigVal(paramNum, val, refreshAll) {
 	return result
 }
 
+private initializeCheckin() {
+	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
+	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+}
+
+// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
+def ping() {
+	logDebug "ping()"	
+}
 
 // Forces the configuration to be resent to the device the next time it wakes up.
 def refresh() {	

@@ -1,5 +1,5 @@
 /**
- *  Zooz/Monoprice 4-in-1 Multisensor 1.2
+ *  Zooz/Monoprice 4-in-1 Multisensor 1.2.1
  *
  *  Zooz Z-Wave 4-in-1 Sensor (ZSE40)
  *
@@ -13,7 +13,7 @@
  *
  *  Changelog:
  *
- *    1.2 (03/11/2017)
+ *    1.2.1 (03/12/2017)
  *      - Added Health Check capability.
  *      - Added offsets for Temp/Humidity/light
  *      - Made main and secondary tiles configurable.
@@ -65,7 +65,7 @@ metadata {
 		capability "Health Check"
 		
 		attribute "lastCheckin", "string"
-		attribute "lastUpdate", "string"		
+		attribute "lastUpdate", "string"
 		attribute "primaryStatus", "string"
 		attribute "secondaryStatus", "string"
 		attribute "firmwareVersion", "string"
@@ -253,8 +253,7 @@ def updated() {
 		logTrace "updated()"
 		
 		initializeOffsets()
-		initializeCheckin()
-				
+						
 		if (settings?.ledIndicatorModeSetting == 4) {
 			logWarn "LED Indicator Mode #4 is only available in the Zooz device with firmware v16.9 and above."
 		}
@@ -301,18 +300,6 @@ private initializeOffset(attr, newOffset, offsetStateName, createEventMapMethod)
 	}
 }
 
-private initializeCheckin() {
-	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
-	def checkInterval = ((checkinIntervalSettingSeconds * 2) + (2 * 60))
-	
-	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
-}
-
-// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
-def ping() {
-	logDebug "ping()"	
-}
-
 def configure() {	
 	logTrace "configure()"
 	
@@ -327,6 +314,8 @@ def configure() {
 	if (state.pendingChanges) {
 		
 		sendEvent(name: "lastUpdate", value: convertToLocalTimeString(new Date()), displayed: false)
+		
+		initializeCheckin()
 		
 		cmds += delayBetween([
 			wakeUpIntervalSetCmd(checkinIntervalSettingSeconds),
@@ -350,6 +339,18 @@ def configure() {
 		cmds += refreshSensorData()
 	}
 	return response(cmds)
+}
+
+private initializeCheckin() {
+	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
+	def checkInterval = ((checkinIntervalSettingSeconds * 2) + (2 * 60))
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+}
+
+// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
+def ping() {
+	logDebug "ping()"	
 }
 
 private refreshSensorData() {
@@ -517,7 +518,7 @@ def parse(String description) {
 }
 
 private createLastCheckinEvent() {
-	logDebug "Device Checked In"
+	logTrace "Device Checked In"
 	state.lastCheckinTime = new Date().time
 	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
 }
@@ -687,9 +688,16 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
 }
 
 private handleMotionEvent(val) {
-	return [
-		createEvent(createEventMap("motion", (val == 0xFF ? "active" : "inactive")))
-	]	
+	def result = []
+	def motionVal = (val == 0xFF ? "active" : "inactive")
+	state.motionVal = motionVal
+
+	result << createEvent(createEventMap("motion", motionVal))
+	
+	createStatusEventMaps()?.each { 
+		result << createEvent(it)
+	}
+	return result
 }
 
 
@@ -763,16 +771,19 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelR
 
 private createTempEventMap(val) {
 	val = applyOffset(val, tempOffsetSetting, "Temperature", "°")
+	state.tempVal = val
 	return createEventMap("temperature", val, getTemperatureScale())
 }
 
 private createHumidityEventMap(val) {
 	val = applyOffset(val, humidityOffsetSetting, "Humidity", "%")
+	state.humidityVal = val
 	return createEventMap("humidity", val, "%")
 }
 
 private createLightEventMap(val) {
 	val = applyOffset(val, lightOffsetSetting, "Light", "%")
+	state.lightVal = val
 	return createEventMap("illuminance", val, "%")
 }
 
@@ -798,7 +809,7 @@ private getTileStatus(tileStatusSetting) {
 	def val = ""
 	switch (tileStatusSetting) {
 		case "motion":
-			val = getAttrValue("motion")
+			val = motionStatus
 			break
 		case "temperature":
 			val = tempStatus
@@ -819,18 +830,23 @@ private getTileStatus(tileStatusSetting) {
 	return val
 }
 
+private getMotionStatus() {
+	def val = (state.motionVal ?: getAttrValue("motion"))
+	return "${val}"
+}
+
 private getTempStatus() {
-	def val = getAttrValue("temperature")
+	def val = (state.tempVal ?: getAttrValue("temperature"))
 	return "${val}°"
 }
 
 private getHumidityStatus() {
-	def val = getAttrValue("humidity")
+	def val = (state.humidityVal ?: getAttrValue("humidity"))
 	return "${val}% HUMIDITY"
 }
 
 private getLightStatus() {
-	def val = getAttrValue("illuminance")
+	def val = (state.lightVal ?: getAttrValue("illuminance"))
 	return "${val}% LIGHT"
 }
 
@@ -868,8 +884,15 @@ private createEventMap(eventName, newVal, unit="", displayed=null) {
 	if (displayed == null) {
 		displayed = isNew
 	}
-	logDebug "${desc}"
-	[
+	
+	if (displayed) {
+		logDebug "${desc}"
+	}
+	else {
+		logTrace "${desc}"
+	}
+	
+	return [
 		name: eventName, 
 		value: newVal, 
 		displayed: displayed,

@@ -1,5 +1,5 @@
 /**
- *  Zooz Water Sensor v1.0.2
+ *  Zooz Water Sensor v1.0.3
  *  (Model: ZSE30)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.0.2 (03/11/2017)
+ *    1.0.3 (03/12/2017)
  *      - Fixed wakeup report so that it doesn't send the configuration every time the device wakes up.
  *
  *    1.0.1 (02/18/2017)
@@ -44,6 +44,7 @@ metadata {
 		capability "Health Check"
 		
 		attribute "lastCheckin", "string"
+		attribute "lastUpdate", "string"
 		
 		fingerprint deviceId: "0xA102", inClusters: "0x30, 0x59, 0x5A, 0x5E, 0x70, 0x71, 0x72, 0x73, 0x80, 0x84, 0x85, 0x86"
 		
@@ -122,12 +123,12 @@ metadata {
 			state "battery", label:'${currentValue}% battery', unit:""
 		}
 		
-		valueTile("lastCheckin", "device.lastCheckin", decoration: "flat", width: 2, height: 2){
-			state "lastCheckin", label:'Last Checkin\n\n${currentValue}', unit:""
+		valueTile("lastUpdate", "device.lastUpdate", decoration: "flat", width: 2, height: 2){
+			state "lastUpdate", label:'Settings\nUpdated\n\n${currentValue}', unit:""
 		}
 					
 		main "water"
-		details(["water", "refresh", "battery", "lastCheckin"])
+		details(["water", "refresh", "battery", "lastUpdate"])
 	}
 }
 
@@ -137,23 +138,9 @@ def updated() {
 		state.lastUpdated = new Date().time
 		logTrace "updated()"
 
-		initializeCheckin()		
-		
 		logForceWakeupMessage "The configuration will be updated the next time the device wakes up."
 		state.pendingChanges = true
 	}		
-}
-
-private initializeCheckin() {
-	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
-	def checkInterval = ((checkinIntervalSettingSeconds * 2) + (2 * 60))
-	
-	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
-}
-
-// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
-def ping() {
-	logDebug "ping()"	
 }
 
 def configure() {
@@ -175,6 +162,9 @@ def configure() {
 		cmds << batteryGetCmd()
 	}
 	
+	sendEvent(name: "lastUpdate", value: convertToLocalTimeString(new Date()), displayed: false)
+	
+	initializeCheckin()
 	cmds << wakeUpIntervalSetCmd(checkinIntervalSettingSeconds)
 		
 	if (cmds) {
@@ -197,6 +187,17 @@ private updateConfigVal(paramNum, val, refreshAll) {
 	return result
 }
 
+private initializeCheckin() {
+	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
+	def checkInterval = ((checkinIntervalSettingSeconds * 2) + (2 * 60))
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+}
+
+// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
+def ping() {
+	logDebug "ping()"	
+}
 
 // Forces the configuration to be resent to the device the next time it wakes up.
 def refresh() {	
