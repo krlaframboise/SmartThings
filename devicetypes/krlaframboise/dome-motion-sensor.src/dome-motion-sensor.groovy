@@ -1,5 +1,5 @@
 /**
- *  Dome Motion Sensor v1.0
+ *  Dome Motion Sensor v1.1
  *  (Model: DMMS1)
  *
  *  Author: 
@@ -9,6 +9,10 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1 (03/11/2017)
+ *      - Added Health Check capability
+ *      - Cleaned code for publication.
  *
  *    1.0 (02/15/2017)
  *      - Initial Release
@@ -36,8 +40,9 @@ metadata {
 		capability "Battery"
 		capability "Configuration"
 		capability "Refresh"
+		capability "Health Check"
 		
-		attribute "lastCheckin", "number"
+		attribute "lastCheckin", "string"
 		
 		fingerprint deviceId: "0x0701", inClusters: "0x30, 0x31, 0x59, 0x5A, 0x5E, 0x70, 0x71, 0x72, 0x73, 0x80, 0x84, 0x85, 0x86"
 		
@@ -78,17 +83,17 @@ metadata {
 			displayDuringSetup: true,
 			options: lightSensitivityOptions.collect { it.name }
 		input "wakeUpInterval", "enum",
-			title: "Wake Up Interval:",
-			defaultValue: wakeUpIntervalSetting,
+			title: "Checkin Interval:",
+			defaultValue: checkinIntervalSetting,
 			required: false,
 			displayDuringSetup: true,
-			options: wakeUpIntervalOptions.collect { it.name }
+			options: checkinIntervalOptions.collect { it.name }
 		input "batteryReportingInterval", "enum",
 			title: "Battery Reporting Interval:",
-			defaultValue: wakeUpIntervalSetting,
+			defaultValue: batteryReportingIntervalSetting,
 			required: false,
 			displayDuringSetup: true,
-			options: wakeUpIntervalOptions.collect { it.name }
+			options: checkinIntervalOptions.collect { it.name }
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -131,6 +136,7 @@ metadata {
 	}
 }
 
+// Initializes the health check interval and sets flag so that configuration is updated the next time it wakes up.
 def updated() {	
 	// This method always gets called twice when preferences are saved.
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {		
@@ -139,9 +145,24 @@ def updated() {
 
 		logForceWakeupMessage "The configuration will be updated the next time the device wakes up."
 		state.pendingChanges = true
+		
+		initializeCheckin()
 	}		
 }
 
+private initializeCheckin() {
+	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
+	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
+	
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+}
+
+// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
+def ping() {
+	logDebug "ping()"	
+}
+
+// Initializes the device state when paired and updates the device's configuration.
 def configure() {
 	logTrace "configure()"
 	def cmds = []
@@ -162,7 +183,7 @@ def configure() {
 		cmds << batteryGetCmd()
 	}
 	
-	cmds << wakeUpIntervalSetCmd(convertOptionSettingToInt(wakeUpIntervalOptions, wakeUpIntervalSetting) * 60 * 60)
+	cmds << wakeUpIntervalSetCmd(checkinIntervalSettingMinutes)
 		
 	if (cmds) {
 		logDebug "Sending configuration to device."
@@ -195,6 +216,7 @@ private logForceWakeupMessage(msg) {
 	logDebug "${msg}  You can force the device to wake up immediately by pressing the connect button once."
 }
 
+// Processes messages received from device.
 def parse(String description) {
 	def result = []
 
@@ -206,31 +228,25 @@ def parse(String description) {
 		logDebug "Unable to parse description: $description"
 	}
 	
-	if (canCheckin()) {
-		result << createEvent(name: "lastCheckin",value: new Date().time, isStateChange: true, displayed: false)
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
+		result << createLastCheckinEvent()
 	}
 	
 	return result
 }
 
-private getCommandClassVersions() {
-	[
-		0x30: 2,	// Sensor Binary
-		0x31: 5,	// Sensor Multilevel
-		0x59: 1,  // AssociationGrpInfo
-		0x5A: 1,  // DeviceResetLocally
-		0x5E: 2,  // ZwaveplusInfo
-		0x70: 1,  // Configuration
-		0x71: 3,  // Notification v4
-		0x72: 2,  // ManufacturerSpecific
-		0x73: 1,  // Powerlevel
-		0x80: 1,  // Battery
-		0x84: 2,  // WakeUp
-		0x85: 2,  // Association
-		0x86: 1		// Version (2)
-	]
+private createLastCheckinEvent() {
+	logDebug "Device Checked In"
+	state.lastCheckinTime = new Date().time
+	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
 }
 
+private convertToLocalTimeString(dt) {
+	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
+}
+
+
+// Updates devices configuration, requests battery report, and/or creates last checkin event.
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 {
 	logTrace "WakeUpNotification: $cmd"
@@ -254,12 +270,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	return response(result)
 }
 
-private canReportBattery() {
-	def reportEveryMS = (convertOptionSettingToInt(wakeUpIntervalOptions, batteryReportingIntervalSetting) * 60 * 60 * 1000)
-		
-	return (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) 
-}
-
+// Creates the event for the battery level.
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	logTrace "BatteryReport: $cmd"
 	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
@@ -273,6 +284,7 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	]
 }	
 
+// Stores the configuration values so that it only updates them when they've changed or a refresh was requested.
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {	
 	def name = configData.find { it.paramNum == cmd.parameterNumber }?.name
 	if (name) {	
@@ -290,6 +302,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	return []
 }
 
+// Creates motion events.
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
 	def result = []	
 	// logTrace "NotificationReport: $cmd"
@@ -311,6 +324,7 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 	return result
 }
 
+// Creates illuminance events.
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelReport cmd) {
 	def result = []	
 	logTrace "SensorMultilevelReport $cmd"
@@ -323,11 +337,13 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelR
 	return result
 }
 
+// Ignoring event because motion events are being handled by notification report.
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
 	// logTrace "SensorBinaryReport: $cmd"
 	return []
 }
 
+// Logs unexpected events from the device.
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	logDebug "Unhandled Command: $cmd"
 	return []
@@ -352,9 +368,11 @@ private getEventMap(name, value, displayed=null, desc=null, unit=null) {
 	return eventMap
 }
 
-private wakeUpIntervalSetCmd(val) {
-	logTrace "wakeUpIntervalSetCmd(${val})"
-	return zwave.wakeUpV2.wakeUpIntervalSet(seconds:val, nodeid:zwaveHubNodeId).format()
+private wakeUpIntervalSetCmd(minutesVal) {
+	state.checkinIntervalMinutes = minutesVal
+	logTrace "wakeUpIntervalSetCmd(${minutesVal})"
+	
+	return zwave.wakeUpV2.wakeUpIntervalSet(seconds:(minutesVal * 60), nodeid:zwaveHubNodeId).format()
 }
 
 private wakeUpNoMoreInfoCmd() {
@@ -375,6 +393,31 @@ private configGetCmd(paramNum) {
 
 private configSetCmd(paramNum, size, val) {
 	return zwave.configurationV1.configurationSet(parameterNumber: paramNum, size: size, scaledConfigurationValue: val).format()
+}
+
+
+private getCommandClassVersions() {
+	[
+		0x30: 2,	// Sensor Binary
+		0x31: 5,	// Sensor Multilevel
+		0x59: 1,  // AssociationGrpInfo
+		0x5A: 1,  // DeviceResetLocally
+		0x5E: 2,  // ZwaveplusInfo
+		0x70: 1,  // Configuration
+		0x71: 3,  // Notification v4
+		0x72: 2,  // ManufacturerSpecific
+		0x73: 1,  // Powerlevel
+		0x80: 1,  // Battery
+		0x84: 2,  // WakeUp
+		0x85: 2,  // Association
+		0x86: 1		// Version (2)
+	]
+}
+
+private canReportBattery() {
+	def reportEveryMS = (batteryReportingIntervalSettingMinutes * 60 * 1000)
+		
+	return (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) 
 }
 
 
@@ -399,12 +442,20 @@ private getLightReportingSetting() {
 	return settings?.lightReporting ?: findDefaultOptionName(lightReportingOptions)
 }
 
-private getWakeUpIntervalSetting() {
-	return settings?.wakeUpInterval ?: findDefaultOptionName(wakeUpIntervalOptions)
+private getCheckinIntervalSettingMinutes() {
+	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting) ?: 720
+}
+
+private getCheckinIntervalSetting() {
+	return settings?.wakeUpInterval ?: findDefaultOptionName(checkinIntervalOptions)
+}
+
+private getBatteryReportingIntervalSettingMinutes() {
+	return convertOptionSettingToInt(checkinIntervalOptions, batteryReportingIntervalSetting) ?: checkinIntervalSettingMinutes
 }
 
 private getBatteryReportingIntervalSetting() {
-	return settings?.batteryReportingInterval ?: findDefaultOptionName(wakeUpIntervalOptions)
+	return settings?.batteryReportingInterval ?: findDefaultOptionName(checkinIntervalOptions)
 }
 
 
@@ -484,15 +535,19 @@ private getLedEnabledOptions() {
 	]
 }
 
-private getWakeUpIntervalOptions() {
+private getCheckinIntervalOptions() {
 	[
-		[name: "2 Hours", value: 2],
-		[name: "4 Hours", value: 4],
-		[name: "6 Hours", value: 6],
-		[name: "8 Hours", value: 8],
-		[name: formatDefaultOptionName("12 Hours"), value: 12],
-		[name: "18 Hours", value: 18],
-		[name: "24 Hours", value: 24]
+		[name: "10 Minutes", value: 10],
+		[name: "15 Minutes", value: 15],
+		[name: "30 Minutes", value: 30],
+		[name: "1 Hour", value: 60],
+		[name: "2 Hours", value: 120],
+		[name: "3 Hours", value: 180],
+		[name: "6 Hours", value: 360],
+		[name: "9 Hours", value: 540],
+		[name: formatDefaultOptionName("12 Hours"), value: 720],
+		[name: "18 Hours", value: 1080],
+		[name: "24 Hours", value: 1440]
 	]
 }
 
