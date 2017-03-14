@@ -40,6 +40,8 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#polling-cree-bulb">Polling Cree Bulb</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#polling-ge-link-bulb">Polling GE Link Bulb</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#thingshield-timer">ThingShield Timer</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#vision-shock-sensor">Vision Shock Sensor</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#wireless-smoke-detector-sensor">Wireless Smoke Detector Sensor</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zipato-multisound-siren">Zipato Multisound Siren</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zoozmonoprice-4-in-1-multisensor">Zooz 4-in-1 Multisensor</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zooz-power-strip">Zooz Power Strip</a></li>
@@ -317,6 +319,29 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>It can also be used for scheduling in SmartApps so that you don't have to rely on SmartThings Scheduler.  You basically tell it to push a certain button number in a certain amount of time and then subscribe to its button pushed event and in the event handler method, you check to see if the button number pushed was the one you scheduled.<br /> </li>
 <li>I created this because of all the problems SmartThings had with their scheduler, but the new version of their scheduler has been stable for a while so it's probably no longer needed.</li>
 <li><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/thingshield-timer.src">View ThingShield Timer - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Vision Shock Sensor</h3>
+
+<ul>
+<li>This is a device handler for the Vision Shock Sensor (ZS 5101).<br /></li>
+<li>Choose between Motion and Acceleration as the capability to use for the primary status shown in the main tile which is activated by vibration.</li>
+<li>Primary status automatically resets back to inactive shortly after vibration stops</li>
+<li>Choose between None, Motion, Contact, Tamper and Water for the secondary status which is activated by the external sensor and/or tamper switch.</li>
+<li>Once the secondary status is activated, the Refresh button needs to be tapped in order to reset it</li>
+<!--<li><a href="https://community.smartthings.com/t/release-vision-shock-sensor?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>-->
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/vision-shock-sensor.src/vision-shock-sensor.groovy">View Vision Shock Sensor - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Wireless Smoke Detector Sensor</h3>
+
+<ul>
+<li>This is a device handler for the Wireless Smoke Detector Sensor (ZWN-SD).<br /></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/wireless-smoke-detector-sensor.src/wireless-smoke-detector-sensor.groovy">View Wireless Smoke Detector Sensor - Device Handler Code</a></li>
 </ul>
 
 <hr />
