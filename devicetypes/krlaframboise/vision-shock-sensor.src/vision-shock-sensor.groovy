@@ -5,7 +5,7 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation: 
+ *  URL to documentation: https://community.smartthings.com/t/release-vision-shock-sensor-zs-5101/81628?u=krlaframboise
  *    
  *  Changelog:
  *
