@@ -331,7 +331,7 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>Primary status automatically resets back to inactive shortly after vibration stops</li>
 <li>Choose between None, Motion, Contact, Tamper and Water for the secondary status which is activated by the external sensor and/or tamper switch.</li>
 <li>Once the secondary status is activated, the Refresh button needs to be tapped in order to reset it</li>
-<!--<li><a href="https://community.smartthings.com/t/release-vision-shock-sensor?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>-->
+<li><a href="https://community.smartthings.com/t/release-vision-shock-sensor-zs-5101/81628?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/vision-shock-sensor.src/vision-shock-sensor.groovy">View Vision Shock Sensor - Device Handler Code</a></li>
 </ul>
 
