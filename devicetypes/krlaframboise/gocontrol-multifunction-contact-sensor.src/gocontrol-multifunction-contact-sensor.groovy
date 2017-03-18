@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Contact Sensor v1.1.4
+ *  GoControl Multifunction Contact Sensor v1.1.5
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation: https://community.smartthings.com/t/release-gocontrol-linear-multifunction-contact-sensor/77659?u=krlaframboise
  *    
  *  Changelog:
+ *
+ *    1.1.5 (03/17/2017)
+ *      -  Added smoke capability and garage door icons. 
  *
  *    1.1.4 (03/12/2017)
  *      -  Adjusted health check to allow it to skip a checkin before going offline. 
@@ -42,13 +45,14 @@ metadata {
 		capability "Contact Sensor"
 		capability "Water Sensor"
 		capability "Motion Sensor"
+		capability "Smoke Detector"
 		capability "Battery"
 		capability "Tamper Alert"
 		capability "Refresh"
 		capability "Health Check"
 		
-		attribute "primaryStatus", "enum", ["open", "closed", "wet", "dry", "active", "inactive"]
-		attribute "secondaryStatus", "enum", ["", "open", "closed", "wet", "dry", "active", "inactive"]
+		attribute "primaryStatus", "string"
+		attribute "secondaryStatus", "string"
 		attribute "internalContact", "enum", ["open", "closed"]
 		attribute "externalContact", "enum", ["open", "closed"]
 		attribute "lastCheckin", "string"
@@ -90,6 +94,16 @@ metadata {
 			defaultValue: waterDryEventSetting,
 			required: false,
 			options: eventOptions
+		input "smokeDetectedEvent", "enum",
+			title: "Smoke Detected Event:",
+			defaultValue: smokeDetectedEventSetting,
+			required: false,
+			options: eventOptions
+		input "smokeClearEvent", "enum",
+			title: "Smoke Clear Event:",
+			defaultValue: smokeClearEventSetting,
+			required: false,
+			options: eventOptions
 		input "mainContactBehavior", "enum",
 			title: "Main Contact Behavior:",
 			defaultValue: mainContactBehaviorSetting,
@@ -119,34 +133,6 @@ metadata {
 		multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4, canChangeIcon: false){
 			tileAttribute ("device.primaryStatus", key: "PRIMARY_CONTROL") {
 				attributeState "closed", 
-					label:'closed', 
-					icon:"st.contact.contact.closed", 
-					backgroundColor:"#79b821"
-				attributeState "open", 
-					label:'open', 
-					icon:"st.contact.contact.open", 
-					backgroundColor:"#ffa81e"
-				attributeState "inactive", 
-					label:'No Motion', 
-					icon:"st.motion.motion.inactive", 
-					backgroundColor:"#ffffff"
-				attributeState "active", 
-					label:'Motion', 
-					icon:"st.motion.motion.active", 
-					backgroundColor:"#53a7c0"
-				attributeState "dry", 
-					label:"dry", 
-					icon:"st.alarm.water.dry", 
-					backgroundColor:"#ffffff"
-				attributeState "wet", 
-					label:"wet", 
-					icon:"st.alarm.water.wet", 
-					backgroundColor:"#53a7c0"
-			}
-			tileAttribute ("device.secondaryStatus", key: "SECONDARY_CONTROL") {
-				attributeState "", 
-					label:''
-				attributeState "closed", 
 					label:'Closed', 
 					icon:"st.contact.contact.closed", 
 					backgroundColor:"#79b821"
@@ -154,6 +140,14 @@ metadata {
 					label:'Open', 
 					icon:"st.contact.contact.open", 
 					backgroundColor:"#ffa81e"
+				attributeState "garage-closed", 
+					label:'Closed', 
+					icon:"st.doors.garage.garage-closed", 
+					backgroundColor:"#79b821"
+				attributeState "garage-open", 
+					label:'Open', 
+					icon:"st.doors.garage.garage-open", 
+					backgroundColor:"#ffa81e"				
 				attributeState "inactive", 
 					label:'No Motion', 
 					icon:"st.motion.motion.inactive", 
@@ -169,6 +163,58 @@ metadata {
 				attributeState "wet", 
 					label:"Wet", 
 					icon:"st.alarm.water.wet", 
+					backgroundColor:"#53a7c0"
+				attributeState "clear", 
+					label:'Clear', 
+					icon:"st.alarm.smoke.clear", 
+					backgroundColor:"#ffffff"
+				attributeState "detected", 
+					label:'Detected', 
+					icon:"st.alarm.smoke.smoke", 
+					backgroundColor:"#53a7c0"
+			}
+			tileAttribute ("device.secondaryStatus", key: "SECONDARY_CONTROL") {
+				attributeState "", 
+					label:''
+				attributeState "closed", 
+					label:'CLOSED', 
+					icon:"st.contact.contact.closed", 
+					backgroundColor:"#79b821"
+				attributeState "open", 
+					label:'OPEN', 
+					icon:"st.contact.contact.open", 
+					backgroundColor:"#ffa81e"
+				attributeState "garage-closed", 
+					label:'CLOSED', 
+					icon:"st.doors.garage.garage-closed", 
+					backgroundColor:"#79b821"
+				attributeState "garage-open", 
+					label:'OPEN', 
+					icon:"st.doors.garage.garage-open", 
+					backgroundColor:"#ffa81e"				
+				attributeState "inactive", 
+					label:'NO MOTION', 
+					icon:"st.motion.motion.inactive", 
+					backgroundColor:"#ffffff"
+				attributeState "active", 
+					label:'MOTION', 
+					icon:"st.motion.motion.active", 
+					backgroundColor:"#53a7c0"
+				attributeState "dry", 
+					label:"DRY", 
+					icon:"st.alarm.water.dry", 
+					backgroundColor:"#ffffff"
+				attributeState "wet", 
+					label:"WET", 
+					icon:"st.alarm.water.wet", 
+					backgroundColor:"#53a7c0"
+				attributeState "clear", 
+					label:'CLEAR', 
+					icon:"st.alarm.smoke.clear", 
+					backgroundColor:"#ffffff"
+				attributeState "detected", 
+					label:'DETECTED', 
+					icon:"st.alarm.smoke.smoke", 
 					backgroundColor:"#53a7c0"
 			}
 		}	
@@ -227,6 +273,12 @@ def configure() {
 	if (!device.currentValue("water")) {
 		def waterVal = settings?.waterWetEvent == "default" ? "wet" : "dry"
 		sendEvent(name: "water", value: "$waterVal", isStateChange: true, displayed: false)
+		mainTileChanged = true
+	}
+	
+	if (!device.currentValue("smoke")) {
+		def smokeVal = settings?.smokeDetectedEvent == "default" ? "detected" : "clear"
+		sendEvent(name: "smoke", value: "$smokeVal", isStateChange: true, displayed: false)
 		mainTileChanged = true
 	}
 	
@@ -393,6 +445,8 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 			case 0xFE:
 				result += handleContactEvent(cmd.v1AlarmLevel, "externalContact")
 				break
+			default:
+				logDebug "Unexpected NotificationReport: $cmd"
 		}
 	}
 	return result
@@ -480,6 +534,11 @@ private createOtherEvents(eventData) {
 		result << createEvent(getEventMap("water", eventData.waterVal))
 	}
 	
+	eventData.smokeVal = determineSmokeVal(eventData)
+	if (eventData.smokeVal) {
+		result << createEvent(getEventMap("smoke", eventData.smokeVal))
+	}
+	
 	result += createMainTileEvents(eventData)
 	
 	return result
@@ -503,6 +562,18 @@ private determineWaterVal(eventData) {
 	}
 	else if (eventSettingMatchesEventVal(waterDryEventSetting, eventData)) {
 		return "dry"
+	}
+	else {
+		return null
+	}
+}
+
+private determineSmokeVal(eventData) {
+	if (eventSettingMatchesEventVal(smokeDetectedEventSetting, eventData)) {
+		return "detected"
+	}
+	else if (eventSettingMatchesEventVal(smokeClearEventSetting, eventData)) {
+		return "clear"
 	}
 	else {
 		return null
@@ -539,7 +610,9 @@ private createMainTileEvents(eventData) {
 		["none", ""],
 		["motion", eventData.motionVal],
 		["water", eventData.waterVal],
+		["smoke", eventData.smokeVal],
 		["contact", eventData.contactVal],
+		["contact-garage", "garage-${eventData.contactVal}"],
 		["internalContact", eventData.internalVal],
 		["externalContact", eventData.externalVal]
 	]
@@ -614,6 +687,14 @@ private getWaterDryEventSetting() {
 	return settings?.waterDryEvent ?: "default"
 }
 
+private getSmokeDetectedEventSetting() {
+	return settings?.smokeDetectedEvent ?: "none"
+}
+
+private getSmokeClearEventSetting() {
+	return settings?.smokeClearEvent ?: "default"
+}
+
 private getMainContactBehaviorSetting() {
 	return settings?.mainContactBehavior ?: "Last Changed Contact"
 }
@@ -651,10 +732,12 @@ private getEventOptions() {
 
 private getPrimaryStatusOptions() {
 	return [
-		"contact", 
-		"externalContact", 
+		"contact",
+		"contact-garage",
+		"externalContact",
 		"internalContact", 
-		"motion", 
+		"motion",
+		"smoke", 
 		"water"
 	]
 }
@@ -662,10 +745,12 @@ private getPrimaryStatusOptions() {
 private getSecondaryStatusOptions() {
 	return [
 		"none",
-		"contact", 
-		"externalContact", 
+		"contact",
+		"contact-garage",
+		"externalContact",
 		"internalContact", 
-		"motion", 
+		"motion",
+		"smoke",
 		"water"
 	]
 }
@@ -718,5 +803,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	 // log.trace "$msg"
+	// log.trace "$msg"
 }
