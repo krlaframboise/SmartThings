@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Contact Sensor v1.1.5
+ *  GoControl Multifunction Contact Sensor v1.1.6
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation: https://community.smartthings.com/t/release-gocontrol-linear-multifunction-contact-sensor/77659?u=krlaframboise
  *    
  *  Changelog:
+ *
+ *    1.1.6 (03/18/2017)
+ *      -  Forced correct icon for contact-garage when primary or secondary status is first set to it.
  *
  *    1.1.5 (03/17/2017)
  *      -  Added smoke capability and garage door icons. 
@@ -235,24 +238,12 @@ metadata {
 	}
 }
 
-private refreshMainTile() {
-	logTrace "refreshMainTile()"
-	sendStatusEvent("primaryStatus", primaryStatusAttrSetting)
-	sendStatusEvent("secondaryStatus", secondaryStatusAttrSetting)
-}
-
 def updated() {	
 	if (!isDuplicateCommand(state.lastUpdated, 1000)) {
 		state.lastUpdated = new Date().time
 		
 		refreshMainTile()
 	}
-}
-
-private sendStatusEvent(statusName, statusAttribute) {
-	def val = (statusAttribute == "none") ? "" : device.currentValue("${statusAttribute}")
-	
-	sendEvent(getEventMap(statusName, val))
 }
 
 def configure() {	
@@ -300,6 +291,13 @@ def configure() {
 	return delayBetween(cmds, 250)
 }
 
+private refreshMainTile() {
+	logTrace "refreshMainTile()"
+	createContactEventMaps("internalContact", device.currentValue("internalContact"))?.each {
+		sendEvent(it)
+	}
+}
+
 private initializeCheckin() {
 	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
 	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
@@ -315,7 +313,7 @@ def ping() {
 // Resets the tamper attribute to clear and requests the device to be refreshed.
 def refresh() {	
 	if (device.currentValue("tamper") != "clear") {
-		sendEvent(getEventMap("tamper", "clear"))		
+		sendEvent(createEventMap("tamper", "clear"))		
 	}
 	else {
 		logDebug "The battery will be refresh the next time the device wakes up.  If you want the battery to update immediately, open the back cover of the device, wait until the red light turns solid, and then put the cover back on."
@@ -458,7 +456,7 @@ private handleTamperEvent(alarmLevel) {
 	if (alarmLevel == 0xFF) {
 		state.lastBatteryReport = null
 		logDebug "Tamper Detected"
-		result << createEvent(getEventMap("tamper", "detected"))
+		result << createEvent(createEventMap("tamper", "detected"))
 	}	
 	
 	return result
@@ -467,6 +465,17 @@ private handleTamperEvent(alarmLevel) {
 private handleContactEvent(alarmLevel, attr) {
 	def result = []
 	def val = (alarmLevel == 0xFF) ? "open" : "closed"
+	
+	createContactEventMaps(attr, val)?.each {
+		result << createEvent(it)
+	}	
+	
+	return result
+}
+
+private createContactEventMaps(attr, val) {
+	def result = []
+	
 	def internalActive = (attr == "internalContact")
 	def otherVal = device.currentValue(internalActive ? "externalContact" : "internalContact")
 	
@@ -475,11 +484,11 @@ private handleContactEvent(alarmLevel, attr) {
 		displayed = false
 	}
 
-	result << createEvent(getEventMap("$attr", val, displayed))
+	result << createEventMap("$attr", val, displayed)
 	
 	def mainVal = getMainContactVal(attr, val, otherVal)	
 	if (mainVal) {
-		result << createEvent(getEventMap("contact", mainVal))
+		result << createEventMap("contact", mainVal)
 	}
 	
 	// Create water, motion, and status events based off these values instead of the device attributes due to race condition.
@@ -489,7 +498,7 @@ private handleContactEvent(alarmLevel, attr) {
 		internalVal: (internalActive ? val : otherVal ),
 		externalVal: (internalActive ? otherVal : val )
 	]
-	result += createOtherEvents(eventData)
+	result += createOtherEventMaps(eventData)
 	
 	return result
 }
@@ -522,24 +531,24 @@ private getMainContactVal(activeAttr, activeVal, otherVal) {
 	return mainVal
 }
 
-private createOtherEvents(eventData) {
+private createOtherEventMaps(eventData) {
 	def result = []
 	eventData.motionVal = determineMotionVal(eventData)
 	if (eventData.motionVal) {
-		result += createEvent(getEventMap("motion", eventData.motionVal))
+		result += createEventMap("motion", eventData.motionVal)
 	}
 	
 	eventData.waterVal = determineWaterVal(eventData)
 	if (eventData.waterVal) {
-		result << createEvent(getEventMap("water", eventData.waterVal))
+		result << createEventMap("water", eventData.waterVal)
 	}
 	
 	eventData.smokeVal = determineSmokeVal(eventData)
 	if (eventData.smokeVal) {
-		result << createEvent(getEventMap("smoke", eventData.smokeVal))
+		result << createEventMap("smoke", eventData.smokeVal)
 	}
 	
-	result += createMainTileEvents(eventData)
+	result += createMainTileEventMaps(eventData)
 	
 	return result
 }
@@ -603,7 +612,7 @@ private eventSettingMatchesEventVal(eventSetting, eventData) {
 	}
 }
 
-private createMainTileEvents(eventData) {
+private createMainTileEventMaps(eventData) {
 	def result = []
 	
 	def data = [
@@ -619,15 +628,15 @@ private createMainTileEvents(eventData) {
 	
 	[["primaryStatus", primaryStatusAttrSetting], ["secondaryStatus", secondaryStatusAttrSetting]].each { status, statusAttr ->
 		def eventVal = data.find { attr, val -> "$statusAttr" == "$attr" }		
-		if (eventVal && eventVal[1]) {
-			result << createEvent(getEventMap("${status}", eventVal[1], false))
+		if (eventVal && eventVal[1] != null) {
+			result << createEventMap("${status}", eventVal[1], false)
 		}
 	}
 	
 	return result
 }
 
-private getEventMap(eventName, newVal, displayed=null) {	
+private createEventMap(eventName, newVal, displayed=null) {	
 	def isNew = device.currentValue(eventName) != newVal
 	def desc = "${eventName.capitalize()} is ${newVal}"
 	logDebug "${desc}"
