@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell v 1.12
+ *  Aeotec Doorbell v 1.13
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
@@ -12,6 +12,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.13 (03/21/2017)
+ *    	- Fix for SmartThings TTS url changing.
  *
  *  1.12 (02/19/2017)
  *    - Added Health Check
@@ -545,9 +548,9 @@ def playTrack(URI, volume=null) {
 }
 
 private getTextFromTTSUrl(URI) {
-	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
-	if (URI?.toString()?.toLowerCase()?.contains(urlPrefix)) {
-		return URI.replace(urlPrefix,"").replace(".mp3","")
+	if (URI?.toString()?.contains("/")) {
+		def startIndex = URI.lastIndexOf("/") + 1
+		return URI.substring(startIndex, URI.size())?.toLowerCase()?.replace(".mp3","")
 	}
 	return null
 }
