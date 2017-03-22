@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.9.1
+ *  Aeon Labs Multifunction Siren v 1.9.2
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -12,6 +12,9 @@
  *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *  1.9.2 (03/21/2017)
+ *    	- Fix for SmartThings TTS url changing.
  *
  *	1.9.1 (03/10/2017)
  *    - Improved health check
@@ -323,11 +326,11 @@ def playTrack(URI, volume=null) {
 	playText(getTextFromTTSUrl(URI), volume)
 }
 
-private getTextFromTTSUrl(ttsUrl) {
+def getTextFromTTSUrl(ttsUrl) {
 	logTrace "getTextFromTTSUrl($ttsUrl)"
-	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
-	if (ttsUrl?.toString()?.toLowerCase()?.contains(urlPrefix)) {
-		return ttsUrl.replace(urlPrefix,"").replace(".mp3","")
+	if (ttsUrl?.toString()?.contains("/")) {
+		def startIndex = ttsUrl.lastIndexOf("/") + 1
+		ttsUrl = ttsUrl.substring(startIndex, ttsUrl.size())?.toLowerCase()?.replace(".mp3","")
 	}
 	return ttsUrl
 }
