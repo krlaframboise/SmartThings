@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.1.3
+ *  Dome Siren v1.1.4
  *  (Model: DMS01)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.4 (03/21/2017)
+ *    	- Fix for SmartThings TTS url changing.
  *
  *    1.1.3 (03/11/2017)
  *      - Cleaned code for publication.
@@ -424,16 +427,11 @@ def playText(message, volume=null) {
 }
 
 private getTextFromTTSUrl(URI) {
-	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
-	def urlPrefix2 = "http://s3.amazonaws.com/smartapp-media/sonos/"
-	
-	def text = ""	
-	[urlPrefix, urlPrefix2].each {
-		if (URI?.toString()?.toLowerCase()?.contains(it)) {
-			text = URI.replace(it, "").replace(".mp3", "")
-		}
-	}	
-	return text ?: URI
+	if (URI?.toString()?.contains("/")) {
+		def startIndex = URI.lastIndexOf("/") + 1
+		URI = URI.substring(startIndex, URI.size())?.toLowerCase()?.replace(".mp3","")
+	}
+	return URI
 }
 
 // Commands that turn the device off.
