@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.5.4
+ *  Zipato Multisound Siren v1.5.5
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02)
  *  
@@ -13,6 +13,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.5.5 (03/21/2017)
+ *    - Fix for SmartThings TTS url changing.
  *
  *  1.5.4 (03/10/2017)
  *    - Improved health check
@@ -515,11 +518,11 @@ private setPlayStatus(statusVal, alarmVal, switchVal) {
 }
 
 private getSoundNumber(soundName) {
-	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
 	soundName = (soundName == null) ? "" : soundName?.toString()?.toLowerCase()
 	
-	if (soundName?.contains(urlPrefix)) {
-		soundName = soundName?.replace(urlPrefix,"").replace(".mp3","")
+	if (soundName?.contains("/")) {
+		def startIndex = soundName.lastIndexOf("/") + 1
+		soundName = soundName.substring(startIndex, soundName.size())?.toLowerCase()?.replace(".mp3","")
 	}
 	
 	soundName = soundName?.toString()?.toLowerCase()
@@ -562,7 +565,7 @@ private getSoundNumber(soundName) {
 
 private playSound(soundNumber) {
 	def result = []
-	
+
 	soundNumber = validateRange(soundNumber, 1, 1, 7)	
 	if (soundNumber == 7) {
 		logInfo "Chirping"

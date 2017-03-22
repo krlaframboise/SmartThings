@@ -178,16 +178,19 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 }
 
 def on() {
-	logDebug "Turning On"
+	log.debug "on()"
+	//logDebug "Turning On"
 	zigbee.on()
 }
 
 def off() {
-	logDebug "Turning Off"
+	log.debug "off()"
+	//logDebug "Turning Off"
 	zigbee.off()
 }
 
 def setLevel(value) {
+	log.debug "setLevel($value)"
 	value = validateLevel(value)
 	logDebug "Changing Switch Level to $value"	
 	return zigbee.setLevel(value, getDimRate()) +
