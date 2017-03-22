@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.7.1
+ *  GoControl Multifunction Siren v 1.7.2
  *
  *  Devices:
  *    GoControl/Linear (Model#: WA105DBZ-1 / ZM1601US-3)
@@ -24,6 +24,9 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.7.2 (03/21/2017)
+ *    	- Fix for SmartThings TTS url changing.
  *
  *    1.7.1 (03/11/2017)
  *      - Don't display off status event when already off.
@@ -895,9 +898,9 @@ def playTrack(URI, volume=null) {
 }
 
 def getTextFromTTSUrl(ttsUrl) {
-	def urlPrefix = "https://s3.amazonaws.com/smartapp-media/tts/"
-	if (ttsUrl?.toString()?.toLowerCase()?.contains(urlPrefix)) {
-		return ttsUrl.replace(urlPrefix,"").replace(".mp3","")
+	if (ttsUrl?.toString()?.contains("/")) {
+		def startIndex = ttsUrl.lastIndexOf("/") + 1
+		ttsUrl = ttsUrl.substring(startIndex, ttsUrl.size())?.toLowerCase()?.replace(".mp3","")
 	}
 	return ttsUrl
 }
