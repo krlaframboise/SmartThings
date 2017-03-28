@@ -1,5 +1,5 @@
 /**
- *  Zooz/Monoprice 4-in-1 Multisensor 1.2.1
+ *  Zooz/Monoprice 4-in-1 Multisensor 1.3
  *
  *  Zooz Z-Wave 4-in-1 Sensor (ZSE40)
  *
@@ -12,6 +12,11 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.3 (03/27/2017)
+ *      - Added Light % to LUX Conversion
+ *      - Added Lux Offset and main tile option.
+ *      - Fixed syncing issue between main tile and actual values.
  *
  *    1.2.1 (03/12/2017)
  *      - Added Health Check capability.
@@ -68,6 +73,8 @@ metadata {
 		attribute "lastUpdate", "string"
 		attribute "primaryStatus", "string"
 		attribute "secondaryStatus", "string"
+		attribute "pLight", "number"
+		attribute "lxLight", "number"
 		attribute "firmwareVersion", "string"
 						
 		fingerprint deviceId: "0x0701", inClusters: "0x5E, 0x98, 0x86, 0x72, 0x5A, 0x85, 0x59, 0x73, 0x80, 0x71, 0x31, 0x70, 0x84, 0x7A"
@@ -132,6 +139,17 @@ metadata {
 			required:false,
 			defaultValue: lightOffsetSetting,
 			range: "-25..25"
+		input "lxLightOffset", "number",
+			title: "Light Lux Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1 lx)\n(1 = Add 1 lx)",
+			displayDuringSetup: true,
+			required:false,
+			defaultValue: lxLightOffsetSetting,
+			range: "-25..25"
+		input "reportLx", "bool", 
+			title: "Report Illuminance as Lux?\n(When enabled, a calculated lux level will be used for illuminance instead of the default %.)",
+			defaultValue: reportLxSetting,
+			displayDuringSetup: true, 
+			required: false
 		input "motionTime", "number",
 			title: "Motion Retrigger Time (Minutes)",
 			displayDuringSetup: true,
@@ -167,8 +185,7 @@ metadata {
 			title: "Automatically Clear Tamper?\n(The tamper detected event is raised when the device is opened.  This setting allows you to decide whether or not to have the clear event automatically raised when the device closes.)",
 			defaultValue: false,
 			displayDuringSetup: true, 
-			required: false
-		
+			required: false		
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -215,10 +232,14 @@ metadata {
 			state "humidity", label:'${currentValue}%\nHumidity', unit:""
 		}
 		
-		valueTile("illuminance", "device.illuminance", decoration: "flat", width: 2, height: 2){
-			state "illuminance", label:'${currentValue}%\nLight', unit: ""
+		valueTile("pLight", "device.pLight", decoration: "flat", width: 2, height: 2){
+			state "pLight", label:'${currentValue}%\nLight', unit: ""
 		}
 
+		valueTile("lxLight", "device.lxLight", decoration: "flat", width: 2, height: 2){
+			state "lxLight", label:'${currentValue} lx\nLight', unit: ""
+		}
+		
 		valueTile("motion", "device.motion",  width: 2, height: 2){
 			state "inactive", label:'No\nMotion', icon:"", backgroundColor:"#cccccc"
 			state "active", label:'Motion', icon:"", backgroundColor:"#53a7c0"
@@ -242,7 +263,7 @@ metadata {
 		}
 		
 		main("mainTile")
-		details(["mainTile", "humidity", "illuminance", "battery", "temperature", "motion", "tampering", "refresh", "lastUpdate"])
+		details(["mainTile", "humidity", "temperature", "lxLight", "battery", "pLight", "motion", "tampering", "refresh", "lastUpdate"])
 	}
 }
 
@@ -268,35 +289,24 @@ def updated() {
 }
 
 private initializeOffsets() {
-	initializeOffset("temperature", tempOffsetSetting, "tempOffset", "createTempEventMap")
+	def eventMaps = []
 	
-	initializeOffset("humidity", humidityOffsetSetting, "humidityOffset", "createHumidityEventMap")
-	
-	initializeOffset("illuminance", lightOffsetSetting, "lightOffset", "createLightEventMap")
-	
-	createStatusEventMaps()?.each { eventMap ->
-		sendEvent(eventMap)
+	if (state.actualTemp != null) {
+		eventMaps += createTempEventMaps(state.actualTemp, true)
 	}
-}
-
-private initializeOffset(attr, newOffset, offsetStateName, createEventMapMethod) {
-	def val = getAttrValue("${attr}")
-	def oldOffset = safeToDec(state["${offsetStateName}"], 0)
-	newOffset = safeToDec(newOffset, 0)
-		
-	// Only initialize offset if the attribute has been populated and the offset has changed.
-	if (val != null && newOffset != oldOffset) {
-		
-		// Undo previous offset
-		if (oldOffset) {
-			val = (safeToDec(val, 0) + (oldOffset * -1)) 
-		}
-		
-		// Apply new offset
-		state["${offsetStateName}"] = newOffset
-		
-		// Create the new event.
-		sendEvent("${createEventMapMethod}"(val))
+	
+	if (state.actualHumidity != null) {
+		eventMaps += createHumidityEventMaps(state.actualHumidity, true)
+	}
+	
+	if (state.actualLight != null) {
+		eventMaps += createLightEventMaps(state.actualLight, true)
+	}
+	
+	eventMaps += createStatusEventMaps(eventMaps, true)
+	
+	eventMaps?.each { eventMap ->
+		sendEvent(eventMap)
 	}
 }
 
@@ -392,6 +402,12 @@ private getLightTriggerSetting() {
 private getLightOffsetSetting() {
 	return safeToInt(settings?.lightOffset, 0)
 }
+private getLxLightOffsetSetting() {
+	return safeToInt(settings?.lxLightOffset, 0)
+}
+private getReportLxSetting() {
+	return (settings?.reportLx ?: false)
+}
 private getMotionTimeSetting() {
 	return safeToInt(settings?.motionTime, 3)
 }
@@ -453,8 +469,9 @@ private getPrimaryStatusOptions() {
 	return [
 		["motion":"Motion"],
 		["temperature":"Temperature"],
-		["humidity": "Humidity"],
-		["illuminance":"Light"]
+		["humidity": "Relative Humidity"],
+		["pLight":"Light %"],
+		["lxLight":"Light Lux"]
 	]
 }
 
@@ -463,8 +480,9 @@ private getSecondaryStatusOptions() {
 		["none":"None"],
 		["motion":"Motion"],
 		["temperature":"Temperature"],
-		["humidity": "Humidity"],
-		["illuminance":"Light"],
+		["humidity": "Relative Humidity"],
+		["pLight":"Light %"],
+		["lxLight":"Light Lux"],
 		["combined":"Combined Values"]
 	]
 }
@@ -688,13 +706,14 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
 }
 
 private handleMotionEvent(val) {
-	def result = []
 	def motionVal = (val == 0xFF ? "active" : "inactive")
-	state.motionVal = motionVal
-
-	result << createEvent(createEventMap("motion", motionVal))
 	
-	createStatusEventMaps()?.each { 
+	def eventMaps = []
+	eventMaps += createEventMaps("motion", motionVal, "", null, false)	
+	eventMaps += createStatusEventMaps(eventMaps, false)
+	
+	def result = []
+	eventMaps?.each { 
 		result << createEvent(it)
 	}
 	return result
@@ -734,57 +753,82 @@ private handleTamperEvent(val) {
 
 
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelReport cmd) {
-	def result = []	
-	def eventMap
+	state.lastRefreshed = new Date().time
+	state.pendingRefresh = false	
 	
+	def eventMaps = []	
 	switch (cmd.sensorType) {
 		case tempSensorType:
 			def unit = tempUnits.find { it.value == cmd.scale }?.unit
 			def temp = convertTemperatureIfNeeded(cmd.scaledSensorValue, unit, cmd.precision)
-			eventMap = createTempEventMap(temp)
-			break
-		
+			eventMaps += createTempEventMaps(temp, false)
+			break		
 		case humiditySensorType:
-			eventMap = createHumidityEventMap(cmd.scaledSensorValue)
-			break
-		
+			eventMaps += createHumidityEventMaps(cmd.scaledSensorValue, false)
+			break		
 		case lightSensorType:
-			eventMap = createLightEventMap(cmd.scaledSensorValue)
-			break
-		
-		default:
-			eventMap = null
+			eventMaps += createLightEventMaps(cmd.scaledSensorValue, false)
+			break		
 	}
 	
-	if (eventMap) {
-		result << createEvent(eventMap)
-	}
+	eventMaps += createStatusEventMaps(eventMaps, false)
 	
-	createStatusEventMaps()?.each { 
+	def result = []
+	eventMaps?.each {
+		logTrace "Creating Event: ${it}"
 		result << createEvent(it)
 	}
-	
-	state.lastRefreshed = new Date().time
-	state.pendingRefresh = false
 	return result
 }
 
-private createTempEventMap(val) {
-	val = applyOffset(val, tempOffsetSetting, "Temperature", "°")
-	state.tempVal = val
-	return createEventMap("temperature", val, getTemperatureScale())
+private createTempEventMaps(val, onlyIfNew) {
+	state.actualTemp = val
+	def scale = getTemperatureScale()
+	def offsetVal = applyOffset(val, tempOffsetSetting, "Temperature", "°${scale}")
+	return createEventMaps("temperature", offsetVal, scale, null, onlyIfNew)	
 }
 
-private createHumidityEventMap(val) {
-	val = applyOffset(val, humidityOffsetSetting, "Humidity", "%")
-	state.humidityVal = val
-	return createEventMap("humidity", val, "%")
+private createHumidityEventMaps(val, onlyIfNew) {
+	state.actualHumidity = val
+	def offsetVal = applyOffset(val, humidityOffsetSetting, "Humidity", "%")
+	return createEventMaps("humidity", offsetVal, "%", null, onlyIfNew)
 }
 
-private createLightEventMap(val) {
-	val = applyOffset(val, lightOffsetSetting, "Light", "%")
-	state.lightVal = val
-	return createEventMap("illuminance", val, "%")
+private createLightEventMaps(val, onlyIfNew) {
+	state.actualLight = val
+	def pOffsetVal = applyOffset(val, lightOffsetSetting, "Light", "%")
+	def lxOffsetVal = applyOffset(calculateLxVal(val), lxLightOffsetSetting, "Light", "lx")
+	def lightOffsetVal = reportLxSetting ? lxOffsetVal : pOffsetVal
+	def lightUnit = reportLxSetting ? "lx" : "%"
+	
+	def result = []
+	result += createEventMaps("pLight", pOffsetVal, "%", false, onlyIfNew)
+	result += createEventMaps("lxLight", lxOffsetVal, "lx", false, onlyIfNew)
+	result += createEventMaps("illuminance", lightOffsetVal, lightUnit, null, onlyIfNew)
+	return result
+}
+
+private calculateLxVal(pVal) {
+	def multiplier = lxConversionData.find {
+		pVal >= it.min && pVal <= it.max
+	}?.multiplier ?: 0.5312
+	def lxVal = pVal * multiplier
+	return Math.round(safeToDec(lxVal) * 100) / 100
+}
+
+private getLxConversionData() {
+	return [
+		[min: 0, max: 9.99, multiplier: 0.4451],
+		[min: 10, max: 19.99, multiplier: 0.563],
+		[min: 20, max: 29.99, multiplier: 0.538],
+		[min: 30, max: 39.99, multiplier: 0.536],
+		[min: 40, max: 49.99, multiplier: 0.559],
+		[min: 50, max: 59.99, multiplier: 0.6474],
+		[min: 60, max: 69.99, multiplier: 0.5222],
+		[min: 70, max: 79.99, multiplier: 0.5204],
+		[min: 80, max: 89.99, multiplier: 0.4965],
+		[min: 90, max: 100, multiplier: 0.4843]
+	]
 }
 
 private applyOffset(val, offsetVal, name, unit) {
@@ -795,59 +839,65 @@ private applyOffset(val, offsetVal, name, unit) {
 	return val
 }
 
-private createStatusEventMaps() {
+private createStatusEventMaps(eventMaps, onlyIfNew) {
 	def result = []
 	
-	result << createEventMap("primaryStatus", getTileStatus(primaryTileStatusSetting), "", false)
-		
-	result << createEventMap("secondaryStatus", getTileStatus(secondaryTileStatusSetting), "", false)
-		
+	def primaryStatus = eventMaps?.find { it.name == primaryTileStatusSetting }?.descriptionText
+	if (primaryStatus) {
+		result += createEventMaps("primaryStatus", primaryStatus, "", false, onlyIfNew)
+	}
+	
+	def secondaryStatus = getSecondaryStatus(eventMaps)
+	if (secondaryStatus || secondaryTileStatusSetting == "none") {
+		result += createEventMaps("secondaryStatus", secondaryStatus, "", false, onlyIfNew)
+	}
 	return result
 }
 
-private getTileStatus(tileStatusSetting) {	
-	def val = ""
-	switch (tileStatusSetting) {
+private getSecondaryStatus(eventMaps) {
+	def status = ""
+	if (secondaryTileStatusSetting == "combined"){
+		def motionStatus = getAttrStatusText("motion", eventMaps)
+		def lightStatus = getAttrStatusText("lxLight", eventMaps)
+		def tempStatus = getAttrStatusText("temperature", eventMaps)
+		def humidityStatus = getAttrStatusText("humidity", eventMaps)
+		status = "${motionStatus} / ${tempStatus} / ${humidityStatus} / ${lightStatus}"
+	}
+	else if (status != "none") {
+		status = getAttrStatusText(secondaryTileStatusSetting, eventMaps)
+	}
+	return status
+}
+
+private getAttrStatusText(attrName, eventMaps=null) {
+	def status = (eventMaps?.find { it.name == attrName }?.descriptionText)
+	if (status) {
+		return status
+	}
+	else {
+		return getDescriptionText(device.currentState(attrName))
+	}	
+}
+
+private getDescriptionText(data) {
+	switch (data?.name ?: "") {
 		case "motion":
-			val = motionStatus
+			return "${data.value}"
 			break
 		case "temperature":
-			val = tempStatus
+			return "${data.value}°${data.unit}"					
 			break
 		case "humidity":
-			val = humidityStatus
+			return  "${data.value}% RH"
 			break
-		case "illuminance":
-			val = lightStatus
-			break
-		case "combined":
-			val = "${tempStatus} / ${humidityStatus} / ${lightStatus}"
+		case "lxLight":
+			return "${data.value} LUX"
+		case "pLight":
+			return "${data.value}% LIGHT"
 			break
 		default:
-			val = ""
+			return ""
 	}	
-	logTrace "getTileStatus(${tileStatusSetting}) = $val"
-	return val
-}
-
-private getMotionStatus() {
-	def val = (state.motionVal ?: getAttrValue("motion"))
-	return "${val}"
-}
-
-private getTempStatus() {
-	def val = (state.tempVal ?: getAttrValue("temperature"))
-	return "${val}°"
-}
-
-private getHumidityStatus() {
-	def val = (state.humidityVal ?: getAttrValue("humidity"))
-	return "${val}% HUMIDITY"
-}
-
-private getLightStatus() {
-	def val = (state.lightVal ?: getAttrValue("illuminance"))
-	return "${val}% LIGHT"
 }
 
 
@@ -876,6 +926,19 @@ private logForceWakeupMessage(msg) {
 	logDebug "${msg}  You can force the device to wake up immediately by using a paper clip to push the button on the bottom of the device."
 }
 
+private createEventMaps(eventName, newVal, unit, displayed, onlyIfNew) {
+	def result = []
+	if (!onlyIfNew || getAttrValue(eventName) != newVal) {
+		def eventMap = createEventMap(eventName, newVal, unit, displayed)
+		def desc = getDescriptionText(eventMap)
+		if (desc) {
+			eventMap.descriptionText = desc
+		}
+		result << eventMap
+	}
+	return result
+}
+
 private createEventMap(eventName, newVal, unit="", displayed=null) {
 	def oldVal = getAttrValue(eventName)
 	def isNew = "${oldVal}" != "${newVal}"
@@ -896,7 +959,7 @@ private createEventMap(eventName, newVal, unit="", displayed=null) {
 		name: eventName, 
 		value: newVal, 
 		displayed: displayed,
-		descriptionText: desc,
+		isStateChange: true,
 		unit: unit
 	]
 }
