@@ -8,7 +8,7 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:  
+ *  URL to documentation:  https://community.smartthings.com/t/release-zooz-4-in-1-multisensor/82989?u=krlaframboise
  *    
  *
  *  Changelog:
