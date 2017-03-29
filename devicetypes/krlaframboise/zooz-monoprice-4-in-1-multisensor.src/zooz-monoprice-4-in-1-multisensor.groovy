@@ -1,5 +1,5 @@
 /**
- *  Zooz/Monoprice 4-in-1 Multisensor 1.3
+ *  Zooz/Monoprice 4-in-1 Multisensor 1.3.1
  *
  *  Zooz Z-Wave 4-in-1 Sensor (ZSE40)
  *
@@ -12,6 +12,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.3.1 (03/28/2017)
+ *      - Added setting for reporting max lux illuminance.
  *
  *    1.3 (03/27/2017)
  *      - Added Light % to LUX Conversion
@@ -149,6 +152,11 @@ metadata {
 			title: "Report Illuminance as Lux?\n(When enabled, a calculated lux level will be used for illuminance instead of the default %.)",
 			defaultValue: reportLxSetting,
 			displayDuringSetup: true, 
+			required: false
+		input "maxLx", "number",
+			title: "Lux value to report when light level is at 100%:",
+			defaultValue: maxLxSetting,
+			displayDuringSetup: true,
 			required: false
 		input "motionTime", "number",
 			title: "Motion Retrigger Time (Minutes)",
@@ -407,6 +415,9 @@ private getLxLightOffsetSetting() {
 }
 private getReportLxSetting() {
 	return (settings?.reportLx ?: false)
+}
+private getMaxLxSetting() {
+	return safeToInt(settings?.maxLx, 50)
 }
 private getMotionTimeSetting() {
 	return safeToInt(settings?.motionTime, 3)
@@ -797,7 +808,7 @@ private createHumidityEventMaps(val, onlyIfNew) {
 private createLightEventMaps(val, onlyIfNew) {
 	state.actualLight = val
 	def pOffsetVal = applyOffset(val, lightOffsetSetting, "Light", "%")
-	def lxOffsetVal = applyOffset(calculateLxVal(val), lxLightOffsetSetting, "Light", "lx")
+	def lxOffsetVal = (val == 100) ? maxLxSetting : applyOffset(calculateLxVal(val), lxLightOffsetSetting, "Light", "lx")
 	def lightOffsetVal = reportLxSetting ? lxOffsetVal : pOffsetVal
 	def lightUnit = reportLxSetting ? "lx" : "%"
 	
