@@ -1,5 +1,5 @@
 /**
- *  GoControl Contact Sensor v1.8.3
+ *  GoControl Contact Sensor v1.9
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.9 (04/08/2017)
+ *      - Added child device functionality for external contact. 
  *
  *    1.8.3 (03/12/2017)
  *      - Adjusted health check to allow it to skip a checkin before going offline.
@@ -88,7 +91,7 @@ metadata {
 			title: "Main Contact Behavior:",
 			defaultValue: "Last Changed",
 			required: false,
-			options: ["Last Changed Contact (Default)", "Internal Contact Only", "External Contact Only", "Both Contacts Closed", "Both Contacts Open"]
+			options: ["Last Changed Contact (Default)", "Internal Contact Only", "External Contact Only", "Both Contacts Closed", "Both Contacts Open"]		
 		input "checkinInterval", "enum",
 			title: "Checkin Interval:",
 			defaultValue: checkinIntervalSetting,
@@ -101,6 +104,11 @@ metadata {
 			required: false,
 			displayDuringSetup: true,
 			options: checkinIntervalOptions.collect { it.name }
+		input "useExternalDevice", "bool", 
+			title: "Create Device for External Sensor?", 
+			defaultValue: false, 
+			displayDuringSetup: true, 
+			required: false
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: false, 
@@ -143,7 +151,48 @@ def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
 		state.lastUpdated = new Date().time
 		logTrace "updated()"
+		
+		if (useExternalDeviceSetting && !getChildDevices()) {
+			createChildDevice()
+			def child = getChildDevice()
+			if (child) {
+				log.debug "Updating"
+				child.update()
+			}
+			
+		}		
 	}
+}
+
+private void createChildDevice() {
+	try {
+		logDebug "Creating Child Device"
+		def options = [
+			completedSetup: true, 
+			label: "${device.label} - External",
+			isComponent: false
+		]
+		addChildDevice("krlaframboise", "GoControl External Contact Sensor", childDeviceNetworkId, null, options)	
+	}
+	catch (e) {
+		log.warn("You need to install the GoControl External Contact Sensor DTH in order to use this feature.\n$e")
+	}
+}
+
+def uninstalled() {
+	logTrace "Executing uninstalled()"
+	devices?.each {
+		logDebug "Removing ${it.displayName}"
+		deleteChildDevice(it.deviceNetworkId)
+	}
+}
+
+def childUninstalled() {
+	// Required to prevent warning on uninstall.
+}
+
+private getChildDeviceNetworkId() {
+	return "${device.deviceNetworkId}-ext"
 }
 
 def configure() {	
@@ -337,6 +386,10 @@ private handleContactEvent(alarmLevel, attr) {
 	if (settings?.mainContactBehavior?.contains("Only")) {
 		displayed = false
 	}
+	
+	if (attr == "externalContact") {
+		handleChildContactEvent(val)
+	}
 
 	result << createEvent(getEventMap("$attr", val, displayed))
 	
@@ -345,6 +398,24 @@ private handleContactEvent(alarmLevel, attr) {
 		result << createEvent(getEventMap("contact", mainVal))
 	}
 	return result
+}
+
+private void handleChildContactEvent(val) {
+	def child = getChildDevice()
+	if (child ) {
+		logDebug "Executing Child ${val.capitalize()}()"
+		if (val == "open") {
+			child?.open()
+		}
+		else {
+			child?.close()
+		}
+	}
+	return null
+}
+
+private getChildDevice() {
+	return getChildDevices()?.find { it && "${it}" != "null" }
 }
 
 private getMainContactVal(activeAttr, activeVal, otherVal) {
@@ -411,6 +482,10 @@ private wakeUpIntervalSetCmd(minutesVal) {
 }
 
 // Settings
+private getUseExternalDeviceSetting() {
+	return settings?.useExternalDevice ?: false
+}
+
 private getCheckinIntervalSettingMinutes() {
 	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting) ?: 360
 }
@@ -476,5 +551,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	 // log.trace "$msg"
+	  // log.trace "$msg"
 }
