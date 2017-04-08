@@ -1,5 +1,5 @@
 /**
- *  Dome Mouser v1.1
+ *  Dome Mouser v1.1.1
  *  (Model: DMMZ1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.1 (04/08/2017)
+ *      - Changed source of icons.
  *
  *    1.1 (02/09/2017)
  *      - Cleaned code for publication.
@@ -81,15 +84,15 @@ metadata {
 			tileAttribute ("device.status", key: "PRIMARY_CONTROL") {
 				attributeState "disarmed", 
 					label:'Disarmed',					
-					icon:"https://raw.githubusercontent.com/krlaframboise/SmartThingsPublic/master/devicetypes/krlaframboise/dome-mouser.src/mouse.png",
+					icon:"https://s3-us-west-2.amazonaws.com/dome-manuals/SmartThings/mouse.png",
 					backgroundColor:"#ffffff"
 				attributeState "armed", 
 					label:'Armed', 
-					icon:"https://raw.githubusercontent.com/krlaframboise/SmartThingsPublic/master/devicetypes/krlaframboise/dome-mouser.src/mouse.png", 
+					icon:"https://s3-us-west-2.amazonaws.com/dome-manuals/SmartThings/mouse.png", 
 					backgroundColor:"#79b821"
 				attributeState "tripped", 
 					label:'Tripped', 
-					icon:"https://raw.githubusercontent.com/krlaframboise/SmartThingsPublic/master/devicetypes/krlaframboise/dome-mouser.src/rip.png", 
+					icon:"https://s3-us-west-2.amazonaws.com/dome-manuals/SmartThings/rip.png", 
 					backgroundColor:"#bc2323"
 			}
 			tileAttribute ("device.status", key: "SECONDARY_CONTROL") {
