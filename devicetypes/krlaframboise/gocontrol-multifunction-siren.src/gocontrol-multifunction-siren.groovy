@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.7.2
+ *  GoControl Multifunction Siren v 1.7.3
  *
  *  Devices:
  *    GoControl/Linear (Model#: WA105DBZ-1 / ZM1601US-3)
@@ -24,6 +24,9 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.7.3 (04/09/2017)
+ *    	- Bug fix for location timezone issue.
  *
  *    1.7.2 (03/21/2017)
  *    	- Fix for SmartThings TTS url changing.
@@ -687,15 +690,10 @@ def parse(String description) {
 			logDebug "Unable to parse: $cmd"
 		}
 	}	
-	if (canCheckin()) {
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		result << createLastCheckinEvent()
-	}
+	}		
 	return result
-}
-
-private canCheckin() {
-	def minimumCheckinInterval = ((checkinIntervalSettingMinutes * 60 * 1000) - 5000)
-	return (!state.lastCheckinTime || ((new Date().time - state.lastCheckinTime) >= minimumCheckinInterval))
 }
 
 private createLastCheckinEvent() {
@@ -705,7 +703,13 @@ private createLastCheckinEvent() {
 }
 
 private convertToLocalTimeString(dt) {
-	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
+	def timeZoneId = location?.timeZone?.ID
+	if (timeZoneId) {
+		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	}
+	else {
+		return "$dt"
+	}	
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
