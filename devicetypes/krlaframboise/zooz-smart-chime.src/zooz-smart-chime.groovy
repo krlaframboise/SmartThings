@@ -1,5 +1,5 @@
 /**
- *  Zooz Smart Chime v1.1
+ *  Zooz Smart Chime v1.2
  *  (Model: ZSE33)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.2 (04/14/2017)
+ *      - Added Switch Level capability
  *
  *    1.1 (02/19/2017)
  *      - Added Health Check and self polling.
@@ -41,6 +44,7 @@ metadata {
 		capability "Tone"
 		capability "Health Check"
 		capability "Polling"
+		capability "Switch Level"
 		
 		attribute "lastCheckin", "string"
 		
@@ -337,6 +341,27 @@ def on() {
 	logDebug "Playing On Chime (#${onChimeSoundSetting})"	
 	addPendingSound("switch", "on")
 	return chimePlayCmds(onChimeSoundSetting)
+}
+
+def setLevel(level, rate=null) {
+	logTrace "Executing setLevel($level)"
+	if (!device.currentValue("level")) {
+		sendEvent(name:"level", value:0, displayed:false)
+	}
+	return customChime(extractSoundFromLevel(level))	
+}
+
+private extractSoundFromLevel(level) {
+	def sound = safeToInt(level, 1)
+	if (sound <= 10) {
+		return 1
+	}
+	else {
+		if ((sound % 10) != 0) {
+			sound = (sound - (sound % 10))
+		}
+		return (sound / 10)
+	}
 }
 
 def beep() {
