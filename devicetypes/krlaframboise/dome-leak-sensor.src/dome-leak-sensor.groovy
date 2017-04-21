@@ -1,5 +1,5 @@
 /**
- *  Dome Leak Sensor v1.1.1
+ *  Dome Leak Sensor v1.1.2
  *  (Model: DMWS1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.2 (04/20/2017)
+ *      - Added workaround for ST Health Check bug.
  *
  *    1.1.1 (03/12/2017)
  *      - Cleaned code for publication
@@ -207,6 +210,8 @@ private logForceWakeupMessage(msg) {
 // Processes messages received from device.
 def parse(String description) {
 	def result = []
+	
+	sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
 
 	def cmd = zwave.parse(description, commandClassVersions)
 	if (cmd) {
@@ -216,10 +221,6 @@ def parse(String description) {
 		logDebug "Unable to parse description: $description"
 	}
 	
-	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
-		result << createLastCheckinEvent()
-	}
-		
 	return result
 }
 
@@ -378,17 +379,6 @@ private canReportBattery() {
 		
 	return (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) 
 }
-
-private createLastCheckinEvent() {
-	logDebug "Device Checked In"
-	state.lastCheckinTime = new Date().time
-	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
-}
-
-private convertToLocalTimeString(dt) {
-	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
-}
-
 
 // Settings
 private getAlarmEnabledSetting() {
@@ -551,6 +541,16 @@ private getDefaultOptionSuffix() {
 
 private safeToInt(val, defaultVal=-1) {
 	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
+}
+
+private convertToLocalTimeString(dt) {
+	def timeZoneId = location?.timeZone?.ID
+	if (timeZoneId) {
+		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	}
+	else {
+		return "$dt"
+	}	
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {

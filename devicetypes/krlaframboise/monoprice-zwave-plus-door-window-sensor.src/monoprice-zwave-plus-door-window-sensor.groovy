@@ -1,5 +1,5 @@
 /**
- *  Monoprice Z-Wave Plus Door/Window Sensor 1.1.2
+ *  Monoprice Z-Wave Plus Door/Window Sensor 1.1.3
  *  (P/N 15270)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.3 (04/20/2017)
+ *      - Added workaround for ST Health Check bug.
  *
  *    1.1.2 (03/12/2017)
  *      - Adjusted health check to allow it to skip a checkin before going offline.
@@ -179,6 +182,8 @@ private getCheckinIntervalSettingSeconds() {
 def parse(String description) {
 	def result = []
 	
+	sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+	
 	if (description.startsWith("Err 106")) {
 		state.useSecureCmds = false
 		log.warn "Secure Inclusion Failed: ${description}"
@@ -197,23 +202,7 @@ def parse(String description) {
 			logDebug "Unable to parse description: $description"
 		}
 	}
-	
-	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
-		result << createLastCheckinEvent()
-	}
-	
 	return result
-}
-
-
-private createLastCheckinEvent() {
-	logDebug "Device Checked In"
-	state.lastCheckinTime = new Date().time
-	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
-}
-
-private convertToLocalTimeString(dt) {
-	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
@@ -461,6 +450,16 @@ private secureCmd(cmd) {
 
 private canSendConfiguration() {
 	return (!state.isConfigured || state.pendingRefresh != false	|| state.pendingChanges != false)
+}
+
+private convertToLocalTimeString(dt) {
+	def timeZoneId = location?.timeZone?.ID
+	if (timeZoneId) {
+		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	}
+	else {
+		return "$dt"
+	}	
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {

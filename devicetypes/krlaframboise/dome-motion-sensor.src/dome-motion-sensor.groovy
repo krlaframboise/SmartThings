@@ -1,5 +1,5 @@
 /**
- *  Dome Motion Sensor v1.1.1
+ *  Dome Motion Sensor v1.1.2
  *  (Model: DMMS1)
  *
  *  Author: 
@@ -9,6 +9,10 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.2 (04/20/2017)
+ *      - Stopped settngs from getting sent to device every time it wakes up.
+ *      - Added workaround for ST Health Check bug.
  *
  *    1.1.1 (03/12/2017)
  *      - Added Health Check capability
@@ -152,7 +156,7 @@ def updated() {
 def configure() {
 	logTrace "configure()"
 	def cmds = []
-	def refreshAll = (!state.isConfigured || state.pendingRefresh || !settings?.ledAlarm)
+	def refreshAll = (!state.isConfigured || state.pendingRefresh || !settings?.ledEnabled)
 	
 	if (!state.isConfigured) {
 		logTrace "Waiting 1 second because this is the first time being configured"		
@@ -163,6 +167,10 @@ def configure() {
 	
 	configData.sort { it.paramNum }.each { 
 		cmds += updateConfigVal(it.paramNum, it.size, it.value, refreshAll)	
+	}
+	
+	if (!cmds) {
+		state.pendingChanges = false
 	}
 	
 	if (refreshAll || canReportBattery()) {
@@ -217,7 +225,9 @@ private logForceWakeupMessage(msg) {
 // Processes messages received from device.
 def parse(String description) {
 	def result = []
-
+	
+	sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)	
+	
 	def cmd = zwave.parse(description, commandClassVersions)
 	if (cmd) {
 		result += zwaveEvent(cmd)
@@ -225,24 +235,8 @@ def parse(String description) {
 	else {
 		logDebug "Unable to parse description: $description"
 	}
-	
-	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
-		result << createLastCheckinEvent()
-	}
-	
 	return result
 }
-
-private createLastCheckinEvent() {
-	logTrace "Device Checked In"
-	state.lastCheckinTime = new Date().time
-	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
-}
-
-private convertToLocalTimeString(dt) {
-	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
-}
-
 
 // Updates devices configuration, requests battery report, and/or creates last checkin event.
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
@@ -587,6 +581,16 @@ private canCheckin() {
 	// Only allow the event to be created once per minute.
 	def lastCheckin = device.currentValue("lastCheckin")
 	return (!lastCheckin || lastCheckin < (new Date().time - 60000))
+}
+
+private convertToLocalTimeString(dt) {
+	def timeZoneId = location?.timeZone?.ID
+	if (timeZoneId) {
+		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	}
+	else {
+		return "$dt"
+	}	
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {

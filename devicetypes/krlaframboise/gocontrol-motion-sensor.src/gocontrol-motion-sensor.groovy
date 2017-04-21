@@ -1,5 +1,5 @@
 /**
- *  GoControl Motion Sensor v1.3
+ *  GoControl Motion Sensor v1.3.1
  *    (Model: WAPIRZ-1)
  *
  *  Author: 
@@ -9,6 +9,10 @@
  *    https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.4 (04/20/2017)
+ *      - Added fingerprint.
+ *      - Added workaround for ST Health Check bug.
  *
  *    1.3 (03/12/2017)
  *      - Added Health Check.
@@ -45,7 +49,9 @@ metadata {
 		capability "Health Check"
 
 		attribute "lastCheckin", "string"
-
+ 
+		fingerprint mfr:"014F", prod:"2002", model:"0203"
+ 
 		fingerprint deviceId:"0x2001", inClusters:"0x71, 0x85, 0x80, 0x72, 0x30, 0x86, 0x31, 0x70, 0x84"
 	}
 
@@ -209,6 +215,8 @@ private batteryGetCmd() {
 def parse(String description) {	
 	def result = []
 	
+	sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+	
 	def cmd = zwave.parse(description, [0x71: 2, 0x80: 1, 0x30: 1, 0x31: 2, 0x70: 1, 0x84: 1])
 	if (cmd) {
 		result += zwaveEvent(cmd)
@@ -216,44 +224,26 @@ def parse(String description) {
 	else {
 		logDebug "Unknown Description: $desc"
 	}
-
 	return result
-}
-
-private createLastCheckinEvent() {
-	logTrace "Device Checked In"
-	state.lastCheckinTime = new Date().time
-	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
-}
-
-private convertToLocalTimeString(dt) {
-	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv1.WakeUpNotification cmd)
 {
 	logTrace "WakeUpNotification"
-
-	def cmds = []
+	def result = []
 
 	if (state.pendingConfig) {
 		state.pendingConfig = false
-		cmds += configure()
+		result += configure()
 	}
 	else if (canReportBattery()) {
-		cmds << batteryGetCmd()
+		result << batteryGetCmd()
 	}
-	if (cmds) {
-		cmds << "delay 2000"
+	if (result) {
+		result << "delay 2000"
 	}
-	cmds << wakeUpNoMoreInfoCmd()
-
-	def result = []
-	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
-		result << createLastCheckinEvent()
-	}
-	result += response(cmds)
-	return result
+	result << wakeUpNoMoreInfoCmd()
+	return response(result)
 }
 
 private canReportBattery() {
@@ -416,6 +406,15 @@ private safeToInt(val, defaultVal=-1) {
 	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
 }
 
+private convertToLocalTimeString(dt) {
+	def timeZoneId = location?.timeZone?.ID
+	if (timeZoneId) {
+		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	}
+	else {
+		return "$dt"
+	}	
+}
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
 	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 

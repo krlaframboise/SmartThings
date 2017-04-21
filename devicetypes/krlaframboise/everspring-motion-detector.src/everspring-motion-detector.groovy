@@ -1,5 +1,5 @@
 /**
- *  Everspring Motion Sensor v1.0
+ *  Everspring Motion Detector v1.0.1
  *    (Model: HSP02)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *   
  *
  *  Changelog:
+ *
+ *    1.0.1 (04/20/2017)
+ *      - Added workaround for ST Health Check bug.
  *
  *    1.0 (04/19/2017)
  *      - Initial Release 
@@ -291,39 +294,21 @@ private getCommandClassVersions() {
 def parse(String description) {	
 	def result = []
 	
+	sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)	
+	
 	def cmd = zwave.parse(description, commandClassVersions)
 	if (cmd) {
 		result += zwaveEvent(cmd)
 	}
 	else {
 		logDebug "Unknown Description: $desc"
-	}
-	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
-		result << createLastCheckinEvent()
 	}		
 	return result
-}
-
-private createLastCheckinEvent() {
-	logDebug "Device Checked In"
-	state.lastCheckinTime = new Date().time
-	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
-}
-
-private convertToLocalTimeString(dt) {
-	def timeZoneId = location?.timeZone?.ID
-	if (timeZoneId) {
-		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
-	}
-	else {
-		return "$dt"
-	}	
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 {
 	logTrace "WakeUpNotification"
-
 	def result = []
 
 	if (state.pendingConfig != false) {
@@ -539,6 +524,16 @@ private getDefaultOptionSuffix() {
 
 private safeToInt(val, defaultVal=-1) {
 	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
+}
+
+private convertToLocalTimeString(dt) {
+	def timeZoneId = location?.timeZone?.ID
+	if (timeZoneId) {
+		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	}
+	else {
+		return "$dt"
+	}	
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {

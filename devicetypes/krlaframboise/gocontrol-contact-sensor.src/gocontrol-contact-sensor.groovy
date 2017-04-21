@@ -1,5 +1,5 @@
 /**
- *  GoControl Contact Sensor v1.9
+ *  GoControl Contact Sensor v1.9.1
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.9.1 (04/20/2017)
+ *			- Added workaround for ST Health Check bug.
  *
  *    1.9 (04/08/2017)
  *      - Added child device functionality for external contact. 
@@ -242,6 +245,9 @@ def refresh() {
 
 def parse(String description) {		
 	def result = []
+	
+	sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+	
 	if (description.startsWith("Err")) {
 		log.warn "Parse Error: $description"
 		result << createEvent(descriptionText: "$device.displayName $description", isStateChange: true)
@@ -254,22 +260,8 @@ def parse(String description) {
 		else {
 			logDebug "Unable to parse description: $description"
 		}
-	}
-	
-	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
-		result << createLastCheckinEvent()
-	}
+	}	
 	return result
-}
-
-private createLastCheckinEvent() {
-	logDebug "Device Checked In"
-	state.lastCheckinTime = new Date().time
-	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
-}
-
-private convertToLocalTimeString(dt) {
-	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
 }
 
 private getCommandClassVersions() {
@@ -539,6 +531,15 @@ private safeToInt(val, defaultVal=-1) {
 	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
 }
 
+private convertToLocalTimeString(dt) {
+	def timeZoneId = location?.timeZone?.ID
+	if (timeZoneId) {
+		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	}
+	else {
+		return "$dt"
+	}	
+}
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
 	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
@@ -551,5 +552,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	  // log.trace "$msg"
+	   // log.trace "$msg"
 }

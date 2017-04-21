@@ -1,5 +1,5 @@
 /**
- *  Wireless Smoke Detector Sensor v1.0
+ *  Wireless Smoke Detector Sensor v1.0.1
  *  (Model: ZWN-SD)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.1 (04/20/2017)
+ *      - Added workaround for ST Health Check bug.
  *
  *    1.0 (03/11/2017)
  *      - Initial Release
@@ -113,6 +116,8 @@ def ping() {
 
 def parse(String description) {
 	def result = []
+	
+	sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
 
 	def cmd = zwave.parse(description, commandClassVersions)
 	if (cmd) {
@@ -121,20 +126,7 @@ def parse(String description) {
 	else {
 		logDebug "Unable to parse description: $description"
 	}
-	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
-		result << createLastCheckinEvent()
-	}
 	return result
-}
-
-private createLastCheckinEvent() {
-	logDebug "Device Checked In"
-	state.lastCheckinTime = new Date().time
-	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
-}
-
-private convertToLocalTimeString(dt) {
-	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
 }
 
 private getCommandClassVersions() {
@@ -262,6 +254,16 @@ private getDefaultOptionSuffix() {
 
 private safeToInt(val, defaultVal=-1) {
 	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
+}
+
+private convertToLocalTimeString(dt) {
+	def timeZoneId = location?.timeZone?.ID
+	if (timeZoneId) {
+		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	}
+	else {
+		return "$dt"
+	}	
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {

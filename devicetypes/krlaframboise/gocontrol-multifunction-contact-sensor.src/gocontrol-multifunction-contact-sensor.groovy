@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Contact Sensor v1.1.6
+ *  GoControl Multifunction Contact Sensor v1.1.7
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation: https://community.smartthings.com/t/release-gocontrol-linear-multifunction-contact-sensor/77659?u=krlaframboise
  *    
  *  Changelog:
+ *
+ *    1.1.7 (04/20/2017)
+ *      - Added workaround for ST Health Check bug.
  *
  *    1.1.6 (03/18/2017)
  *      -  Forced correct icon for contact-garage when primary or secondary status is first set to it.
@@ -321,8 +324,11 @@ def refresh() {
 	}
 }
 
-def parse(String description) {		
+def parse(String description) {
 	def result = []
+	
+	sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+	
 	if (description.startsWith("Err")) {
 		log.warn "Parse Error: $description"
 		result << createEvent(descriptionText: "$device.displayName $description", isStateChange: true)
@@ -336,21 +342,7 @@ def parse(String description) {
 			logDebug "Unable to parse description: $description"
 		}
 	}
-	
-	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
-		result << createLastCheckinEvent()
-	}
 	return result
-}
-
-private createLastCheckinEvent() {
-	logDebug "Device Checked In"
-	state.lastCheckinTime = new Date().time
-	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
-}
-
-private convertToLocalTimeString(dt) {
-	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
 }
 
 private getCommandClassVersions() {
@@ -778,6 +770,16 @@ private getCheckinIntervalOptions() {
 		[name: "18 Hours", value: 1080],
 		[name: "24 Hours", value: 1440]
 	]
+}
+
+private convertToLocalTimeString(dt) {
+	def timeZoneId = location?.timeZone?.ID
+	if (timeZoneId) {
+		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	}
+	else {
+		return "$dt"
+	}	
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
