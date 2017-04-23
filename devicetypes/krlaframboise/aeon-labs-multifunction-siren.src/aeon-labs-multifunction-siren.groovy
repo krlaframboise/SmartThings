@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.9.2
+ *  Aeon Labs Multifunction Siren v 1.9.3
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -12,6 +12,10 @@
  *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *  1.9.3 (04/23/2017)
+ *    	- SmartThings broke parse method response handling so switched to sendhubaction.
+ *    	- Bug fix for location timezone issue.
  *
  *  1.9.2 (03/21/2017)
  *    	- Fix for SmartThings TTS url changing.
@@ -854,8 +858,17 @@ def updated() {
 		
 		cmds += configure()
 		
-		return response(delayBetween(cmds, 200))
+		return sendResponse(delayBetween(cmds, 200))
 	}
+}
+
+private sendResponse(cmds) {
+	def actions = []
+	cmds?.each { cmd ->
+		actions << new physicalgraph.device.HubAction(cmd)
+	}	
+	sendHubCommand(actions)
+	return []
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
@@ -922,7 +935,7 @@ def configure() {
 		cmds << switchGetCmd()		
 	}
 	else {
-		cmds << response(supportedSecurityGetCmd())
+		cmds += sendResponse([supportedSecurityGetCmd()])
 	}
 	return cmds
 }
@@ -953,7 +966,13 @@ private createLastCheckinEvent() {
 }
 
 private convertToLocalTimeString(dt) {
-	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
+	def timeZoneId = location?.timeZone?.ID
+	if (timeZoneId) {
+		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	}
+	else {
+		return "$dt"
+	}	
 }
 
 // Unencapsulates the secure command.
@@ -976,10 +995,9 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupported
 	state.useSecureCommands = true
 	
 	def cmds = []
-	cmds << response("delay 2000")
-	cmds += response(configure())
-	
-	return cmds
+	cmds << "delay 2000"
+	cmds += configure()	
+	return sendResponse(cmds)
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerSpecificReport cmd) {
@@ -1014,8 +1032,8 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 // Handles the scheduling of beeps.
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	def result = []
-	result << response(playScheduledBeep())
-	return result
+	result << playScheduledBeep()
+	return sendResponse(result)
 }
 
 // Writes unexpected commands to debug log

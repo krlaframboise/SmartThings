@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell v 1.13
+ *  Aeotec Doorbell v 1.13.1
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
@@ -12,6 +12,10 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.13.1 (04/23/2017)
+ *    	- SmartThings broke parse method response handling so switched to sendhubaction.
+ *    	- Bug fix for location timezone issue.
  *
  *  1.13 (03/21/2017)
  *    	- Fix for SmartThings TTS url changing.
@@ -271,23 +275,32 @@ def updated() {
 				cmds += refresh()
 			}
 		}        
-		return response(cmds)
+		return sendResponse(cmds)
 	}
+}
+
+private sendResponse(cmds) {
+	def actions = []
+	cmds?.each { cmd ->
+		actions << new physicalgraph.device.HubAction(cmd)
+	}	
+	sendHubCommand(actions)
+	return []
 }
 
 private updateSettings() {
 	def result = []
 	if (settings?.alarmTrack && settings?.alarmTrack != state?.alarmTrack) {
-		result << setAlarmTrack(settings?.alarmTrack)
+		setAlarmTrack(settings?.alarmTrack)
 	}
 	if (settings?.beepTrack && settings?.beepTrack != state?.beepTrack) {
-		result << setBeepTrack(settings?.beepTrack)
+		setBeepTrack(settings?.beepTrack)
 	}
 	if (settings?.doorbellTrack && settings?.doorbellTrack != state?.doorbellTrack) {
-		result << setDoorbellTrack(settings?.doorbellTrack)
+		result += setDoorbellTrack(settings?.doorbellTrack)
 	}
 	if (settings?.repeat && settings?.repeat != state?.repeat) {
-		result << setRepeat(settings?.repeat)
+		result += setRepeat(settings?.repeat)
 	}	
 	return result
 }
@@ -683,7 +696,13 @@ private createLastCheckinEvent() {
 }
 
 private convertToLocalTimeString(dt) {
-	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
+	def timeZoneId = location?.timeZone?.ID
+	if (timeZoneId) {
+		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	}
+	else {
+		return "$dt"
+	}	
 }
 
 // Unencapsulates the secure command.
@@ -707,7 +726,7 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupported
 	sendEvent(name: "security", value: "secure", displayed: false)
 	logDebug "Secure Inclusion Detected"
 	def result = []
-	result += response(configure())
+	result += sendResponse(configure())
 	return result    
 }
 
@@ -760,14 +779,14 @@ def handleDeviceTurningOff() {
 	if (state.pendingVolume) {
 		// Last play changed volume so restore default
 		logDebug "Restoring volume to ${state.pendingVolume}"
-		result << response(volumeSetCmd(state.pendingVolume))        
+		result += sendResponse([volumeSetCmd(state.pendingVolume)])        
 		state.pendingVolume = null
 	}
 	
 	if (state.pendingRepeat) {
 		// Last play changed repeat so change back to default.
 		logDebug "Restoring repeat to ${state.pendingRepeat}"
-		result << response(repeatSetCmd(state.pendingRepeat))
+		result += sendResponse([repeatSetCmd(state.pendingRepeat)])
 		state.pendingRepeat = null
 	}
 	

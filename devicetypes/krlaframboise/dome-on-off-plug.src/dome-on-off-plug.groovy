@@ -1,5 +1,5 @@
 /**
- *  Dome On Off Plug v1.0
+ *  Dome On Off Plug v1.0.1
  *  (Model: DMOF1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.1 (04/23/2017)
+ *    	- SmartThings broke parse method response handling so switched to sendhubaction.
  *
  *    1.0 (02/07/2017)
  *      - Initial Release
@@ -255,8 +258,17 @@ def updated() {
 			schedule(energyResetCronExp, resetEnergy)
 		}
 		
-		return response(configure())		
+		return sendResponse(configure())		
 	}		
+}
+
+private sendResponse(cmds) {
+	def actions = []
+	cmds?.each { cmd ->
+		actions << new physicalgraph.device.HubAction(cmd)
+	}	
+	sendHubCommand(actions)
+	return []
 }
 
 def configure() {
@@ -858,10 +870,6 @@ private safeToDec(val, defaultVal=-1) {
 private roundTwoPlaces(val) {
 	return Math.round(safeToDec(val) * 100) / 100
 }
-
-// private convertToLocalTimeString(dt) {
-	// return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
-// }
 
 private canCheckin() {
 	// Only allow the event to be created once per minute.

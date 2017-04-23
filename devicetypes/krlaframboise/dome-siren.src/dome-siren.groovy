@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.1.4
+ *  Dome Siren v1.1.5
  *  (Model: DMS01)
  *
  *  Author: 
@@ -9,6 +9,10 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.5 (04/23/2017)
+ *    	- SmartThings broke parse method response handling so switched to sendhubaction.
+ *    	- Bug fix for location timezone issue.
  *
  *    1.1.4 (03/21/2017)
  *    	- Fix for SmartThings TTS url changing.
@@ -266,7 +270,7 @@ def updated() {
 			def result = []
 			result += configure()
 			if (result) {
-				return response(result)
+				return sendResponse(result)
 			}
 		}
 		else {
@@ -577,7 +581,13 @@ private createLastCheckinEvent() {
 }
 
 private convertToLocalTimeString(dt) {
-	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
+	def timeZoneId = location?.timeZone?.ID
+	if (timeZoneId) {
+		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	}
+	else {
+		return "$dt"
+	}	
 }
 
 private getCommandClassVersions() {
@@ -649,11 +659,20 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	if (state.pendingSiren || (state.sirenStartTime && device.currentValue("status") != "alarm")) {
 		state.pendingSiren = false
-		return response(siren())
+		return sendRresponse(siren())
 	}
 	else {
 		return []
 	}
+}
+
+private sendResponse(cmds) {
+	def actions = []
+	cmds?.each { cmd ->
+		actions << new physicalgraph.device.HubAction(cmd)
+	}	
+	sendHubCommand(actions)
+	return []
 }
 
 // Creates off events.
@@ -677,7 +696,7 @@ def zwaveEvent(physicalgraph.zwave.commands.indicatorv1.IndicatorReport cmd) {
 			def result = []
 			result << "delay ${beepDelayMS}"
 			result += beep()
-			return response(result)
+			return sendResponse(result)
 		}
 	}
 	else {

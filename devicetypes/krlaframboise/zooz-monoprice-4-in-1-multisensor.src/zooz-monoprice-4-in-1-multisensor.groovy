@@ -1,5 +1,5 @@
 /**
- *  Zooz/Monoprice 4-in-1 Multisensor 1.3.2
+ *  Zooz/Monoprice 4-in-1 Multisensor 1.3.3
  *
  *  Zooz Z-Wave 4-in-1 Sensor (ZSE40)
  *
@@ -12,6 +12,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.3.3 (04/23/2017)
+ *    	- SmartThings broke parse method response handling so switched to sendhubaction.
  *
  *    1.3.2 (04/20/2017)
  *      - Added workaround for ST Health Check bug.
@@ -359,7 +362,16 @@ def configure() {
 	else {
 		cmds += refreshSensorData()
 	}
-	return response(cmds)
+	return sendResponse(cmds)
+}
+
+private sendResponse(cmds) {
+	def actions = []
+	cmds?.each { cmd ->
+		actions << new physicalgraph.device.HubAction(cmd)
+	}	
+	sendHubCommand(actions)
+	return []
 }
 
 private initializeCheckin() {
@@ -607,7 +619,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	}
 	result << wakeUpNoMoreInfoCmd()
 	
-	return response(result)
+	return sendResponse(result)
 }
 
 private canReportBattery() {

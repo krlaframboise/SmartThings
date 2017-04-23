@@ -1,5 +1,5 @@
 /**
- *  Remotec ZXT-310 IR Extender v1.0
+ *  Remotec ZXT-310 IR Extender v1.0.1
  *     Remotec Z-Wave-to-AV IR Extender(Model: ZXT-310)
  *  
  *  Author: 
@@ -8,6 +8,10 @@
  *  URL to documentation: 
  *
  *  Changelog:
+ *
+ *  1.0.1 (04/23/2017)
+ *    	- SmartThings broke parse method response handling so switched to sendhubaction.
+ *    	- Bug fix for location timezone issue.
  *
  *  1.0.0 (04/02/2017)
  *    - Initial Release
@@ -198,8 +202,17 @@ def updated() {
 		logTrace "Executing updated()"
 		
 		def cmds = configure()
-		return cmds ? response(cmds) : []
+		return cmds ? sendResponse(cmds) : []
 	}
+}
+
+private sendResponse(cmds) {
+	def actions = []
+	cmds?.each { cmd ->
+		actions << new physicalgraph.device.HubAction(cmd)
+	}	
+	sendHubCommand(actions)
+	return []
 }
 
 private initializeCheckin() {
@@ -610,8 +623,8 @@ private handleLearningStatus(learningStatus) {
 	if (btn) {
 		if (learningStatus == 2) {
 			logDebug "Waiting for ${btn.name} Code"
-			result << response("delay 1000")
-			result << response(configGetCmd(learningStatusParam, safeToInt(btn.ep, 1)))
+			result << "delay 1000"
+			result << configGetCmd(learningStatusParam, safeToInt(btn.ep, 1))
 		}
 		else if (learningStatus <= 2) {
 			logDebug "Learning\nSuccessful"
@@ -630,7 +643,7 @@ private handleLearningStatus(learningStatus) {
 			state.activeLearnBtn = null
 		}
 	}
-	return result
+	return result ? sendResponse(result) : []
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd, ep=null) {	
@@ -936,7 +949,13 @@ private createLastCheckinEvent() {
 }
 
 private convertToLocalTimeString(dt) {
-	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
+	def timeZoneId = location?.timeZone?.ID
+	if (timeZoneId) {
+		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	}
+	else {
+		return "$dt"
+	}	
 }
 
 private logDebug(msg) {

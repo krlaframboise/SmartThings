@@ -1,5 +1,5 @@
 /**
- *  Dome Motion Sensor v1.1.2
+ *  Dome Motion Sensor v1.1.3
  *  (Model: DMMS1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.3 (04/23/2017)
+ *    	- SmartThings broke parse method response handling so switched to sendhubaction.
  *
  *    1.1.2 (04/20/2017)
  *      - Stopped settngs from getting sent to device every time it wakes up.
@@ -259,7 +262,16 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	}
 	result << wakeUpNoMoreInfoCmd()
 	
-	return response(result)
+	return sendResponse(result)
+}
+
+private sendResponse(cmds) {
+	def actions = []
+	cmds?.each { cmd ->
+		actions << new physicalgraph.device.HubAction(cmd)
+	}	
+	sendHubCommand(actions)
+	return []
 }
 
 // Creates the event for the battery level.

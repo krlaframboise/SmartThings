@@ -1,5 +1,5 @@
 /**
- *  Vision Shock Sensor v1.0.1
+ *  Vision Shock Sensor v1.0.2
  *  (ZS 5101)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation: https://community.smartthings.com/t/release-vision-shock-sensor-zs-5101/81628?u=krlaframboise
  *    
  *  Changelog:
+ *
+ *    1.0.2 (04/23/2017)
+ *    	- SmartThings broke parse method response handling so switched to sendhubaction.
  *
  *    1.0.1 (04/20/2017)
  *      - Added workaround for ST Health Check bug.
@@ -282,7 +285,16 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	}
 	cmds << wakeUpNoMoreInfoCmd()
 	
-	return response(cmds)
+	return sendResponse(cmds)
+}
+
+private sendResponse(cmds) {
+	def actions = []
+	cmds?.each { cmd ->
+		actions << new physicalgraph.device.HubAction(cmd)
+	}	
+	sendHubCommand(actions)
+	return []
 }
 
 private canReportBattery() {

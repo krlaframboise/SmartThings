@@ -1,5 +1,5 @@
 /**
- *  Zooz Smart Chime v1.2
+ *  Zooz Smart Chime v1.2.1
  *  (Model: ZSE33)
  *
  *  Author: 
@@ -9,6 +9,10 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.2.1 (04/23/2017)
+ *    	- SmartThings broke parse method response handling so switched to sendhubaction.
+ *    	- Bug fix for location timezone issue.
  *
  *    1.2 (04/14/2017)
  *      - Added Switch Level capability
@@ -228,7 +232,7 @@ def updated() {
 			def result = []
 			result += configure()
 			if (result) {
-				return response(result)
+				return sendResponse(result)
 			}
 		}
 		else {
@@ -236,6 +240,15 @@ def updated() {
 			state.firstUpdate = false
 		}
 	}	
+}
+
+private sendResponse(cmds) {
+	def actions = []
+	cmds?.each { cmd ->
+		actions << new physicalgraph.device.HubAction(cmd)
+	}	
+	sendHubCommand(actions)
+	return []
 }
 
 private initializeCheckin() {
@@ -462,7 +475,13 @@ private createLastCheckinEvent() {
 }
 
 private convertToLocalTimeString(dt) {
-	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
+	def timeZoneId = location?.timeZone?.ID
+	if (timeZoneId) {
+		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	}
+	else {
+		return "$dt"
+	}	
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
@@ -500,7 +519,7 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 		result += handleDeviceOff()
 	}
 	else {
-		result += response(["delay 3000", basicGetCmd()])
+		result += sendResponse(["delay 3000", basicGetCmd()])
 	}	
 	return result
 }

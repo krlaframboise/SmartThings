@@ -1,5 +1,5 @@
 /**
- *  Monoprice Z-Wave Plus Door/Window Sensor 1.1.3
+ *  Monoprice Z-Wave Plus Door/Window Sensor 1.1.4
  *  (P/N 15270)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.4 (04/23/2017)
+ *    	- SmartThings broke parse method response handling so switched to sendhubaction.
  *
  *    1.1.3 (04/20/2017)
  *      - Added workaround for ST Health Check bug.
@@ -160,8 +163,8 @@ def configure() {
 }
 
 private initializeCheckin() {
-	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
-	def checkInterval = ((checkinIntervalSettingSeconds * 2) + (2 * 60))
+	// Set the Health Check interval so that it can be skipped twice plus 5 minutes.
+	def checkInterval = ((checkinIntervalSettingSeconds * 3) + (5 * 60))
 	
 	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 }
@@ -262,7 +265,16 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	}
 	
 	cmds << wakeUpNoMoreInfoCmd()
-	return response(cmds)
+	return sendResponse(cmds)
+}
+
+private sendResponse(cmds) {
+	def actions = []
+	cmds?.each { cmd ->
+		actions << new physicalgraph.device.HubAction(cmd)
+	}	
+	sendHubCommand(actions)
+	return []
 }
 
 private canReportBattery() {

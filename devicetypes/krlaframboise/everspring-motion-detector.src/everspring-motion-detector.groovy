@@ -1,5 +1,5 @@
 /**
- *  Everspring Motion Detector v1.0.1
+ *  Everspring Motion Detector v1.0.2
  *    (Model: HSP02)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *   
  *
  *  Changelog:
+ *
+ *    1.0.2 (04/23/2017)
+ *    	- SmartThings broke parse method response handling so switched to sendhubaction.
  *
  *    1.0.1 (04/20/2017)
  *      - Added workaround for ST Health Check bug.
@@ -322,7 +325,16 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 		result << "delay 2000"
 	}
 	result << wakeUpNoMoreInfoCmd()	
-	return response(result)
+	return sendResponse(result)
+}
+
+private sendResponse(cmds) {
+	def actions = []
+	cmds?.each { cmd ->
+		actions << new physicalgraph.device.HubAction(cmd)
+	}	
+	sendHubCommand(actions)
+	return []
 }
 
 private canReportBattery() {

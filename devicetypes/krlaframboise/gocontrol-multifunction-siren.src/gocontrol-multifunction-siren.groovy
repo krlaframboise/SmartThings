@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.7.3
+ *  GoControl Multifunction Siren v 1.7.4
  *
  *  Devices:
  *    GoControl/Linear (Model#: WA105DBZ-1 / ZM1601US-3)
@@ -24,6 +24,9 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.7.4 (04/23/2017)
+ *    	- SmartThings broke parse method response handling so switched to sendhubaction.
  *
  *    1.7.3 (04/09/2017)
  *    	- Bug fix for location timezone issue.
@@ -272,7 +275,7 @@ def updated() {
 		
 		cmds += configure()
 		
-		response(delayBetween(cmds, 200))
+		return sendResponse(delayBetween(cmds, 200))
 	}
 }
 
@@ -735,7 +738,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	if (cmd?.parameterNumber == getAlarmTypeParamNumber()) {		
 		def val = cmd.configurationValue[0]
 		logDebug "Current Alarm Type: ${val}"
-		return response(turnOn(val))
+		return sendResponse(turnOn(val))
 	}	
 }
 
@@ -839,7 +842,7 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
 	state.useSecureCommands = true
 	logDebug("Secure Commands Supported")	
-	response(delayBetween(configure(), 200))
+	return sendResponse(delayBetween(configure(), 200))
 }
 
 // Writes unexpected commands to debug log
@@ -978,6 +981,15 @@ def parseComplexCommand(message) {
 		cmds += (args?.size() == 3) ? customSiren(args[0], args[1], args[2]) : siren()
 	}
 	return cmds
+}
+
+private sendResponse(cmds) {
+	def actions = []
+	cmds?.each { cmd ->
+		actions << new physicalgraph.device.HubAction(cmd)
+	}	
+	sendHubCommand(actions)
+	return []
 }
 
 private getComplexCmdArgs(message) {

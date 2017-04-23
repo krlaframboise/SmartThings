@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.5.5
+ *  Zipato Multisound Siren v1.5.6
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02)
  *  
@@ -13,6 +13,10 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.5.6 (04/23/2017)
+ *    	- SmartThings broke parse method response handling so switched to sendhubaction.
+ *    	- Bug fix for location timezone issue.
  *
  *  1.5.5 (03/21/2017)
  *    - Fix for SmartThings TTS url changing.
@@ -288,8 +292,17 @@ def updated() {
 			
 			cmds += refresh()
 		}		
-		return response(cmds)
+		return sendResponse(cmds)
 	}
+}
+
+private sendResponse(cmds) {
+	def actions = []
+	cmds?.each { cmd ->
+		actions << new physicalgraph.device.HubAction(cmd)
+	}	
+	sendHubCommand(actions)
+	return []
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
@@ -644,7 +657,7 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupported
 	state.useSecureCmds = true
 	logDebug "Secure Inclusion Detected"
 	def result = []
-	result += response(configure())
+	result += sendResponse(configure())
 	return result	
 }
 
@@ -976,7 +989,13 @@ private getDefaultOptionSuffix() {
 }
 
 private convertToLocalTimeString(dt) {
-	return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(location.timeZone.ID))
+	def timeZoneId = location?.timeZone?.ID
+	if (timeZoneId) {
+		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	}
+	else {
+		return "$dt"
+	}	
 }
 
 int validateRange(val, int defaultVal, int minVal, int maxVal) {

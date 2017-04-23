@@ -1,5 +1,5 @@
 /**
- *  GoControl Motion Sensor v1.3.1
+ *  GoControl Motion Sensor v1.3.2
  *    (Model: WAPIRZ-1)
  *
  *  Author: 
@@ -10,7 +10,10 @@
  *
  *  Changelog:
  *
- *    1.4 (04/20/2017)
+ *    1.3.2 (04/23/2017)
+ *    	- SmartThings broke parse method response handling so switched to sendhubaction.
+ *
+ *    1.3.1 (04/20/2017)
  *      - Added fingerprint.
  *      - Added workaround for ST Health Check bug.
  *
@@ -243,7 +246,16 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv1.WakeUpNotification cmd)
 		result << "delay 2000"
 	}
 	result << wakeUpNoMoreInfoCmd()
-	return response(result)
+	return sendResponse(result)
+}
+
+private sendResponse(cmds) {
+	def actions = []
+	cmds?.each { cmd ->
+		actions << new physicalgraph.device.HubAction(cmd)
+	}	
+	sendHubCommand(actions)
+	return []
 }
 
 private canReportBattery() {
