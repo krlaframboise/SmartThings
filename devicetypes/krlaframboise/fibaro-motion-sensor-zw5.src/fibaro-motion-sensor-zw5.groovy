@@ -1,5 +1,5 @@
 /**
- *  Fibaro Motion Sensor v0.0
+ *  Fibaro Motion Sensor v0.0.1
  *  (Model: FGMS-001)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    0.0 (04/25/2017)
+ *    0.0.1 (04/25/2017)
  *      - Beta Release
  *
  *
@@ -36,7 +36,6 @@ metadata {
 		capability "Illuminance Measurement"
 		capability "Temperature Measurement"
 		capability "Acceleration Sensor"
-		capability "Shock Sensor"
 		capability "Three Axis"
 		capability "Tamper Alert"
 		capability "Battery"
@@ -48,7 +47,6 @@ metadata {
 		attribute "lastUpdate", "string"
 		attribute "vibrationData", "string"
 		attribute "vibrationStatus", "string"
-		attribute "gforce", "number"
 		attribute "axisX", "number"
 		attribute "axisY", "number"
 		attribute "axisZ", "number"
@@ -67,13 +65,9 @@ metadata {
 		// getOptionsInput(motionNightThresholdParam)
 		getOptionsInput(vibrationSensitivityParam)
 		getOptionsInput(vibrationRetriggerParam)
-		getOptionsInput(vibrationDataTypeParam)
-		
-		getBoolInput("displayVibrationData", "Display Vibration Data Event?", false)
-		
-		getOptionsInput("vibrationStatusType", "Vibration Status Type", vibrationStatusTypeSetting, vibrationStatusTypeOptions)
-		
-		getBoolInput("displayVibrationStatus", "Display Vibration Status Event?", false)		
+		getOptionsInput(vibrationTypeParam)
+						
+		getBoolInput("displayVibrationEvents", "Display Vibration Events?", false)		
 		
 		getOptionsInput(vibrationLedParam)		
 		// getOptionsInput(lightReportingThresholdParam)
@@ -126,17 +120,19 @@ metadata {
 		}
 
 		standardTile("vibrationStatus", "device.vibrationStatus", inactiveLabel: false, width: 2, height: 2) {
-			state "inactive", label:'inactive', icon:"st.motion.acceleration.inactive", backgroundColor:"#cccccc"
-			state "active", label:'active', icon:"st.motion.acceleration.active", backgroundColor:"#00a0dc"
-			state "clear", label:'Tamper Clear', icon:"st.security.alarm.clear", backgroundColor:"#ffffff"
-			state "detected", label:'Tamper Detected', icon:"st.security.alarm.alarm", backgroundColor:"#ffffff"
+			state "accelerationInactive", label:'Inactive', icon:"st.motion.acceleration.inactive", backgroundColor:"#cccccc"
+			state "accelerationActive", label:'Active', icon:"st.motion.acceleration.active", backgroundColor:"#00a0dc"
+			state "earthquakeInactive", label:'Clear'//, icon:"", backgroundColor:"#ffffff"
+			state "earthquakeActive", label:'Earthquake', icon:"st.secondary.activity"//, backgroundColor:"#53a7c0"
+			state "tamperClear", label:'Clear', icon:""//, backgroundColor:"#ffffff"
+			state "tamperDetected", label:'Tamper', icon:"st.security.alarm.alarm"//, backgroundColor:"#e86d13"
 		}
 		
-		valueTile("vibrationData", "device.vibrationData", inactiveLabel: true, width: 2, height: 2) {
+		valueTile("vibrationData", "device.vibrationData", inactiveLabel: false, width: 2, height: 2) {
 			state "vibrationData", label:'${currentValue}'
 		}
 		
-		valueTile("illuminance", "device.illuminance", inactiveLabel: true, width: 2, height: 2) {
+		valueTile("illuminance", "device.illuminance", inactiveLabel: false, width: 2, height: 2) {
 			state "luminosity", label:'${currentValue} lux'
 		}
 		
@@ -188,7 +184,7 @@ def updated() {
 		state.lastUpdated = new Date().time
 		logTrace "updated()"
 		
-		if (vibrationDataTypeParam.val?.startsWith("None") && getAttrValue("vibrationData")) {
+		if (vibrationTypeSettingName == "tamper" && getAttrValue("vibrationData")) {
 			sendEvent(createEventMap("vibrationData", "", false))
 		}
 		
@@ -227,8 +223,6 @@ private initializeOptionalAttributes() {
 	def optionalAttrs = [
 		"acceleration": "inactive",
 		"tamper": "clear",
-		"shock": "clear",
-		"gforce": 0,
 		"threeAxis": "0,0,0",
 		"axisX": 0,
 		"axisY": 0,
@@ -243,7 +237,7 @@ private initializeOptionalAttributes() {
 
 private updateConfigVal(param, refreshAll) {
 	def result = []
-	def newVal = convertOptionSettingToInt(param.options, param.val)
+	def newVal = param.options ? convertOptionSettingToInt(param.options, param.val) : param.val
 	def oldVal = state["configVal${param.num}"]	
 	if (refreshAll || (oldVal != newVal)) {
 		logDebug "${param.name}(#${param.num}): changing ${oldVal} to ${newVal}"
@@ -275,14 +269,18 @@ def ping() {
 }
 
 def refresh() {
-	if (vibrationStatusTypeSetting.startsWith("Tamper") && getAttrValue("vibrationStatus") == "detected") {
+	def vibrationType = vibrationTypeSettingName
+	def vibrationAttr = getAttrValue("vibrationStatus")
+	
+	if ((vibrationType == "tamper" && vibrationAttr != "tamperClear") || (vibrationType == "earthquake" && vibrationAttr != "earthquakeInactive")) {
+	
 		sendVibrationStatusEvents(0x00, true)
+		
+		if (vibrationType == "earthquake") {
+			sendEarthquakeEvents(0, true)
+		}
 	}
-	
-	if (vibrationDataTypeParam.val.startsWith("Shock") && getAttrValue("gforce") != 0) {
-		sendShockEvents(0, true)
-	}
-	
+			
 	state.pendingRefresh = true
 	logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."		
 }
@@ -435,17 +433,6 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport 
 	return []
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.associationv2.AssociationReport cmd) {	
-	logTrace "AssociationReport: ${cmd}"
-	if (cmd.groupingIdentifier == 3 && cmd.nodeId?.size() > 0) {
-		state.assocGroup3 = true
-	}
-	else {
-		state.assocGroup3 = false
-	}
-	return[]
-}
-
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelReport cmd) {
 	// logTrace "SensorMultilevelReport: ${cmd}"
 	switch (cmd.sensorType) {
@@ -456,13 +443,13 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelR
 			logDebug "Illuminance ${cmd.scaledSensorValue} lux"
 			sendEvent(createEventMap("illuminance", cmd.scaledSensorValue, null, null, "lux"))
 			break
-		case shockSensorType:
-			if (vibrationDataTypeParam.val?.startsWith("Shock")) {
-				sendShockEvents(cmd.scaledSensorValue)
+		case earthquakeSensorType:		
+			if (vibrationTypeSettingName == "earthquake") {
+				sendEarthquakeEvents(cmd.scaledSensorValue)
 			}
 		case { threeAxisSensorTypes.find { type -> type == it } }:			
-			if (vibrationDataTypeParam.val?.startsWith("Three")) {
-				sendThreeAxisEvent(cmd)
+			if (vibrationTypeSettingName == "acceleration") {
+				sendThreeAxisEvents(cmd)
 			}
 			break
 	} 
@@ -476,7 +463,7 @@ private sendTempEvent(cmd) {
 	sendEvent(createEventMap("temperature", val, null, null, getTemperatureScale()))			
 }
 
-private sendThreeAxisEvent(cmd) {
+private sendThreeAxisEvents(cmd) {
 	// logTrace "handleThreeAxisEvent(${cmd})"
 	def val = cmd.scaledSensorValue?.toInteger()
 	def map
@@ -508,31 +495,15 @@ def generateThreeAxisEvent() {
 	def y = getAttrValue("axisY")
 	def z = getAttrValue("axisZ")
 	
-	sendEvent(createEventMap("threeAxis", "${x},${y},${z}", displayVibrationDataSetting))
+	sendEvent(createEventMap("threeAxis", "${x},${y},${z}", false))
 	sendEvent(createEventMap("vibrationData", "${x}x,${y}y,${z}z", false))
 }
 
-private sendShockEvents(val, refreshing=false) {
-	// logTrace "sendShockEvents(${val})"
-	def gVal = roundTwoPlaces(safeToDec(val))
-	def shockVal = val ? "detected" : "clear"
-	def desc = val ? "${gVal}g shock detected" : null
-	
-	sendEvent(createEventMap("shock", shockVal, displayVibrationDataSetting, desc))
-	
-	def dataType = vibrationDataTypeParam.val
-	def lastVal = safeToDec(getAttrValue("gforce"))
-	
-	def shockType = (dataType.contains("Active") ? "Active" : (dataType.contains("Highest") ? "Highest" : "Last"))
-	
-	if (shockType == "Active" || 
-	(shockType == "Highest" && gVal > lastVal) || 
-	(shockType == "Last" && gVal > 0) ||
-	(refreshing && gVal == 0)) {
-		
-		sendEvent(createEventMap("gforce", gVal, false, null, "g"))
-		
-		sendEvent(createEventMap("vibrationData", "${shockType} Shock ${gVal}g", false))		
+private sendEarthquakeEvents(val, refreshing=false) {
+	// logTrace "sendEarthquakeEvents(${val})"
+	def mVal = roundTwoPlaces(safeToDec(val))
+	if (mVal > 0 || refreshing) {		
+		sendEvent(createEventMap("vibrationData", "Mag. ${mVal}", false))
 	}
 }
 
@@ -560,22 +531,27 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 }
 
 private sendMotionEvent(val) {
-	sendEvent(createEventMap("motion", val ? "active" : "inactive"))
+	def motionVal = val ? "active" : "inactive"
+	logDebug "motion ${motionVal}"
+	sendEvent(createEventMap("motion", motionVal))
 }
 
 private sendVibrationStatusEvents(val, refreshing=false) {
 	// logTrace "sendVibrationStatusEvents(${val})"
 	def map
-	if (vibrationStatusTypeSetting.startsWith("Acceleration")) {
-		map = createEventMap("acceleration", val ? "active" : "inactive", displayVibrationStatusSetting)
+	def vibrationType = vibrationTypeSettingName
+	if (vibrationType == "acceleration" || vibrationType == "earthquake") {
+		map = createEventMap("acceleration", val ? "active" : "inactive", displayVibrationEventsSetting)
 	}
 	else {
-		map = createEventMap("tamper", val ? "detected" : "clear", displayVibrationStatusSetting)
+		map = createEventMap("tamper", val ? "detected" : "clear", displayVibrationEventsSetting)
 	}
 	
-	if (map.value != "clear" || refreshing) {
+	def valName = "${map.value}".capitalize()
+	def dataVal = "${vibrationType}${valName}"
+	if ((dataVal != "tamperClear" && dataVal != "earthquakeInactive") || refreshing) {
 		sendEvent(map)
-		sendEvent(createEventMap("vibrationStatus", map.value, false))
+		sendEvent(createEventMap("vibrationStatus", dataVal, false))
 	}
 }
 
@@ -656,7 +632,7 @@ private getVersionSafeCmdClass(cmdClass) {
 
 private getTempSensorType() { return 1 }
 private getLightSensorType() { return 3 }
-private getShockSensorType() { return 25 }
+private getearthquakeSensorType() { return 25 }
 private getThreeAxisSensorTypes() { 
 	return [
 		threeAxisXSensorType, 
@@ -672,13 +648,13 @@ private getThreeAxisZSensorType() { return 52 }
 private getConfigParams() {
 	return [		
 		motionSensitivityParam,
-		// motionBlindTimeParam,
+		motionBlindTimeParam,
 		motionRetriggerParam,
 		// motionModeParam,
 		// motionNightThresholdParam,
 		vibrationSensitivityParam,
 		vibrationRetriggerParam,
-		vibrationDataTypeParam,
+		vibrationTypeParam,
 		vibrationLedParam,
 		// lightReportingThresholdParam,
 		lightReportingIntervalParam,
@@ -701,7 +677,18 @@ private getMotionSensitivityParam() {
 }
 
 private getMotionBlindTimeParam() {
-	return createConfigParamMap(2, "Motion Sensor's Blind Time", 1, motionBlindTimeOptions, "motionBlindTime")
+	def val	
+	switch(convertOptionSettingToInt(retriggerOptions, motionRetriggerParam.val)) {
+		case 5:
+			val = 2
+			break
+		case 10:
+			val = 6
+			break
+		default:
+			val = 15
+	}
+	return createConfigParamMap(2, "Motion Sensor's Blind Time", 1, null, "motionBlindTime", val)
 }
 
 private getMotionRetriggerParam() {
@@ -724,8 +711,8 @@ private getVibrationRetriggerParam() {
 	return createConfigParamMap(22, "Vibration Retrigger", 2, retriggerOptions, "vibrationRetrigger")
 }
 
-private getVibrationDataTypeParam() {
-	return createConfigParamMap(24, "Vibration Data Type", 1, vibrationDataTypeOptions, "vibrationDataType")
+private getVibrationTypeParam() {
+	return createConfigParamMap(24, "Vibration Type", 1, vibrationTypeOptions, "vibrationType")
 }
 
 private getVibrationLedParam() {
@@ -780,29 +767,40 @@ private getLedRedTempThresholdParam() {
 	return createConfigParamMap(87, "Red LED Temperature Threshold", 1, maxTempOptions, "ledRedTempThreshold")
 }
 
-private createConfigParamMap(num, name, size, options, prefName) {
+private createConfigParamMap(num, name, size, options, prefName, val=null) {
+	if (val == null) {
+		val = (settings?."${prefName}" ?: findDefaultOptionName(options))
+	}
 	return [
 		num: num, 
 		name: name, 
 		size: size, 
 		options: options, 
 		prefName: prefName,
-		val: (settings?."${prefName}" ?: findDefaultOptionName(options))
+		val: val
 	]
 }
 
 
 // Settings
-private getVibrationStatusTypeSetting() {
-	return settings?.vibrationStatusType ?: findDefaultOptionName(vibrationStatusTypeOptions)
+private getVibrationTypeSettingName() {
+	if (vibrationTypeSetting?.startsWith("Acceleration")) {
+		return "acceleration"
+	}
+	else if (vibrationTypeSetting?.startsWith("Earthquake")) {
+		return "earthquake"
+	}
+	else {
+		return "tamper"
+	}
 }
 
-private getDisplayVibrationDataSetting() {
-	return settings?.displayVibrationData ?: false
+private getVibrationTypeSetting() {
+	return settings?.vibrationType ?: findDefaultOptionName(vibrationTypeOptions)
 }
 
-private getDisplayVibrationStatusSetting() {
-	return settings?.displayVibrationStatus ?: false
+private getDisplayVibrationEventsSetting() {
+	return settings?.displayVibrationEvents ?: false
 }
 
 private getCheckinIntervalSettingMinutes() {
@@ -834,14 +832,14 @@ private getVibrationLedOptions() {
 }
 
 private getMotionSensitivityOptions() {
-	def options = ["1 (Most Sensitive)": 8]
+	def options = ["Most Sensitive": 8]
 	
 	def val = 7
 	(2..19).each {
 		val += 13
 		options["${it}"] = val
 	}
-	options["20 (Least Sensitive)"] = 255
+	options["Least Sensitive"] = 255
 	
 	return setDefaultOption(options, 20)
 }
@@ -860,33 +858,23 @@ private getLedModeOptions() {
 	], 5)
 }
 
-private getVibrationStatusTypeOptions() {
+private getVibrationTypeOptions() {
 	return setDefaultOption([
-		"Acceleration": "acceleration",
-		"Tamper Alert": "tamper"
-	], "acceleration")
-}
-
-private getVibrationDataTypeOptions() {
-	return setDefaultOption([
-		"None": 0,
-		"Shock Active G-force (g)": 1,
-		"Shock Highest G-force (g)": 1,
-		"Shock Last G-force (g)": 1,
-		"Three Axis (x,y,z)": 2
-	], 0)
+		"Acceleration": 2,
+		"Earthquake": 1,
+		"Tamper Alert": 0
+	], 2)
 }
 
 private getVibrationSensitivityOptions() {
-	def options = [
-		"0.08g": 5,
-		"0.16g": 10
-	]
-	for (int i = 1; i <= 7; i += 1) {
-		options["${roundTwoPlaces(i * 0.25)}g"] = (i * 15)
+	def options = ["Disabled": 0, "Most Sensitive": 1]	
+	def val = 1
+	(2..19).each {
+		val += (it % 3) ? 6 : 7
+		options["${it}"] = val
 	}
-	options["2g"] = 121
-	return setDefaultOption(options, 30)
+	options["Least Sensitive"] = 121
+	return setDefaultOption(options, 20)
 }
 
 private getRetriggerOptions() {
