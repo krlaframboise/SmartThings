@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.1.5
+ *  Dome Siren v1.1.6
  *  (Model: DMS01)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.6 (04/27/2017)
+ *    	- Bug fix for siren not turning on.
  *
  *    1.1.5 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -659,7 +662,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	if (state.pendingSiren || (state.sirenStartTime && device.currentValue("status") != "alarm")) {
 		state.pendingSiren = false
-		return sendRresponse(siren())
+		return sendResponse(siren())
 	}
 	else {
 		return []
