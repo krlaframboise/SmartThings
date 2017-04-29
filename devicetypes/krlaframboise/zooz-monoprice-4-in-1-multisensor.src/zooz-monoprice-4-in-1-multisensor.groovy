@@ -1,5 +1,5 @@
 /**
- *  Zooz/Monoprice 4-in-1 Multisensor 1.3.3
+ *  Zooz/Monoprice 4-in-1 Multisensor 1.3.4
  *
  *  Zooz Z-Wave 4-in-1 Sensor (ZSE40)
  *
@@ -12,6 +12,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.3.4 (04/29/2017)
+ *    	- Made refresh command return null to fix possible issue it's causing with webCoRE.
  *
  *    1.3.3 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -297,7 +300,7 @@ def updated() {
 			sendEvent(createEventMap("tamper", "clear"))
 		}
 
-		logForceWakeupMessage "The configuration will be updated the next time the device wakes up."
+		logForceWakeupMessage("The configuration will be updated the next time the device wakes up.")
 		state.pendingChanges = true
 	}	
 }
@@ -926,9 +929,10 @@ def refresh() {
 		sendEvent(createTamperEventMap("clear"))		
 	}
 	else {
-		logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."
+		logForceWakeupMessage("The sensor data will be refreshed the next time the device wakes up.")
 		state.pendingRefresh = true
 	}
+	return null
 }
 
 private createTamperEventMap(val) {
