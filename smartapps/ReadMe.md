@@ -1,15 +1,13 @@
 <a name="ReadMeAnchor"></a>
-If you like the SmartApps and Device Handlers I've created and you would like to make a donation, please go to https://www.paypal.me/krlaframboise
-
-<hr />
-<h3>SmartApps</h3>
+<h1>Kevin LaFramboise's SmartApps</h1>
 
 <ul>
-	<li><a href="https://github.com/krlaframboise/SmartThings/tree/master/smartapps#home-presence-manager">Home Presence Manager</a></li>
-	<li><a href="https://github.com/krlaframboise/SmartThings/tree/master/smartapps#simple-device-viewer">Simple Device Viewer</a></li>
+	<li><a href="#home-presence-manager">Home Presence Manager</a></li>
+	<li><a href="#simple-device-viewer">Simple Device Viewer</a></li>
 	<li><a href="#simple-event-logger">Simple Event Logger</a></li>
 </ul>
 
+If you like the SmartApps and Device Handlers I've created and you would like to make a donation, please go to https://www.paypal.me/krlaframboise
 
 <hr />
 
