@@ -1,5 +1,5 @@
 /**
- *  Fibaro Motion Sensor v0.0.1
+ *  Fibaro Motion Sensor v0.0.2
  *  (Model: FGMS-001)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    0.0.2 (05/03/2017)
+ *      - Beta Release
  *
  *    0.0.1 (04/25/2017)
  *      - Beta Release
@@ -50,6 +53,7 @@ metadata {
 		attribute "axisX", "number"
 		attribute "axisY", "number"
 		attribute "axisZ", "number"
+		attribute "earthquakeMagnitude", "number"
 		
 		fingerprint deviceId: "0x0701", inClusters: "0x5E, 0x20, 0x86, 0x72, 0x5A, 0x59, 0x85, 0x73, 0x84, 0x80, 0x71, 0x56, 0x70, 0x31, 0x8E, 0x22, 0x30, 0x9C, 0x98, 0x7A", outClusters: ""
 		
@@ -61,8 +65,8 @@ metadata {
 	preferences {
 		getOptionsInput(motionSensitivityParam)
 		getOptionsInput(motionRetriggerParam)
-		// getOptionsInput(motionModeParam)
-		// getOptionsInput(motionNightThresholdParam)
+		getOptionsInput(motionModeParam)
+		getOptionsInput(motionNightThresholdParam)
 		getOptionsInput(vibrationSensitivityParam)
 		getOptionsInput(vibrationRetriggerParam)
 		getOptionsInput(vibrationTypeParam)
@@ -70,16 +74,16 @@ metadata {
 		getBoolInput("displayVibrationEvents", "Display Vibration Events?", false)		
 		
 		getOptionsInput(vibrationLedParam)		
-		// getOptionsInput(lightReportingThresholdParam)
+		getOptionsInput(lightReportingThresholdParam)
 		getOptionsInput(lightReportingIntervalParam)
 		getOptionsInput(tempReportingThresholdParam)
 		getOptionsInput(tempReportingIntervalParam)
 		getOptionsInput(tempMeasuringIntervalParam)
 		// getOptionsInput(tempOffsetParam)		
 		getOptionsInput(ledModeParam)
-		// getOptionsInput(ledBrightnessParam)
-		// getOptionsInput(ledBrightnessLowThresholdParam)
-		// getOptionsInput(ledBrightnessHighThresholdParam)
+		getOptionsInput(ledBrightnessParam)
+		getOptionsInput(ledBrightnessLowThresholdParam)
+		getOptionsInput(ledBrightnessHighThresholdParam)
 		// getOptionsInput(ledBlueTempThresholdParam)
 		// getOptionsInput(ledRedTempThresholdParam)
 
@@ -226,7 +230,8 @@ private initializeOptionalAttributes() {
 		"threeAxis": "0,0,0",
 		"axisX": 0,
 		"axisY": 0,
-		"axisZ": 0
+		"axisZ": 0,
+		"earthquakeMagnitude": 0
 	]	
 	optionalAttrs.each { name, val ->
 		if (getAttrValue("${name}") == null) {
@@ -249,14 +254,14 @@ private updateConfigVal(param, refreshAll) {
 
 private initializeCheckin() {
 	def result = []
-	if (state.pendingRefresh || state.checkinIntervalMinutes != checkinIntervalSettingMinutes) {
+	if (state.pendingRefresh || state.checkinInterval != checkinIntervalSetting) {
 		
-		state.checkinIntervalMinutes = checkinIntervalSettingMinutes
+		state.checkinInterval = checkinIntervalSetting
 		
-		result << wakeUpIntervalSetCmd(checkinIntervalSettingMinutes * 60)
+		result << wakeUpIntervalSetCmd(convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting))
 		
 		// Set the Health Check interval so that it can be skipped twice plus 5 minutes.
-		def checkInterval = ((checkinIntervalSettingMinutes * 3 * 60) + (5 * 60))
+		def checkInterval = ((checkinIntervalSetting * 3) + (5 * 60))
 	
 		sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 	}
@@ -290,15 +295,7 @@ def parse(String description) {
 	// logTrace "parse: $description"
 	sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
 	
-	if (description.startsWith("Err 106")) {
-		log.warn "Secure Inclusion Failed: ${description}"
-		result << createEvent( name: "secureInclusion", value: "failed", eventType: "ALERT", descriptionText: "This sensor failed to complete the network security key exchange. If you are unable to control it via SmartThings, you must remove it from your network and add it again.")
-	}
-	else if (description.startsWith("Err")) {
-		log.warn "Parse Error: $description"
-		result << createEvent(descriptionText: "$device.displayName $description", isStateChange: true)
-	}
-	else {
+	if (!description?.startsWith("Err")) {
 		def cmd = zwave.parse(description, commandClassVersions)
 		if (cmd) {
 			result += zwaveEvent(cmd)
@@ -318,30 +315,24 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 		// logTrace "secure cmd: $encapCmd"
 		result += zwaveEvent(encapCmd)
 	}
-	else if (cmd.commandClassIdentifier == 0x5E) {
-		logTrace "Unable to parse ZwaveplusInfo cmd"
-	}
 	else {
-		log.warn "Unable to extract encapsulated cmd from $cmd"
-		result << createEvent(descriptionText: "$cmd")
+		log.warn "Unable to extract encapsulated cmd from $cmd"	
 	}
 	return result
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.crc16encapv1.Crc16Encap cmd) {
-	// logTrace "Crc16Encap: ${cmd}"
+	// Ignoring these events because they're only sent when the action button is pushed.
+	
 	def result = []
-	def cmdClass = getVersionSafeCmdClass(cmd.commandClass)
-	def parsedCmd = cmdClass?.command(cmd.command)?.parse(cmd.data)
-	if (parsedCmd) {
-		
-		// Ignoring these events because they're only sent when the action button is pushed.
-		// result += zwaveEvent(parsedCmd)
-		
-	}
-	else {
-		logDebug "Unable to parse crc16encap command"
-	}
+	// def cmdClass = getVersionSafeCmdClass(cmd.commandClass)
+	// def parsedCmd = cmdClass?.command(cmd.command)?.parse(cmd.data)
+	// if (parsedCmd) {			
+		// result += zwaveEvent(parsedCmd)		
+	// }
+	// else {
+		// log.warn "Unable to parse crc16encap command"
+	// }
 	return result	
 }
 
@@ -404,9 +395,8 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	}
 	state.lastBatteryReport = new Date().time	
 	logDebug "Battery ${val}%"
-	[
-		createEvent(createEventMap("battery", val, null, null, "%"))
-	]
+	sendEvent(createEventMap("battery", val, null, null, "%"))
+	return []
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {	
@@ -418,7 +408,8 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport 
 	}
 	
 	if (configParam) {
-		logDebug "${configParam.name}(#${configParam.num}) = ${val}"
+		def name = configParam.options?.find { it.value == val}?.key
+		logDebug "${configParam.name}(#${configParam.num}) = ${name != null ? name : val}"
 		state["configVal${cmd.parameterNumber}"] = val		
 	}	
 	else {
@@ -434,7 +425,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport 
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelReport cmd) {
-	// logTrace "SensorMultilevelReport: ${cmd}"
+	logTrace "SensorMultilevelReport: ${cmd}"
 	switch (cmd.sensorType) {
 		case tempSensorType:
 			sendTempEvent(cmd)
@@ -452,6 +443,8 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelR
 				sendThreeAxisEvents(cmd)
 			}
 			break
+		default:
+			logDebug "Unknown Sensor Type: ${cmd}"
 	} 
 	return []
 }
@@ -500,15 +493,16 @@ def generateThreeAxisEvent() {
 }
 
 private sendEarthquakeEvents(val, refreshing=false) {
-	// logTrace "sendEarthquakeEvents(${val})"
+	logTrace "sendEarthquakeEvents(${val})"
 	def mVal = roundTwoPlaces(safeToDec(val))
 	if (mVal > 0 || refreshing) {		
-		sendEvent(createEventMap("vibrationData", "Mag. ${mVal}", false))
+		sendEvent(createEventMap("vibrationData", mVal ? "Mag. ${mVal}" : "", false))
+		sendEvent(createEventMap("earthquakeMagnitude", mVal, mVal ? displayVibrationEventsSetting : false, mVal ? "Magnitude ${mval} Earthquake Detected" : null))
 	}
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
-	// logTrace "NotificationReport:${cmd}"
+	logTrace "NotificationReport:${cmd}"
 	if (cmd.notificationType == 7) {
 		switch (cmd.event) {
 			case 0:
@@ -525,7 +519,12 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 			case 8:
 				sendMotionEvent(0xFF)
 				break
+			default:
+				logDebug "Unknown Notification Event: ${cmd}"
 		}
+	}
+	else {
+		logDebug "Unknown Notification Type: ${cmd}"
 	}
 	return []
 }
@@ -541,7 +540,7 @@ private sendVibrationStatusEvents(val, refreshing=false) {
 	def map
 	def vibrationType = vibrationTypeSettingName
 	if (vibrationType == "acceleration" || vibrationType == "earthquake") {
-		map = createEventMap("acceleration", val ? "active" : "inactive", displayVibrationEventsSetting)
+		map = createEventMap("acceleration", val ? "active" : "inactive", (vibrationType == "acceleration" && displayVibrationEventsSetting))
 	}
 	else {
 		map = createEventMap("tamper", val ? "detected" : "clear", displayVibrationEventsSetting)
@@ -650,25 +649,24 @@ private getConfigParams() {
 		motionSensitivityParam,
 		motionBlindTimeParam,
 		motionRetriggerParam,
-		// motionModeParam,
-		// motionNightThresholdParam,
+		motionModeParam,
+		motionNightThresholdParam,
 		vibrationSensitivityParam,
 		vibrationRetriggerParam,
 		vibrationTypeParam,
 		vibrationLedParam,
-		// lightReportingThresholdParam,
+		lightReportingThresholdParam,
 		lightReportingIntervalParam,
 		tempReportingThresholdParam,
 		tempReportingIntervalParam,
 		tempMeasuringIntervalParam,
 		// tempOffsetParam,
-		ledModeParam
-		// ledBrightnessParam,
-		// ledBrightnessLowThresholdParam,
-		// ledBrightnessHighThresholdParam,
+		ledModeParam,
+		ledBrightnessParam,
+		ledBrightnessLowThresholdParam,
+		ledBrightnessHighThresholdParam
 		// ledBlueTempThresholdParam,
-		// ledRedTempThresholdParam,
-		
+		// ledRedTempThresholdParam,		
 	]
 }
 
@@ -678,7 +676,8 @@ private getMotionSensitivityParam() {
 
 private getMotionBlindTimeParam() {
 	def val	
-	switch(convertOptionSettingToInt(retriggerOptions, motionRetriggerParam.val)) {
+	def motionRetrigger = motionRetriggerParam
+	switch(convertOptionSettingToInt(motionRetrigger.options, motionRetrigger.val)) {
 		case 5:
 			val = 2
 			break
@@ -692,15 +691,15 @@ private getMotionBlindTimeParam() {
 }
 
 private getMotionRetriggerParam() {
-	return createConfigParamMap(6, "Motion Retrigger", 2, retriggerOptions, "motionRetrigger")
+	return createConfigParamMap(6, "Motion Retrigger", 2, getIntervalOptions(30), "motionRetrigger")
 }
 
 private getMotionModeParam() {
-	return createConfigParamMap(8, "Motion Mode", 1, motionModeOptions, "motionMode")
+	return createConfigParamMap(8, "Motion Mode", 1, ["Always Detect Motion${defaultOptionSuffix}": 0, "Only Detect Motion During the Day":1, "Only Detect Motion at Night":2], "motionMode")
 }
 
 private getMotionNightThresholdParam() {
-	return createConfigParamMap(9, "Motion Night Threshold", 2, minLuxOptions, "motionNightThreshold")
+	return createConfigParamMap(9, "Motion Night Threshold", 2, getLuxOptions(200), "motionNightThreshold")
 }
 
 private getVibrationSensitivityParam() {
@@ -708,7 +707,7 @@ private getVibrationSensitivityParam() {
 }
 
 private getVibrationRetriggerParam() {
-	return createConfigParamMap(22, "Vibration Retrigger", 2, retriggerOptions, "vibrationRetrigger")
+	return createConfigParamMap(22, "Vibration Retrigger", 2, getIntervalOptions(15), "vibrationRetrigger")
 }
 
 private getVibrationTypeParam() {
@@ -716,15 +715,15 @@ private getVibrationTypeParam() {
 }
 
 private getVibrationLedParam() {
-	return createConfigParamMap(89, "Vibration LED", 1, vibrationLedOptions, "vibrationLedParam")
+	return createConfigParamMap(89, "Vibration LED", 1, ["Disabled": 0, "Flashing White, Red, and Blue${defaultOptionSuffix}": 1], "vibrationLedParam")	
 }
 
 private getLightReportingThresholdParam() {
-	return createConfigParamMap(40, "Light Reporting Threshold", 2, minLuxOptions, "lightReportingThreshold")
+	return createConfigParamMap(40, "Light Reporting Threshold", 2, getLuxOptions(200, [zeroName:"No Reports"]), "lightReportingThreshold")
 }
 
 private getLightReportingIntervalParam() {
-	return createConfigParamMap(42, "Light Reporting Interval", 2, lightReportingIntervalOptions, "lightReportingInterval")
+	return createConfigParamMap(42, "Light Reporting Interval", 2, getIntervalOptions(0, [zeroName:"No Reports"]), "lightReportingInterval")
 }
 
 private getTempReportingThresholdParam() {
@@ -732,11 +731,11 @@ private getTempReportingThresholdParam() {
 }
 
 private getTempMeasuringIntervalParam() {
-	return createConfigParamMap(62, "Temperature Measuring Interval", 2, tempMeasuringIntervalOptions, "tempMeasuringInterval")
+	return createConfigParamMap(62, "Temperature Measuring Interval", 2, getIntervalOptions((15 * 60), [zeroName:"No Reports"]), "tempMeasuringInterval")
 }
 
 private getTempReportingIntervalParam() {
-	return createConfigParamMap(64, "Temperature Reporting Interval", 2, tempReportingIntervalOptions, "tempReportingInterval")
+	return createConfigParamMap(64, "Temperature Reporting Interval", 2, getIntervalOptions(0, [zeroName:"No Reports"]), "tempReportingInterval")
 }
 
 private getTempOffsetParam() {
@@ -748,15 +747,15 @@ private getLedModeParam() {
 }
 
 private getLedBrightnessParam() {
-	return createConfigParamMap(81, "LED Brightness", 1, ledBrightnessOptions, "ledBrightness")
+	return createConfigParamMap(81, "LED Brightness", 1, getPercentageOptions(50, [zeroName: "Determined by LED Brightness Thresholds"]), "ledBrightness")
 }
 
 private getLedBrightnessLowThresholdParam() {
-	return createConfigParamMap(82, "LED Brightness 1% Threshold", 2, ledBrightnessLowThresholdOptions, "ledBrightnessLowThreshold")
+	return createConfigParamMap(82, "LED Brightness 1% Threshold", 2, getLuxOptions(100), "ledBrightnessLowThreshold")
 }
 
 private getLedBrightnessHighThresholdParam() {
-	return createConfigParamMap(83, "LED Brightness 100% Threshold", 2, maxLuxOptions, "ledBrightnessHighThreshold")
+	return createConfigParamMap(83, "LED Brightness 100% Threshold", 2, getLuxOptions(1000, [min:5, max:5000]), "ledBrightnessHighThreshold")
 }
 
 private getLedBlueTempThresholdParam() {
@@ -803,16 +802,8 @@ private getDisplayVibrationEventsSetting() {
 	return settings?.displayVibrationEvents ?: false
 }
 
-private getCheckinIntervalSettingMinutes() {
-	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting) ?: 120
-}
-
 private getCheckinIntervalSetting() {
 	return settings?.wakeUpInterval ?: findDefaultOptionName(checkinIntervalOptions)
-}
-
-private getBatteryReportingIntervalSettingMinutes() {
-	return convertOptionSettingToInt(checkinIntervalOptions, batteryReportingIntervalSetting) ?: checkinIntervalSettingMinutes
 }
 
 private getBatteryReportingIntervalSetting() {
@@ -821,14 +812,6 @@ private getBatteryReportingIntervalSetting() {
 
 private getDebugOutputSetting() {
 	return (settings?.debugOutput || settings?.debugOutput == null)
-}
-
-
-private getVibrationLedOptions() {
-	return setDefaultOption([
-		"Disabled": 0,
-		"Flashing White, Red, and Blue": 1
-	], 1)
 }
 
 private getMotionSensitivityOptions() {
@@ -877,20 +860,8 @@ private getVibrationSensitivityOptions() {
 	return setDefaultOption(options, 20)
 }
 
-private getRetriggerOptions() {
-	return getIntervalOptions(30)
-}
-
-private getLightReportingIntervalOptions() {
-	return getIntervalOptions(0, "No Reports")
-}
-
 private getLightReportingThresholdOptions() {
 	return getMinLuxOptions(200, "0 Lux")
-}
-
-private getTempReportingIntervalOptions() {
-	return getIntervalOptions(0, "No Reports")
 }
 
 private getTempReportingThresholdOptions() {
@@ -902,51 +873,89 @@ private getTempReportingThresholdOptions() {
 	return setDefaultOption(options, 10)
 }
 
-private getTempMeasuringIntervalOptions() {
-	return getIntervalOptions(900, "No Reports")
+private getCheckinIntervalOptions() {
+	return getIntervalOptions((2 * 60 * 60), [min:(5 * 60), max:(18*60*60)])
 }
 
-private getIntervalOptions(defaultVal=null, zeroValName=null) {
+private getIntervalOptions(defaultVal=null, data=[:]) {
 	def options = [:]
+	def min = data?.zeroName ? 0 : (data?.min != null ? data.min : 1)
+	def max = data?.max != null ? data?.max : (9 * 60 * 60)
 	
-	if (zeroValName) {
-		options["${zeroValName}"] = 0
-	}
-	
-	[5,10,15,30,45].each {
-		options["${it} Seconds"] = it
+	[0,1,2,3,4,5,10,15,30,45].each {
+		if (withinRange(it, min, max)) {
+			if (it == 0 && data?.zeroName != null) {
+				options["${data?.zeroName}"] = it
+			}
+			else {
+				options["${it} Second${x == 1 ? '' : 's'}"] = it
+			}
+		}
 	}
 
-	options["1 Minute"] = 60
-	[2,4,8,15,30,45].each {
-		options["${it} Minutes"] = (it * 60)
+	[1,2,3,4,5,10,15,30,45].each {
+		if (withinRange((it * 60), min, max)) {
+			options["${it} Minute${x == 1 ? '' : 's'}"] = (it * 60)
+		}
 	}
 
-	options["1 Hour"] = (60 * 60)
-	[2,4,6,8].each {
-		options["${it} Hours"] = (it * 60 * 60)
+	[1,2,3,6,9,12,18].each {
+		if (withinRange((it * 60 * 60), min, max)) {
+			options["${it} Hour${x == 1 ? '' : 's'}"] = (it * 60 * 60)
+		}
+	}	
+	return setDefaultOption(options, defaultVal)
+}
+
+private getLuxOptions(defaultVal=null, data=[:]) {
+	def options = [:]
+	def min = data?.zeroName ? 0 : (data?.min != null ? data.min : 1)
+	def max = data?.max != null ? data?.max : 2500
+	
+	[0,1,2,3,4,5,10,25,50,75,100,150,200,250,300,400,500,750,1000,1250,1500,1750,2000,2500,3000,3500,4000,4500,5000,6000,7000,8000,9000,10000,12500,15000,17500,20000,25000,30000].each {
+		if (withinRange(it, min, max)) {
+			if (it == 0 && data?.zeroName != null) {
+				options["${data?.zeroName}"] = it
+			}
+			else {
+				options["${it} lux"] = it
+			}
+		}
 	}
 	return setDefaultOption(options, defaultVal)
 }
 
-private getMinLuxOptions(defaultVal=null, zeroValName=null) {
+private getPercentageOptions(defaultVal=null, data=[:]) {
+	def options = [:]
+	def min = data?.zeroName ? 0 : (data?.min != null ? data.min : 1)
+	def max = data?.max != null ? data?.max : 100
+		
+	[0,1,2,3,4,5].each {
+		if (withinRange(it, min, max)) {
+			if (it == 0 && data?.zeroName != null) {
+				options["${data?.zeroName}"] = it
+			}
+			else {
+				options["${it}%"] = it
+			}
+		}
+	}
 	
+	for (int i = 10; i <= 100; i += 5) {
+		if (withinRange(i, min, max)) {
+			options["${i}%"] = i
+		}
+	}
+	
+	return setDefaultOption(options, defaultVal)
 }
 
-private getCheckinIntervalOptions() {
-	return setDefaultOption([
-		"10 Minutes":10,
-		"15 Minutes":15,
-		"30 Minutes":30,
-		"1 Hour":60,
-		"2 Hours":120,
-		"3 Hours":180,
-		"6 Hours":360,
-		"9 Hours":540,
-		"12 Hours":720,
-		"18 Hours":1080,
-		"24 Hours":1440
-	], 120)
+private withinRange(val, min, max) {
+	return ((min == null || val >= min) && (max == null || val <= max))
+}
+
+private getMinLuxOptions(defaultVal=null, zeroValName=null) {
+	
 }
 
 private convertOptionSettingToInt(options, settingVal) {
@@ -954,14 +963,22 @@ private convertOptionSettingToInt(options, settingVal) {
 }
 
 private setDefaultOption(options, defaultVal) {
-	def result = [:]
-	if (defaultVal != null) {
-		options.each { name, val ->
-			if (val == defaultVal) {
-				name = "${name}${defaultOptionSuffix}"
-			}
-			result["${name}"] = val
+	def name = options.find { key, val -> val == defaultVal }?.key
+	if (name != null) {
+		return changeOptionName(options, defaultVal, "${name}${defaultOptionSuffix}")
+	}
+	else {
+		return options
+	}	
+}
+
+private changeOptionName(options, optionVal, newName) {
+	def result = [:]	
+	options?.each { name, val ->
+		if (val == optionVal) {
+			name = "${newName}"
 		}
+		result["${name}"] = val
 	}
 	return result
 }
@@ -1044,5 +1061,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	// log.trace "$msg"
+	log.trace "$msg"
 }
