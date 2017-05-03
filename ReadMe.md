@@ -28,7 +28,9 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-mouser">Dome Mouser</a></li>			
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-on-off-plug">Dome On Off Plug</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-siren">Dome Siren</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-water-shut-off">Dome Water Shut-Off</a></li>			
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-water-shut-off">Dome Water Shut-Off</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#everspring-motion-detector">Everspring Motion Detector</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#fibaro-motion-sensor-zw5">Fibaro Motion Sensor ZW5</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#forcible-mobile-presence">Forcible Mobile Presence</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-doorwindow-sensor">GoControl/Linear Door/Window Sensor</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-multifunction-contact-sensor">GoControl/Linear Multifunction Contact Sensor</a></li>
@@ -39,6 +41,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zoozmonoprice-4-in-1-multisensor">Monoprice 4-in-1 Motion Sensor with Temperature, Humidity, and Light Sensors</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#polling-cree-bulb">Polling Cree Bulb</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#polling-ge-link-bulb">Polling GE Link Bulb</a></li>
+			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#remotec-zxt-310-ir-extender">Remotec ZXT-310 IR Extender</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#thingshield-timer">ThingShield Timer</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#vision-shock-sensor">Vision Shock Sensor</a></li>
 			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#wireless-smoke-detector-sensor">Wireless Smoke Detector Sensor</a></li>
@@ -205,6 +208,27 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 
 
 <hr />
+<h3>Everspring Motion Detector</h3>
+<ul>
+<li>This is a device handler for the Everspring Motion Detector (HSP02)</li>
+<li>Reports Motion, Battery, Tamper.</li>
+<li>Allows you to set a ambient light percentage and it raises the Contact Open event when the light level drops below that percentage and motion is detected.</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/everspring-motion-detector.src/everspring-motion-detector.groovy">View Everspring Motion Detector - Device Handler Code</a></li>
+</ul>
+
+
+<hr />
+<h3>Fibaro Motion Sensor ZW5</h3>
+<ul>
+<li>This is a device handler for the Fibaro Motion Sensor ZW5 (FGMS-001)</li>
+<li>Reports Motion, Light, Temperature, and Acceleration/Tamper.</li>
+<li>It can also report either Earthquake magnitude or Three-Axis x,y,z.
+<li>Simplifies all the configuration settings.</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/fibaro-motion-sensor-zw5.src/fibaro-motion-sensor-zw5.groovy">View Fibaro Motion Sensor ZW5 - Device Handler Code</a></li>
+</ul>
+
+
+<hr />
 <h3>Forcible Mobile Presence</h3>
 <ul>
 <li>Adds the buttons "Arrive" and "Depart" to the normal "Mobile Presence" DTH so you can force the presence state.</li>
@@ -308,6 +332,23 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>DTH for the GE Link Bulb that reports at regular intervals so you can monitor it to ensure that it hasn't dropped offline.</li>
 <li>The default GE Link Bull DTH responds to poll requests and runs locally so instead of using this one, you might be better off sticking with the default and using a SmartApp like pollster or my Simple Device Viewer to poll it a couple of times a day to make sure it's still online.</li> 
 <li><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/polling-ge-link-bulb.src">View Polling GE Link Bulb - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Remotec ZXT-310 IR Extender</h3>
+
+<ul>
+<li>This is a device handler for the Remotec Z-Wave-to-AV IR Extender (Model: ZXT-310)</li>
+<li>The device handler provides 6 sets of 9 buttons which allows you to learn up to 54 IR Codes from other remote controls.</li>
+<li>Each set of buttons can be configured to use the internal IR Port or any of the External Ports. The device has 5 external ports and comes with 3 - 6' external cables.</li>
+<li>You can specify triggers for the 9 buttons. The options are Switch On, Switch Off, Switch On/Off, and Momentary Switch Push.</li>
+<li>You can also push the buttons using any SmartApp that supports the Switch Level capability. Level 10% pushes button 1, 20% pushes button 2, etc.</li>
+<li>The triggers and switch levels push the buttons for the active set of buttons, but to switch between the sets of buttons you need to tap the E1-E6 tiles or use a SmartApp like CoRE to execute the custom commands setActiveEP1 - setActiveEP6. Or use the optional SmartApp which will generate a separate virtual device for each set of buttons.</li>
+<li>All you have to do to program a button is tap the "Learn" tile, tap the button you want to program, hold down the key on the remote control until the LED flashes twice, and then tap the "Learn" tile again.<br></li>
+<li><a href="https://community.smartthings.com/t/release-remotec-zxt-310-z-wave-to-av-ir-extender/83472?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/remotec-zxt-310-ir-extender.src/remotec-zxt-310-ir-extender.groovy">View Remotec ZXT-310 IR Extender - Device Handler Code</a></li>
+<li>View optional <a href="https://github.com/krlaframboise/SmartThings/blob/master/smartapps/krlaframboise/remotec-zxt-310-device-manager.src/remotec-zxt-310-device-manager.groovy">SmartApp code</a> and optional <a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/remotec-zxt-310-device.src/remotec-zxt-310-device.groovy">Child Device code</a> that allow you to use this device as 6 devices.</a></li>
 </ul>
 
 <hr />
