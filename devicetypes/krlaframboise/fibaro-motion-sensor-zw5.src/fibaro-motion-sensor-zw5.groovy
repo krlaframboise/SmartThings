@@ -325,14 +325,14 @@ def zwaveEvent(physicalgraph.zwave.commands.crc16encapv1.Crc16Encap cmd) {
 	// Ignoring these events because they're only sent when the action button is pushed.
 	
 	def result = []
-	// def cmdClass = getVersionSafeCmdClass(cmd.commandClass)
-	// def parsedCmd = cmdClass?.command(cmd.command)?.parse(cmd.data)
-	// if (parsedCmd) {			
-		// result += zwaveEvent(parsedCmd)		
-	// }
-	// else {
-		// log.warn "Unable to parse crc16encap command"
-	// }
+	def cmdClass = getVersionSafeCmdClass(cmd.commandClass)
+	def parsedCmd = cmdClass?.command(cmd.command)?.parse(cmd.data)
+	if (parsedCmd) {			
+		result += zwaveEvent(parsedCmd)		
+	}
+	else {
+		log.warn "Unable to parse crc16encap command"
+	}
 	return result	
 }
 
@@ -425,7 +425,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport 
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelReport cmd) {
-	logTrace "SensorMultilevelReport: ${cmd}"
+	// logTrace "SensorMultilevelReport: ${cmd}"
 	switch (cmd.sensorType) {
 		case tempSensorType:
 			sendTempEvent(cmd)
@@ -502,7 +502,7 @@ private sendEarthquakeEvents(val, refreshing=false) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
-	logTrace "NotificationReport:${cmd}"
+	// logTrace "NotificationReport:${cmd}"
 	if (cmd.notificationType == 7) {
 		switch (cmd.event) {
 			case 0:
