@@ -1,5 +1,5 @@
 /**
- *  Fibaro Motion Sensor v0.0.2
+ *  Fibaro Motion Sensor v1.0
  *  (Model: FGMS-001)
  *
  *  Author: 
@@ -10,11 +10,8 @@
  *
  *  Changelog:
  *
- *    0.0.2 (05/03/2017)
- *      - Beta Release
- *
- *    0.0.1 (04/25/2017)
- *      - Beta Release
+ *    1.0 (05/04/2017)
+ *      - Initial Release
  *
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -50,10 +47,13 @@ metadata {
 		attribute "lastUpdate", "string"
 		attribute "vibrationData", "string"
 		attribute "vibrationStatus", "string"
+		attribute "nightDay", "string"
 		attribute "axisX", "number"
 		attribute "axisY", "number"
 		attribute "axisZ", "number"
 		attribute "earthquakeMagnitude", "number"
+		
+		command "clearActivity"
 		
 		fingerprint deviceId: "0x0701", inClusters: "0x5E, 0x20, 0x86, 0x72, 0x5A, 0x59, 0x85, 0x73, 0x84, 0x80, 0x71, 0x56, 0x70, 0x31, 0x8E, 0x22, 0x30, 0x9C, 0x98, 0x7A", outClusters: ""
 		
@@ -63,44 +63,45 @@ metadata {
 	simulator { }
 	
 	preferences {
+		getParagraphInput("", "")
 		getOptionsInput(motionSensitivityParam)
 		getOptionsInput(motionRetriggerParam)
 		getOptionsInput(motionModeParam)
 		getOptionsInput(motionNightThresholdParam)
+		
+		getParagraphInput("", "")
 		getOptionsInput(vibrationSensitivityParam)
 		getOptionsInput(vibrationRetriggerParam)
 		getOptionsInput(vibrationTypeParam)
 						
 		getBoolInput("displayVibrationEvents", "Display Vibration Events?", false)		
 		
-		getOptionsInput(vibrationLedParam)		
+		getParagraphInput("", "")
 		getOptionsInput(lightReportingThresholdParam)
 		getOptionsInput(lightReportingIntervalParam)
+		
+		getParagraphInput("", "")
 		getOptionsInput(tempReportingThresholdParam)
 		getOptionsInput(tempReportingIntervalParam)
 		getOptionsInput(tempMeasuringIntervalParam)
-		// getOptionsInput(tempOffsetParam)		
-		getOptionsInput(ledModeParam)
+		getOptionsInput(tempOffsetParam)		
+		
+		getParagraphInput("", "")
 		getOptionsInput(ledBrightnessParam)
 		getOptionsInput(ledBrightnessLowThresholdParam)
 		getOptionsInput(ledBrightnessHighThresholdParam)
-		// getOptionsInput(ledBlueTempThresholdParam)
-		// getOptionsInput(ledRedTempThresholdParam)
-
-		input "wakeUpInterval", "enum",
-			title: "Checkin Interval:",
-			defaultValue: checkinIntervalSetting,
-			required: false,
-			displayDuringSetup: true,
-			options: checkinIntervalOptions.collect { name, val -> name }
-		input "batteryReportingInterval", "enum",
-			title: "Battery Reporting Interval:",
-			defaultValue: batteryReportingIntervalSetting,
-			required: false,
-			displayDuringSetup: true,
-			options: checkinIntervalOptions.collect { name, val -> name }
-		getBoolInput("debugOutput", "Enable debug logging?", true)
+		getOptionsInput(vibrationLedModeParam)
+		getOptionsInput("motionLedMode", "Motion LED Mode", motionLedModeSetting, motionLedModeOptions)
+		getOptionsInput("motionLedColor", "Motion LED Color", motionLedColorSetting, motionLedColorOptions)
+		getOptionsInput(ledBlueTempThresholdParam)
+		getOptionsInput(ledRedTempThresholdParam)
 		
+		getParagraphInput("", "")
+		getOptionsInput("wakeUpInterval", "Checkin Interval", checkinIntervalSetting, checkinIntervalOptions)
+		
+		getOptionsInput("batteryReportingInterval", "Battery Reporting Interval", batteryReportingIntervalSetting, checkinIntervalOptions)
+				
+		getBoolInput("debugOutput", "Enable debug logging?", true)		
 	}
 
 	tiles(scale: 2) {
@@ -126,26 +127,36 @@ metadata {
 		standardTile("vibrationStatus", "device.vibrationStatus", inactiveLabel: false, width: 2, height: 2) {
 			state "accelerationInactive", label:'Inactive', icon:"st.motion.acceleration.inactive", backgroundColor:"#cccccc"
 			state "accelerationActive", label:'Active', icon:"st.motion.acceleration.active", backgroundColor:"#00a0dc"
-			state "earthquakeInactive", label:'Clear'//, icon:"", backgroundColor:"#ffffff"
-			state "earthquakeActive", label:'Earthquake', icon:"st.secondary.activity"//, backgroundColor:"#53a7c0"
-			state "tamperClear", label:'Clear', icon:""//, backgroundColor:"#ffffff"
-			state "tamperDetected", label:'Tamper', icon:"st.security.alarm.alarm"//, backgroundColor:"#e86d13"
+			state "earthquakeInactive", label:'No Earthquakes'
+			state "earthquakeActive", label:'Earthquake', icon:"st.secondary.activity"
+			state "tamperClear", label:'Tamper Clear', icon:""
+			state "tamperDetected", label:'Tamper', icon:"st.security.alarm.alarm"
+		}
+		
+		valueTile("nightDay", "device.nightDay", inactiveLabel: false, width: 2, height: 1) {
+			// state "day", label:'', icon:"st.Weather.weather14"
+			state "day", label:'', icon:"http://cdn.device-icons.smartthings.com/Weather/weather14-icn@2x.png"
+			state "night", label:'', icon:"st.Weather.weather4"
 		}
 		
 		valueTile("vibrationData", "device.vibrationData", inactiveLabel: false, width: 2, height: 2) {
 			state "vibrationData", label:'${currentValue}'
 		}
 		
-		valueTile("illuminance", "device.illuminance", inactiveLabel: false, width: 2, height: 2) {
-			state "luminosity", label:'${currentValue} lux'
+		valueTile("illuminance", "device.illuminance", inactiveLabel: false, width: 2, height: 1) {
+			state "illuminance", label:'${currentValue} lux'
 		}
 		
 		valueTile("battery", "device.battery", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
 			state "battery", label:'${currentValue}% battery', unit:""
 		}
 		
+		standardTile("clear", "device.generic", width: 2, height: 2) {
+			state "default", label:'Clear Activity', action: "clearActivity", icon:"st.secondary.refresh-icon"
+		}
+		
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
-			state "refresh", label:'Refresh', action: "refresh", icon:"st.secondary.refresh-icon"
+			state "refresh", label:'Refresh Configuration', action: "refresh", icon:"st.secondary.preferences"
 		}
 		
 		valueTile("lastUpdate", "device.lastUpdate", decoration: "flat", width: 2, height: 2){
@@ -153,8 +164,16 @@ metadata {
 		}
 
 		main "motion"
-		details(["motion", "temperature", "illuminance", "vibrationStatus", "vibrationData", "battery", "refresh", "lastUpdate"])
+		details(["motion", "temperature", "nightDay", "illuminance", "vibrationStatus", "vibrationData", "battery", "clear", "refresh", "lastUpdate"])
 	}
+}
+
+private getParagraphInput(title, desc) {
+	input "", "paragraph", 
+		title: "${title}", 
+		description: "${desc}", 
+		required: false, 
+		displayDuringSetup: true
 }
 
 private getBoolInput(name, title, defaultVal) {
@@ -204,9 +223,11 @@ def configure() {
 	
 	initializeOptionalAttributes()
 	
-	if (state.pendingChanges == null) {		
+	if (state.pendingChanges == null) {
+		sendEvent(createEventMap("vibrationData", "", false))
 		logTrace "Waiting 1 second because this is the first time being configured"
-		cmds << "delay 1000"	
+		cmds << "delay 1000"
+		cmds += refreshSensorData()
 	}
 	
 	cmds += initializeCheckin()
@@ -215,11 +236,10 @@ def configure() {
 		cmds += updateConfigVal(param, state.pendingRefresh)		
 	}
 	
-	if (!cmds) {
-		state.pendingChanges = false
-		cmds += refreshSensorData()
-	}
-	
+	if (cmds) {
+		cmds << "delay 3000"
+		cmds << basicGetCmd()
+	}		
 	return cmds ? delayBetween(cmds, 500) : []	
 }
 
@@ -254,14 +274,16 @@ private updateConfigVal(param, refreshAll) {
 
 private initializeCheckin() {
 	def result = []
-	if (state.pendingRefresh || state.checkinInterval != checkinIntervalSetting) {
+	def intervalSeconds = convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting)
+	
+	if (state.pendingRefresh || state.checkinInterval != intervalSeconds) {		
 		
-		state.checkinInterval = checkinIntervalSetting
+		state.checkinInterval = intervalSeconds
 		
-		result << wakeUpIntervalSetCmd(convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting))
+		result << wakeUpIntervalSetCmd(intervalSeconds)
 		
 		// Set the Health Check interval so that it can be skipped twice plus 5 minutes.
-		def checkInterval = ((checkinIntervalSetting * 3) + (5 * 60))
+		def checkInterval = ((intervalSeconds * 3) + (5 * 60))
 	
 		sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 	}
@@ -274,6 +296,11 @@ def ping() {
 }
 
 def refresh() {
+	state.pendingRefresh = true
+	logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."		
+}
+
+def clearActivity() {
 	def vibrationType = vibrationTypeSettingName
 	def vibrationAttr = getAttrValue("vibrationStatus")
 	
@@ -285,9 +312,6 @@ def refresh() {
 			sendEarthquakeEvents(0, true)
 		}
 	}
-			
-	state.pendingRefresh = true
-	logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."		
 }
 
 def parse(String description) {
@@ -340,17 +364,16 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
 	logTrace "WakeUpNotification: $cmd"
 	def result = []
 	
-	if (state.pendingChanges != false) {
+	if (state.pendingChanges != false || state.pendingRefresh) {
 		result += configure()
 	}
-	else if (state.pendingRefresh || canReportBattery()) {
-		state.pendingRefresh = false
-		result += refreshSensorData()
+	else if (canReportBattery()) {
+		result << batteryGetCmd()
 	}
 	else {
-		logTrace "Skipping battery check because it was already checked within the last ${batteryReportingIntervalSetting} hours."
+		logTrace "Skipping battery check because it was already checked within ${batteryReportingIntervalSetting}."
 	}
-		
+	
 	if (result) {
 		result << "delay 1200"
 	}	
@@ -377,7 +400,7 @@ private refreshSensorData() {
 }
 
 private canReportBattery() {
-	def reportEveryMS = (batteryReportingIntervalSettingMinutes * 60 * 1000)
+	def reportEveryMS = (convertOptionSettingToInt(checkinIntervalOptions, batteryReportingIntervalSetting) * 1000)
 		
 	return (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) 
 }
@@ -409,19 +432,23 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport 
 	
 	if (configParam) {
 		def name = configParam.options?.find { it.value == val}?.key
-		logDebug "${configParam.name}(#${configParam.num}) = ${name != null ? name : val}"
+		logDebug "${configParam.name}(#${configParam.num}) = ${name != null ? name : val} (${val})"
 		state["configVal${cmd.parameterNumber}"] = val		
 	}	
 	else {
 		logDebug "Parameter ${cmd.parameterNumber} = ${val}"
 	}
 	
+	runIn(5, finalizeConfiguration)
+	return []
+}
+
+def finalizeConfiguration() {
 	if (state.pendingChanges || state.pendingRefresh) {
 		sendEvent(name: "lastUpdate", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
 		state.pendingChanges = false
 		state.pendingRefresh = false	
 	}	
-	return []
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelReport cmd) {
@@ -430,9 +457,8 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelR
 		case tempSensorType:
 			sendTempEvent(cmd)
 			break
-		case lightSensorType:
-			logDebug "Illuminance ${cmd.scaledSensorValue} lux"
-			sendEvent(createEventMap("illuminance", cmd.scaledSensorValue, null, null, "lux"))
+		case lightSensorType:			
+			sendLightEvents(cmd.scaledSensorValue)
 			break
 		case earthquakeSensorType:		
 			if (vibrationTypeSettingName == "earthquake") {
@@ -492,6 +518,12 @@ def generateThreeAxisEvent() {
 	sendEvent(createEventMap("vibrationData", "${x}x,${y}y,${z}z", false))
 }
 
+private sendLightEvents(val) {
+	logDebug "Illuminance ${val} lux"
+	sendEvent(createEventMap("illuminance", val, null, null, "lux"))
+	sendEvent(createEventMap("nightDay", (val > convertOptionSettingToInt(motionNightThresholdParam.options, motionNightThresholdParam.val)) ? "day" : "night", false))
+}
+
 private sendEarthquakeEvents(val, refreshing=false) {
 	logTrace "sendEarthquakeEvents(${val})"
 	def mVal = roundTwoPlaces(safeToDec(val))
@@ -499,6 +531,18 @@ private sendEarthquakeEvents(val, refreshing=false) {
 		sendEvent(createEventMap("vibrationData", mVal ? "Mag. ${mVal}" : "", false))
 		sendEvent(createEventMap("earthquakeMagnitude", mVal, mVal ? displayVibrationEventsSetting : false, mVal ? "Magnitude ${mval} Earthquake Detected" : null))
 	}
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {	
+	logTrace "BasicReport: $cmd"
+	
+	state.pendingChanges = false
+	state.pendingRefresh = false
+	
+	sendEvent(name: "lastUpdate", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+	
+	sendMotionEvent(cmd.value ? 0xFF : 0x00)	
+	return []
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
@@ -554,6 +598,9 @@ private sendVibrationStatusEvents(val, refreshing=false) {
 	}
 }
 
+private basicGetCmd() {
+	return secureCmd(zwave.basicV1.basicGet())
+}
 
 private sensorMultilevelGetCmd(sensorType, scale) {
 	return secureCmd(zwave.sensorMultilevelV5.sensorMultilevelGet(sensorType: sensorType, scale: scale))
@@ -653,20 +700,21 @@ private getConfigParams() {
 		motionNightThresholdParam,
 		vibrationSensitivityParam,
 		vibrationRetriggerParam,
-		vibrationTypeParam,
-		vibrationLedParam,
+		vibrationTypeParam,		
 		lightReportingThresholdParam,
 		lightReportingIntervalParam,
 		tempReportingThresholdParam,
 		tempReportingIntervalParam,
 		tempMeasuringIntervalParam,
-		// tempOffsetParam,
-		ledModeParam,
+		tempOffsetParam,
+		vibrationLedModeParam,
+		motionLedModeParam,
 		ledBrightnessParam,
 		ledBrightnessLowThresholdParam,
-		ledBrightnessHighThresholdParam
-		// ledBlueTempThresholdParam,
-		// ledRedTempThresholdParam,		
+		ledBrightnessHighThresholdParam,
+		ledBlueTempThresholdParam,
+		ledRedTempThresholdParam
+		// tamperCancellationParam
 	]
 }
 
@@ -714,7 +762,11 @@ private getVibrationTypeParam() {
 	return createConfigParamMap(24, "Vibration Type", 1, vibrationTypeOptions, "vibrationType")
 }
 
-private getVibrationLedParam() {
+// private getTamperCancellationParam() {
+	// return createConfigParamMap(25, "Tamper Cancellation", 1, ["Do Not Send Tamper Cancellation Reports":0, "Send Tamper Cancellation Reports":1], "tamperCancellation")
+// }
+
+private getVibrationLedModeParam() {
 	return createConfigParamMap(89, "Vibration LED", 1, ["Disabled": 0, "Flashing White, Red, and Blue${defaultOptionSuffix}": 1], "vibrationLedParam")	
 }
 
@@ -727,11 +779,11 @@ private getLightReportingIntervalParam() {
 }
 
 private getTempReportingThresholdParam() {
-	return createConfigParamMap(60, "Temperature Reporting Threshold", 1, tempReportingThresholdOptions, "tempReportingThreshold")
+	return createConfigParamMap(60, "Temperature Reporting Threshold", 2, getTempOptions(10, [zeroName: "Don't send reports based on temperature change"]), "tempReportingThreshold")
 }
 
 private getTempMeasuringIntervalParam() {
-	return createConfigParamMap(62, "Temperature Measuring Interval", 2, getIntervalOptions((15 * 60), [zeroName:"No Reports"]), "tempMeasuringInterval")
+	return createConfigParamMap(62, "Temperature Measuring Interval", 2, getIntervalOptions((15 * 60), [zeroName:"Don't Measure Temperature"]), "tempMeasuringInterval")
 }
 
 private getTempReportingIntervalParam() {
@@ -739,11 +791,18 @@ private getTempReportingIntervalParam() {
 }
 
 private getTempOffsetParam() {
-	return createConfigParamMap(66, "Temperature Offset", 2, tempOffsetOptions, "tempOffset")
+	return createConfigParamMap(66, "Temperature Offset", 2, getTempOptions(0, [zeroName:"No Offset", min:-100, max:100]), "tempOffset")
 }
 
-private getLedModeParam() {
-	return createConfigParamMap(80, "LED Mode", 1, ledModeOptions, "ledMode")
+private getMotionLedModeParam() {
+	def ledMode = convertOptionSettingToInt(motionLedModeOptions, motionLedModeSetting)
+	def ledColor = convertOptionSettingToInt(motionLedColorOptions, motionLedColorSetting)
+
+	def val	= ledMode == 0 ? 0 : (((ledMode - 1) * 9) + ledColor)
+	if (ledMode == 3 && ledColor > 1) {
+		val = (val - 1) // Adjust value because the Flashlight option isn't available for the 3rd mode.
+	}
+	return createConfigParamMap(80, "Motion LED Mode/Color", 1, null, "motionLedMode", val)	
 }
 
 private getLedBrightnessParam() {
@@ -759,11 +818,11 @@ private getLedBrightnessHighThresholdParam() {
 }
 
 private getLedBlueTempThresholdParam() {
-	return createConfigParamMap(86, "Blue LED Temperature Threshold", 1, minTempOptions, "ledBlueTempThreshold")
+	return createConfigParamMap(86, "Blue LED Temperature Threshold", 2, getTempValueOptions(18, [min:0, max:30]), "ledBlueTempThreshold")
 }
 
 private getLedRedTempThresholdParam() {
-	return createConfigParamMap(87, "Red LED Temperature Threshold", 1, maxTempOptions, "ledRedTempThreshold")
+	return createConfigParamMap(87, "Red LED Temperature Threshold", 2, getTempValueOptions(28, [min:10, max:40]), "ledRedTempThreshold")
 }
 
 private createConfigParamMap(num, name, size, options, prefName, val=null) {
@@ -792,6 +851,14 @@ private getVibrationTypeSettingName() {
 	else {
 		return "tamper"
 	}
+}
+
+private getMotionLedModeSetting() {
+	return settings?.motionLedMode != null ? settings.motionLedMode : findDefaultOptionName(motionLedModeOptions)
+}
+
+private getMotionLedColorSetting() {
+	return settings?.motionLedColor != null ? settings?.motionLedColor : findDefaultOptionName(motionLedModeOptions)
 }
 
 private getVibrationTypeSetting() {
@@ -827,10 +894,19 @@ private getMotionSensitivityOptions() {
 	return setDefaultOption(options, 20)
 }
 
-private getLedModeOptions() {
+private getMotionLedModeOptions() {
 	return setDefaultOption([
 		"Disabled": 0,
-		"White (flashlight)": 2,
+		"Long blink when motion is detected": 1,
+		"Long blink when motion is detected and short blink when motion is detected again.": 2,
+		"Long blink when motion is detected and 2 short blinks when motion is detected again.":3
+	], 2)
+}
+
+private getMotionLedColorOptions() {
+	return setDefaultOption([
+		"Color determined by Red/Blue Temperature Thresholds": 1,
+		"White Flashlight (10 Seconds)": 2,
 		"White": 3,
 		"Red": 4,
 		"Green": 5,
@@ -838,7 +914,7 @@ private getLedModeOptions() {
 		"Yellow": 7,
 		"Cyan": 8,
 		"Magenta": 9
-	], 5)
+	], 1)
 }
 
 private getVibrationTypeOptions() {
@@ -864,17 +940,40 @@ private getLightReportingThresholdOptions() {
 	return getMinLuxOptions(200, "0 Lux")
 }
 
-private getTempReportingThresholdOptions() {
-	def options = [:]
-	for (int i = 1; i <= 100; i += (i == 1 ? 4 : 5)) {
-		def name = "${i.toBigDecimal() * 0.1} °C / ${(((i.toBigDecimal() * 0.1)*9)/5)} °F"
-		options["${name}"] = i
-	}
-	return setDefaultOption(options, 10)
-}
-
 private getCheckinIntervalOptions() {
 	return getIntervalOptions((2 * 60 * 60), [min:(5 * 60), max:(18*60*60)])
+}
+
+private getTempOptions(defaultVal=null, data=[:]) {
+	def options = [:]
+	def min = ((data?.zeroName && (!data?.min || data?.min > 0)) ? 0 : (data?.min != null ? data.min : 1))
+	def max = data?.max != null ? data?.max : 100
+	
+	for (int i = min; i <= max; i += ((i < 5 && i >= -5) ? 1 : (i == 1 ? 4 : 5))) {
+		if (i == 0 && data?.zeroName != null) {
+			options["${data?.zeroName}"] = i
+		}
+		else {
+			options["${i.toBigDecimal() * 0.1}°C / ${(((i.toBigDecimal() * 0.1)*9)/5)}°F"] = i
+		}
+	}
+	return setDefaultOption(options, defaultVal)
+}
+
+private getTempValueOptions(defaultVal=null, data=[:]) {
+	def options = [:]
+	def min = data?.zeroName ? 0 : (data?.min != null ? data.min : 1)
+	def max = data?.max != null ? data?.max : 40
+	
+	for (int i = min; i <= max; i += 1) {
+		if (i == 0 && data?.zeroName != null) {
+			options["${data?.zeroName}"] = i
+		}
+		else {
+			options["${i}°C / ${(((i*9)/5) + 32)}°F"] = i
+		}
+	}
+	return setDefaultOption(options, defaultVal)
 }
 
 private getIntervalOptions(defaultVal=null, data=[:]) {
@@ -1017,8 +1116,8 @@ private createEventMap(name, value, displayed=null, desc=null, unit=null) {
 	def eventMap = [
 		name: name,
 		value: value,
-		displayed: displayed,
-		isStateChange: isStateChange
+		displayed: displayed
+		// ,isStateChange: isStateChange
 	]
 	if (desc) {
 		eventMap.descriptionText = desc
@@ -1061,5 +1160,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	log.trace "$msg"
+	// log.trace "$msg"
 }
