@@ -1,5 +1,5 @@
 /**
- *  Fibaro Motion Sensor v1.0
+ *  Fibaro Motion Sensor v1.0.1
  *  (Model: FGMS-001)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.0 (05/04/2017)
+ *    1.0.1 (05/04/2017)
  *      - Initial Release
  *
  *
@@ -233,11 +233,14 @@ def configure() {
 	cmds += initializeCheckin()
 				
 	configParams.each { param ->	
-		cmds += updateConfigVal(param, state.pendingRefresh)		
+		cmds += updateConfigVal(param, refreshAll)
+	}
+	
+	if (!cmds && canReportBattery()) {
+		cmds << batteryGetCmd()
 	}
 	
 	if (cmds) {
-		cmds << "delay 3000"
 		cmds << basicGetCmd()
 	}		
 	return cmds ? delayBetween(cmds, 500) : []	
@@ -264,6 +267,7 @@ private updateConfigVal(param, refreshAll) {
 	def result = []
 	def newVal = param.options ? convertOptionSettingToInt(param.options, param.val) : param.val
 	def oldVal = state["configVal${param.num}"]	
+	
 	if (refreshAll || (oldVal != newVal)) {
 		logDebug "${param.name}(#${param.num}): changing ${oldVal} to ${newVal}"
 		result << configSetCmd(param, newVal)
@@ -364,16 +368,8 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
 	logTrace "WakeUpNotification: $cmd"
 	def result = []
 	
-	if (state.pendingChanges != false || state.pendingRefresh) {
-		result += configure()
-	}
-	else if (canReportBattery()) {
-		result << batteryGetCmd()
-	}
-	else {
-		logTrace "Skipping battery check because it was already checked within ${batteryReportingIntervalSetting}."
-	}
-	
+	result += configure()
+		
 	if (result) {
 		result << "delay 1200"
 	}	
@@ -439,11 +435,12 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport 
 		logDebug "Parameter ${cmd.parameterNumber} = ${val}"
 	}
 	
-	runIn(5, finalizeConfiguration)
+	runIn(10, finalizeConfiguration)
 	return []
 }
 
 def finalizeConfiguration() {
+	logTrace "finalizeConfiguration()"
 	if (state.pendingChanges || state.pendingRefresh) {
 		sendEvent(name: "lastUpdate", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
 		state.pendingChanges = false
@@ -592,6 +589,11 @@ private sendVibrationStatusEvents(val, refreshing=false) {
 	
 	def valName = "${map.value}".capitalize()
 	def dataVal = "${vibrationType}${valName}"
+	
+	if (!map.displayed) {
+		logDebug "${map.name} is ${map.value}"
+	}
+	
 	if ((dataVal != "tamperClear" && dataVal != "earthquakeInactive") || refreshing) {
 		sendEvent(map)
 		sendEvent(createEventMap("vibrationStatus", dataVal, false))
