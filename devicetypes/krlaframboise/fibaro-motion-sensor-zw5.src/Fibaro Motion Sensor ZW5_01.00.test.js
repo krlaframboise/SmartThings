@@ -66,30 +66,30 @@ metadata {
 	simulator { }
 	
 	preferences {
-		getParagraphInput("paragraph1","", "----------")
+		// getParagraphInput("paragraph1","", "----------")
 		getOptionsInput(motionSensitivityParam)
 		getOptionsInput(motionRetriggerParam)
 		getOptionsInput(motionModeParam)
 		getOptionsInput(motionNightThresholdParam)
 		
-		getParagraphInput("paragraph2", "", "---Vibration Settings---")
+		// getParagraphInput("paragraph2", "", "---Vibration Settings---")
 		getOptionsInput(vibrationSensitivityParam)
 		getOptionsInput(vibrationRetriggerParam)
 		getOptionsInput(vibrationTypeParam)
 						
 		getBoolInput("displayVibrationEvents", "Display vibration events on Activity Feed?", false)		
 		
-		getParagraphInput("paragraph3", "", "***Light Settings***")
+		// getParagraphInput("paragraph3", "", "***Light Settings***")
 		getOptionsInput(lightReportingThresholdParam)
 		getOptionsInput(lightReportingIntervalParam)
 		
-		getParagraphInput("paragraph4", "", "***Temperature Settings***")
+		// getParagraphInput("paragraph4", "", "***Temperature Settings***")
 		getOptionsInput(tempReportingThresholdParam)
 		getOptionsInput(tempReportingIntervalParam)
 		getOptionsInput(tempMeasuringIntervalParam)
 		getOptionsInput(tempOffsetParam)		
 		
-		getParagraphInput("paragraph5", "", "----------------")
+		// getParagraphInput("paragraph5", "", "----------------")
 		getOptionsInput(ledBrightnessParam)
 		getOptionsInput(ledBrightnessLowThresholdParam)
 		getOptionsInput(ledBrightnessHighThresholdParam)
@@ -99,7 +99,7 @@ metadata {
 		getOptionsInput(ledBlueTempThresholdParam)
 		getOptionsInput(ledRedTempThresholdParam)
 		
-		getParagraphInput("paragraph6", "", " - - - - - - - - - - - - - - ")
+		// getParagraphInput("paragraph6", "", " - - - - - - - - - - - - - - ")
 		getOptionsInput("wakeUpInterval", "Checkin Interval", checkinIntervalSetting, checkinIntervalOptions)
 		
 		getOptionsInput("batteryReportingInterval", "Battery Reporting Interval", batteryReportingIntervalSetting, checkinIntervalOptions)
