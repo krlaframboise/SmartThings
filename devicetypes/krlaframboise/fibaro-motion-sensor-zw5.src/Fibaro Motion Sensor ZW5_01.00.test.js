@@ -66,30 +66,30 @@ metadata {
 	simulator { }
 	
 	preferences {
-		getParagraphInput("paragraph1","Motion Settings")
+		getParagraphInput("paragraph1","", "----------")
 		getOptionsInput(motionSensitivityParam)
 		getOptionsInput(motionRetriggerParam)
 		getOptionsInput(motionModeParam)
 		getOptionsInput(motionNightThresholdParam)
 		
-		getParagraphInput("paragraph2", "Vibration Settings", "Vibration Settings")
+		getParagraphInput("paragraph2", "", "---Vibration Settings---")
 		getOptionsInput(vibrationSensitivityParam)
 		getOptionsInput(vibrationRetriggerParam)
 		getOptionsInput(vibrationTypeParam)
 						
 		getBoolInput("displayVibrationEvents", "Display vibration events on Activity Feed?", false)		
 		
-		getParagraphInput("paragraph3", "Light Title", "Light Desc", "Light Default Value")
+		getParagraphInput("paragraph3", "", "***Light Settings***")
 		getOptionsInput(lightReportingThresholdParam)
 		getOptionsInput(lightReportingIntervalParam)
 		
-		getParagraphInput("paragraph4","", "Temp Desc")
+		getParagraphInput("paragraph4", "", "***Temperature Settings***")
 		getOptionsInput(tempReportingThresholdParam)
 		getOptionsInput(tempReportingIntervalParam)
 		getOptionsInput(tempMeasuringIntervalParam)
 		getOptionsInput(tempOffsetParam)		
 		
-		getParagraphInput("paragraph5")
+		getParagraphInput("paragraph5", "", "----------------")
 		getOptionsInput(ledBrightnessParam)
 		getOptionsInput(ledBrightnessLowThresholdParam)
 		getOptionsInput(ledBrightnessHighThresholdParam)
@@ -99,7 +99,7 @@ metadata {
 		getOptionsInput(ledBlueTempThresholdParam)
 		getOptionsInput(ledRedTempThresholdParam)
 		
-		getParagraphInput("paragraph6", "", null, null)
+		getParagraphInput("paragraph6", "", " - - - - - - - - - - - - - - ")
 		getOptionsInput("wakeUpInterval", "Checkin Interval", checkinIntervalSetting, checkinIntervalOptions)
 		
 		getOptionsInput("batteryReportingInterval", "Battery Reporting Interval", batteryReportingIntervalSetting, checkinIntervalOptions)
@@ -130,7 +130,7 @@ metadata {
 		}
 
 		valueTile("temperature", "device.temperature", inactiveLabel: false, width: 2, height: 2) {
-			state "temperature", label:'${currentValue}°',
+			state "temperature", label:'${currentValue}?',
 				backgroundColors:[
 					[value: 31, color: "#153591"],
 					[value: 44, color: "#1e9cbb"],
@@ -505,7 +505,7 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelR
 private sendTempEvent(cmd) {
 	def cmdScale = cmd.scale == 1 ? "F" : "C"
 	def val = convertTemperatureIfNeeded(cmd.scaledSensorValue, cmdScale, cmd.precision)
-	logDebug "Temperature ${val} °${getTemperatureScale()}"
+	logDebug "Temperature ${val} ?${getTemperatureScale()}"
 	sendEvent(createEventMap("temperature", val, null, null, getTemperatureScale()))			
 }
 
@@ -990,7 +990,7 @@ private getTempOptions(defaultVal=null, data=[:]) {
 			options["${data?.zeroName}"] = i
 		}
 		else {
-			options["${i.toBigDecimal() * 0.1}°C / ${(((i.toBigDecimal() * 0.1)*9)/5)}°F"] = i
+			options["${i.toBigDecimal() * 0.1}?C / ${(((i.toBigDecimal() * 0.1)*9)/5)}?F"] = i
 		}
 	}
 	return setDefaultOption(options, defaultVal)
@@ -1006,7 +1006,7 @@ private getTempValueOptions(defaultVal=null, data=[:]) {
 			options["${data?.zeroName}"] = i
 		}
 		else {
-			options["${i}°C / ${(((i*9)/5) + 32)}°F"] = i
+			options["${i}?C / ${(((i*9)/5) + 32)}?F"] = i
 		}
 	}
 	return setDefaultOption(options, defaultVal)
