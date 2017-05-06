@@ -1,5 +1,5 @@
 /**
- *  Fibaro Motion Sensor v1.0.2
+ *  Fibaro Motion Sensor v1.0.3
  *  (Model: FGMS-001)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.3 (05/06/2017)
+ *      - Fixed some UI issues only effecting iOS.
  *
  *    1.0.2 (05/05/2017)
  *      - Initial Release
@@ -69,24 +72,24 @@ metadata {
 		getOptionsInput(motionModeParam)
 		getOptionsInput(motionNightThresholdParam)
 		
-		getParagraphInput("", "")
+		getParagraphInput("*** Vibration Settings ***")
 		getOptionsInput(vibrationSensitivityParam)
 		getOptionsInput(vibrationRetriggerParam)
 		getOptionsInput(vibrationTypeParam)
 						
 		getBoolInput("displayVibrationEvents", "Display vibration events on Activity Feed?", false)		
 		
-		getParagraphInput("", "")
+		getParagraphInput("", "*** Light Reporting Settings ***")
 		getOptionsInput(lightReportingThresholdParam)
 		getOptionsInput(lightReportingIntervalParam)
 		
-		getParagraphInput("", "")
+		getParagraphInput("", "", "*** Temp Reporting Settings ***")
 		getOptionsInput(tempReportingThresholdParam)
 		getOptionsInput(tempReportingIntervalParam)
 		getOptionsInput(tempMeasuringIntervalParam)
 		getOptionsInput(tempOffsetParam)		
 		
-		getParagraphInput("", "")
+		getParagraphInput("LED Settings", "LED Settings", "LED Settings")
 		getOptionsInput(ledBrightnessParam)
 		getOptionsInput(ledBrightnessLowThresholdParam)
 		getOptionsInput(ledBrightnessHighThresholdParam)
@@ -96,7 +99,7 @@ metadata {
 		getOptionsInput(ledBlueTempThresholdParam)
 		getOptionsInput(ledRedTempThresholdParam)
 		
-		getParagraphInput("", "")
+		getParagraphInput()
 		getOptionsInput("wakeUpInterval", "Checkin Interval", checkinIntervalSetting, checkinIntervalOptions)
 		
 		getOptionsInput("batteryReportingInterval", "Battery Reporting Interval", batteryReportingIntervalSetting, checkinIntervalOptions)
@@ -158,12 +161,12 @@ metadata {
 		}
 		
 		standardTile("refreshConfig", "device.generic", width: 2, height: 2) {
-			state "default", label:'Refresh Config', action: "refreshConfig", icon:"st.secondary.preferences"
+			state "default", label:'Update All', action: "refreshConfig", icon:"st.secondary.preferences"
 		}
 		
 		valueTile("pending", "device.pendingChanges", decoration: "flat", width: 2, height: 2){
 			state "pendingChanges", label:'${currentValue} Change(s) Pending'
-			state "-1", label:'Sending Changes'
+			state "-1", label:'Updating Settings'
 		}
 		
 		valueTile("lastUpdate", "device.lastUpdate", decoration: "flat", width: 2, height: 2){
@@ -175,10 +178,11 @@ metadata {
 	}
 }
 
-private getParagraphInput(title, desc) {
+private getParagraphInput(title="", desc="", defaulVal="") {
 	input "", "paragraph", 
 		title: "${title}", 
 		description: "${desc}", 
+		defaultValue: "${defaultVal}",
 		required: false, 
 		displayDuringSetup: true
 }
@@ -929,9 +933,9 @@ private getMotionSensitivityOptions() {
 private getMotionLedModeOptions() {
 	return setDefaultOption([
 		"Disabled": 0,
-		"Long blink when motion is detected": 1,
-		"Long blink when motion is detected and short blink when motion is detected again": 2,
-		"Long blink when motion is detected and 2 short blinks when motion is detected again":3
+		"Blink when motion is detected": 1,
+		"Blink when detected and short blink when detected again": 2,
+		"Blink when detected and 2 short blinks when detected again":3
 	], 2)
 }
 
