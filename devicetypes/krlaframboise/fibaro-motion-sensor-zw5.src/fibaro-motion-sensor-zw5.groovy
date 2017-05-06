@@ -1,5 +1,5 @@
 /**
- *  Fibaro Motion Sensor v1.0.5
+ *  Fibaro Motion Sensor v1.0.6
  *  (Model: FGMS-001)
  *
  *  Author: 
@@ -10,9 +10,8 @@
  *
  *  Changelog:
  *
- *    1.0.5 (05/06/2017)
- *      - SmartThings made a change that automatically sorts all drop down fields which completely messed up the time and temperature setting fields so I had to prefix the items with spaces to get them to sort properly.
- *      - Had to make additional changes because of problems with the iOS mobile app.
+ *    1.0.6 (05/06/2017)
+ *      - Rolled back Android drop down sorting fix because it broke iOS.
  *
  *    1.0.4 (05/05/2017)
  *      - Fixed some UI issues only effecting iOS.
@@ -70,30 +69,30 @@ metadata {
 	simulator { }
 	
 	preferences {
-		// getDividerInput("divider1"," ")
+		// getParagraphInput("paragraph1","Motion Settings")
 		getOptionsInput(motionSensitivityParam)
 		getOptionsInput(motionRetriggerParam)
 		getOptionsInput(motionModeParam)
 		getOptionsInput(motionNightThresholdParam)
 		
-		// getDividerInput("divider2", " ")
+		// getParagraphInput("paragraph2", "Vibration Settings", "Vibration Settings")
 		getOptionsInput(vibrationSensitivityParam)
 		getOptionsInput(vibrationRetriggerParam)
 		getOptionsInput(vibrationTypeParam)
 						
 		getBoolInput("displayVibrationEvents", "Display vibration events on Activity Feed?", false)		
 		
-		// getDividerInput("divider3", " ")
+		// getParagraphInput("paragraph3", "Light Title", "Light Desc", "Light Default Value")
 		getOptionsInput(lightReportingThresholdParam)
 		getOptionsInput(lightReportingIntervalParam)
 		
-		// getDividerInput("divider4"," ")
+		// getParagraphInput("paragraph4","", "Temp Desc")
 		getOptionsInput(tempReportingThresholdParam)
 		getOptionsInput(tempReportingIntervalParam)
 		getOptionsInput(tempMeasuringIntervalParam)
 		getOptionsInput(tempOffsetParam)		
 		
-		// getDividerInput("divider5", " ")
+		// getParagraphInput("paragraph5")
 		getOptionsInput(ledBrightnessParam)
 		getOptionsInput(ledBrightnessLowThresholdParam)
 		getOptionsInput(ledBrightnessHighThresholdParam)
@@ -103,7 +102,7 @@ metadata {
 		getOptionsInput(ledBlueTempThresholdParam)
 		getOptionsInput(ledRedTempThresholdParam)
 		
-		// getDividerInput("divider6", " ")
+		// getParagraphInput("paragraph6", "", null, null)
 		getOptionsInput("wakeUpInterval", "Checkin Interval", checkinIntervalSetting, checkinIntervalOptions)
 		
 		getOptionsInput("batteryReportingInterval", "Battery Reporting Interval", batteryReportingIntervalSetting, checkinIntervalOptions)
@@ -182,11 +181,11 @@ metadata {
 	}
 }
 
-private getDividerInput(name, desc="") {
+private getParagraphInput(name, title="", desc="", defaultVal="") {
 	input "${name}", "paragraph", 
-		title: "", 
+		title: "${title}", 
 		description: "${desc}",
-		defaultValue: "",
+		defaultValue: "${defaultVal}",
 		required: false, 
 		displayDuringSetup: true
 }
@@ -923,14 +922,14 @@ private getDebugOutputSetting() {
 }
 
 private getMotionSensitivityOptions() {
-	def options = [" 1 - Most Sensitive": 15]
+	def options = ["Most Sensitive": 15]
 	
 	def val = 11
 	(2..19).each {
 		val += 13
-		options["${it}".padLeft(2)] = val
+		options["${it}"] = val
 	}
-	options["20 - Least Sensitive"] = 254
+	options["Least Sensitive"] = 254
 	return setDefaultOption(options, 24)
 }
 
@@ -966,13 +965,13 @@ private getVibrationTypeOptions() {
 }
 
 private getVibrationSensitivityOptions() {
-	def options = [" 0 - Disabled": 0, " 1 - Most Sensitive": 1]	
+	def options = ["Disabled": 0, "Most Sensitive": 1]	
 	def val = 1
 	(2..19).each {
 		val += (it % 3) ? 6 : 7
-		options["${it}".padLeft(2)] = val
+		options["${it}"] = val
 	}
-	options["20 - Least Sensitive"] = 121
+	options["Least Sensitive"] = 121
 	return setDefaultOption(options, 20)
 }
 
@@ -988,14 +987,13 @@ private getTempOptions(defaultVal=null, data=[:]) {
 	def options = [:]
 	def min = ((data?.zeroName && (!data?.min || data?.min > 0)) ? 0 : (data?.min != null ? data.min : 1))
 	def max = data?.max != null ? data?.max : 100
-	def nameLength = "$max".length() + 2
 	
 	for (int i = min; i <= max; i += ((i < 5 && i >= -5) ? 1 : (i == 1 ? 4 : 5))) {
 		if (i == 0 && data?.zeroName != null) {
-			options["".padLeft(nameLength) + "${data?.zeroName}"] = i
+			options["${data?.zeroName}"] = i
 		}
 		else {
-			options["${i.toBigDecimal() * 0.1}".padLeft(nameLength + (i < 0 ? (nameLength * 2) : 0)) + " C / ${(((i.toBigDecimal() * 0.1)*9)/5)} F"] = i
+			options["${i.toBigDecimal() * 0.1} C / ${(((i.toBigDecimal() * 0.1)*9)/5)} F"] = i
 		}
 	}
 	return setDefaultOption(options, defaultVal)
@@ -1005,14 +1003,13 @@ private getTempValueOptions(defaultVal=null, data=[:]) {
 	def options = [:]
 	def min = data?.zeroName ? 0 : (data?.min != null ? data.min : 1)
 	def max = data?.max != null ? data?.max : 40
-	def nameLength = "$max".length() + 2
 	
 	for (int i = min; i <= max; i += 1) {
 		if (i == 0 && data?.zeroName != null) {
-			options["".padLeft(nameLength) + "${data?.zeroName}"] = i
+			options["${data?.zeroName}"] = i
 		}
 		else {
-			options["${i}".padLeft(nameLength + (i < 0 ? (nameLength * 2) : 0)) + " C / ${(((i*9)/5) + 32)} F"] = i
+			options["${i} C / ${(((i*9)/5) + 32)} F"] = i
 		}
 	}
 	return setDefaultOption(options, defaultVal)
@@ -1022,28 +1019,27 @@ private getIntervalOptions(defaultVal=null, data=[:]) {
 	def options = [:]
 	def min = data?.zeroName ? 0 : (data?.min != null ? data.min : 1)
 	def max = data?.max != null ? data?.max : (9 * 60 * 60)
-	def nameLength = "$max".length()
 	
 	[0,1,2,3,4,5,10,15,30,45].each {
 		if (withinRange(it, min, max)) {
 			if (it == 0 && data?.zeroName != null) {
-				options["".padLeft(nameLength * 3) + "${data?.zeroName}"] = it
+				options["${data?.zeroName}"] = it
 			}
 			else {
-				options["${it}".padLeft(nameLength * 3) + " Second${x == 1 ? '' : 's'}"] = it
+				options["${it} Second${x == 1 ? '' : 's'}"] = it
 			}
 		}
 	}
 
 	[1,2,3,4,5,10,15,30,45].each {
 		if (withinRange((it * 60), min, max)) {
-			options["${it}".padLeft(nameLength * 2) + " Minute${x == 1 ? '' : 's'}"] = (it * 60)
+			options["${it} Minute${x == 1 ? '' : 's'}"] = (it * 60)
 		}
 	}
 
 	[1,2,3,6,9,12,18].each {
 		if (withinRange((it * 60 * 60), min, max)) {
-			options["${it}".padLeft(nameLength) + " Hour${x == 1 ? '' : 's'}"] = (it * 60 * 60)
+			options["${it} Hour${x == 1 ? '' : 's'}"] = (it * 60 * 60)
 		}
 	}	
 	return setDefaultOption(options, defaultVal)
@@ -1053,15 +1049,14 @@ private getLuxOptions(defaultVal=null, data=[:]) {
 	def options = [:]
 	def min = data?.zeroName ? 0 : (data?.min != null ? data.min : 1)
 	def max = data?.max != null ? data?.max : 2500
-	def nameLength = "$max".length()
 	
 	[0,1,2,3,4,5,10,25,50,75,100,150,200,250,300,400,500,750,1000,1250,1500,1750,2000,2500,3000,3500,4000,4500,5000,6000,7000,8000,9000,10000,12500,15000,17500,20000,25000,30000].each {
 		if (withinRange(it, min, max)) {
 			if (it == 0 && data?.zeroName != null) {
-				options["".padLeft(nameLength) + "${data?.zeroName}"] = it
+				options["${data?.zeroName}"] = it
 			}
 			else {
-				options["${it}".padLeft(nameLength) + " lux"] = it
+				options["${it} lux"] = it
 			}
 		}
 	}
@@ -1072,23 +1067,21 @@ private getPercentageOptions(defaultVal=null, data=[:]) {
 	def options = [:]
 	def min = data?.zeroName ? 0 : (data?.min != null ? data.min : 1)
 	def max = data?.max != null ? data?.max : 100
-	
-	def nameLength = "$max".length()
 		
 	[0,1,2,3,4,5].each {
 		if (withinRange(it, min, max)) {
 			if (it == 0 && data?.zeroName != null) {
-				options["".padLeft(nameLength) + "${data?.zeroName}"] = it
+				options["${data?.zeroName}"] = it
 			}
 			else {
-				options["${it}".padLeft(nameLength) + "%"] = it
+				options["${it}%"] = it
 			}
 		}
 	}
 	
 	for (int i = 10; i <= 100; i += 5) {
 		if (withinRange(i, min, max)) {
-			options["${i}".padLeft(nameLength) + "%"] = i
+			options["${i}%"] = i
 		}
 	}
 	
