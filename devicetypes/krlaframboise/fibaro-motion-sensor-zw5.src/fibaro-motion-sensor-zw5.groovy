@@ -1,5 +1,5 @@
 /**
- *  Fibaro Motion Sensor v1.0.3
+ *  Fibaro Motion Sensor v1.0.4
  *  (Model: FGMS-001)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.0.3 (05/06/2017)
+ *    1.0.4 (05/05/2017)
  *      - Fixed some UI issues only effecting iOS.
  *
  *    1.0.2 (05/05/2017)
@@ -72,24 +72,24 @@ metadata {
 		getOptionsInput(motionModeParam)
 		getOptionsInput(motionNightThresholdParam)
 		
-		getParagraphInput("*** Vibration Settings ***")
+		getParagraphInput("", "")
 		getOptionsInput(vibrationSensitivityParam)
 		getOptionsInput(vibrationRetriggerParam)
 		getOptionsInput(vibrationTypeParam)
 						
 		getBoolInput("displayVibrationEvents", "Display vibration events on Activity Feed?", false)		
 		
-		getParagraphInput("", "*** Light Reporting Settings ***")
+		getParagraphInput("", "")
 		getOptionsInput(lightReportingThresholdParam)
 		getOptionsInput(lightReportingIntervalParam)
 		
-		getParagraphInput("", "", "*** Temp Reporting Settings ***")
+		getParagraphInput("", "")
 		getOptionsInput(tempReportingThresholdParam)
 		getOptionsInput(tempReportingIntervalParam)
 		getOptionsInput(tempMeasuringIntervalParam)
 		getOptionsInput(tempOffsetParam)		
 		
-		getParagraphInput("LED Settings", "LED Settings", "LED Settings")
+		getParagraphInput("", "")
 		getOptionsInput(ledBrightnessParam)
 		getOptionsInput(ledBrightnessLowThresholdParam)
 		getOptionsInput(ledBrightnessHighThresholdParam)
@@ -99,7 +99,7 @@ metadata {
 		getOptionsInput(ledBlueTempThresholdParam)
 		getOptionsInput(ledRedTempThresholdParam)
 		
-		getParagraphInput()
+		getParagraphInput("", "")
 		getOptionsInput("wakeUpInterval", "Checkin Interval", checkinIntervalSetting, checkinIntervalOptions)
 		
 		getOptionsInput("batteryReportingInterval", "Battery Reporting Interval", batteryReportingIntervalSetting, checkinIntervalOptions)
@@ -178,11 +178,10 @@ metadata {
 	}
 }
 
-private getParagraphInput(title="", desc="", defaulVal="") {
+private getParagraphInput(title, desc) {
 	input "", "paragraph", 
 		title: "${title}", 
 		description: "${desc}", 
-		defaultValue: "${defaultVal}",
 		required: false, 
 		displayDuringSetup: true
 }
