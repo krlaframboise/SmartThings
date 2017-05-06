@@ -1,5 +1,5 @@
 /**
- *  Fibaro Motion Sensor v1.0.test
+ *  Fibaro Motion Sensor v1.0.test2
  *  (Model: FGMS-001)
  *
  *  Author: 
@@ -66,30 +66,30 @@ metadata {
 	simulator { }
 	
 	preferences {
-		// getParagraphInput("paragraph1","", "----------")
+		// getDividerInput("divider1"," ")
 		getOptionsInput(motionSensitivityParam)
 		getOptionsInput(motionRetriggerParam)
 		getOptionsInput(motionModeParam)
 		getOptionsInput(motionNightThresholdParam)
 		
-		// getParagraphInput("paragraph2", "", "---Vibration Settings---")
+		// getDividerInput("divider2", " ")
 		getOptionsInput(vibrationSensitivityParam)
 		getOptionsInput(vibrationRetriggerParam)
 		getOptionsInput(vibrationTypeParam)
 						
 		getBoolInput("displayVibrationEvents", "Display vibration events on Activity Feed?", false)		
 		
-		// getParagraphInput("paragraph3", "", "***Light Settings***")
+		// getDividerInput("divider3", " ")
 		getOptionsInput(lightReportingThresholdParam)
 		getOptionsInput(lightReportingIntervalParam)
 		
-		// getParagraphInput("paragraph4", "", "***Temperature Settings***")
+		// getDividerInput("divider4"," ")
 		getOptionsInput(tempReportingThresholdParam)
 		getOptionsInput(tempReportingIntervalParam)
 		getOptionsInput(tempMeasuringIntervalParam)
 		getOptionsInput(tempOffsetParam)		
 		
-		// getParagraphInput("paragraph5", "", "----------------")
+		// getDividerInput("divider5", " ")
 		getOptionsInput(ledBrightnessParam)
 		getOptionsInput(ledBrightnessLowThresholdParam)
 		getOptionsInput(ledBrightnessHighThresholdParam)
@@ -99,7 +99,7 @@ metadata {
 		getOptionsInput(ledBlueTempThresholdParam)
 		getOptionsInput(ledRedTempThresholdParam)
 		
-		// getParagraphInput("paragraph6", "", " - - - - - - - - - - - - - - ")
+		// getDividerInput("divider6", " ")
 		getOptionsInput("wakeUpInterval", "Checkin Interval", checkinIntervalSetting, checkinIntervalOptions)
 		
 		getOptionsInput("batteryReportingInterval", "Battery Reporting Interval", batteryReportingIntervalSetting, checkinIntervalOptions)
@@ -130,7 +130,7 @@ metadata {
 		}
 
 		valueTile("temperature", "device.temperature", inactiveLabel: false, width: 2, height: 2) {
-			state "temperature", label:'${currentValue}?',
+			state "temperature", label:'${currentValue}°',
 				backgroundColors:[
 					[value: 31, color: "#153591"],
 					[value: 44, color: "#1e9cbb"],
@@ -178,11 +178,11 @@ metadata {
 	}
 }
 
-private getParagraphInput(name, title="", desc="", defaultVal="") {
+private getDividerInput(name, desc="") {
 	input "${name}", "paragraph", 
-		title: "${title}", 
+		title: "", 
 		description: "${desc}",
-		defaultValue: "${defaultVal}",
+		defaultValue: "",
 		required: false, 
 		displayDuringSetup: true
 }
@@ -505,7 +505,7 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelR
 private sendTempEvent(cmd) {
 	def cmdScale = cmd.scale == 1 ? "F" : "C"
 	def val = convertTemperatureIfNeeded(cmd.scaledSensorValue, cmdScale, cmd.precision)
-	logDebug "Temperature ${val} ?${getTemperatureScale()}"
+	logDebug "Temperature ${val} °${getTemperatureScale()}"
 	sendEvent(createEventMap("temperature", val, null, null, getTemperatureScale()))			
 }
 
@@ -919,14 +919,14 @@ private getDebugOutputSetting() {
 }
 
 private getMotionSensitivityOptions() {
-	def options = ["Most Sensitive": 15]
+	def options = [" 1 - Most Sensitive": 15]
 	
 	def val = 11
 	(2..19).each {
 		val += 13
-		options["${it}"] = val
+		options["${it}".padLeft(2)] = val
 	}
-	options["Least Sensitive"] = 254
+	options["20 - Least Sensitive"] = 254
 	return setDefaultOption(options, 24)
 }
 
@@ -962,13 +962,13 @@ private getVibrationTypeOptions() {
 }
 
 private getVibrationSensitivityOptions() {
-	def options = ["Disabled": 0, "Most Sensitive": 1]	
+	def options = [" 0 - Disabled": 0, " 1 - Most Sensitive": 1]	
 	def val = 1
 	(2..19).each {
 		val += (it % 3) ? 6 : 7
-		options["${it}"] = val
+		options["${it}".padLeft(2)] = val
 	}
-	options["Least Sensitive"] = 121
+	options["20 - Least Sensitive"] = 121
 	return setDefaultOption(options, 20)
 }
 
@@ -984,13 +984,14 @@ private getTempOptions(defaultVal=null, data=[:]) {
 	def options = [:]
 	def min = ((data?.zeroName && (!data?.min || data?.min > 0)) ? 0 : (data?.min != null ? data.min : 1))
 	def max = data?.max != null ? data?.max : 100
+	def nameLength = "$max".length() + 2
 	
 	for (int i = min; i <= max; i += ((i < 5 && i >= -5) ? 1 : (i == 1 ? 4 : 5))) {
 		if (i == 0 && data?.zeroName != null) {
-			options["${data?.zeroName}"] = i
+			options["".padLeft(nameLength) + "${data?.zeroName}"] = i
 		}
 		else {
-			options["${i.toBigDecimal() * 0.1}?C / ${(((i.toBigDecimal() * 0.1)*9)/5)}?F"] = i
+			options["${i.toBigDecimal() * 0.1}".padLeft(nameLength + (i < 0 ? (nameLength * 2) : 0)) + " C / ${(((i.toBigDecimal() * 0.1)*9)/5)} F"] = i
 		}
 	}
 	return setDefaultOption(options, defaultVal)
@@ -1000,13 +1001,14 @@ private getTempValueOptions(defaultVal=null, data=[:]) {
 	def options = [:]
 	def min = data?.zeroName ? 0 : (data?.min != null ? data.min : 1)
 	def max = data?.max != null ? data?.max : 40
+	def nameLength = "$max".length() + 2
 	
 	for (int i = min; i <= max; i += 1) {
 		if (i == 0 && data?.zeroName != null) {
-			options["${data?.zeroName}"] = i
+			options["".padLeft(nameLength) + "${data?.zeroName}"] = i
 		}
 		else {
-			options["${i}?C / ${(((i*9)/5) + 32)}?F"] = i
+			options["${i}".padLeft(nameLength + (i < 0 ? (nameLength * 2) : 0)) + " C / ${(((i*9)/5) + 32)} F"] = i
 		}
 	}
 	return setDefaultOption(options, defaultVal)
@@ -1016,27 +1018,28 @@ private getIntervalOptions(defaultVal=null, data=[:]) {
 	def options = [:]
 	def min = data?.zeroName ? 0 : (data?.min != null ? data.min : 1)
 	def max = data?.max != null ? data?.max : (9 * 60 * 60)
+	def nameLength = "$max".length()
 	
 	[0,1,2,3,4,5,10,15,30,45].each {
 		if (withinRange(it, min, max)) {
 			if (it == 0 && data?.zeroName != null) {
-				options["${data?.zeroName}"] = it
+				options["".padLeft(nameLength * 3) + "${data?.zeroName}"] = it
 			}
 			else {
-				options["${it} Second${x == 1 ? '' : 's'}"] = it
+				options["${it}".padLeft(nameLength * 3) + " Second${x == 1 ? '' : 's'}"] = it
 			}
 		}
 	}
 
 	[1,2,3,4,5,10,15,30,45].each {
 		if (withinRange((it * 60), min, max)) {
-			options["${it} Minute${x == 1 ? '' : 's'}"] = (it * 60)
+			options["${it}".padLeft(nameLength * 2) + " Minute${x == 1 ? '' : 's'}"] = (it * 60)
 		}
 	}
 
 	[1,2,3,6,9,12,18].each {
 		if (withinRange((it * 60 * 60), min, max)) {
-			options["${it} Hour${x == 1 ? '' : 's'}"] = (it * 60 * 60)
+			options["${it}".padLeft(nameLength) + " Hour${x == 1 ? '' : 's'}"] = (it * 60 * 60)
 		}
 	}	
 	return setDefaultOption(options, defaultVal)
@@ -1046,14 +1049,15 @@ private getLuxOptions(defaultVal=null, data=[:]) {
 	def options = [:]
 	def min = data?.zeroName ? 0 : (data?.min != null ? data.min : 1)
 	def max = data?.max != null ? data?.max : 2500
+	def nameLength = "$max".length()
 	
 	[0,1,2,3,4,5,10,25,50,75,100,150,200,250,300,400,500,750,1000,1250,1500,1750,2000,2500,3000,3500,4000,4500,5000,6000,7000,8000,9000,10000,12500,15000,17500,20000,25000,30000].each {
 		if (withinRange(it, min, max)) {
 			if (it == 0 && data?.zeroName != null) {
-				options["${data?.zeroName}"] = it
+				options["".padLeft(nameLength) + "${data?.zeroName}"] = it
 			}
 			else {
-				options["${it} lux"] = it
+				options["${it}".padLeft(nameLength) + " lux"] = it
 			}
 		}
 	}
@@ -1064,21 +1068,23 @@ private getPercentageOptions(defaultVal=null, data=[:]) {
 	def options = [:]
 	def min = data?.zeroName ? 0 : (data?.min != null ? data.min : 1)
 	def max = data?.max != null ? data?.max : 100
+	
+	def nameLength = "$max".length()
 		
 	[0,1,2,3,4,5].each {
 		if (withinRange(it, min, max)) {
 			if (it == 0 && data?.zeroName != null) {
-				options["${data?.zeroName}"] = it
+				options["".padLeft(nameLength) + "${data?.zeroName}"] = it
 			}
 			else {
-				options["${it}%"] = it
+				options["${it}".padLeft(nameLength) + "%"] = it
 			}
 		}
 	}
 	
 	for (int i = 10; i <= 100; i += 5) {
 		if (withinRange(i, min, max)) {
-			options["${i}%"] = i
+			options["${i}".padLeft(nameLength) + "%"] = i
 		}
 	}
 	
