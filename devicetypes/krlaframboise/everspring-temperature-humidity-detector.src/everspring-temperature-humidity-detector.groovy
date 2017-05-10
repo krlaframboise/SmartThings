@@ -1,5 +1,5 @@
 /**
- *  Everspring Temperature/Humidity Detector v0.0
+ *  Everspring Temperature/Humidity Detector v1.0
  *  (Model: ST814-2)
  *
  *  Author: 
@@ -10,8 +10,8 @@
  *
  *  Changelog:
  *
- *    0.0 (05/09/2017)
- *      - Alpha
+ *    1.0 (05/10/2017)
+ *      - Initial Release
  *
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -38,6 +38,8 @@ metadata {
 		capability "Refresh"
 		capability "Health Check"
 		
+		attribute "primaryStatus", "string"
+		attribute "secondaryStatus", "string"
 		attribute "lastCheckin", "string"
 		attribute "lastUpdate", "string"
 		attribute "pendingChanges", "number"
@@ -49,6 +51,13 @@ metadata {
 	simulator { }
 	
 	preferences {
+		input "primaryStatus", "enum",
+			title: "Primary Capability:",
+			defaultValue: primaryStatusSetting,
+			required: false,
+			displayDuringSetup: true,
+			options: ["Humidity", "Temperature"]			
+
 		configParams.each {
 			input "${it.prefName}", "${it.type}",
 				title: getInputTitle("${it.name}", it.details),
@@ -58,15 +67,15 @@ metadata {
 				displayDuringSetup: true				
 		}
 		
-		input "tempOffset", "decimal",
-			title: getInputTitle("Temperature Offset", ["-10~-0.1 = -10° to -0.1°", "0 = No Offset", "0.1~10 = 0.1 to 10°"]),
-			range: "-10..10",
+		input "tempOffset", "number",
+			title: getInputTitle("Temperature Offset", ["-100~-1 = -10° to -0.1°", "0 = No Offset", "1~100 = 0.1° to 10°"]),
+			range: "-100..100",
 			defaultValue: 0, 
 			required: false,
 			displayDuringSetup: true
 			
 		input "humidityOffset", "number",
-			title: getInputTitle("Humidity Offset", ["-25~-1 = -25%RH to -1%RH", "0 = No Offset", "1~100 = 1%RH to 25%RH"]),
+			title: getInputTitle("Humidity Offset", ["-25~-1 = -25%RH to -1%RH", "0 = No Offset", "1~25 = 1%RH to 25%RH"]),
 			range: "-25..25",
 			defaultValue: 0, 
 			required: false,
@@ -95,22 +104,14 @@ metadata {
 
 	tiles(scale: 2) {
 		multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4, canChangeIcon: false){
-			tileAttribute ("device.temperature", key: "PRIMARY_CONTROL") {
-				attributeState "temperature",				
-					label:'${currentValue}°',
+			tileAttribute ("device.primaryStatus", key: "PRIMARY_CONTROL") {
+				attributeState "primaryStatus",
+					label:'${currentValue}',
 					icon: "st.Weather.weather2",
-					backgroundColors:[
-						[value: 31, color: "#153591"],
-						[value: 44, color: "#1e9cbb"],
-						[value: 59, color: "#90d2a7"],
-						[value: 74, color: "#44b621"],
-						[value: 84, color: "#f1d801"],
-						[value: 95, color: "#d04e00"],
-						[value: 96, color: "#bc2323"]
-					]				
+					backgroundColor:"#00a0dc"
 			}
-			tileAttribute ("device.humidity", key: "SECONDARY_CONTROL") {
-				attributeState "humidity", label:'Relative Humidity: ${currentValue}%'			
+			tileAttribute ("device.secondaryStatus", key: "SECONDARY_CONTROL") {
+				attributeState "secondaryStatus", label:'${currentValue}'
 			}
 		}
 
@@ -127,8 +128,12 @@ metadata {
 				]
 		}
 		
-		valueTile("humidity", "device.humidity", decoration: "flat", width: 2, height: 2){
-			state "humidity", label:'${currentValue}% RH', unit:""
+		valueTile("humidity", "device.humidity", width: 2, height: 2){
+			state "humidity", label:'${currentValue}% RH',
+			backgroundColors:[
+				[value:0, color:"#D6F3FF"],				
+				[value:100, color:"#00A0DC"]
+			]
 		}
 		
 		valueTile("battery", "device.battery", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
@@ -139,12 +144,9 @@ metadata {
 			state "default", label:'Refresh', action: "refresh", icon:"st.secondary.refresh-icon"
 		}
 		
-		standardTile("refreshConfig", "device.generic", width: 2, height: 2) {
-			state "default", label:'Refresh Config', action: "refreshConfig", icon:"st.secondary.preferences"
-		}
-		
 		valueTile("pending", "device.pendingChanges", decoration: "flat", width: 2, height: 2){
 			state "pendingChanges", label:'${currentValue} Change(s) Pending'
+			state "0", label: ''
 			state "-1", label:'Sending Changes'
 		}
 		
@@ -179,12 +181,23 @@ def updated() {
 			state.humidityOffset = humidityOffsetSetting
 			sendHumidityEvent(state.origHumidity)
 		}
+		
+		if (!state.primaryStatus) {
+			state.primaryStatus = primaryStatusSetting
+		}
+		else if (primaryStatusSetting != state.primaryStatus) {
+			state.primaryStatus = primaryStatusSetting
+			def secondary = getAttrValue("secondaryStatus") ?: ""
+			
+			sendEvent(createEventMap("secondaryStatus", getAttrValue("primaryStatus") ?: "", false))
+			
+			sendEvent(createEventMap("primaryStatus", secondary, false))			
+		}
 
 		if (checkForPendingChanges()) {
-			logForceWakeupMessage "The configuration will be updated the next time the device wakes up."
+			logDebug "The configuration will be updated the next time the device wakes up."
 		}		
-	}	
-	sendResponse([batteryGetCmd()])
+	}		
 	return result
 }
 
@@ -256,14 +269,16 @@ private hasPendingChange(settingVal, param) {
 // Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
 def ping() {
 	logDebug "ping()"	
+	return null
 }
 
 
-def refresh() {
+def refresh() {	
 	sendEvent(createEventMap("pendingChanges", configParams.size(), false))
 	state.pendingRefresh = true
 	state.refreshAll = true
-	logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."
+	logDebug "The sensor data will be refreshed the next time the device wakes up."
+	return null
 }
 
 
@@ -363,6 +378,8 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd) {
 	def checkInterval = ((cmd.seconds * 3) + (5 * 60))
 	
 	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+	
+	return []
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {	
@@ -396,6 +413,7 @@ def finalizeConfiguration() {
 	checkForPendingChanges()
 	
 	sendEvent(createEventMap("lastUpdate", convertToLocalTimeString(new Date()), false))	
+	return []
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelReport cmd) {
@@ -415,7 +433,7 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelR
 			logDebug "Unknown Sensor Type: ${cmd}"
 	} 
 	
-	cmds += handleWakeupEvent(canConfigure)  // Handle like wakeup because the device stays awake for 10 minutes every time it sends a report.
+	cmds += handleWakeupEvent(canConfigure)  // Handle like wakeup event because the device stays awake for 10 minutes every time it sends a report.
 	
 	return cmds ? sendResponse(cmds) : []
 }
@@ -425,13 +443,15 @@ private sendTempEvent(origVal, scale, prec) {
 	def localScale = getTemperatureScale()
 	
 	def val = convertTemperatureIfNeeded(origVal, cmdScale, prec)
-	val = roundTwoPlaces(val + tempOffsetSetting)
+	
+	val = roundTwoPlaces(safeToDec(val) + safeToDec(tempOffsetSetting * 0.1))
 	
 	logDebug "Temperature is ${val}°${localScale}"
 	
 	state.origTemp = [temp: origVal, scale: scale, prec: prec]
 	
-	sendEvent(createEventMap("temperature", val, null, null, localScale))			
+	sendEvent(createEventMap("temperature", val, null, null, localScale))
+	sendStatusEvent("Temperature", "${val}°${localScale}")
 }
 
 private sendHumidityEvent(origVal) {
@@ -441,6 +461,12 @@ private sendHumidityEvent(origVal) {
 	
 	state.origHumidity = origVal
 	sendEvent(createEventMap("humidity", val, null, null, "%"))
+	sendStatusEvent("Humidity", "${val}% RH")
+}
+
+private sendStatusEvent(status, value) {
+	def name = (primaryStatusSetting == status) ? "primaryStatus" : "secondaryStatus"
+	sendEvent(createEventMap("${name}", value, false))
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.alarmv2.AlarmReport cmd) {
@@ -501,16 +527,6 @@ private getCommandClassVersions() {
 	]
 }
 
-private getVersionSafeCmdClass(cmdClass) {
-	def version = commandClassVersions[safeToInt(cmdClass)]
-	if (version) {
-		return zwave.commandClass(cmdClass, version)
-	}
-	else {
-		return zwave.commandClass(cmdClass)
-	}
-}
-
 private getSensorTemp() { [sensorType: 1, scale: 42] }
 private getSensorHumidity() { [sensorType: 5, scale: 1] }
 private getAlarmPowerApplied() { [alarmType: 2, alarmLevel: 1] }
@@ -521,12 +537,7 @@ private getConfigParams() {
 	return [
 		reportingIntervalParam,
 		tempReportingParam,
-		humidityReportingParam,
-		basicSetLevelParam,
-		tempTriggerOnParam,
-		tempTriggerOffParam,
-		humidityTriggerOnParam,
-		humidityTriggerOffParam
+		humidityReportingParam
 	]
 }
 
@@ -542,31 +553,15 @@ private getHumidityReportingParam() {
 	return [num:8, name:"Humidity Reporting Threshold", size:1, type:"number", min:0, max:70, defaultVal:5, details:["0 = Disabled", "5~70 = 5% to 70%"], prefName:"humidityReporting"]	
 }
 
-private getBasicSetLevelParam() {
-	return [num:1, name:"Basic Set Level", size:1, type:"number", min:0, max:99, altMax:100, defaultVal:100, details:["0 = Disabled", "1~99 = Dim Level"], prefName: "basicSetLevel"]
-}
-
-private getTempTriggerOnParam() {
-	return [num:2, name:"Temperature Trigger-On", size:1, type:"number", min:-20, max:50, altMax:99, defaultVal:99, details:["-20~50 = -20°C to 50°C", "99 = Disabled"], prefName: "tempTriggerOn"]	
-}
-
-private getTempTriggerOffParam() {
-	return [num:3, name:"Temperature Trigger-Off", size:1, type:"number", min:-20, max:50, altMax:99, defaultVal:99, details:["-20~50 = -20°C to 50°C", "99 = Disabled"], prefName: "tempTriggerOff"]
-}
-
-private getHumidityTriggerOnParam() {
-	return [num:4, name:"Humidity Trigger-On", size:1, type:"number", min:20, max:90, altMax:99, defaultVal:99, details:["20~90 = 20%RH to 90%RH", "99 = Disabled"], prefName: "humidityTriggerOn"]
-}
-
-private getHumidityTriggerOffParam() {
-	return [num:5, name:"Humidity Trigger-Off", size:1, type:"number", min:20, max:90, altMax: 99, defaultVal:99, details:["20~90 20%RH to 90%RH", "99 = Disabled"], prefName: "humidityTriggerOff"]
-}
-
 private getParamStoredIntVal(param) {
 	return state["configVal${param.num}"]	
 }
 
 // Settings
+private getPrimaryStatusSetting() {
+	return settings?.primaryStatus ?: "Temperature"
+}
+
 private getConfigSetting(param) {
 	def val = safeToInt(settings?."${param.prefName}", param.defaultVal)
 		
@@ -600,10 +595,6 @@ private getDebugOutputSetting() {
 	return (settings?.debugOutput || settings?.debugOutput == null)
 }
 
-
-private logForceWakeupMessage(msg) {
-	logDebug "${msg}  You can force the device to wake up immediately by opening the device and pressing the connect button."
-}
 
 private createEventMap(name, value, displayed=null, desc=null, unit=null) {	
 	def newVal = "${value}"	
@@ -668,5 +659,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	log.trace "$msg"
+	// log.trace "$msg"
 }

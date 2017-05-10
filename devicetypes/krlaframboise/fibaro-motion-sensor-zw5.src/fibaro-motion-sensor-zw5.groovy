@@ -1,5 +1,5 @@
 /**
- *  Fibaro Motion Sensor v1.0.6
+ *  Fibaro Motion Sensor v1.0.7
  *  (Model: FGMS-001)
  *
  *  Author: 
@@ -10,13 +10,10 @@
  *
  *  Changelog:
  *
- *    1.0.6 (05/06/2017)
- *      - Rolled back Android drop down sorting fix because it broke iOS.
+ *    1.0.7 (05/10/2017)
+ *      - Misc enhancements
  *
- *    1.0.4 (05/05/2017)
- *      - Fixed some UI issues only effecting iOS.
- *
- *    1.0.2 (05/05/2017)
+ *    1.0 (05/05/2017)
  *      - Initial Release
  *
  *
@@ -69,30 +66,25 @@ metadata {
 	simulator { }
 	
 	preferences {
-		// getParagraphInput("paragraph1","Motion Settings")
 		getOptionsInput(motionSensitivityParam)
 		getOptionsInput(motionRetriggerParam)
 		getOptionsInput(motionModeParam)
 		getOptionsInput(motionNightThresholdParam)
 		
-		// getParagraphInput("paragraph2", "Vibration Settings", "Vibration Settings")
 		getOptionsInput(vibrationSensitivityParam)
 		getOptionsInput(vibrationRetriggerParam)
 		getOptionsInput(vibrationTypeParam)
 						
 		getBoolInput("displayVibrationEvents", "Display vibration events on Activity Feed?", false)		
 		
-		// getParagraphInput("paragraph3", "Light Title", "Light Desc", "Light Default Value")
 		getOptionsInput(lightReportingThresholdParam)
 		getOptionsInput(lightReportingIntervalParam)
 		
-		// getParagraphInput("paragraph4","", "Temp Desc")
 		getOptionsInput(tempReportingThresholdParam)
 		getOptionsInput(tempReportingIntervalParam)
 		getOptionsInput(tempMeasuringIntervalParam)
 		getOptionsInput(tempOffsetParam)		
 		
-		// getParagraphInput("paragraph5")
 		getOptionsInput(ledBrightnessParam)
 		getOptionsInput(ledBrightnessLowThresholdParam)
 		getOptionsInput(ledBrightnessHighThresholdParam)
@@ -102,7 +94,6 @@ metadata {
 		getOptionsInput(ledBlueTempThresholdParam)
 		getOptionsInput(ledRedTempThresholdParam)
 		
-		// getParagraphInput("paragraph6", "", null, null)
 		getOptionsInput("wakeUpInterval", "Checkin Interval", checkinIntervalSetting, checkinIntervalOptions)
 		
 		getOptionsInput("batteryReportingInterval", "Battery Reporting Interval", batteryReportingIntervalSetting, checkinIntervalOptions)
@@ -169,6 +160,7 @@ metadata {
 		
 		valueTile("pending", "device.pendingChanges", decoration: "flat", width: 2, height: 2){
 			state "pendingChanges", label:'${currentValue} Change(s) Pending'
+			state "0", label: ''
 			state "-1", label:'Updating Settings'
 		}
 		
@@ -179,15 +171,6 @@ metadata {
 		main "motion"
 		details(["motion", "acceleration", "illuminance", "temperature", "refresh", "vibrationStatus", "battery", "refreshConfig", "pending", "lastUpdate"])
 	}
-}
-
-private getParagraphInput(name, title="", desc="", defaultVal="") {
-	input "${name}", "paragraph", 
-		title: "${title}", 
-		description: "${desc}",
-		defaultValue: "${defaultVal}",
-		required: false, 
-		displayDuringSetup: true
 }
 
 private getBoolInput(name, title, defaultVal) {
@@ -225,6 +208,7 @@ def updated() {
 			logForceWakeupMessage "The configuration will be updated the next time the device wakes up."
 		}
 	}	
+	return []
 }
 
 def configure() {	
@@ -328,17 +312,20 @@ private initializeCheckin() {
 // Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
 def ping() {
 	logDebug "ping()"	
+	return []
 }
 
 def refresh() {
 	initializeVibrationAttributes(true)	
 	state.pendingRefresh = true
+	return []
 }
 
 def refreshConfig() {
 	sendEvent(createEventMap("pendingChanges", configParams.size(), false))
 	state.refreshAll = true
-	logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."		
+	logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."
+	return []
 }
 
 def parse(String description) {
@@ -398,7 +385,8 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
 		result << "delay 1200"
 	}	
 	result << wakeUpNoMoreInfoCmd()
-	return sendResponse(result)
+	sendResponse(result)
+	return []
 }
 
 private sendResponse(cmds) {
@@ -479,6 +467,7 @@ def finalizeConfiguration() {
 	checkForPendingChanges()
 	
 	sendEvent(createEventMap("lastUpdate", convertToLocalTimeString(new Date()), false))	
+	return []
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelReport cmd) {
@@ -548,6 +537,7 @@ def generateThreeAxisEvent() {
 	sendEvent(createEventMap("threeAxis", "${x},${y},${z}", false))
 	
 	sendEvent(createVibrationStatusEventMap(position, "Position changed to ${position}"))
+	return []
 }
 
 private sendLightEvents(val) {
@@ -674,8 +664,6 @@ private canSecureCmd(cmd) {
 }
 
 private getCommandClassVersions() {
-	// sec:20,5A,85,84,71,8E,70,30,9C
-	// cc:5E,86,72,59,80,73,56,22,31,98,7A
 	[
 		0x20: 1,	// Basic
 		0x30: 2,	// Sensor Binary
@@ -746,7 +734,6 @@ private getConfigParams() {
 		ledBrightnessHighThresholdParam,
 		ledBlueTempThresholdParam,
 		ledRedTempThresholdParam
-		// tamperCancellationParam
 	]
 }
 
@@ -793,10 +780,6 @@ private getVibrationRetriggerParam() {
 private getVibrationTypeParam() {
 	return createConfigParamMap(24, "Vibration Type", 1, vibrationTypeOptions, "vibrationType")
 }
-
-// private getTamperCancellationParam() {
-	// return createConfigParamMap(25, "Tamper Cancellation", 1, ["Do Not Send Tamper Cancellation Reports":0, "Send Tamper Cancellation Reports":1], "tamperCancellation")
-// }
 
 private getVibrationLedModeParam() {
 	return createConfigParamMap(89, "Vibration LED", 1, ["Disabled": 0, "Flashing White, Red, and Blue${defaultOptionSuffix}": 1], "vibrationLedParam")	
@@ -975,10 +958,6 @@ private getVibrationSensitivityOptions() {
 	return setDefaultOption(options, 20)
 }
 
-private getLightReportingThresholdOptions() {
-	return getMinLuxOptions(200, "0 Lux")
-}
-
 private getCheckinIntervalOptions() {
 	return getIntervalOptions((2 * 60 * 60), [min:(5 * 60), max:(18*60*60)])
 }
@@ -1092,10 +1071,6 @@ private withinRange(val, min, max) {
 	return ((min == null || val >= min) && (max == null || val <= max))
 }
 
-private getMinLuxOptions(defaultVal=null, zeroValName=null) {
-	
-}
-
 private convertOptionSettingToInt(options, settingVal) {
 	return safeToInt(options?.find { name, val -> "${settingVal}" == name }?.value, 0)
 }
@@ -1156,7 +1131,6 @@ private createEventMap(name, value, displayed=null, desc=null, unit=null) {
 		name: name,
 		value: value,
 		displayed: displayed
-		// ,isStateChange: isStateChange
 	]
 	if (desc) {
 		eventMap.descriptionText = desc
