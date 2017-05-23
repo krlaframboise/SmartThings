@@ -1,5 +1,5 @@
 /**
- *  Fibaro Swipe Gesture Controller v1.0
+ *  Fibaro Swipe Gesture Controller v1.0.1
  *  (Model: FGGC-001)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.0 (05/21/2017)
+ *    1.0.1 (05/22/2017)
  *      - Initial Release
  *
  *
@@ -49,7 +49,7 @@ metadata {
 		
 		fingerprint deviceId: "0x1801", inClusters: "0x56, 0x59, 0x5A, 0x5B, 0x5E, 0x70, 0x72, 0x73, 0x7A, 0x80, 0x84, 0x85, 0x86, 0x8E, 0x98", outClusters: ""
 		
-		fingerprint mfr:"010F", prod:"0D01", model:"2000"
+		fingerprint mfr:"010F", prod:"0D01", model:"2000", deviceJoinName: "Fibaro SWIPE"
 	}
 
 	simulator { }
@@ -80,7 +80,7 @@ metadata {
 	tiles(scale: 2) {
 		multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4, canChangeIcon: false){
 			tileAttribute ("device.primaryStatus", key: "PRIMARY_CONTROL") {
-				attributeState "default", label:'', icon:"st.unknown.zwave.remote-controller", backgroundColor:"#cccccc"
+				attributeState "default", label:'', icon:"${iconSwipe}", backgroundColor:"#cccccc"
 				attributeState "pushed1", label:'Swipe Up', icon:"${iconUp}"
 				attributeState "pushed2", label:'Swipe Down', icon:"${iconDown}"
 				attributeState "pushed3", label:'Swipe Left', icon:"${iconLeft}"
@@ -93,12 +93,12 @@ metadata {
 				attributeState "pushed8", label:'Dbl Swipe Down', icon:"${iconDoubleDown}"
 				attributeState "pushed9", label:'Dbl Swipe Left', icon:"${iconDoubleLeft}"
 				attributeState "pushed10", label:'Dbl Swipe Right', icon:"${iconDoubleRight}"
-				attributeState "pushed11", label:'Sequence 1', icon:"st.Electronics.electronics18"
-				attributeState "pushed12", label:'Sequence 2', icon:"st.Electronics.electronics18"
-				attributeState "pushed13", label:'Sequence 3', icon:"st.Electronics.electronics18"
-				attributeState "pushed14", label:'Sequence 4', icon:"st.Electronics.electronics18"
-				attributeState "pushed15", label:'Sequence 5', icon:"st.Electronics.electronics18"
-				attributeState "pushed16", label:'Sequence 6', icon:"st.Electronics.electronics18"
+				attributeState "pushed11", label:'Sequence 1', icon:"${iconSwipe}"
+				attributeState "pushed12", label:'Sequence 2', icon:"${iconSwipe}"
+				attributeState "pushed13", label:'Sequence 3', icon:"${iconSwipe}"
+				attributeState "pushed14", label:'Sequence 4', icon:"${iconSwipe}"
+				attributeState "pushed15", label:'Sequence 5', icon:"${iconSwipe}"
+				attributeState "pushed16", label:'Sequence 6', icon:"${iconSwipe}"
 				
 			}
 			tileAttribute ("device.secondaryStatus", key: "SECONDARY_CONTROL") {
@@ -171,7 +171,7 @@ metadata {
 		}		
 		
 		valueTile("battery", "device.battery", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
-			state "battery", label:'${currentValue}% battery', unit:""
+			state "battery", label:'${currentValue}% Battery', unit:""
 		}
 		
 		standardTile("refresh", "device.generic", width: 2, height: 2) {
@@ -597,6 +597,7 @@ private getConfigParams() {
 		toggleModeParam,
 		lifelineScenesParam,
 		powerSavingModeParam
+		// poweringModeParam
 	]	
 	params += seqParams	
 	return params
@@ -617,6 +618,10 @@ private getDeviceOrientationParam() {
 private getPowerSavingModeParam() {
 	return createConfigParamMap(6, "Power Saving Mode", 1, ["Standby Mode (Hold Gesture Required)${defaultOptionSuffix}":0, "Simple Mode (Slow Gestures)":1, "Power Saving Disabled":2], "powerSavingMode")
 }
+
+// private getPoweringModeParam() {
+	// return createConfigParamMap(5, "Check if powered by USB every", 2,  null, "powerSavingMode")
+// }
 
 private getLedModeParam() {
 	return createConfigParamMap(3, "LED Mode", 1, ["Disabled${defaultOptionSuffix}": 0, "Enabled":1], "ledMode")
@@ -690,6 +695,7 @@ private getSequences() {
 	return items
 }
 
+private getIconSwipe() { "${resourcesUrl}/swipe.png" }
 private getIconUp() { "${resourcesUrl}/up.png" }
 private getIconDown() { "${resourcesUrl}/down.png" }
 private getIconLeft() { "${resourcesUrl}/left.png" }

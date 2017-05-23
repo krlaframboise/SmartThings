@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.9.3
+ *  Aeon Labs Multifunction Siren v 1.9.4
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -12,6 +12,9 @@
  *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *  1.9.4 (05/23/2017)
+ *    	- SmartThings fixed parse issue so changed it back to using response instead of sendhubaction.
  *
  *  1.9.3 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -858,17 +861,8 @@ def updated() {
 		
 		cmds += configure()
 		
-		return sendResponse(delayBetween(cmds, 200))
+		return response(delayBetween(cmds, 200))
 	}
-}
-
-private sendResponse(cmds) {
-	def actions = []
-	cmds?.each { cmd ->
-		actions << new physicalgraph.device.HubAction(cmd)
-	}	
-	sendHubCommand(actions)
-	return []
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
@@ -935,7 +929,7 @@ def configure() {
 		cmds << switchGetCmd()		
 	}
 	else {
-		cmds += sendResponse([supportedSecurityGetCmd()])
+		cmds << response(supportedSecurityGetCmd())
 	}
 	return cmds
 }
@@ -995,9 +989,10 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupported
 	state.useSecureCommands = true
 	
 	def cmds = []
-	cmds << "delay 2000"
-	cmds += configure()	
-	return sendResponse(cmds)
+	cmds << response("delay 2000")
+	cmds += response(configure())
+	
+	return cmds
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerSpecificReport cmd) {
@@ -1032,8 +1027,8 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 // Handles the scheduling of beeps.
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	def result = []
-	result << playScheduledBeep()
-	return sendResponse(result)
+	result << response(playScheduledBeep())
+	return result
 }
 
 // Writes unexpected commands to debug log

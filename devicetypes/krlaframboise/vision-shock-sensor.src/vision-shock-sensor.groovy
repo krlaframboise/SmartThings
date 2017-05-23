@@ -1,5 +1,5 @@
 /**
- *  Vision Shock Sensor v1.0.2
+ *  Vision Shock Sensor v1.1
  *  (ZS 5101)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation: https://community.smartthings.com/t/release-vision-shock-sensor-zs-5101/81628?u=krlaframboise
  *    
  *  Changelog:
+ *
+ *    1.1 (05/23/2017)
+ *    	- Added support for the Monoprice Shock Sensor
  *
  *    1.0.2 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -47,12 +50,17 @@ metadata {
 				
 		attribute "lastCheckin", "string"
 		attribute "lastActivity", "string"
+		attribute "lastUpdate", "string"
 		attribute "primaryStatus", "enum", ["aActive", "aInactive", "mActive", "mInactive"]
 		attribute "secondaryStatus", "enum", ["open", "closed", "active", "inactive", "wet", "dry", "detected", "clear", ""]
-				
+		
+		fingerprint mfr:"0109", prod:"2003", deviceJoinName:"Vision Shock Sensor"
+		
 		fingerprint deviceId: "0x2001", inClusters: "0x30, 0x71, 0x72, 0x80, 0x84, 0x85, 0x86"
 		
-		fingerprint mfr:"0109", prod:"2003"
+		fingerprint mfr:"0109", prod:"2003", model:"0307", deviceJoinName:"Monoprice Shock Sensor"
+		
+		fingerprint deviceId: "0x0701", inClusters: "0x5E, 0x80, 0x72, 0x86, 0x22, 0x85, 0x59, 0x5A, 0x7A, 0x71, 0x73, 0x84"		
 	}
 	
 	simulator { }
@@ -146,7 +154,8 @@ def updated() {
 		logTrace "updated()"
 		state.pendingChanges = true
 		refresh()
-	}		
+	}
+	return []
 }
 
 // Initializes the device state when paired and updates the device's configuration.
@@ -155,8 +164,8 @@ def configure() {
 	def cmds = []
 	
 	if (!state.isConfigured) {
-		state.isConfigured = true
 		sendEvent(createLastActivityEventMap())
+		state.isConfigured = true		
 		logTrace "Waiting 1 second because this is the first time being configured"		
 		cmds << "delay 1000"
 	}
@@ -171,6 +180,8 @@ def configure() {
 private initializeCheckin() {
 	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
 	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
+	
+	logTrace "initializeCheckin() checkInterval=${checkInterval}"
 	
 	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 }
@@ -193,6 +204,7 @@ def refresh() {
 	resetAttribute("motion", "inactive")
 	resetAttribute("water", "dry")
 	resetAttribute("tamper", "clear")
+	return []
 }
 
 private resetAttribute(attr, val) {
@@ -204,8 +216,11 @@ private resetAttribute(attr, val) {
 // Processes messages received from device.
 def parse(String description) {
 	def result = []
-	
-	sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+
+	if (!isDuplicateCommand(state.lastCheckin, 30000)) {
+		state.lastCheckin = new Date().time
+		sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+	}
 	
 	if (description.startsWith("Err 106")) {
 		log.warn "Secure Inclusion Failed: ${description}"
@@ -232,11 +247,7 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 		
 	def result = []
 	if (encapCmd) {
-		state.useSecureCmds = true
 		result += zwaveEvent(encapCmd)
-	}
-	else if (cmd.commandClassIdentifier == 0x5E) {
-		logTrace "Unable to parse ZwaveplusInfo cmd"
 	}
 	else {
 		log.warn "Unable to extract encapsulated cmd from $cmd"
@@ -265,11 +276,23 @@ private getCommandClassVersions() {
 	]
 }
 
+private getVersionSafeCmdClass(cmdClass) {
+	def version = commandClassVersions[safeToInt(cmdClass)]
+	if (version) {
+		return zwave.commandClass(cmdClass, version)
+	}
+	else {
+		return zwave.commandClass(cmdClass)
+	}
+}
+
 // Updates devices configuration, if needed, and creates the event with the last lastcheckin event.
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 {
 	logTrace "WakeUpNotification: $cmd"
 	def cmds = []
+	
+	sendEvent(name: "lastUpdate", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
 	
 	if (!state.isConfigured || state.pendingChanges) {
 		state.pendingChanges = false
@@ -285,16 +308,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	}
 	cmds << wakeUpNoMoreInfoCmd()
 	
-	return sendResponse(cmds)
-}
-
-private sendResponse(cmds) {
-	def actions = []
-	cmds?.each { cmd ->
-		actions << new physicalgraph.device.HubAction(cmd)
-	}	
-	sendHubCommand(actions)
-	return []
+	return response(cmds)
 }
 
 private canReportBattery() {
@@ -320,7 +334,7 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 }	
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
-	logTrace "Basic Set: $cmd"	
+	// logTrace "Basic Set: $cmd"	
 	return []
 }
 
@@ -337,11 +351,11 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 
 // Contact event is being created using Sensor Binarry command class so this event is ignored.
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
-	logTrace "NotificationReport: $cmd"
-	
+	// logTrace "NotificationReport: $cmd"
+		
 	def result = []
 	if (cmd.notificationType == 7) {
-		if (cmd.event == 2) {
+		if (cmd.event == 2 || cmd.v1AlarmType == 2) {
 			createPrimaryEventMaps(cmd.v1AlarmLevel == 0XFF)?. each {
 				result << createEvent(it)
 			}
@@ -352,8 +366,12 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 			}
 		}
 		result << createEvent(createLastActivityEventMap())
-	}
+	}	
 	return result
+}
+
+private createLastActivityEventMap() {
+	return [name: "lastActivity", value: convertToLocalTimeString(new Date()), displayed: false]
 }
 
 private createPrimaryEventMaps(isActive) {	
@@ -397,10 +415,6 @@ private createSecondaryEventMaps(isActive) {
 	return result
 }
 
-private createLastActivityEventMap() {
-	return [name: "lastActivity", value: convertToLocalTimeString(new Date()), displayed: false]
-}
-
 private createEventMap(name, value, unit=null) {	
 	def isStateChange = (device.currentValue(name) != value)	
 	def eventMap = [
@@ -416,7 +430,7 @@ private createEventMap(name, value, unit=null) {
 	if (isStateChange) {
 		logDebug "${eventMap.descriptionText}"
 	}
-	logTrace "Creating Event: ${eventMap}"
+	// logTrace "Creating Event: ${eventMap}"
 	return eventMap
 }
 
@@ -436,12 +450,18 @@ private batteryGetCmd() {
 }
 
 private secureCmd(cmd) {
-	if (state.useSecureCmds) {
-		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()		
+	logTrace "canSecureCmd(${cmd}) = ${canSecureCmd(cmd)}"
+	if (canSecureCmd(cmd)) {
+		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
 	}
 	else {
 		return cmd.format()
-	}
+	}	
+}
+
+private canSecureCmd(cmd) {
+	// This code was extracted from example by @ClassicGOD	
+	return zwaveInfo?.zw?.contains("s") && zwaveInfo?.sec?.contains(Integer.toHexString(cmd.commandClassId)?.toUpperCase())
 }
 
 // Settings
