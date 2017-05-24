@@ -14,7 +14,7 @@
 	<li><a href="#dome-siren">Dome Siren</a></li>
 	<li><a href="#dome-water-shut-off">Dome Water Shut-Off</a></li>
 	<li><a href="#everspring-motion-detector">Everspring Motion Detector</a></li>
-	<li><a href="#everspring-temperature-humidity-detector">Everspring Temperature/Humidity Detector</a></li>
+	<li><a href="#everspring-temperaturehumidity-detector">Everspring Temperature/Humidity Detector</a></li>
 	<li><a href="#fibaro-motion-sensor-zw5">Fibaro Motion Sensor ZW5</a></li>
 	<li><a href="#fibaro-swipe">Fibaro Swipe</a></li>
 	<li><a href="#forcible-mobile-presence">Forcible Mobile Presence</a></li>
@@ -24,13 +24,13 @@
 	<li><a href="#gocontrollinear-multifunction-siren">GoControl/Linear/Vision Multifunction Siren</a></li>
 	<li><a href="#leaksmart-water-valve">LeakSmart Water Valve</a></li>
 	<li><a href="#monoprice-z-wave-plus-doorwindow-sensor">Monoprice Z-Wave Plus Door/Window Sensor</a></li>
-	<li><a href="#vision-monoprice-shock-sensor">Monoprice Shock Sensor</a></li>
+	<li><a href="#visionmonoprice-shock-sensor">Monoprice Shock Sensor</a></li>
 	<li><a href="#zoozmonoprice-4-in-1-multisensor">Monoprice 4-in-1 Motion Sensor with Temperature, Humidity, and Light Sensors</a></li>
 	<li><a href="#polling-cree-bulb">Polling Cree Bulb</a></li>
 	<li><a href="#polling-ge-link-bulb">Polling GE Link Bulb</a></li>
 	<li><a href="#remotec-zxt-310-ir-extender">Remotec ZXT-310 IR Extender</a></li>
 	<li><a href="#thingshield-timer">ThingShield Timer</a></li>
-	<li><a href="#vision-monoprice-shock-sensor">Vision Shock Sensor</a></li>
+	<li><a href="#visionmonoprice-shock-sensor">Vision Shock Sensor</a></li>
 	<li><a href="#wireless-smoke-detector-sensor">Wireless Smoke Detector Sensor</a></li>
 	<li><a href="#zipato-multisound-siren">Zipato Multisound Siren</a></li>
 	<li><a href="#zoozmonoprice-4-in-1-multisensor">Zooz 4-in-1 Multisensor</a></li>
