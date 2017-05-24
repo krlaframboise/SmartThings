@@ -1,5 +1,5 @@
 /**
- *  Zooz/Monoprice 4-in-1 Multisensor 1.3.4
+ *  Zooz/Monoprice 4-in-1 Multisensor 1.3.5
  *
  *  Zooz Z-Wave 4-in-1 Sensor (ZSE40)
  *
@@ -12,6 +12,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.3.5 (05/24/2017)
+ *    	- Made illuminance events appear in recently tab because CoRE was ignoring the values.
  *
  *    1.3.4 (04/29/2017)
  *    	- Made refresh command return null to fix possible issue it's causing with webCoRE.
@@ -297,7 +300,7 @@ def updated() {
 		}
 				
 		if (!getAttrValue("tamper")) {
-			sendEvent(createEventMap("tamper", "clear"))
+			sendEvent(createTamperEventMap("clear"))
 		}
 
 		logForceWakeupMessage("The configuration will be updated the next time the device wakes up.")
@@ -323,7 +326,20 @@ private initializeOffsets() {
 	eventMaps += createStatusEventMaps(eventMaps, true)
 	
 	eventMaps?.each { eventMap ->
+		
+		eventMap.descriptionText = getDisplayedDescriptionText(eventMap)
+		
 		sendEvent(eventMap)
+	}
+}
+
+private getDisplayedDescriptionText(eventMap) {
+	def deviceName = "${device.displayName}"
+	if (eventMap?.displayed && eventMap?.descriptionText && !eventMap?.descriptionText?.contains(deviceName)) {
+		return "${deviceName}: ${eventMap.descriptionText}"
+	}
+	else {
+		return eventMap?.descriptionText
 	}
 }
 
@@ -729,7 +745,8 @@ private handleMotionEvent(val) {
 	eventMaps += createStatusEventMaps(eventMaps, false)
 	
 	def result = []
-	eventMaps?.each { 
+	eventMaps?.each {
+		it.descriptionText = getDisplayedDescriptionText(it)
 		result << createEvent(it)
 	}
 	return result
@@ -792,6 +809,7 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelR
 	def result = []
 	eventMaps?.each {
 		logTrace "Creating Event: ${it}"
+		it.descriptionText = getDisplayedDescriptionText(it)
 		result << createEvent(it)
 	}
 	return result
@@ -820,7 +838,7 @@ private createLightEventMaps(val, onlyIfNew) {
 	def result = []
 	result += createEventMaps("pLight", pOffsetVal, "%", false, onlyIfNew)
 	result += createEventMaps("lxLight", lxOffsetVal, "lx", false, onlyIfNew)
-	result += createEventMaps("illuminance", lightOffsetVal, lightUnit, null, onlyIfNew)
+	result += createEventMaps("illuminance", lightOffsetVal, lightUnit, true, onlyIfNew)
 	return result
 }
 
@@ -977,7 +995,8 @@ private createEventMap(eventName, newVal, unit="", displayed=null) {
 		value: newVal, 
 		displayed: displayed,
 		isStateChange: true,
-		unit: unit
+		unit: unit,
+		descriptionText: "${device.displayName}: ${desc}"
 	]
 }
 
