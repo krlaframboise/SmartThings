@@ -1,5 +1,5 @@
 /**
- *  Zooz/Monoprice 4-in-1 Multisensor 1.3.5
+ *  Zooz/Monoprice 4-in-1 Multisensor 1.3.6
  *
  *  Zooz Z-Wave 4-in-1 Sensor (ZSE40)
  *
@@ -13,8 +13,10 @@
  *
  *  Changelog:
  *
- *    1.3.5 (05/24/2017)
+ *    1.3.6 (05/24/2017)
  *    	- Made illuminance events appear in recently tab because CoRE was ignoring the values.
+ *    	- Added device name to description fields.
+ *    	- Added a setting that causes the primary status to get rounded to the nearest whole number.
  *
  *    1.3.4 (04/29/2017)
  *    	- Made refresh command return null to fix possible issue it's causing with webCoRE.
@@ -107,6 +109,11 @@ metadata {
 			defaultValue: primaryTileStatusSetting,
 			required: false,
 			options: primaryStatusOptions
+		input "roundPrimaryStatus", "bool", 
+			title: "Round the Primary Status to a whole number?", 
+			defaultValue: false, 
+			displayDuringSetup: true, 
+			required: false
 		input "secondaryTileStatus", "enum",
 			title: "Secondary Status:",
 			defaultValue: secondaryTileStatusSetting,
@@ -417,6 +424,9 @@ private refreshSensorData() {
 }
 
 // Settings
+private getRoundPrimaryStatusSetting() {
+	return settings?.roundPrimaryStatus ?: false
+}
 private getPrimaryTileStatusSetting() {
 	return settings?.primaryTileStatus ?: "motion"
 }
@@ -878,6 +888,9 @@ private createStatusEventMaps(eventMaps, onlyIfNew) {
 	
 	def primaryStatus = eventMaps?.find { it.name == primaryTileStatusSetting }?.descriptionText
 	if (primaryStatus) {
+		if (roundPrimaryStatusSetting) {
+			primaryStatus = formatPrimaryStatusNumber(primaryStatus)
+		}
 		result += createEventMaps("primaryStatus", primaryStatus, "", false, onlyIfNew)
 	}
 	
@@ -886,6 +899,23 @@ private createStatusEventMaps(eventMaps, onlyIfNew) {
 		result += createEventMaps("secondaryStatus", secondaryStatus, "", false, onlyIfNew)
 	}
 	return result
+}
+
+private formatPrimaryStatusNumber(val) {
+	def unit
+	["% LIGHT", "% RH", " LUX", "°F", "°C"].each {
+		if ("${val}".contains(it)) {
+			unit = "${it}"
+		}
+	}
+	
+	if (unit) {
+		def numericVal = safeToDec("${val}".replace("${unit}", ""))
+		return "${Math.round(numericVal)}${unit}"
+	}
+	else {
+		return val
+	}
 }
 
 private getSecondaryStatus(eventMaps) {
