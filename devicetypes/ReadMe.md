@@ -14,7 +14,9 @@
 	<li><a href="#dome-siren">Dome Siren</a></li>
 	<li><a href="#dome-water-shut-off">Dome Water Shut-Off</a></li>
 	<li><a href="#everspring-motion-detector">Everspring Motion Detector</a></li>
+	<li><a href="#everspring-temperature-humidity-detector">Everspring Temperature/Humidity Detector</a></li>
 	<li><a href="#fibaro-motion-sensor-zw5">Fibaro Motion Sensor ZW5</a></li>
+	<li><a href="#fibaro-swipe">Fibaro Swipe</a></li>
 	<li><a href="#forcible-mobile-presence">Forcible Mobile Presence</a></li>
 	<li><a href="#gocontrollinear-doorwindow-sensor">GoControl/Linear Door/Window Sensor</a></li>
 	<li><a href="#gocontrollinear-multifunction-contact-sensor">GoControl/Linear Multifunction Contact Sensor</a></li>
@@ -22,12 +24,13 @@
 	<li><a href="#gocontrollinear-multifunction-siren">GoControl/Linear/Vision Multifunction Siren</a></li>
 	<li><a href="#leaksmart-water-valve">LeakSmart Water Valve</a></li>
 	<li><a href="#monoprice-z-wave-plus-doorwindow-sensor">Monoprice Z-Wave Plus Door/Window Sensor</a></li>
+	<li><a href="#vision-monoprice-shock-sensor">Monoprice Shock Sensor</a></li>
 	<li><a href="#zoozmonoprice-4-in-1-multisensor">Monoprice 4-in-1 Motion Sensor with Temperature, Humidity, and Light Sensors</a></li>
 	<li><a href="#polling-cree-bulb">Polling Cree Bulb</a></li>
 	<li><a href="#polling-ge-link-bulb">Polling GE Link Bulb</a></li>
 	<li><a href="#remotec-zxt-310-ir-extender">Remotec ZXT-310 IR Extender</a></li>
 	<li><a href="#thingshield-timer">ThingShield Timer</a></li>
-	<li><a href="#vision-shock-sensor">Vision Shock Sensor</a></li>
+	<li><a href="#vision-monoprice-shock-sensor">Vision Shock Sensor</a></li>
 	<li><a href="#wireless-smoke-detector-sensor">Wireless Smoke Detector Sensor</a></li>
 	<li><a href="#zipato-multisound-siren">Zipato Multisound Siren</a></li>
 	<li><a href="#zoozmonoprice-4-in-1-multisensor">Zooz 4-in-1 Multisensor</a></li>
@@ -156,6 +159,19 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 
 
 <hr />
+<h3>Everspring Temperature/Humidity Detector</h3>
+<ul>
+<li>This is a device handler for the Everspring Temperature/Humidity Detector (ST814-2)</li>
+<li>Reports Relative Humidity, Temperature, and Battery.</li>
+<li>Allows you to choose whether Humidity or Temperature is displayed as in the Things list.</li>
+<li>You can change the reporting interval for Temperature/Humidity or disable it.</li>
+<li>You can specify a Temperature threshold and a Humidity threshold for reporting</li>
+<li>Supports Temperature and Humidity offsets</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/everspring-temperature-humidity-detector.src/everspring-temperature-humidity-detector.groovy">View Everspring Temperature/Humidity Detector - Device Handler Code</a></li>
+</ul>
+
+
+<hr />
 <h3>Fibaro Motion Sensor ZW5</h3>
 <ul>
 <li>This is a device handler for the Fibaro Motion Sensor ZW5 (FGMS-001)</li>
@@ -163,6 +179,20 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li>It can also report either Earthquake magnitude or Three-Axis x,y,z.
 <li>Simplifies all the configuration settings.</li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/fibaro-motion-sensor-zw5.src/fibaro-motion-sensor-zw5.groovy">View Fibaro Motion Sensor ZW5 - Device Handler Code</a></li>
+</ul>
+
+
+<hr />
+<h3>Fibaro Swipe</h3>
+<ul>
+<li>This is a device handler for the Fibaro Swipe (FGGC-001)</li>
+<li>The device supports 16 buttons that are mapped to the gestures and sequences</li>
+<li>There's a label setting for each button that gets displayed on the device details screen</li>
+<li>Allows you to choose the 2-3 gestures to use for each of the 6 sequences</li>
+<li>Creates the button held event when circular gestures start and button pushed event when they stop</li>
+<li>Double gestures can be disabled.</li>
+<li><a href="https://community.smartthings.com/t/release-fibaro-swipe/88073?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/fibaro-swipe-gesture-controller.src/fibaro-swipe-gesture-controller.groovy">View Fibaro Swipe - Device Handler Code</a></li>
 </ul>
 
 
@@ -302,10 +332,11 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
-<h3>Vision Shock Sensor</h3>
+<h3>Vision/Monoprice Shock Sensor</h3>
 
 <ul>
 <li>This is a device handler for the Vision Shock Sensor (ZS 5101).<br /></li>
+<li>It's also a device handler for the Monoprice Shock Sensor (P/N 15269)</li>
 <li>Choose between Motion and Acceleration as the capability to use for the primary status shown in the main tile which is activated by vibration.</li>
 <li>Primary status automatically resets back to inactive shortly after vibration stops</li>
 <li>Choose between None, Motion, Contact, Tamper and Water for the secondary status which is activated by the external sensor and/or tamper switch.</li>
