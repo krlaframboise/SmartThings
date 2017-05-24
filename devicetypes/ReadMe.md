@@ -23,9 +23,9 @@
 	<li><a href="#gocontrollinear-motion-sensor">GoControl/Linear Motion Sensor</a></li>
 	<li><a href="#gocontrollinear-multifunction-siren">GoControl/Linear/Vision Multifunction Siren</a></li>
 	<li><a href="#leaksmart-water-valve">LeakSmart Water Valve</a></li>
-	<li><a href="#monoprice-z-wave-plus-doorwindow-sensor">Monoprice Z-Wave Plus Door/Window Sensor</a></li>
-	<li><a href="#visionmonoprice-shock-sensor">Monoprice Shock Sensor</a></li>
 	<li><a href="#zoozmonoprice-4-in-1-multisensor">Monoprice 4-in-1 Motion Sensor with Temperature, Humidity, and Light Sensors</a></li>
+	<li><a href="#visionmonoprice-shock-sensor">Monoprice Shock Sensor</a></li>
+	<li><a href="#monoprice-z-wave-plus-doorwindow-sensor">Monoprice Z-Wave Plus Door/Window Sensor</a></li>
 	<li><a href="#polling-cree-bulb">Polling Cree Bulb</a></li>
 	<li><a href="#polling-ge-link-bulb">Polling GE Link Bulb</a></li>
 	<li><a href="#remotec-zxt-310-ir-extender">Remotec ZXT-310 IR Extender</a></li>
