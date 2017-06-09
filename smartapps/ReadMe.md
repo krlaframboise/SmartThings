@@ -9,10 +9,10 @@
 
 If you like the SmartApps and Device Handlers I've created and you would like to make a donation, please go to https://www.paypal.me/krlaframboise
 
-<a name="home-presence-manager">
+<a name="home-presence-manager"></a>
 <hr />
 
-<h3></a>Home Presence Manager</h3>
+<h3 id="home-presence-manager">Home Presence Manager</h3>
 <ul>
 <li>Uses Motion Sensors, Contact Sensors and Virtual Presence Sensors to keep track of the room you're in and turn on and off lights as you move throughout the house.<br /></li>
 
@@ -23,7 +23,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <a name="simple-device-viewer"></a>
 <hr />
 
-<h3>Simple Device Viewer</h3>
+<h3 id="simple-device-viewer">Simple Device Viewer</h3>
 
 <ul>
 <li>Allows you to easily see a list of information about your devices like battery percentages, temperatures, how long since last event, switch state, etc.<br /></li>
@@ -41,7 +41,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <a name="simple-event-logger"></a>
 <hr />
 
-<h3>Simple Event Logger</h3>
+<h3 id="simple-event-logger">Simple Event Logger</h3>
 
 <ul>
 <li>Simple Event Logger is a fully customizable SmartApp that allows you to accurately log all device activity to a Google Sheets Spreadsheet.</li>
