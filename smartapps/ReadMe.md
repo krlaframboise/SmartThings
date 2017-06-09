@@ -9,9 +9,10 @@
 
 If you like the SmartApps and Device Handlers I've created and you would like to make a donation, please go to https://www.paypal.me/krlaframboise
 
+<a name="home-presence-manager">
 <hr />
 
-<h3>Home Presence Manager</h3>
+<h3></a>Home Presence Manager</h3>
 <ul>
 <li>Uses Motion Sensors, Contact Sensors and Virtual Presence Sensors to keep track of the room you're in and turn on and off lights as you move throughout the house.<br /></li>
 
@@ -19,6 +20,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/smartapps/krlaframboise/home-presence-manager.src/home-presence-manager.groovy">View Home Presence Manager - SmartApp Code</a></li>
 </ul>
 
+<a name="simple-device-viewer"></a>
 <hr />
 
 <h3>Simple Device Viewer</h3>
@@ -36,6 +38,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/smartapps/krlaframboise/simple-device-viewer.src/simple-device-viewer.groovy">View Simple Device Viewer - SmartApp Code</a></li>
 </ul>
 
+<a name="simple-event-logger"></a>
 <hr />
 
 <h3>Simple Event Logger</h3>
