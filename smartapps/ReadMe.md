@@ -9,7 +9,7 @@
 
 If you like the SmartApps and Device Handlers I've created and you would like to make a donation, please go to https://www.paypal.me/krlaframboise
 
-<a name="home-presence-manager"></a>
+<a id="home-presence-manager" name="home-presence-manager">&nbsp;&nbsp;&nbsp;</a>
 <hr />
 
 <h3 id="home-presence-manager">Home Presence Manager</h3>
