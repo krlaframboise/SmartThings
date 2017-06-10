@@ -13,6 +13,7 @@
 	<li><a href="#dome-on-off-plug">Dome On Off Plug</a></li>
 	<li><a href="#dome-siren">Dome Siren</a></li>
 	<li><a href="#dome-water-shut-off">Dome Water Shut-Off</a></li>
+	<li><a href="#ecolink-motion-sensor">Ecolink Motion Sensor</a></li>
 	<li><a href="#everspring-motion-detector">Everspring Motion Detector</a></li>
 	<li><a href="#everspring-temperaturehumidity-detector">Everspring Temperature/Humidity Detector</a></li>
 	<li><a href="#fibaro-motion-sensor-zw5">Fibaro Motion Sensor ZW5</a></li>
@@ -145,6 +146,15 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li>You can close the valve with either Valve.close or Switch.off</li>
 <li><a href="https://community.smartthings.com/t/release-dome-water-main-shut-off-official/75500?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-water-shut-off.src/dome-water-shut-off.groovy">View Dome Water Shut-Off - Device Handler Code</a></li>
+</ul>
+
+
+<hr />
+<h3>Ecolink Motion Sensor</h3>
+<ul>
+<li>This is a device handler for the Ecolink Motion Sensor (PIRZWAVE2.5-ECO)</li>
+<li>Reports Motion, Battery, Tamper, and allows you to change the wakeup interval.</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/ecolink-motion-sensor.src/ecolink-motion-sensor.groovy">View Ecolink Motion Sensor - Device Handler Code</a></li>
 </ul>
 
 
