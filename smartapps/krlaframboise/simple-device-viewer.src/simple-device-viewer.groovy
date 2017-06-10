@@ -2105,7 +2105,7 @@ private api_getPageErrorHtml(e) {
 
 private api_renderHtmlPage(html, url, refreshInterval) {
 	render contentType: "text/html", 
-		data: "<!DOCTYPE html><html lang=\"en\"><head><title>Simple Device Viewer - Dashboard</title><meta charset=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><meta http-equiv=\"refresh\" content=\"${refreshInterval}; URL=${url}\">${api_getCSS()}</head><body>${html}${api_getJS()}</body></html>"
+		data: "<!DOCTYPE html><html lang=\"en\"><head><title>Simple Device Viewer - Dashboard</title><meta charset=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><meta http-equiv=\"refresh\" content=\"${refreshInterval}; URL=&#36;{url}\">${api_getCSS()}</head><body>${html}${api_getJS()}</body></html>"
 }
 
 private api_getJS() {	
