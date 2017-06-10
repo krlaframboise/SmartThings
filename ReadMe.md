@@ -8,51 +8,52 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <hr />
 
 <ul>
-	<li><p><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#smartapps">SmartApps</a></p>
+	<li><p><a href="#smartapps">SmartApps</a></p>
 		<ul>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#home-presence-manager">Home Presence Manager</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#simple-device-viewer">Simple Device Viewer</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#simple-event-logger">Simple Event Logger</a></li>
+			<li><a href="#home-presence-manager">Home Presence Manager</a></li>
+			<li><a href="#simple-device-viewer">Simple Device Viewer</a></li>
+			<li><a href="#simple-event-logger">Simple Event Logger</a></li>
 		</ul>
 	</li>
 </ul>
 <ul>
-	<li><p><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#device-type-handlers">Device Type Handlers</a></p>
+	<li><p><a href="#device-type-handlers">Device Type Handlers</a></p>
 		<ul>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#aeon-labs-aeotec-doorbell">Aeon Labs Aeotec Doorbell</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#aeon-labs-multifunction-siren">Aeon Labs Multifunction Siren</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#alarm-switch">Alarm Switch</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-door-sensor">Dome Door Sensor</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-leak-sensor">Dome Leak Sensor</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-motion-sensor">Dome Motion Sensor</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-mouser">Dome Mouser</a></li>			
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-on-off-plug">Dome On Off Plug</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-siren">Dome Siren</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#dome-water-shut-off">Dome Water Shut-Off</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#everspring-motion-detector">Everspring Motion Detector</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#everspring-temperaturehumidity-detector">Everspring Temperature/Humidity Detector</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#fibaro-motion-sensor-zw5">Fibaro Motion Sensor ZW5</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#fibaro-swipe">Fibaro Swipe</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#forcible-mobile-presence">Forcible Mobile Presence</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-doorwindow-sensor">GoControl/Linear Door/Window Sensor</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-multifunction-contact-sensor">GoControl/Linear Multifunction Contact Sensor</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-motion-sensor">GoControl/Linear Motion Sensor</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#gocontrollinear-multifunction-siren">GoControl/Linear/Vision Multifunction Siren</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#leaksmart-water-valve">LeakSmart Water Valve</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zoozmonoprice-4-in-1-multisensor">Monoprice 4-in-1 Motion Sensor with Temperature, Humidity, and Light Sensors</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#visionmonoprice-shock-sensor">Monoprice Shock Sensor</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#monoprice-z-wave-plus-doorwindow-sensor">Monoprice Z-Wave Plus Door/Window Sensor</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#polling-cree-bulb">Polling Cree Bulb</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#polling-ge-link-bulb">Polling GE Link Bulb</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#remotec-zxt-310-ir-extender">Remotec ZXT-310 IR Extender</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#thingshield-timer">ThingShield Timer</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#visionmonoprice-shock-sensor">Vision Shock Sensor</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#wireless-smoke-detector-sensor">Wireless Smoke Detector Sensor</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zipato-multisound-siren">Zipato Multisound Siren</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zoozmonoprice-4-in-1-multisensor">Zooz 4-in-1 Multisensor</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zooz-power-strip">Zooz Power Strip</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zooz-smart-chime">Zooz Smart Chime</a></li>
-			<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/ReadMe.md#zooz-water-sensor">Zooz Water Sensor</a></li>
+			<li><a href="#aeon-labs-aeotec-doorbell">Aeon Labs Aeotec Doorbell</a></li>
+			<li><a href="#aeon-labs-multifunction-siren">Aeon Labs Multifunction Siren</a></li>
+			<li><a href="#alarm-switch">Alarm Switch</a></li>
+			<li><a href="#dome-door-sensor">Dome Door Sensor</a></li>
+			<li><a href="#dome-leak-sensor">Dome Leak Sensor</a></li>
+			<li><a href="#dome-motion-sensor">Dome Motion Sensor</a></li>
+			<li><a href="#dome-mouser">Dome Mouser</a></li>			
+			<li><a href="#dome-on-off-plug">Dome On Off Plug</a></li>
+			<li><a href="#dome-siren">Dome Siren</a></li>
+			<li><a href="#dome-water-shut-off">Dome Water Shut-Off</a></li>			
+			<li><a href="#ecolink-motion-sensor">Ecolink Motion Sensor</a></li>
+			<li><a href="#everspring-motion-detector">Everspring Motion Detector</a></li>
+			<li><a href="#everspring-temperaturehumidity-detector">Everspring Temperature/Humidity Detector</a></li>
+			<li><a href="#fibaro-motion-sensor-zw5">Fibaro Motion Sensor ZW5</a></li>
+			<li><a href="#fibaro-swipe">Fibaro Swipe</a></li>
+			<li><a href="#forcible-mobile-presence">Forcible Mobile Presence</a></li>
+			<li><a href="#gocontrollinear-doorwindow-sensor">GoControl/Linear Door/Window Sensor</a></li>
+			<li><a href="#gocontrollinear-multifunction-contact-sensor">GoControl/Linear Multifunction Contact Sensor</a></li>
+			<li><a href="#gocontrollinear-motion-sensor">GoControl/Linear Motion Sensor</a></li>
+			<li><a href="#gocontrollinear-multifunction-siren">GoControl/Linear/Vision Multifunction Siren</a></li>
+			<li><a href="#leaksmart-water-valve">LeakSmart Water Valve</a></li>
+			<li><a href="#zoozmonoprice-4-in-1-multisensor">Monoprice 4-in-1 Motion Sensor with Temperature, Humidity, and Light Sensors</a></li>
+			<li><a href="#visionmonoprice-shock-sensor">Monoprice Shock Sensor</a></li>
+			<li><a href="#monoprice-z-wave-plus-doorwindow-sensor">Monoprice Z-Wave Plus Door/Window Sensor</a></li>
+			<li><a href="#polling-cree-bulb">Polling Cree Bulb</a></li>
+			<li><a href="#polling-ge-link-bulb">Polling GE Link Bulb</a></li>
+			<li><a href="#remotec-zxt-310-ir-extender">Remotec ZXT-310 IR Extender</a></li>
+			<li><a href="#thingshield-timer">ThingShield Timer</a></li>
+			<li><a href="#visionmonoprice-shock-sensor">Vision Shock Sensor</a></li>
+			<li><a href="#wireless-smoke-detector-sensor">Wireless Smoke Detector Sensor</a></li>
+			<li><a href="#zipato-multisound-siren">Zipato Multisound Siren</a></li>
+			<li><a href="#zoozmonoprice-4-in-1-multisensor">Zooz 4-in-1 Multisensor</a></li>
+			<li><a href="#zooz-power-strip">Zooz Power Strip</a></li>
+			<li><a href="#zooz-smart-chime">Zooz Smart Chime</a></li>
+			<li><a href="#zooz-water-sensor">Zooz Water Sensor</a></li>
 		</ul>
 	</li>
 </ul>
@@ -207,6 +208,15 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li>You can close the valve with either Valve.close or Switch.off</li>
 <li><a href="https://community.smartthings.com/t/release-dome-water-main-shut-off-official/75500?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-water-shut-off.src/dome-water-shut-off.groovy">View Dome Water Shut-Off - Device Handler Code</a></li>
+</ul>
+
+
+<hr />
+<h3>Ecolink Motion Sensor</h3>
+<ul>
+<li>This is a device handler for the Ecolink Motion Sensor (PIRZWAVE2.5-ECO)</li>
+<li>Reports Motion, Battery, Tamper, and allows you to change the wakeup interval.</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/ecolink-motion-sensor.src/ecolink-motion-sensor.groovy">View Ecolink Motion Sensor - Device Handler Code</a></li>
 </ul>
 
 
