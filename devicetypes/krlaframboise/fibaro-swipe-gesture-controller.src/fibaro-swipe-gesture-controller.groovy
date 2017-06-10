@@ -1,5 +1,5 @@
 /**
- *  Fibaro Swipe Gesture Controller v1.0.1
+ *  Fibaro Swipe Gesture Controller v1.0.2
  *  (Model: FGGC-001)
  *
  *  Author: 
@@ -10,9 +10,11 @@
  *
  *  Changelog:
  *
+ *    1.0.2 (06/10/2017)
+ *      - Switched to SmartThings color standards and added icon for sequences.
+ *
  *    1.0.1 (05/22/2017)
  *      - Initial Release
- *
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -49,7 +51,7 @@ metadata {
 		
 		fingerprint deviceId: "0x1801", inClusters: "0x56, 0x59, 0x5A, 0x5B, 0x5E, 0x70, 0x72, 0x73, 0x7A, 0x80, 0x84, 0x85, 0x86, 0x8E, 0x98", outClusters: ""
 		
-		fingerprint mfr:"010F", prod:"0D01", model:"2000", deviceJoinName: "Fibaro SWIPE"
+		fingerprint mfr:"010F", prod:"0D01", model:"2000", deviceJoinName: "Fibaro Swipe"
 	}
 
 	simulator { }
@@ -80,95 +82,31 @@ metadata {
 	tiles(scale: 2) {
 		multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4, canChangeIcon: false){
 			tileAttribute ("device.primaryStatus", key: "PRIMARY_CONTROL") {
-				attributeState "default", label:'', icon:"${iconSwipe}", backgroundColor:"#cccccc"
-				attributeState "pushed1", label:'Swipe Up', icon:"${iconUp}"
-				attributeState "pushed2", label:'Swipe Down', icon:"${iconDown}"
-				attributeState "pushed3", label:'Swipe Left', icon:"${iconLeft}"
-				attributeState "pushed4", label:'Swipe Right', icon:"${iconRight}"
-				attributeState "held5", label:'CW Circle Started', icon:"${iconCircleCW}"
-				attributeState "pushed5", label:'CW Circle Stopped', icon:"${iconCircleCW}"
-				attributeState "held6", label:'CCW Circle Started', icon:"${iconCircleCCW}"
-				attributeState "pushed6", label:'CCW Circle Stopped', icon:"${iconCircleCCW}"
-				attributeState "pushed7", label:'Dbl Swipe Up', icon:"${iconDoubleUp}"
-				attributeState "pushed8", label:'Dbl Swipe Down', icon:"${iconDoubleDown}"
-				attributeState "pushed9", label:'Dbl Swipe Left', icon:"${iconDoubleLeft}"
-				attributeState "pushed10", label:'Dbl Swipe Right', icon:"${iconDoubleRight}"
-				attributeState "pushed11", label:'Sequence 1', icon:"${iconSwipe}"
-				attributeState "pushed12", label:'Sequence 2', icon:"${iconSwipe}"
-				attributeState "pushed13", label:'Sequence 3', icon:"${iconSwipe}"
-				attributeState "pushed14", label:'Sequence 4', icon:"${iconSwipe}"
-				attributeState "pushed15", label:'Sequence 5', icon:"${iconSwipe}"
-				attributeState "pushed16", label:'Sequence 6', icon:"${iconSwipe}"
-				
+				attributeState "default", label:'Ready', icon:"${resourcesUrl}/swipe.png", backgroundColor:"#ffffff"
+				gestures.each {					
+					attributeState "pushed${it.btnNum}", label:"${it.name}", icon:"${resourcesUrl}/${it.icon}", backgroundColor:"#00a0dc"
+					if (it.keyAttr == 2) {
+						attributeState "held${it.btnNum}", label:"${it.name} Active", icon:"${resourcesUrl}/${it.icon}", backgroundColor:"#00a0dc"
+					}
+				}				
 			}
 			tileAttribute ("device.secondaryStatus", key: "SECONDARY_CONTROL") {
 				attributeState "secondaryStatus", label:'${currentValue}'			
 			}
 		}
 		
-		valueTile("btn1Label", "device.btn1Label", width: 2, height: 2) {
-			state "default", label:'Button 1\n${currentValue}', icon: "${iconUp}"
-		}		
-				
-		valueTile("btn2Label", "device.btn2Label", width: 2, height: 2) {
-			state "default", label:'Button 2\n${currentValue}', icon: "${iconDown}"
-		}		
-				
-		valueTile("btn3Label", "device.btn3Label", width: 2, height: 2) {
-			state "default", label:'Button 3\n${currentValue}', icon: "${iconLeft}"
-		}		
-		
-		valueTile("btn4Label", "device.btn4Label", width: 2, height: 2) {
-			state "default", label:'Button 4\n${currentValue}', icon: "${iconRight}"
+		gestures.each { gest ->
+			if (gest.seqNum) {
+				valueTile("btn${gest.btnNum}Label", "device.btn${gest.btnNum}Label", width: 3, height: 2) {
+					state "default", label:'${currentValue}'
+				}
+			}
+			else {
+				valueTile("btn${gest.btnNum}Label", "device.btn${gest.btnNum}Label", width: 2, height: 2) {
+					state "default", label:'${currentValue}', icon: "${resourcesUrl}/${gest.icon}"
+				}
+			}
 		}
-		
-		valueTile("btn5Label", "device.btn5Label", width: 2, height: 2) {
-			state "default", label:'Button 5\n${currentValue}', icon: "${iconCircleCW}"
-		}
-		
-		valueTile("btn6Label", "device.btn6Label", width: 2, height: 2) {
-			state "default", label:'Button 6\n${currentValue}', icon: "${iconCircleCCW}"
-		}
-		
-		valueTile("btn7Label", "device.btn7Label", width: 2, height: 2) {
-			state "default", label:'Button 7\n${currentValue}', icon: "${iconDoubleUp}"
-		}		
-				
-		valueTile("btn8Label", "device.btn8Label", width: 2, height: 2) {
-			state "default", label:'Button 8\n${currentValue}', icon: "${iconDoubleDown}"
-		}		
-				
-		valueTile("btn9Label", "device.btn9Label", width: 2, height: 2) {
-			state "default", label:'Button 9\n${currentValue}', icon: "${iconDoubleLeft}"
-		}		
-		
-		valueTile("btn10Label", "device.btn10Label", width: 2, height: 2) {
-			state "default", label:'Button 10\n${currentValue}', icon: "${iconDoubleRight}"
-		}
-				
-		valueTile("btn11Label", "device.btn11Label", width: 3, height: 2) {
-			state "default", label:'${currentValue}'
-		}		
-				
-		valueTile("btn12Label", "device.btn12Label", width: 3, height: 2) {
-			state "default", label:'${currentValue}'
-		}		
-				
-		valueTile("btn13Label", "device.btn13Label", width: 3, height: 2) {
-			state "default", label:'${currentValue}'
-		}		
-				
-		valueTile("btn14Label", "device.btn14Label", width: 3, height: 2) {
-			state "default", label:'${currentValue}'
-		}		
-		
-		valueTile("btn15Label", "device.btn15Label", width: 3, height: 2) {
-			state "default", label:'${currentValue}'
-		}		
-		
-		valueTile("btn16Label", "device.btn16Label", width: 3, height: 2) {
-			state "default", label:'${currentValue}'
-		}		
 		
 		valueTile("battery", "device.battery", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
 			state "battery", label:'${currentValue}% Battery', unit:""
@@ -189,8 +127,12 @@ metadata {
 		}
 
 		main "mainTile"
-		details(["mainTile", "battery", "pending", "btn1Label", "btn2Label", "btn3Label", "btn4Label", "btn5Label", "btn6Label", "btn7Label", "btn8Label", "btn9Label", "btn10Label", "btn11Label", "btn12Label", "btn13Label", "btn14Label", "btn15Label", "btn16Label", "refresh", "lastUpdate"])
+		details(tileList)
 	}
+}
+
+private getTileList() {
+	return ["mainTile", "battery", "pending", "refresh", "lastUpdate"].plus(3, gestures.collect { "btn${it.btnNum}Label" })
 }
 
 private getTextInput(name, title, defaultVal) {
@@ -252,6 +194,9 @@ private syncSettingAttributes() {
 		
 		if (it.seqNum) {
 			labelVal = "Sequence ${it.seqNum}\n(${getSeqSetting(it.seqNum)})\nButton ${it.btnNum}\n${labelVal}"
+		}
+		else {
+			labelVal = "Button ${it.btnNum}\n${labelVal}"
 		}
 		
 		if (getAttrValue(labelAttr) != labelVal) {
@@ -507,7 +452,9 @@ def zwaveEvent(physicalgraph.zwave.commands.centralscenev1.CentralSceneNotificat
 		
 		result << createEvent(createEventMap("secondaryStatus", "Button #${gesture.btnNum} ${val.capitalize()}", false))
 		
-		runIn(3, resetStatuses)
+		if (val != "held") {
+			runIn(3, resetStatuses)
+		}
 	}	
 	return result
 }
@@ -521,7 +468,7 @@ private wakeUpIntervalSetCmd(val) {
 	return secureCmd(zwave.wakeUpV2.wakeUpIntervalSet(seconds:val, nodeid:zwaveHubNodeId))
 }
 
-private wakeUpIntervalGetCmd(val) {
+private wakeUpIntervalGetCmd() {
 	return secureCmd(zwave.wakeUpV2.wakeUpIntervalGet())
 }
 
@@ -672,16 +619,16 @@ private createConfigParamMap(num, name, size, options, prefName, val=null) {
 
 private getGestures() {
 	def gestures = [
-		[name: "Swipe Up", sceneNum: 1, keyAttr:0, btnNum: 1, icon: iconUp, simple: true],
-		[name: "Swipe Down", sceneNum: 2, keyAttr:0, btnNum: 2, icon: iconDown, simple: true],
-		[name: "Swipe Left", sceneNum: 3, keyAttr:0, btnNum: 3, icon: iconLeft, simple: true],
-		[name: "Swipe Right", sceneNum: 4, keyAttr:0, btnNum: 4, icon: iconRight, simple: true],
-		[name: "Clockwise Circle", sceneNum: 5, keyAttr: 2, btnNum: 5, icon: iconCircleCW],
-		[name: "Counter-Clockwise Circle", sceneNum: 6, keyAttr: 2, btnNum: 6, icon: iconCircleCCW],
-		[name: "Double Swipe Up", sceneNum: 1, keyAttr:3, btnNum: 7, icon: iconDoubleUp],
-		[name: "Double Swipe Down", sceneNum: 2, keyAttr:3, btnNum: 8, icon: iconDoubleDown],
-		[name: "Double Swipe Left", sceneNum: 3, keyAttr:3, btnNum: 9, icon: iconDoubleLeft],
-		[name: "Double Swipe Right", sceneNum: 4, keyAttr:3, btnNum: 10, icon: iconDoubleRight]
+		[name: "Swipe Up", sceneNum: 1, keyAttr:0, btnNum: 1, icon: "up.png", simple: true],
+		[name: "Swipe Down", sceneNum: 2, keyAttr:0, btnNum: 2, icon: "down.png", simple: true],
+		[name: "Swipe Left", sceneNum: 3, keyAttr:0, btnNum: 3, icon: "left.png", simple: true],
+		[name: "Swipe Right", sceneNum: 4, keyAttr:0, btnNum: 4, icon: "right.png", simple: true],
+		[name: "Clockwise Circle", sceneNum: 5, keyAttr: 2, btnNum: 5, icon: "clockwise.png"],
+		[name: "Counter-Clockwise Circle", sceneNum: 6, keyAttr: 2, btnNum: 6, icon: "counter-clockwise.png"],
+		[name: "Double Swipe Up", sceneNum: 1, keyAttr:3, btnNum: 7, icon: "double-up.png"],
+		[name: "Double Swipe Down", sceneNum: 2, keyAttr:3, btnNum: 8, icon: "double-down.png"],
+		[name: "Double Swipe Left", sceneNum: 3, keyAttr:3, btnNum: 9, icon: "double-left.png"],
+		[name: "Double Swipe Right", sceneNum: 4, keyAttr:3, btnNum: 10, icon: "double-right.png"]
 	]
 	gestures += sequences
 	return gestures
@@ -690,22 +637,17 @@ private getGestures() {
 private getSequences() {
 	def items = []
 	(1..6).each {
-		items << [seqNum: it, name: "Sequence ${it}", sceneNum: (it + 6), keyAttr: 0, btnNum: (it + 10)]
+		items << [
+			seqNum: it, 
+			name: "Sequence ${it}", 
+			sceneNum: (it + 6), 
+			keyAttr: 0, 
+			btnNum: (it + 10),
+			icon: "sequence.png"
+		]
 	}
 	return items
 }
-
-private getIconSwipe() { "${resourcesUrl}/swipe.png" }
-private getIconUp() { "${resourcesUrl}/up.png" }
-private getIconDown() { "${resourcesUrl}/down.png" }
-private getIconLeft() { "${resourcesUrl}/left.png" }
-private getIconRight() { "${resourcesUrl}/right.png" }
-private getIconDoubleUp() { "${resourcesUrl}/double-up.png" }
-private getIconDoubleDown() { "${resourcesUrl}/double-down.png" }
-private getIconDoubleLeft() { "${resourcesUrl}/double-left.png" }
-private getIconDoubleRight() { "${resourcesUrl}/double-right.png" }
-private getIconCircleCW() { "${resourcesUrl}/clockwise.png" }
-private getIconCircleCCW() { "${resourcesUrl}/counter-clockwise.png" }
 
 private getResourcesUrl() {
 	return "https://raw.githubusercontent.com/krlaframboise/Resources/master/fibaro-swipe"
