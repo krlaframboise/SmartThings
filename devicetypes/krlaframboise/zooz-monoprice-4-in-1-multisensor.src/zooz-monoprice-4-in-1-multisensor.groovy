@@ -1,5 +1,5 @@
 /**
- *  Zooz/Monoprice 4-in-1 Multisensor 1.3.6
+ *  Zooz/Monoprice 4-in-1 Multisensor 1.3.7
  *
  *  Zooz Z-Wave 4-in-1 Sensor (ZSE40)
  *
@@ -12,6 +12,10 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.3.7 (06/25/2017)
+ *    	- Set default primary status when first included.
+ *    	- Fixed UI issue caused by bug in version 2.4 of the mobile app.
  *
  *    1.3.6 (05/24/2017)
  *    	- Made illuminance events appear in recently tab because CoRE was ignoring the values.
@@ -225,7 +229,8 @@ metadata {
 			tileAttribute ("device.primaryStatus", key: "PRIMARY_CONTROL") {
 				attributeState "default",
 					label:'${currentValue}',
-					backgroundColor:"#53a7c0"
+					icon: "st.motion.motion.inactive",
+					backgroundColor:"#cccccc"
 				attributeState "inactive", 
 					label:'NO MOTION', 
 					icon:"st.motion.motion.inactive", 
@@ -233,7 +238,7 @@ metadata {
 				attributeState "active", 
 					label:'MOTION', 
 					icon:"st.motion.motion.active", 
-					backgroundColor:"#53a7c0"
+					backgroundColor:"#00a0dc"
 			}
 			tileAttribute ("device.secondaryStatus", key: "SECONDARY_CONTROL") {
 				attributeState "default", label:'${currentValue}'
@@ -242,8 +247,8 @@ metadata {
 			}
 		}
 		
-		valueTile("temperature", "device.temperature", width: 2, height: 2) {
-			state("temperature", label:'${currentValue}°',
+		valueTile("temperature", "device.temperature", inactiveLabel: false, width: 2, height: 2) {
+			state "temperature", label:'${currentValue}°',
 			backgroundColors:[
 				[value: 31, color: "#153591"],
 				[value: 44, color: "#1e9cbb"],
@@ -252,41 +257,41 @@ metadata {
 				[value: 84, color: "#f1d801"],
 				[value: 95, color: "#d04e00"],
 				[value: 96, color: "#bc2323"]
-			])
+			]
 		}
 		
-		valueTile("humidity", "device.humidity", decoration: "flat", width: 2, height: 2){
-			state "humidity", label:'${currentValue}%\nHumidity', unit:""
+		valueTile("humidity", "device.humidity", decoration: "flat", inactiveLabel: false, width: 2, height: 2){
+			state "humidity", label:'${currentValue}% \nRH', unit:""
 		}
 		
-		valueTile("pLight", "device.pLight", decoration: "flat", width: 2, height: 2){
-			state "pLight", label:'${currentValue}%\nLight', unit: ""
+		valueTile("pLight", "device.pLight", decoration: "flat", inactiveLabel: false, width: 2, height: 2){
+			state "pLight", label:'${currentValue}% \nLight', unit: ""
 		}
 
-		valueTile("lxLight", "device.lxLight", decoration: "flat", width: 2, height: 2){
-			state "lxLight", label:'${currentValue} lx\nLight', unit: ""
+		valueTile("lxLight", "device.lxLight", decoration: "flat", inactiveLabel: false, width: 2, height: 2){
+			state "lxLight", label:'${currentValue}lx \nLight', unit: ""
 		}
 		
-		valueTile("motion", "device.motion",  width: 2, height: 2){
-			state "inactive", label:'No\nMotion', icon:"", backgroundColor:"#cccccc"
-			state "active", label:'Motion', icon:"", backgroundColor:"#53a7c0"
+		valueTile("motion", "device.motion", inactiveLabel: false, width: 2, height: 2){
+			state "inactive", label:'No \nMotion', backgroundColor:"#ffffff"
+			state "active", label:'Motion', backgroundColor:"#00a0dc"
 		}
 		
-		standardTile("tampering", "device.tamper", width: 2, height: 2) {
-			state "detected", label:"Tamper", backgroundColor: "#ff0000"
-			state "clear", label:"No\nTamper", backgroundColor: "#cccccc"
+		valueTile("tampering", "device.tamper", inactiveLabel: false, width: 2, height: 2) {			
+			state "clear", label:'No \nTamper', backgroundColor:"#ffffff"
+			state "detected", label:'Tamper', backgroundColor: "#e86d13"
 		}
 		
-		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2){
-			state "battery", label:'${currentValue}% Battery', unit:""
+		valueTile("battery", "device.battery", decoration: "flat", inactiveLabel: false, width: 2, height: 2){
+			state "default", label:'${currentValue}% \nBattery', unit: ""
 		}		
 		
-		standardTile("refresh", "device.refresh", width: 2, height: 2) {
+		standardTile("refresh", "device.refresh", inactiveLabel: false, width: 2, height: 2) {
 			state "default", label: "Refresh", action: "refresh", icon:"st.secondary.refresh-icon"
 		}
 		
-		valueTile("lastUpdate", "device.lastUpdate", decoration: "flat", width: 2, height: 2){
-			state "lastUpdate", label:'Settings\nUpdated\n\n${currentValue}', unit:""
+		valueTile("lastUpdate", "device.lastUpdate", decoration: "flat", inactiveLabel:false, width: 2, height: 2){
+			state "lastUpdate", label:'Settings\nUpdated\n\n${currentValue}'
 		}
 		
 		main("mainTile")
@@ -354,15 +359,15 @@ def configure() {
 	logTrace "configure()"
 	
 	def cmds = []		
-	if (!getAttrValue("firmwareVersion")) {
+	if (!getAttrValue("firmwareVersion")) {		
+		sendEvent(name: "primaryStatus", value: "inactive", displayed: false)
 		// Give inclusion time to finish.
 		logTrace "Waiting 1 second because this is the first time being configured"		
 		cmds << "delay 500"		
 		cmds << versionGetCmd()
 	}
 	
-	if (state.pendingChanges) {
-		
+	if (state.pendingChanges) {		
 		sendEvent(name: "lastUpdate", value: convertToLocalTimeString(new Date()), displayed: false)
 		
 		initializeCheckin()
