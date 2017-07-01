@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Contact Sensor v1.1.8
+ *  GoControl Multifunction Contact Sensor v1.2
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -8,6 +8,12 @@
  *  URL to documentation: https://community.smartthings.com/t/release-gocontrol-linear-multifunction-contact-sensor/77659?u=krlaframboise
  *    
  *  Changelog:
+ *
+ *    1.2 (07/01/2017)
+ *    	- Updated colors to match SmartThing's new color theme.
+ *    	- Modified Health Check feature so that it doesn't set the checkin interval until it confirms that the wakeup interval has been changed.
+ *    	- Added settings that allows you to specify the number of checkins that have to be missed before reporting the device as offline.  Setting it to 10 will practically disable the Health Check feature.
+ *    	- Removed ability to manually change icon because it prevents the icon from changing with the attribute state.
  *
  *    1.1.8 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -124,6 +130,12 @@ metadata {
 			required: false,
 			displayDuringSetup: true,
 			options: checkinIntervalOptions.collect { it.name }
+		input "missedCheckins", "enum",
+			title: "How many checkins does the device need to miss before it's reported as offline?",
+			defaultValue: missedCheckinsSetting,
+			required: false,
+			displayDuringSetup: true,
+			options: missedCheckinsOptions.collect { it.name }
 		input "batteryReportingInterval", "enum",
 			title: "Battery Reporting Interval:",
 			defaultValue: batteryReportingIntervalSetting,
@@ -139,24 +151,24 @@ metadata {
 	
 	// UI tile definitions
 	tiles(scale: 2) {
-		multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4, canChangeIcon: false){
+		multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4){
 			tileAttribute ("device.primaryStatus", key: "PRIMARY_CONTROL") {
 				attributeState "closed", 
 					label:'Closed', 
 					icon:"st.contact.contact.closed", 
-					backgroundColor:"#79b821"
+					backgroundColor:"#00a0dc"
 				attributeState "open", 
 					label:'Open', 
 					icon:"st.contact.contact.open", 
-					backgroundColor:"#ffa81e"
+					backgroundColor:"#e86d13"
 				attributeState "garage-closed", 
 					label:'Closed', 
 					icon:"st.doors.garage.garage-closed", 
-					backgroundColor:"#79b821"
+					backgroundColor:"#00a0dc"
 				attributeState "garage-open", 
 					label:'Open', 
 					icon:"st.doors.garage.garage-open", 
-					backgroundColor:"#ffa81e"				
+					backgroundColor:"#e86d13"				
 				attributeState "inactive", 
 					label:'No Motion', 
 					icon:"st.motion.motion.inactive", 
@@ -164,7 +176,7 @@ metadata {
 				attributeState "active", 
 					label:'Motion', 
 					icon:"st.motion.motion.active", 
-					backgroundColor:"#53a7c0"
+					backgroundColor:"#00a0dc"
 				attributeState "dry", 
 					label:"Dry", 
 					icon:"st.alarm.water.dry", 
@@ -172,7 +184,7 @@ metadata {
 				attributeState "wet", 
 					label:"Wet", 
 					icon:"st.alarm.water.wet", 
-					backgroundColor:"#53a7c0"
+					backgroundColor:"#00a0dc"
 				attributeState "clear", 
 					label:'Clear', 
 					icon:"st.alarm.smoke.clear", 
@@ -180,60 +192,50 @@ metadata {
 				attributeState "detected", 
 					label:'Detected', 
 					icon:"st.alarm.smoke.smoke", 
-					backgroundColor:"#53a7c0"
+					backgroundColor:"#e86d13"
 			}
 			tileAttribute ("device.secondaryStatus", key: "SECONDARY_CONTROL") {
 				attributeState "", 
 					label:''
 				attributeState "closed", 
 					label:'CLOSED', 
-					icon:"st.contact.contact.closed", 
-					backgroundColor:"#79b821"
+					icon:"st.contact.contact.closed"
 				attributeState "open", 
 					label:'OPEN', 
-					icon:"st.contact.contact.open", 
-					backgroundColor:"#ffa81e"
+					icon:"st.contact.contact.open"
 				attributeState "garage-closed", 
 					label:'CLOSED', 
-					icon:"st.doors.garage.garage-closed", 
-					backgroundColor:"#79b821"
+					icon:"st.doors.garage.garage-closed"
 				attributeState "garage-open", 
 					label:'OPEN', 
-					icon:"st.doors.garage.garage-open", 
-					backgroundColor:"#ffa81e"				
+					icon:"st.doors.garage.garage-open"
 				attributeState "inactive", 
 					label:'NO MOTION', 
-					icon:"st.motion.motion.inactive", 
-					backgroundColor:"#ffffff"
+					icon:"st.motion.motion.inactive"
 				attributeState "active", 
 					label:'MOTION', 
-					icon:"st.motion.motion.active", 
-					backgroundColor:"#53a7c0"
+					icon:"st.motion.motion.active"
 				attributeState "dry", 
 					label:"DRY", 
-					icon:"st.alarm.water.dry", 
-					backgroundColor:"#ffffff"
+					icon:"st.alarm.water.dry"
 				attributeState "wet", 
 					label:"WET", 
-					icon:"st.alarm.water.wet", 
-					backgroundColor:"#53a7c0"
+					icon:"st.alarm.water.wet"
 				attributeState "clear", 
 					label:'CLEAR', 
-					icon:"st.alarm.smoke.clear", 
-					backgroundColor:"#ffffff"
+					icon:"st.alarm.smoke.clear"
 				attributeState "detected", 
 					label:'DETECTED', 
-					icon:"st.alarm.smoke.smoke", 
-					backgroundColor:"#53a7c0"
+					icon:"st.alarm.smoke.smoke"
 			}
 		}	
 				
 		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2){
-			state "battery", label:'${currentValue}% battery', unit:""
+			state "battery", label:'${currentValue}% \nBattery', unit:""
 		}		
 		standardTile("tampering", "device.tamper", width: 2, height: 2) {
-			state "detected", label:"Tamper", backgroundColor: "#ff0000"
-			state "clear", label:"No Tamper", backgroundColor: "#cccccc"			
+			state "detected", label:"Tamper", backgroundColor: "#e86d13"
+			state "clear", label:"No \nTamper", backgroundColor: "#cccccc"			
 		}
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
 			state "default", label: "Refresh", action: "refresh", icon:"st.secondary.refresh-icon"
@@ -255,6 +257,7 @@ def updated() {
 def configure() {	
 	logTrace "configure()"
 	def cmds = []
+	
 	def mainTileChanged = false
 	if (!device.currentValue("contact")) {
 		sendEvent(name: "contact", value: "open", isStateChange: true, displayed: false)
@@ -284,17 +287,23 @@ def configure() {
 	}
 	
 	if (!state.isConfigured) {
+		state.isConfigured = true
 		logTrace "Waiting 1 second because this is the first time being configured"
 		// Give inclusion time to finish.
 		cmds << "delay 1000"			
 	}
 
-	initializeCheckin()	
+	if (state.checkinIntervalSeconds != (checkinIntervalSettingSeconds)) {
+		logTrace "Updating wakeup interval"
+		cmds << wakeUpIntervalSetCmd(checkinIntervalSettingSeconds)
+		cmds << wakeUpIntervalGetCmd()
+	}
 	
-	cmds << wakeUpIntervalSetCmd(checkinIntervalSettingMinutes)	
-	cmds << batteryGetCmd()
-	cmds << basicGetCmd()
-	return delayBetween(cmds, 250)
+	if (!isDuplicateCommand(state.lastBatteryReport, (batteryReportingIntervalSettingMinutes * 60 * 1000))) {
+		cmds << batteryGetCmd()
+	}	
+	
+	return cmds ? delayBetween(cmds, 500) : []
 }
 
 private refreshMainTile() {
@@ -302,13 +311,6 @@ private refreshMainTile() {
 	createContactEventMaps("internalContact", device.currentValue("internalContact"))?.each {
 		sendEvent(it)
 	}
-}
-
-private initializeCheckin() {
-	// Set the Health Check interval so that it can be skipped twice plus 5 minutes.
-	def checkInterval = ((checkinIntervalSettingMinutes * 3 * 60) + (5 * 60))
-	
-	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 }
 
 // Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
@@ -330,7 +332,10 @@ def refresh() {
 def parse(String description) {
 	def result = []
 	
-	sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+	if (!isDuplicateCommand(state.lastCheckin, 60000)) {
+		state.lastCheckin = new Date().time
+		sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+	}
 	
 	if (description.startsWith("Err")) {
 		log.warn "Parse Error: $description"
@@ -366,13 +371,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	logTrace "WakeUpNotification: $cmd"
 	def cmds = []
 	
-	if (!state.isConfigured) {
-		cmds += configure()
-	}
-	else if (canReportBattery()) {
-		cmds << batteryGetCmd()
-		cmds << "delay 2000"
-	}
+	cmds += configure()
 	
 	if (cmds) {
 		cmds << "delay 1000"
@@ -382,6 +381,21 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	return sendResponse(cmds)
 }
 
+def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd) {
+	logTrace "WakeUpIntervalReport: $cmd"
+	def result = []
+	
+	state.checkinIntervalSeconds = cmd.seconds
+	
+	// Set the Health Check interval so that it reports offline 5 minutes after it missed the # of checkins specified in the settings.
+	def threshold = convertOptionSettingToInt(missedCheckinsOptions, missedCheckinsSetting)
+	def checkInterval = ((cmd.seconds * threshold) + (5 * 60))
+	
+	result << createEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+	
+	return result
+}
+
 private sendResponse(cmds) {
 	def actions = []
 	cmds?.each { cmd ->
@@ -389,12 +403,6 @@ private sendResponse(cmds) {
 	}	
 	sendHubCommand(actions)
 	return []
-}
-
-private canReportBattery() {
-	def reportEveryMS = (batteryReportingIntervalSettingMinutes * 60 * 1000)
-		
-	return (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) 
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
@@ -429,7 +437,7 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
-	logTrace "Basic Set: $cmd"	
+	// logTrace "Basic Set: $cmd"	
 	return []
 }
 
@@ -458,8 +466,7 @@ private handleTamperEvent(alarmLevel) {
 	def result = []		
 	
 	if (alarmLevel == 0xFF) {
-		state.lastBatteryReport = null
-		logDebug "Tamper Detected"
+		logTrace "Tamper Detected"
 		result << createEvent(createEventMap("tamper", "detected"))
 	}	
 	
@@ -658,22 +665,19 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 private wakeUpNoMoreInfoCmd() {
 	return zwave.wakeUpV2.wakeUpNoMoreInformation().format()
 }
-private basicGetCmd() {
-	return zwave.basicV1.basicGet().format()
+
+private wakeUpIntervalSetCmd(val) {
+	return zwave.wakeUpV2.wakeUpIntervalSet(seconds:val, nodeid:zwaveHubNodeId).format()
+}
+
+private wakeUpIntervalGetCmd() {
+	return zwave.wakeUpV2.wakeUpIntervalGet().format()
 }
 
 private batteryGetCmd() {
 	logTrace "Requesting battery report"
 	return zwave.batteryV1.batteryGet().format()
 }
-
-private wakeUpIntervalSetCmd(minutesVal) {
-	state.checkinIntervalMinutes = minutesVal
-	logTrace "wakeUpIntervalSetCmd(${minutesVal})"
-	
-	return zwave.wakeUpV2.wakeUpIntervalSet(seconds:(minutesVal * 60), nodeid:zwaveHubNodeId).format()
-}
-
 
 // Settings
 private getPrimaryStatusAttrSetting() {
@@ -712,12 +716,16 @@ private getMainContactBehaviorSetting() {
 	return settings?.mainContactBehavior ?: "Last Changed Contact"
 }
 
-private getCheckinIntervalSettingMinutes() {
-	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting) ?: 360
+private getCheckinIntervalSettingSeconds() {
+	return (convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting) * 60) ?: (6 * 60 * 60)
 }
 
 private getCheckinIntervalSetting() {
 	return settings?.checkinInterval ?: findDefaultOptionName(checkinIntervalOptions)
+}
+
+private getMissedCheckinsSetting() {
+	return settings?.missedCheckins ?: findDefaultOptionName(missedCheckinsOptions)
 }
 
 private getBatteryReportingIntervalSettingMinutes() {
@@ -782,6 +790,17 @@ private getCheckinIntervalOptions() {
 		[name: "18 Hours", value: 1080],
 		[name: "24 Hours", value: 1440]
 	]
+}
+
+private getMissedCheckinsOptions() {
+	def items = []
+	(1..10).each {
+		items << [
+			name: (it == 3) ? formatDefaultOptionName("$it") : "$it", 
+			value: it
+		]
+	}
+	return items
 }
 
 private convertToLocalTimeString(dt) {

@@ -1,5 +1,5 @@
 /**
- *  GoControl Contact Sensor v1.10
+ *  GoControl Contact Sensor v1.10.1
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -10,11 +10,12 @@
  *
  *  Changelog:
  *
- *    1.10 (07/01/2017)
+ *    1.10.1 (07/01/2017)
  *    	- WARNING: This version may temporarily cause the main tile to display the wrong status, but it will correct itself the next time the device wakes up.  It doesn't effect the actual values being reported and you can immediately correct the primary tile by opening the settings and tapping Done.
  *    	- Added setting for displaying garage icons.
  *    	- Modified Health Check feature so that it doesn't set the checkin interval until it confirms that the wakeup interval has been changed.
  *    	- Updated colors to match SmartThing's new color theme.
+ *    	- Added settings that allows you to specify the number of checkins that have to be missed before reporting the device as offline.  Setting it to 10 will practically disable the Health Check feature.
  *
  *    1.9.2 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -113,6 +114,12 @@ metadata {
 			required: false,
 			displayDuringSetup: true,
 			options: checkinIntervalOptions.collect { it.name }
+		input "missedCheckins", "enum",
+			title: "How many checkins does the device need to miss before it's reported as offline?",
+			defaultValue: missedCheckinsSetting,
+			required: false,
+			displayDuringSetup: true,
+			options: missedCheckinsOptions.collect { it.name }
 		input "batteryReportingInterval", "enum",
 			title: "Battery Reporting Interval:",
 			defaultValue: batteryReportingIntervalSetting,
@@ -264,6 +271,7 @@ def configure() {
 	}
 
 	if (state.checkinIntervalSeconds != (checkinIntervalSettingSeconds)) {
+		logTrace "Updating wakeup interval"
 		cmds << wakeUpIntervalSetCmd(checkinIntervalSettingSeconds)
 		cmds << wakeUpIntervalGetCmd()
 	}
@@ -348,8 +356,9 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd) {
 	
 	state.checkinIntervalSeconds = cmd.seconds
 	
-	// Set the Health Check interval so that it can be skipped twice plus 5 minutes.
-	def checkInterval = ((cmd.seconds * 3) + (5 * 60))
+	// Set the Health Check interval so that it reports offline 5 minutes after it missed the # of checkins specified in the settings.
+	def threshold = convertOptionSettingToInt(missedCheckinsOptions, missedCheckinsSetting)
+	def checkInterval = ((cmd.seconds * threshold) + (5 * 60))
 	
 	result << createEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 	
@@ -378,8 +387,6 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 		val = 100
 	}
 	state.lastBatteryReport = new Date().time	
-	logDebug "Battery ${val}%"
-	
 	def isNew = (device.currentValue("battery") != val)
 			
 	def result = []
@@ -402,7 +409,7 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
-	logTrace "Basic Set: $cmd"	
+	// logTrace "Basic Set: $cmd"	
 	return []
 }
 
@@ -428,11 +435,10 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 private handleTamperEvent(alarmLevel) {
 	def result = []		
 	
-	if (alarmLevel == 0xFF) {
-		state.lastBatteryReport = null
+	if (alarmLevel == 0xFF) {		
 		logDebug "Tamper Detected"
 		result << createEvent(getEventMap("tamper", "detected"))
-	}	
+	}
 	
 	return result
 }
@@ -577,6 +583,10 @@ private getCheckinIntervalSetting() {
 	return settings?.checkinInterval ?: findDefaultOptionName(checkinIntervalOptions)
 }
 
+private getMissedCheckinsSetting() {
+	return settings?.missedCheckins ?: findDefaultOptionName(missedCheckinsOptions)
+}
+
 private getBatteryReportingIntervalSettingMinutes() {
 	return convertOptionSettingToInt(checkinIntervalOptions, batteryReportingIntervalSetting) ?: 360
 }
@@ -599,6 +609,17 @@ private getCheckinIntervalOptions() {
 		[name: "18 Hours", value: 1080],
 		[name: "24 Hours", value: 1440]
 	]
+}
+
+private getMissedCheckinsOptions() {
+	def items = []
+	(1..10).each {
+		items << [
+			name: (it == 3) ? formatDefaultOptionName("$it") : "$it", 
+			value: it
+		]
+	}
+	return items
 }
 
 private convertOptionSettingToInt(options, settingVal) {
@@ -643,5 +664,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	   // log.trace "$msg"
+	// log.trace "$msg"
 }
