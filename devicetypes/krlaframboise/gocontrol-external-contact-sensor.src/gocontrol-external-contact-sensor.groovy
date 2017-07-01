@@ -1,5 +1,5 @@
 /**
- *  GoControl External Contact Sensor v1.0.1
+ *  GoControl External Contact Sensor v1.1
  *  (Child Device Handler for WADWAZ-1)
  *
  *  Author: 
@@ -9,7 +9,7 @@
  *    
  *  Changelog:
  *
- *    1.0.1 (06/28/2017)
+ *    1.1 (07/01/2017)
  *      -  Updated colors to match SmartThing's new color theme.
  *
  *    1.0 (04/08/2017)
