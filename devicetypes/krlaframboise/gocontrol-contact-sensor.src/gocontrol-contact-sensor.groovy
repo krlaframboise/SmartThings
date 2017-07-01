@@ -1,5 +1,5 @@
 /**
- *  GoControl Contact Sensor v1.9.3
+ *  GoControl Contact Sensor v1.10
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -10,7 +10,8 @@
  *
  *  Changelog:
  *
- *    1.9.3 (06/28/2017)
+ *    1.10 (07/01/2017)
+ *    	- WARNING: This version may temporarily cause the main tile to display the wrong status, but it will correct itself the next time the device wakes up.  It doesn't effect the actual values being reported and you can immediately correct the primary tile by opening the settings and tapping Done.
  *    	- Added setting for displaying garage icons.
  *    	- Modified Health Check feature so that it doesn't set the checkin interval until it confirms that the wakeup interval has been changed.
  *    	- Updated colors to match SmartThing's new color theme.
