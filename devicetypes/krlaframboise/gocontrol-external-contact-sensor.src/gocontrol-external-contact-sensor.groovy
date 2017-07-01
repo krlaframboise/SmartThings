@@ -1,5 +1,5 @@
 /**
- *  GoControl External Contact Sensor v1.0
+ *  GoControl External Contact Sensor v1.0.1
  *  (Child Device Handler for WADWAZ-1)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation:
  *    
  *  Changelog:
+ *
+ *    1.0.1 (06/28/2017)
+ *      -  Updated colors to match SmartThing's new color theme.
  *
  *    1.0 (04/08/2017)
  *      -  Initial Release
@@ -102,19 +105,19 @@ metadata {
 				attributeState "closed", 
 					label:'Closed', 
 					icon:"st.contact.contact.closed", 
-					backgroundColor:"#79b821"
+					backgroundColor:"#00a0dc"
 				attributeState "open", 
 					label:'Open', 
 					icon:"st.contact.contact.open", 
-					backgroundColor:"#ffa81e"
+					backgroundColor:"#e86d13"
 				attributeState "garage-closed", 
 					label:'Closed', 
 					icon:"st.doors.garage.garage-closed", 
-					backgroundColor:"#79b821"
+					backgroundColor:"#00a0dc"
 				attributeState "garage-open", 
 					label:'Open', 
 					icon:"st.doors.garage.garage-open", 
-					backgroundColor:"#ffa81e"				
+					backgroundColor:"#e86d13"				
 				attributeState "inactive", 
 					label:'No Motion', 
 					icon:"st.motion.motion.inactive", 
@@ -122,7 +125,7 @@ metadata {
 				attributeState "active", 
 					label:'Motion', 
 					icon:"st.motion.motion.active", 
-					backgroundColor:"#53a7c0"
+					backgroundColor:"#00a0dc"
 				attributeState "dry", 
 					label:"Dry", 
 					icon:"st.alarm.water.dry", 
@@ -130,7 +133,7 @@ metadata {
 				attributeState "wet", 
 					label:"Wet", 
 					icon:"st.alarm.water.wet", 
-					backgroundColor:"#53a7c0"
+					backgroundColor:"#00a0dc"
 				attributeState "clear", 
 					label:'Clear', 
 					icon:"st.alarm.smoke.clear", 
@@ -138,7 +141,7 @@ metadata {
 				attributeState "detected", 
 					label:'Detected', 
 					icon:"st.alarm.smoke.smoke", 
-					backgroundColor:"#53a7c0"
+					backgroundColor:"#e86d13"
 			}			
 		}	
 							
