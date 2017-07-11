@@ -1,13 +1,19 @@
 /**
- *  Simple Device Viewer v 2.5.1
+ *  Simple Device Viewer v 2.5.2
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
+ *
+ *  Contributors:
+ *    Tim Larson (codethug)
  *
  *  URL to documentation:
  *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    2.5.2 (07/11/2017)
+ *      - Added Threshold and Notification Settings for Power Meter devices
  *
  *    2.5.1 (02/21/2017)
  *      - Optionally display device's online/offline status in the dashboard.
@@ -252,6 +258,16 @@ def thresholdsPage() {
 				required: false,
 				defaultValue: 73			
 		}
+		section("Power Thresholds") {
+			input "lowPowerThreshold", "number",
+				title: "Enter Low Power in Watts:",
+				required: false,
+				defaultValue: 50
+			input "highPowerThreshold", "number",
+				title: "Enter High Power in Watts:",
+				required: false,
+				defaultValue: 500			
+		}
 		section("Last Event Thresholds") {
 			input "lastEventThreshold", "number",
 				title: "Last event should be within:",
@@ -324,6 +340,21 @@ def notificationsPage() {
 				multiple: true,
 				required: false,
 				options: getExcludedDeviceOptions("Temperature Measurement")
+		}
+		section ("Power Notifications") {
+			input "powerNotificationsEnabled", "bool",
+				title: "Send Power Notifications?",
+				defaultValue: false,
+				required: false
+			input "powerNotificationsRepeat", "number",
+				title: "Send repeat notifications every: (hours)",
+				defaultValue: 0,
+				required: false
+			input "powerNotificationsExcluded", "enum",
+				title: "Exclude these devices from power notifications:",
+				multiple: true,
+				required: false,
+				options: getExcludedDeviceOptions("Power Meter")
 		}
 		section ("Last Event Notifications") {
 			input "lastEventNotificationsEnabled", "bool",
@@ -967,6 +998,9 @@ private getCapabilityStatusItem(cap, sortValue, value) {
 			case "Motion Sensor":
 				item.image = getMotionImage(item.value)
 				break
+			case "Power Meter":
+				item.image = getPowerImage(item.value)
+				break
 			case "Presence Sensor":
 				item.image = getPresenceImage(item.value)
 				break
@@ -1150,6 +1184,17 @@ private String getTemperatureImage(tempVal) {
 		status = "low"
 	}	
 	return getImagePath("${status}-temp.png")
+}
+
+private String getPowerImage(powerVal) {		
+	def status = "ok"
+	if (powerIsHigh(powerVal)) {
+		status = "warning"
+	}
+	else if (powerIsLow(powerVal)) {
+		status = "warning"
+	}	
+	return getImagePath("${status}.png")
 }
 
 private String getImagePath(imageName) {
@@ -1394,10 +1439,13 @@ def checkDevices() {
 	state.currentCheckSent = 0
 		
 	if (settings.batteryNotificationsEnabled) {
-		runIn(61, checkBatteries)
+		runIn(90, checkBatteries)
 	}			
 	if (settings.temperatureNotificationsEnabled) {
-		runIn(30, checkTemperatures)
+		runIn(61, checkTemperatures)
+	}			
+	if (settings.powerNotificationsEnabled) {
+		runIn(30, checkPowers)
 	}			
 	if (settings.lastEventNotificationsEnabled) {
 		checkLastEvents()
@@ -1407,6 +1455,7 @@ def checkDevices() {
 private canCheckDevices(lastCheck) {	
 	return (settings.batteryNotificationsEnabled ||
 		settings.temperatureNotificationsEnabled ||
+		settings.powerNotificationsEnabled ||
 		settings.lastEventNotificationsEnabled) &&
 		timeElapsed((lastCheck ?: 0) + msMinute(5), true)
 }
@@ -1436,6 +1485,33 @@ private boolean tempIsHigh(val) {
 
 private boolean tempIsLow(val) {
 	isBelowThreshold(val, lowTempThreshold, 63)
+}
+
+def checkPowers() {
+	logDebug "Checking Powers"
+	def cap = getCapabilitySettingByName("Power Meter")
+	
+	getDevicesByCapability("Power Meter", powerNotificationsExcluded)?.each {	
+		def item = getDeviceCapabilityStatusItem(it, cap)
+		
+		def message = null
+		if (powerIsHigh(item.value)) {
+			message = "High Power Alert - ${getDeviceStatusTitle(it, item.status)}"			
+		}
+		else if (powerIsLow(item.value)) {			
+			message = "Low Power Alert - ${getDeviceStatusTitle(it, item.status)}"			
+		}
+		
+		handleDeviceNotification(it, message, "power", powerNotificationsRepeat)
+	}
+}
+
+private boolean powerIsHigh(val) {
+	isAboveThreshold(val, highPowerThreshold, 500)
+}
+
+private boolean powerIsLow(val) {
+	isBelowThreshold(val, lowPowerThreshold, 50)
 }
 
 def checkBatteries() {
@@ -1798,6 +1874,13 @@ private capabilitySettings() {
 			units: "°${location.temperatureScale}"
 		],		
 		[
+			name: "Power Meter",
+			pluralName: "Power Meter Sensors",
+			prefType: "powerMeasurement",
+			attributeName: "power",
+			units: "W"
+		],		
+		[
 			name: "Valve",
 			activeState: "open",
 			attributeName: "contact"
@@ -2115,7 +2198,7 @@ private api_getJS() {
 private api_getCSS() {
 	// return "<link rel=\"stylesheet\" href=\"${getResourcesUrl()}/dashboard.css\">"
 	
-	def css = "body {	font-size: 100%;	text-align:center;	font-family:Helvetica,arial,sans-serif;	margin:0 0 10px 0;	background-color: #000000;}header, nav, section, footer {	display: block;	text-align:center;}header {	margin: 0 0 0 0;	padding: 4px 0 4px 0;	width: 100%;		font-weight: bold;	font-size: 100%;	background-color:#808080;	color:#ffffff;}nav.top{	padding-top: 0;}nav.bottom{	padding: 4px 4px 4px 4px;}section {	padding: 10px 20px 40px 20px;}.command-results {	background-color: #d6e9c6;	margin: 0 20px 20px 20px;	padding: 10px 20px 10px 20px;	border-radius: 100px;}.command-results h1 {	margin: 0 0 0 0;}.command-results ul {	list-style: none;}.command-results li {	line-height: 1.5;	font-size: 120%;}.dashboard-url {	display:block;	width:100%;	font-size: 80%;}.device-id-none{	background-color: #d6e9c6 !important;}.refresh {	background-image: url('refresh.png');}.acceleration-active {	background-image: url('acceleration-active.png');}.acceleration-inactive{	background-image: url('acceleration-inactive.png');}.alarm, .alarm-both {	background-image: url('alarm-both.png');}.alarm-siren {	background-image: url('alarm-siren.png');}.alarm-strobe {	background-image: url('alarm-strobe.png');}.alarm-off {	background-image: url('alarm-off.png');}.battery, .normal-battery {	background-image: url('normal-battery.png');}.normal-75-battery {	background-image: url('normal-75-battery.png');}.normal-50-battery {	background-image: url('normal-50-battery.png');}.normal-25-battery {	background-image: url('normal-25-battery.png');}.low-battery {	background-image: url('low-battery.png');}.open {	background-image: url('open.png');}.contactSensor, .closed {	background-image: url('closed.png');}.light, .light-on {	background-image: url('light-on.png');}.light-off {	background-image: url('light-off.png');}.lock, .locked{	background-image: url('locked.png');}.unlocked {	background-image: url('unlocked.png');}.motionSensor, .motion {	background-image: url('motion.png');}.no-motion {	background-image: url('no-motion.png');}.presenceSensor, .present {	background-image: url('present.png');}.not-present {	background-image: url('not-present.png');}.smokeDetector, .smoke-detected {	background-image: url('smoke-detected.png');}.smoke-clear {	background-image: url('smoke-clear.png');}.switch, .switch-on {	background-image: url('switch-on.png');}.switch-off {	background-image: url('switch-off.png');}.temperatureMeasurement, .normal-temp {	background-image: url('normal-temp.png');}.low-temp {	background-image: url('low-temp.png');}.high-temp {	background-image: url('high-temp.png');}.waterSensor, .dry {	background-image: url('dry.png');}.wet {	background-image: url('wet.png');}.ok {	background-image: url('ok.png');}.warning {	background-image: url('warning.png');}.device-item {	width: 200px;	display: inline-block;	background-color: #ffffff;	margin: 2px 2px 2px 2px;	padding: 4px 4px 4px 4px;	border-radius: 5px;}.item-image-text {	position: relative;	height: 75px;	width:100%;	display: table;}.item-image {	display: table-cell;	position: relative;	width: 35%;	border: 1px solid #cccccc;	border-radius: 5px;	background-repeat:no-repeat;	background-size:auto 70%;	background-position: center bottom;}.item-status {	width: 100%;	font-size:75%;	display:inline-block;}.item-text {	display: table-cell;	width: 65%;	position: relative;	vertical-align: middle;}a.item-text {	color:#000000;}.item-text.wait, .menu-item a.wait{	color:#ffffff;	background-image:url('wait.gif');	background-repeat:no-repeat;	background-position: center bottom;}.item-text.wait{	background-size:auto 100%;}.label {	display:inline-block;	vertical-align: middle;	line-height:1.4;	font-weight: bold;	padding-left:4px;}.menu-item {	display: inline-block;	background-color:#808080;	padding:4px 4px 4px 4px;	border:1px solid #000000;	border-radius: 5px;	font-weight:bold;}.menu-item .item-image{	display:table-cell;	background-size:auto 45%;	height:50px;	width:75px;	border:0;	border-radius:0;}.menu-item .item-image.switch,.menu-item .item-image.light,.menu-item .item-image.battery,.menu-item .item-image.alarm,.menu-item .item-image.refresh {	background-size:auto 60%;}.menu-item a, .menu-item a:link, .menu-item a:hover, .menu-item a:active,.menu-item a:visited {	color: #ffffff;		text-decoration:none;}.menu-item:hover, .menu-item:hover a, .menu-item a:hover { 	background-color:#ffffff;	color:#000000 !important;}.menu-item span {	width: 100%;	font-size:75%;	display:inline-block;}@media (max-width: 639px){	.device-item {		width:125px;	}	.item-image-text {		height: 65px;	}	.item-image {		background-size: auto 60%;	}	.item-text .label {		font-size: 80%;		line-height: 1.2;	}}"
+	def css = "body {	font-size: 100%;	text-align:center;	font-family:Helvetica,arial,sans-serif;	margin:0 0 10px 0;	background-color: #000000;}header, nav, section, footer {	display: block;	text-align:center;}header {	margin: 0 0 0 0;	padding: 4px 0 4px 0;	width: 100%;		font-weight: bold;	font-size: 100%;	background-color:#808080;	color:#ffffff;}nav.top{	padding-top: 0;}nav.bottom{	padding: 4px 4px 4px 4px;}section {	padding: 10px 20px 40px 20px;}.command-results {	background-color: #d6e9c6;	margin: 0 20px 20px 20px;	padding: 10px 20px 10px 20px;	border-radius: 100px;}.command-results h1 {	margin: 0 0 0 0;}.command-results ul {	list-style: none;}.command-results li {	line-height: 1.5;	font-size: 120%;}.dashboard-url {	display:block;	width:100%;	font-size: 80%;}.device-id-none{	background-color: #d6e9c6 !important;}.refresh {	background-image: url('refresh.png');}.acceleration-active {	background-image: url('acceleration-active.png');}.acceleration-inactive{	background-image: url('acceleration-inactive.png');}.alarm, .alarm-both {	background-image: url('alarm-both.png');}.alarm-siren {	background-image: url('alarm-siren.png');}.alarm-strobe {	background-image: url('alarm-strobe.png');}.alarm-off {	background-image: url('alarm-off.png');}.battery, .normal-battery {	background-image: url('normal-battery.png');}.normal-75-battery {	background-image: url('normal-75-battery.png');}.normal-50-battery {	background-image: url('normal-50-battery.png');}.normal-25-battery {	background-image: url('normal-25-battery.png');}.low-battery {	background-image: url('low-battery.png');}.open {	background-image: url('open.png');}.contactSensor, .closed {	background-image: url('closed.png');}.light, .light-on {	background-image: url('light-on.png');}.light-off {	background-image: url('light-off.png');}.lock, .locked{	background-image: url('locked.png');}.unlocked {	background-image: url('unlocked.png');}.motionSensor, .motion {	background-image: url('motion.png');}.no-motion {	background-image: url('no-motion.png');}.presenceSensor, .present {	background-image: url('present.png');}.not-present {	background-image: url('not-present.png');}.smokeDetector, .smoke-detected {	background-image: url('smoke-detected.png');}.smoke-clear {	background-image: url('smoke-clear.png');}.switch, .switch-on {	background-image: url('switch-on.png');}.switch-off {	background-image: url('switch-off.png');}.temperatureMeasurement, .normal-temp {	background-image: url('normal-temp.png');}.low-temp {	background-image: url('low-temp.png');}.high-temp {	background-image: url('high-temp.png');}.powerMeasurement, .normal-power {	background-image: url('ok.png');}.low-power {	background-image: url('warning.png');}.high-power {	background-image: url('warning.png');}.waterSensor, .dry {	background-image: url('dry.png');}.wet {	background-image: url('wet.png');}.ok {	background-image: url('ok.png');}.warning {	background-image: url('warning.png');}.device-item {	width: 200px;	display: inline-block;	background-color: #ffffff;	margin: 2px 2px 2px 2px;	padding: 4px 4px 4px 4px;	border-radius: 5px;}.item-image-text {	position: relative;	height: 75px;	width:100%;	display: table;}.item-image {	display: table-cell;	position: relative;	width: 35%;	border: 1px solid #cccccc;	border-radius: 5px;	background-repeat:no-repeat;	background-size:auto 70%;	background-position: center bottom;}.item-status {	width: 100%;	font-size:75%;	display:inline-block;}.item-text {	display: table-cell;	width: 65%;	position: relative;	vertical-align: middle;}a.item-text {	color:#000000;}.item-text.wait, .menu-item a.wait{	color:#ffffff;	background-image:url('wait.gif');	background-repeat:no-repeat;	background-position: center bottom;}.item-text.wait{	background-size:auto 100%;}.label {	display:inline-block;	vertical-align: middle;	line-height:1.4;	font-weight: bold;	padding-left:4px;}.menu-item {	display: inline-block;	background-color:#808080;	padding:4px 4px 4px 4px;	border:1px solid #000000;	border-radius: 5px;	font-weight:bold;}.menu-item .item-image{	display:table-cell;	background-size:auto 45%;	height:50px;	width:75px;	border:0;	border-radius:0;}.menu-item .item-image.switch,.menu-item .item-image.light,.menu-item .item-image.battery,.menu-item .item-image.alarm,.menu-item .item-image.refresh {	background-size:auto 60%;}.menu-item a, .menu-item a:link, .menu-item a:hover, .menu-item a:active,.menu-item a:visited {	color: #ffffff;		text-decoration:none;}.menu-item:hover, .menu-item:hover a, .menu-item a:hover { 	background-color:#ffffff;	color:#000000 !important;}.menu-item span {	width: 100%;	font-size:75%;	display:inline-block;}@media (max-width: 639px){	.device-item {		width:125px;	}	.item-image-text {		height: 65px;	}	.item-image {		background-size: auto 60%;	}	.item-text .label {		font-size: 80%;		line-height: 1.2;	}}"
 	
 	css = css.replace("url('", "url('${getResourcesUrl()}/")
 	css += api_getLayoutCSS()
