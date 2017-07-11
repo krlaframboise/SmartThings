@@ -1501,9 +1501,6 @@ def checkPowers() {
 		else if (powerIsLow(item.value)) {			
 			message = "Low Power Alert - ${getDeviceStatusTitle(it, item.status)}"			
 		}
-        else {
-            message = "Power is OK - ${getDeviceStatusTitle(it, item.status)}"
-        }
 		
 		handleDeviceNotification(it, message, "power", powerNotificationsRepeat)
 	}
