@@ -1,5 +1,5 @@
 /**
- *  Zooz Smart Chime v1.2.1
+ *  Zooz Smart Chime v1.2.2
  *  (Model: ZSE33)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.2.2 (07/11/2017)
+ *    	- Made Switch On Sound Setting accept the value 0 and made the on command ignore the command when it's set to 0.
  *
  *    1.2.1 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -88,8 +91,8 @@ metadata {
 			required: false,
 			displayDuringSetup: true		
 		input "onChimeSound", "number",
-			title: "Switch On Chime Sound [1-10]:",
-			range: "1..10",
+			title: "Switch On Chime Sound [0-10]:",
+			range: "0..10",
 			required: false,
 			displayDuringSetup: true,
 			defaultValue: onChimeSoundSetting
@@ -350,10 +353,16 @@ def off() {
 	return sirenToggleCmds(0x00)	
 }
 
-def on() {	
-	logDebug "Playing On Chime (#${onChimeSoundSetting})"	
-	addPendingSound("switch", "on")
-	return chimePlayCmds(onChimeSoundSetting)
+def on() {
+	if (settings?.onChimeSound) {
+		logDebug "Playing On Chime (#${onChimeSoundSetting})"	
+		addPendingSound("switch", "on")
+		return chimePlayCmds(onChimeSoundSetting)
+	}
+	else {
+		logDebug "Ignoring Switch On because On Chime Sound Setting has not been set"
+		return []
+	}
 }
 
 def setLevel(level, rate=null) {
