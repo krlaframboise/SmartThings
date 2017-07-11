@@ -1,13 +1,24 @@
 /**
- *  Simple Device Viewer v 2.5.1
+ *  Simple Device Viewer v 2.5.2
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
+ *
+ *  Contributors:
+ *    Tim Larson (codethug)
  *
  *  URL to documentation:
  *    https://community.smartthings.com/t/release-simple-device-viewer/42481?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    2.5.2 (07/11/2017)
+ *      - Added Threshold and Notification Settings for Power Meter devices (added by codethug)
+ *      - Reduced timeouts by changing main screen to display capability page links regardless of whether or not there are devices with that capability.
+ *      - Added timeout checking to ensure user is always able to open the application.
+ *      - Added ranges for thresholds which will hopefull cause the negative sign to be displayed on iOS.
+ *      - Fixed issue with not being able to set the thresholds to 0.
+ *      - Removed default values from threshold settings and made application skip over thresholds that are empty.
  *
  *    2.5.1 (02/21/2017)
  *      - Optionally display device's online/offline status in the dashboard.
@@ -111,9 +122,7 @@ def mainPage() {
 					"lastEventPage")
 				getCapabilityPageLink(null)			
 			}		
-			getSelectedCapabilitySettings().each {
-				getCapabilityPageLink(it)
-			}
+			getSelectedCapabilitiesPageLinks()			
 		}
 		section("Settings") {			
 			getPageLink("devicesLink",
@@ -138,6 +147,23 @@ def mainPage() {
 					"Dashboard Settings",
 					"dashboardSettingsPage")
 		}
+	}
+}
+
+private getSelectedCapabilitiesPageLinks() {
+	def startTime = new Date().time
+	def aborted = false
+	def timeout = 5000
+	def selectedCaps = getSelectedCapabilitySettings(timeout)
+	
+	if (new Date().time - startTime > timeout) {
+		aborted = true
+	}
+	selectedCaps.each {		
+		getCapabilityPageLink(it)
+	}
+	if (aborted) {
+		paragraph "Unable to load items within the allowed time.  Check the Choose Devices screen to make sure each device is only selected once.  If that doesn't eliminate this message, try reducing the number of Capabilities selected in the Display Settings screen."
 	}
 }
 
@@ -240,17 +266,27 @@ def thresholdsPage() {
 			input "lowBatteryThreshold", "number",
 				title: "Enter Low Battery %:",
 				multiple: false,
-				defaultValue: 25			
+				range:"0..100"
 		}
 		section("Temperature Thresholds") {
 			input "lowTempThreshold", "number",
 				title: "Enter Low Temperature:",
 				required: false,
-				defaultValue: 63
+				range:"-200..200"
 			input "highTempThreshold", "number",
 				title: "Enter High Temperature:",
 				required: false,
-				defaultValue: 73			
+				range:"-200..200"
+		}
+		section("Power Thresholds") {
+			input "lowPowerThreshold", "number",
+				title: "Enter Low Power in Watts:",
+				required: false,
+				range:"0..100000"
+			input "highPowerThreshold", "number",
+				title: "Enter High Power in Watts:",
+				required: false,
+				range:"0..100000"
 		}
 		section("Last Event Thresholds") {
 			input "lastEventThreshold", "number",
@@ -324,6 +360,21 @@ def notificationsPage() {
 				multiple: true,
 				required: false,
 				options: getExcludedDeviceOptions("Temperature Measurement")
+		}
+		section ("Power Notifications") {
+			input "powerNotificationsEnabled", "bool",
+				title: "Send Power Notifications?",
+				defaultValue: false,
+				required: false
+			input "powerNotificationsRepeat", "number",
+				title: "Send repeat notifications every: (hours)",
+				defaultValue: 0,
+				required: false
+			input "powerNotificationsExcluded", "enum",
+				title: "Exclude these devices from power notifications:",
+				multiple: true,
+				required: false,
+				options: getExcludedDeviceOptions("Power Meter")
 		}
 		section ("Last Event Notifications") {
 			input "lastEventNotificationsEnabled", "bool",
@@ -633,30 +684,35 @@ def capabilityPage(params) {
 			}
 		}
 		else {
-			section("All Selected Capabilities") {
-				def startTime = new Date().time
-				def aborted = false
-				def capListItems = []
-				
-				def selectedCapSettings = getSelectedCapabilitySettings()
-				
-				getAllDevices().each {
-					if (new Date().time - startTime > 15000) {
-						aborted = true
-					}
-					else {
-						capListItems << getDeviceAllCapabilitiesListItem(selectedCapSettings, it)
-					}
-				}
-				
-				if (aborted) {
-					paragraph "Unable to load the states of all devices within the allowed time.  If you've selected a lot of devices and capabilities, you might not be able to use the 'All Devices - States' view."
-				}
-				if (capListItems) {
-					getParagraphs(capListItems)
-				}
-			}
+			getAllSelectedCapabilitiesSection()
 		}			
+	}
+}
+
+private getAllSelectedCapabilitiesSection() {
+	section("All Selected Capabilities") {
+		def startTime = new Date().time
+		def timeout = 15000
+		def aborted = false
+		def capListItems = []
+		
+		def selectedCapSettings = getSelectedCapabilitySettings(timeout)
+		
+		getAllDevices().each {
+			if (new Date().time - startTime > timeout) {
+				aborted = true
+			}
+			else {
+				capListItems << getDeviceAllCapabilitiesListItem(selectedCapSettings, it)
+			}
+		}
+		
+		if (aborted) {
+			paragraph "Unable to load the states of all devices within the allowed time.  If you've selected a lot of devices and capabilities, you might not be able to use the 'All Devices - States' view."
+		}
+		if (capListItems) {
+			getParagraphs(capListItems)
+		}
 	}
 }
 
@@ -967,6 +1023,9 @@ private getCapabilityStatusItem(cap, sortValue, value) {
 			case "Motion Sensor":
 				item.image = getMotionImage(item.value)
 				break
+			case "Power Meter":
+				item.image = getPowerImage(item.value)
+				break
 			case "Presence Sensor":
 				item.image = getPresenceImage(item.value)
 				break
@@ -1000,12 +1059,17 @@ private getCapabilityStatusItem(cap, sortValue, value) {
 	return item
 }
 
-private getSelectedCapabilitySettings() {	
+private getSelectedCapabilitySettings(timeout) {	
 	if (!settings.enabledCapabilities) {
 		return capabilitySettings().findAll { devicesHaveCapability(getCapabilityName(it)) }
 	}
 	else {
-		return capabilitySettings().findAll {	(getPluralName(it) in settings.enabledCapabilities) && devicesHaveCapability(getCapabilityName(it)) }
+		def startTime = new Date().time
+		return capabilitySettings().findAll {	
+			if (new Date().time - startTime <= timeout) {
+				(getPluralName(it) in settings.enabledCapabilities)
+			}
+		}
 	}
 }
 
@@ -1150,6 +1214,17 @@ private String getTemperatureImage(tempVal) {
 		status = "low"
 	}	
 	return getImagePath("${status}-temp.png")
+}
+
+private String getPowerImage(powerVal) {		
+	def status = "ok"
+	if (powerIsHigh(powerVal)) {
+		status = "warning"
+	}
+	else if (powerIsLow(powerVal)) {
+		status = "warning"
+	}	
+	return getImagePath("${status}.png")
 }
 
 private String getImagePath(imageName) {
@@ -1394,10 +1469,13 @@ def checkDevices() {
 	state.currentCheckSent = 0
 		
 	if (settings.batteryNotificationsEnabled) {
-		runIn(61, checkBatteries)
+		runIn(90, checkBatteries)
 	}			
 	if (settings.temperatureNotificationsEnabled) {
-		runIn(30, checkTemperatures)
+		runIn(61, checkTemperatures)
+	}			
+	if (settings.powerNotificationsEnabled) {
+		runIn(30, checkPowers)
 	}			
 	if (settings.lastEventNotificationsEnabled) {
 		checkLastEvents()
@@ -1407,6 +1485,7 @@ def checkDevices() {
 private canCheckDevices(lastCheck) {	
 	return (settings.batteryNotificationsEnabled ||
 		settings.temperatureNotificationsEnabled ||
+		settings.powerNotificationsEnabled ||
 		settings.lastEventNotificationsEnabled) &&
 		timeElapsed((lastCheck ?: 0) + msMinute(5), true)
 }
@@ -1435,7 +1514,34 @@ private boolean tempIsHigh(val) {
 }
 
 private boolean tempIsLow(val) {
-	isBelowThreshold(val, lowTempThreshold, 63)
+	isBelowThreshold(val, lowTempThreshold, 63)	
+}
+
+def checkPowers() {
+	logDebug "Checking Powers"
+	def cap = getCapabilitySettingByName("Power Meter")
+	
+	getDevicesByCapability("Power Meter", powerNotificationsExcluded)?.each {	
+		def item = getDeviceCapabilityStatusItem(it, cap)
+		
+		def message = null
+		if (powerIsHigh(item.value)) {
+			message = "High Power Alert - ${getDeviceStatusTitle(it, item.status)}"			
+		}
+		else if (powerIsLow(item.value)) {			
+			message = "Low Power Alert - ${getDeviceStatusTitle(it, item.status)}"			
+		}
+		
+		handleDeviceNotification(it, message, "power", powerNotificationsRepeat)
+	}
+}
+
+private boolean powerIsHigh(val) {
+	isAboveThreshold(val, highPowerThreshold, 500)
+}
+
+private boolean powerIsLow(val) {
+	isBelowThreshold(val, lowPowerThreshold, 50)
 }
 
 def checkBatteries() {
@@ -1456,16 +1562,26 @@ private boolean batteryIsLow(batteryLevel) {
 }
 
 private boolean isAboveThreshold(val, threshold, int defaultThreshold) {
-	safeToInteger(val) > safeToInteger(threshold, defaultThreshold)	
+	if (threshold == null) {
+		return false
+	}
+	else {
+		return safeToInteger(val) > safeToInteger(threshold, defaultThreshold)
+	}
 }
 
 private boolean isBelowThreshold(val, threshold, int defaultThreshold) {
-	safeToInteger(val) < safeToInteger(threshold,defaultThreshold)	
+	if (threshold == null) {
+		return false
+	}
+	else {
+		safeToInteger(val) < safeToInteger(threshold,defaultThreshold)
+	}
 }
 
 private int safeToInteger(val, defaultVal=0) {
 	try {
-		if (val && "$val".isNumber()) {
+		if (val != null && "$val".isNumber()) {
 			if ("$val".isInteger()) {
 				return "$val".toInteger()
 			}
@@ -1796,7 +1912,7 @@ private capabilitySettings() {
 			prefType: "temperatureMeasurement",
 			attributeName: "temperature",
 			units: "°${location.temperatureScale}"
-		],		
+		],
 		[
 			name: "Valve",
 			activeState: "open",
@@ -1964,7 +2080,7 @@ private api_getMenuHtml(currentUrl) {
 	
 	html += api_getMenuItemHtml("Events", "warning", api_dashboardUrl("events"))
 	
-	getSelectedCapabilitySettings().each {
+	getSelectedCapabilitySettings(15000).each {
 		html += api_getMenuItemHtml(getPluralName(it), getPrefName(it), api_dashboardUrl(getPluralName(it)))
 	}
 	
