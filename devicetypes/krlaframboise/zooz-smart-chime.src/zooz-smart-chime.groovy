@@ -1,5 +1,5 @@
 /**
- *  Zooz Smart Chime v1.2.2
+ *  Zooz Smart Chime v1.2.3
  *  (Model: ZSE33)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.2.3 (07/21/2017)
+ *    	- Made Switch On command temporarily toggle the switch attribute to on when Switch On Sound setting is set to 0 to see if it fixes the problem some users are having with playing chimes using setLevle in Routines.
  *
  *    1.2.2 (07/11/2017)
  *    	- Made Switch On Sound Setting accept the value 0 and made the on command ignore the command when it's set to 0.
@@ -361,8 +364,14 @@ def on() {
 	}
 	else {
 		logDebug "Ignoring Switch On because On Chime Sound Setting has not been set"
+		sendEvent(name:"switch", value:"on", displayed: false, isStateChange: true)
+		runIn(1, toggleOff)
 		return []
 	}
+}
+
+def toggleOff() {
+	sendEvent(name:"switch", value:"off", displayed:false, isStateChange: true)
 }
 
 def setLevel(level, rate=null) {
