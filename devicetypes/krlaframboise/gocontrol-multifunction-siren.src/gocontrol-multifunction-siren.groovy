@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.8
+ *  GoControl Multifunction Siren v 1.8.1
  *
  *  Devices:
  *    GoControl/Linear (Model#: WA105DBZ-1 / ZM1601US-3)
@@ -25,7 +25,7 @@
  *
  *  Changelog:
  *
- *    1.8 (07/22/2017)
+ *    1.8.1 (07/22/2017)
  *    	- Fixed issue caused by the hub firmware update 000.018.00018
  *    	- If you're on hub v1 or you installed the device prior to May 2016, make sure you test the device after updating to this version.
  *
@@ -649,7 +649,7 @@ private batteryGetCmd() {
 }
 
 private secureCmd(cmd) {
-	if (zwaveInfo?.zw?.contains("s") || state.useSecureCommands != false) {
+	if (zwaveInfo?.zw?.contains("s") || state.useSecureCommands) {
 		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
 	}
 	else {
@@ -660,18 +660,12 @@ private secureCmd(cmd) {
 // Parses incoming message
 def parse(String description) {	
 	def result = []
-	if (description.startsWith("Err 106")) {
-		log.error "Unknown Error: $description"
-		state.useSecureCommands = false
+	def cmd = zwave.parse(description, commandClassVersions)
+	if (cmd) {
+		result += zwaveEvent(cmd)
 	}
-	else if (description != null && description != "updated") {
-		def cmd = zwave.parse(description, commandClassVersions)
-		if (cmd) {
-			result += zwaveEvent(cmd)
-		}
-		else {
-			logDebug "Unable to parse: $cmd"
-		}
+	else {
+		logDebug "Unable to parse: $description"
 	}	
 	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		result << createLastCheckinEvent()
