@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.7.4
+ *  GoControl Multifunction Siren v 1.8
  *
  *  Devices:
  *    GoControl/Linear (Model#: WA105DBZ-1 / ZM1601US-3)
@@ -24,6 +24,9 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.8 (07/22/2017)
+ *    	- Fixed issue caused by the hub firmware update 000.018.00018
  *
  *    1.7.4 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -138,15 +141,13 @@ metadata {
 		command "playTrackAtVolume"
 		command "playSoundAndTrack"
 
-
-		// zw:L type:1000 mfr:014F prod:2009 model:0903 ver:14.03 zwv:3.42 lib:06 cc:25,70,72,86
-		
-		// zw:Fs type:1005 mfr:0109 prod:2005 model:0508 ver:15.10 zwv:4.05 lib:03 cc:5E,80,72,98,86 sec:85,59,70,5A,7A,71,73,25 role:07 ff:8F00 ui:8F00
-		
-		
+	
 		fingerprint mfr: "0109", prod: "2005", model: "0508" //Vision
+		
 		fingerprint mfr: "014F", prod: "2005", model: "0503" //Linear/GoControl Battery Only
+		
 		fingerprint mfr: "014F", prod: "2009", model: "0903" //Linear/GoControl Powered (no battery reporting)
+		
 		fingerprint deviceId: "0x1000", inClusters: "0x25,0x70,0x72,0x86"
 		fingerprint deviceId: "0x1005", inClusters: "0x25,0x5E,0x72,0x80,0x86"
 	}
@@ -265,16 +266,7 @@ def updated() {
 		initializeCheckin()
 		
 		def cmds = []		
-		
-		if (!state.useSecureCommands) {
-			logDebug "Checking for Secure Command Support"
-			state.useSecureCommands = true
-			cmds << supportedSecurityGetCmd()
-			state.useSecureCommands = false
-		}
-		
-		cmds += configure()
-		
+		cmds += configure()	
 		return sendResponse(delayBetween(cmds, 200))
 	}
 }
@@ -314,7 +306,7 @@ private startHealthPollSchedule() {
 // Executed by internal schedule and requests a report from the device to determine if it's still online.
 def healthPoll() {
 	logTrace "healthPoll()"
-	def cmd = canReportBattery() ? batteryGetCmd() : versionGetCmd()
+	def cmd = canReportBattery() ? batteryGetCmd() : versionGetCmd() // Not using batteryGet every time because powered GoControl device doesn't support batteryGet.
 	sendHubCommand(new physicalgraph.device.HubAction(cmd))
 }
 
@@ -327,27 +319,19 @@ private canReportBattery() {
 // Executed by SmartThings if the specified checkInterval is exceeded.
 def ping() {
 	logTrace "ping()"
-	// Don't allow it to ping the device more than once per minute.
 	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		logDebug "Attempting to ping device."
 		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
 		startHealthPollSchedule()
 		
-		return versionGetCmd()
+		return versionGetCmd() // Using versionGet because GoControlled powered device doesn't support batteryGet.
 	}	
 }
 
 private configure() {
 	def cmds = []
-	
-	if (state.isVisionMfr == null) {
-		cmds << manufacturerGetCmd()
-		cmds << "delay 5000"
-	}
-	
-	cmds << autoOffSetCmd(getAutoOffTimeValue())		
+	cmds << autoOffSetCmd(getAutoOffTimeValue())
 	cmds << batteryGetCmd()
-	
 	return cmds
 }
 
@@ -485,11 +469,11 @@ def turnOn(alarmType, delaySeconds, autoOffSeconds, useStrobe) {
 	return result
 }
 
-def turnOn(currentAlarmType) {
-	def result = []
+def turnOn(currentAlarmType) {	
 	def activeAlarm = state.activeAlarm
 	
-	if (activeAlarm) {	
+	if (activeAlarm) {
+		def result = []
 		if (activeAlarm.delaySeconds > 2 && activeAlarm.useStrobe) {
 			logDebug "Alarm delayed with strobe for ${activeAlarm.delaySeconds} seconds."
 			result += startDelayedAlarm(currentAlarmType)
@@ -517,8 +501,11 @@ def turnOn(currentAlarmType) {
 				logDebug "Turning on Alarm"
 			}
 		}
+		return delayBetween(result, 100)
 	}
-	return delayBetween(result, 100)
+	else {
+		return []
+	}
 }
 
 private startDelayedAlarm(currentAlarmType) {
@@ -610,7 +597,7 @@ private alarmTypeGetCmd() {
 }
 
 private getAlarmTypeParamNumber() {
-	return state.isVisionMfr ? 1 : 0
+	return isVisionMfr ? 1 : 0
 }
 
 private autoOffSetCmd(autoOff) {
@@ -618,7 +605,7 @@ private autoOffSetCmd(autoOff) {
 }
 
 private getAutoOffParamNumber() {
-	return state.isVisionMfr ? 2 : 1
+	return isVisionMfr ? 2 : 1
 }
 
 private configSetCmd(paramNumber, paramSize, paramValue) {
@@ -632,11 +619,6 @@ private configGetCmd(paramNumber) {
 private versionGetCmd() {
 	secureCmd(zwave.versionV1.versionGet())
 }
-
-private manufacturerGetCmd() {
-	secureCmd(zwave.manufacturerSpecificV2.manufacturerSpecificGet())
-}
-
 
 private switchOnSetCmd() {
 	secureCmd(zwave.basicV1.basicSet(value: 0xFF))
@@ -665,27 +647,24 @@ private batteryGetCmd() {
 	secureCmd(zwave.batteryV1.batteryGet())
 }
 
-private supportedSecurityGetCmd() {	
-	secureCmd(zwave.securityV1.securityCommandsSupportedGet())
-}
-
-private secureCmd(physicalgraph.zwave.Command cmd) {
-	if (state.useSecureCommands) {
-		zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
+private secureCmd(cmd) {
+	if (zwaveInfo?.zw?.contains("s") || state.useSecureCommands != false) {
+		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
 	}
 	else {
-		cmd.format()
-	}
+		return cmd.format()
+	}	
 }
 
 // Parses incoming message
 def parse(String description) {	
 	def result = []
-	if (description.startsWith("Err")) {
-		log.error "Unknown Error: $description"		
+	if (description.startsWith("Err 106")) {
+		log.error "Unknown Error: $description"
+		state.useSecureCommands = false
 	}
 	else if (description != null && description != "updated") {
-		def cmd = zwave.parse(description, [0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x80: 1, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])		
+		def cmd = zwave.parse(description, commandClassVersions)
 		if (cmd) {
 			result += zwaveEvent(cmd)
 		}
@@ -716,11 +695,36 @@ private convertToLocalTimeString(dt) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
-	def encapsulatedCmd = cmd.encapsulatedCommand([0x71: 3, 0x85: 2, 0x70: 1, 0x30: 2, 0x26: 1, 0x25: 1, 0x20: 1, 0x72: 2, 0x80: 1, 0x86: 1, 0x59: 1, 0x73: 1, 0x98: 1, 0x7A: 1, 0x5A: 1])	
-	if (encapsulatedCmd) {	
-		logTrace "encapsulated: $encapsulatedCmd"
-		zwaveEvent(encapsulatedCmd)
+	def result = []
+	
+	def encapCmd = cmd.encapsulatedCommand(commandClassVersions)
+	if (encapCmd) {
+		state.useSecureCommands = true
+		result += zwaveEvent(encapCmd)
 	}
+	else {
+		log.warn "Unable to extract encapsulated cmd from $cmd"	
+	}
+	return result
+}
+
+private getCommandClassVersions() {
+	[
+		0x20: 1,	// Basic
+		0x25: 1,	// Switch Binary
+		0x59: 1,  // AssociationGrpInfo
+		0x5A: 1,  // DeviceResetLocally
+		0x5E: 2,  // ZwaveplusInfo
+		0x70: 1,  // Configuration
+		0x71: 3,  // Notification (4)
+		0x72: 1,  // ManufacturerSpecific (1,2)
+		0x73: 1,  // Powerlevel
+		0x7A: 2,	// Firmware Update
+		0x80: 1,  // Battery
+		0x85: 2,  // Association
+		0x86: 1,	// Version (2)
+		0x98: 1		// Security
+	]
 }
 
 // Requested by health poll to verify that it's still online.
@@ -740,11 +744,6 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 		logDebug "Current Alarm Type: ${val}"
 		return sendResponse(turnOn(val))
 	}	
-}
-
-def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerSpecificReport cmd) {
-	//The Linear/GoControl product uses different parameter numbers than the Vision product.
-	state.isVisionMfr = (cmd.manufacturerId == 265)	
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
@@ -837,12 +836,6 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	def result = []
 	result << createEvent(name: "battery", value: val, unit: "%", display: isNew, isStateChange: isNew)	
 	return result
-}
-
-def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
-	state.useSecureCommands = true
-	logDebug("Secure Commands Supported")	
-	return sendResponse(delayBetween(configure(), 200))
 }
 
 // Writes unexpected commands to debug log
@@ -1056,6 +1049,10 @@ private findDefaultOptionName(options) {
 
 private getDefaultOptionSuffix() {
 	return "   (Default)"
+}
+
+private getIsVisionMfr() {
+	return zwaveInfo?.mfr == "0109"
 }
 
 private safeToInt(val, defaultVal=-1) {
