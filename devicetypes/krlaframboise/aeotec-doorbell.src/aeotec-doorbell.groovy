@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell v 1.13.1
+ *  Aeotec Doorbell v 1.14
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
@@ -12,6 +12,11 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.14 (07/22/2017)
+ *    	- Fixed issue caused by the hub firmware update 000.018.00018
+ *    	- If you're on hub v1 or you installed the device prior to May 2016, make sure you test the device after updating to this version.
+ *    	- Added "Skip Doorbell Check" setting and "Perform Extra Doorbell Check" settings that improve performance and/or accuracy based on how you're using the device.
  *
  *  1.13.1 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -129,13 +134,12 @@ metadata {
 		capability "Speech Synthesis"
 
 		attribute "lastCheckin", "string"
-		attribute "security", "enum", ["secure", "unsecure"]
-		
+				
 		attribute "status", "enum", ["off", "doorbell", "beep", "alarm", "play"]
 		
-		command "setVolume", ["number"]
-		command "playRepeatTrack", ["number", "number"]
-		command "playRepeatTrackAtVolume", ["number", "number", "number"]
+		command "setVolume"
+		command "playRepeatTrack"
+		command "playRepeatTrackAtVolume"
 		command "playSoundAndTrack"
 		command "playTrackAtVolume"		
 
@@ -174,12 +178,26 @@ metadata {
 			required: false,
 			displayDuringSetup: true,
 			options: checkinIntervalOptions.collect { it.name }
-		input "logging", "enum",
-			title: "Types of messages to log:",
-			multiple: true,
-			required: true,
-			defaultValue: ["debug", "info"],
-			options: ["debug", "info", "trace"]		
+		input "debugLogging", "bool", 
+			title: "Enable debug logging?", 
+			defaultValue: true, 
+			displayDuringSetup: true, 
+			required: false
+		input "traceLogging", "bool", 
+			title: "Enable trace logging?", 
+			defaultValue: false, 
+			displayDuringSetup: false, 
+			required: false
+		input "skipDoorbellCheck", "bool", 
+			title: "Skip Doorbell Check?\n(If you're only using this device for notifications or as a doorbell you can enable this setting for better performance.)",
+			defaultValue: false, 
+			displayDuringSetup: false, 
+			required: false
+		input "extraDoorbellCheck", "bool", 
+			title: "Perform Extra Doorbell Check?\n(If you're using this device to play notifications and you're also using it in SmartThings to detect when the doorbell button is pushed, you can enable this setting to reduce false doorbell events.  Only enable this if you're receiving false doorbell events because it hurts performance.)", 
+			defaultValue: false, 
+			displayDuringSetup: false, 
+			required: false
 	}
 
 	tiles(scale: 2) {
@@ -192,7 +210,7 @@ metadata {
 				attributeState "play", label:'Playing!', action: "off", icon:"st.Entertainment.entertainment2", backgroundColor:"#694489"
 			}		
 		} 
-		valueTile("volume", "device.level", decoration: "flat", height:1, width:2) {
+		standardTile("volume", "device.level", decoration: "flat", height:1, width:2) {
 			state "level", label: 'VOLUME ${currentValue}', defaultState: true
 		}
 		controlTile("volumeSlider", "device.level", "slider", height: 1, width: 4, range: "(0..10)") {
@@ -238,14 +256,14 @@ metadata {
 		valueTile("battery", "device.battery", height:2, width:2) {
 			state "battery", label: 'Battery ${currentValue}%', backgroundColor: "#cccccc"
 		}
-		valueTile("security", "device.security", height:2, width:2) {
-			state "security", label: '${currentValue}', backgroundColor: "#cccccc"
+		valueTile("lastCheckin", "device.lastCheckin", height:2, width:2, decoration: "flat") {
+			state "lastCheckin", label: '${currentValue}'
 		}
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
 			state "refresh", label:'', action: "refresh", icon:"st.secondary.refresh"
 		}		
 		main "statusTile"
-		details(["statusTile", "playDoorbell", "playBeep", "playAlarm", "volume", "volumeSlider", "refresh", "battery", "security"])
+		details(["statusTile", "playDoorbell", "playBeep", "playAlarm", "volume", "volumeSlider", "refresh", "battery", "lastCheckin"])
 	}
 }
 
@@ -262,14 +280,9 @@ def updated() {
 				
 		def cmds = []
 		if (!state.isConfigured) {
-			state.useSecureCmds = false
 			cmds += configure()            
 		}
 		else {			
-			logDebug "Secure Commands ${state.useSecureCmds ? 'Enabled' : 'Disabled'}"
-			
-			sendEvent(name: "security", value: (state.useSecureCmds ? "secure" : "unsecure"), displayed: false)
-			
 			cmds += updateSettings()
 			if (!cmds) {
 				cmds += refresh()
@@ -367,8 +380,6 @@ def poll() {
 def configure() {
 	def cmds = []
 	
-	logDebug "Configuring ${state.useSecureCmds ? 'Secure' : 'Non-Secure'} Device"
-	
 	cmds += delayBetween([
 		assocSetCmd(),
 		deviceNotifyTypeSetCmd(true),
@@ -386,10 +397,6 @@ def configure() {
 	state.beepTrack = 3
 	state.alarmTrack = 4
 						
-	if (!state.useSecureCmds) {
-		cmds << supportedSecurityGetCmd()
-	}
-	
 	return cmds
 }
 	
@@ -587,13 +594,13 @@ def playText(message, volume=null) {
 }
 
 // Plays specified track for specified repeat
-def playRepeatTrack(track, repeat) {
+def playRepeatTrack(track, repeat=null) {
 	logTrace "Executing playRepeatTrack($track, $repeat)"
 	return startTrack([track: track, repeat: repeat])
 }
 
 // Plays specified track at specified volume and repeat.
-def playRepeatTrackAtVolume(track, repeat, volume) {
+def playRepeatTrackAtVolume(track, repeat=null, volume=null) {
 	logTrace "Executing playRepeatTrackAtVolume($track, $repeat, $volume)"
 	return startTrack([track: track, volume: volume, repeat: repeat])
 }
@@ -634,21 +641,31 @@ private startTrack(Map data) {
 		result << "delay 2000"
 	}
 	
-	result << deviceNotifyTypeSetCmd(false)
-		
-	if (!state.useSecureCmds) {            
-		result << deviceNotifyTypeGetCmd()
-		result << "delay 450"
+	if (!skipDoorbellCheckSetting) {
+		result << deviceNotifyTypeSetCmd(false)		
+		if (!useSecureCmds || extraDoorbellCheckSetting) {
+			result << deviceNotifyTypeGetCmd()
+			result << "delay 450"
+		}
+		if (extraDoorbellCheckSetting) {
+			result << "delay 950"
+		}
 	}
 	
 	result << playTrackSetCmd(data.track)
-	result << "delay 450"
-	result << deviceNotifyTypeSetCmd(true)
-
-	if (!state.useSecureCmds) {
-		result << deviceNotifyTypeGetCmd()
+	
+	if (!skipDoorbellCheckSetting) {
+		if (extraDoorbellCheckSetting) {
+			result << "delay 950"
+		}
+		result << "delay 450"
+		result << deviceNotifyTypeSetCmd(true)
+	
+		if (!useSecureCmds || extraDoorbellCheckSetting) {
+			result << deviceNotifyTypeGetCmd()
+		}
 	}
-		
+
 	return delayBetween(result, 50)
 }
 
@@ -709,9 +726,10 @@ private convertToLocalTimeString(dt) {
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
 	def result = []
 	if (cmd) {
-		def encapCmd = cmd.encapsulatedCommand([0x20:1,0x25:1,0x59:1,0x70:1,0x72:2,0x82:1,0x85:2,0x86:1,0x98:1])
+		def encapCmd = cmd.encapsulatedCommand(commandClassVersions)
 		if (encapCmd) {
-			result = zwaveEvent(encapCmd)
+			state.useSecureCmds = true
+			result += zwaveEvent(encapCmd)
 		}
 		else {
 			log.warn "Unable to extract encapsulated cmd from $cmd"
@@ -720,21 +738,29 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 	return result
 }
 
-// Sends secure configuration to the device.
-def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
-	state.useSecureCmds = true
-	sendEvent(name: "security", value: "secure", displayed: false)
-	logDebug "Secure Inclusion Detected"
-	def result = []
-	result += sendResponse(configure())
-	return result    
+private getCommandClassVersions() {
+	[
+		0x20: 1,	// Basic
+		0x25: 1,	// Switch Binary
+		0x59: 1,  // AssociationGrpInfo
+		0x5A: 1,  // DeviceResetLocally
+		0x5E: 2,  // ZwaveplusInfo
+		0x70: 1,  // Configuration
+		0x72: 2,  // ManufacturerSpecific
+		0x73: 1,  // Powerlevel
+		0x7A: 2,	// Firmware Update
+		0x82: 1,	// Hail
+		0x85: 2,  // Association
+		0x86: 1,	// Version (2)
+		0x98: 1		// Security
+	]
 }
 
 // Handles device reporting on and off
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {    
 	def result = []
 
-	if (state.useSecureCmds || cmd.value == 0 || state.notificationType == 2) {
+	if ((useSecureCmds && !extraDoorbellCheckSetting) || (skipDoorbellCheckSetting && !extraDoorbellCheckSetting) || cmd.value == 0 || state.notificationType == 2) {
 		logTrace "BasicReport: $cmd"
 		state.pendingStatus = null
 		
@@ -743,8 +769,11 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 		} 
 		else if (cmd.value == 255) {
 			logDebug("Doorbell Ringing")
+			
 			result << createEvent(name: "switch", value: "on", descriptionText: "Doorbell Ringing", displayed: true, isStateChange: true)
+			
 			result << createEvent(name: "button", value: "pushed", data: [buttonNumber: 1], displayed: false, isStateChange: true)
+			
 			result << createEvent(name: "status", value: "doorbell", displayed: false, isStateChange: true)
 		}
 	}
@@ -950,21 +979,25 @@ private configSetCmd(int paramNum, int val) {
 	return secureCmd(zwave.configurationV1.configurationSet(parameterNumber: paramNum, size: 1, scaledConfigurationValue: val))
 }
 
-private supportedSecurityGetCmd() {
-	logDebug "Checking for Secure Command Support"    
-	state.useSecureCmds = true // force secure cmd    
-	def cmd = secureCmd(zwave.securityV1.securityCommandsSupportedGet())    
-	state.useSecureCmds = false // reset secure cmd    
-	return cmd
+private secureCmd(cmd) {
+	if (useSecureCmds) {
+		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
+	}
+	else {
+		return cmd.format()
+	}	
 }
 
-private secureCmd(physicalgraph.zwave.Command cmd) {
-	if (state.useSecureCmds) {        
-		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
-	} 
-	else {        
-		return cmd.format()
-	}
+private getUseSecureCmds() {
+	return zwaveInfo?.zw?.contains("s") || state.useSecureCmds
+}
+
+private getSkipDoorbellCheckSetting() {
+	return settings?.skipDoorbellCheck
+}
+
+private getExtraDoorbellCheckSetting() {
+	return settings?.extraDoorbellCheck
 }
 
 private getCheckinIntervalSettingMinutes() {
@@ -1062,28 +1095,13 @@ private getNumAttr(settingName) {
 }
 
 private logDebug(msg) {
-	//if (loggingTypeEnabled("debug")) {
+	if (settings?.debugLogging != false) {
 		log.debug msg
-	//}
+	}
 }
 
 private logTrace(msg) {
-	if (loggingTypeEnabled("trace")) {
+	if (settings?.traceLogging) {
 		log.trace msg
-	}
-}
-
-private logInfo(msg) {
-	//if (loggingTypeEnabled("info")) {
-		log.info msg
-	//}
-}
-
-private loggingTypeEnabled(loggingType) {
-	try {
-		return (!settings?.logging || settings?.logging?.contains(loggingType))
-	}
-	catch (e) {
-		return true
 	}
 }
