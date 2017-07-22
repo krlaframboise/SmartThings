@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.5.6
+ *  Zipato Multisound Siren v1.5.7
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02)
  *  
@@ -13,6 +13,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.5.7 (07/21/2017)
+ *    	- Changed the way it handles secure commands.
  *
  *  1.5.6 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -282,14 +285,10 @@ def updated() {
 	
 		def cmds = []
 		if (!state.isConfigured) {
-			state.useSecureCmds = false
 			cmds += configure()			
 		}
 		else {
-			logDebug "Secure Commands ${state.useSecureCmds ? 'Enabled' : 'Disabled'}"
-			
 			cmds << alarmDurationSetCmd()
-			
 			cmds += refresh()
 		}		
 		return sendResponse(cmds)
@@ -362,8 +361,6 @@ def ping() {
 def configure() {
 	def cmds = []
 	
-	logDebug "Configuring ${state.useSecureCmds ? 'Secure' : 'Non-Secure'} Device"		
-	
 	cmds += delayBetween([
 		alarmDurationSetCmd(),
 		alarmDurationGetCmd(),
@@ -372,10 +369,6 @@ def configure() {
 		notificationTypeGetCmd(),
 		basicGetCmd()
 	], 500)
-	
-	if (!state.useSecureCmds) {
-		cmds << supportedSecurityGetCmd()
-	}
 	
 	return cmds
 }
@@ -652,15 +645,6 @@ private getCommandClassVersions() {
 	]
 }
 
-// Acknowledges secure commands and configures device using secure commands.
-def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
-	state.useSecureCmds = true
-	logDebug "Secure Inclusion Detected"
-	def result = []
-	result += sendResponse(configure())
-	return result	
-}
-
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {
 	def result = []
 	def parameterName
@@ -929,22 +913,33 @@ private configGetCmd(paramNumber) {
 	return secureCmd(zwave.configurationV1.configurationGet(parameterNumber: paramNumber))
 }
 
-private supportedSecurityGetCmd() {
-	logDebug "Checking for Secure Command Support"	
-	state.useSecureCmds = true // force secure cmd	
-	def cmd = secureCmd(zwave.securityV1.securityCommandsSupportedGet())	
-	state.useSecureCmds = false // reset secure cmd	
-	return cmd
+private secureCmd(cmd) {
+	if (canSecureCmd(cmd)) {	
+		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
+	}
+	else {
+		return cmd.format()
+	}	
 }
 
-private secureCmd(physicalgraph.zwave.Command cmd) {
-	if (state.useSecureCmds) {		
-		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
-	} 
-	else {		
-		return cmd.format()
+private canSecureCmd(cmd) {
+	// This code was extracted from example by @ClassicGOD
+	return zwaveInfo?.zw?.contains("s") && zwaveInfo?.sec?.contains(Integer.toHexString(cmd.commandClassId)?.toUpperCase())
+}
+
+private getVersionSafeCmdClass(cmdClass) {
+	def version = commandClassVersions[safeToInt(cmdClass)]
+	if (version) {
+		return zwave.commandClass(cmdClass, version)
+	}
+	else {
+		return zwave.commandClass(cmdClass)
 	}
 }
+
+
+
+
 
 private getCheckinIntervalSettingMinutes() {
 	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting)
