@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.9.4
+ *  Aeon Labs Multifunction Siren v 1.10
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -12,6 +12,9 @@
  *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *  1.10 (07/22/2017)
+ *    	- Enhanced security command class implementation.
  *
  *  1.9.4 (05/23/2017)
  *    	- SmartThings fixed parse issue so changed it back to using response instead of sendhubaction.
@@ -223,7 +226,7 @@ metadata {
 	}
 
 	tiles(scale: 2) {
-		multiAttributeTile(name:"status", type: "generic", width: 6, height: 3, canChangeIcon: true){
+		multiAttributeTile(name:"status", type: "generic", width: 6, height: 3, canChangeIcon: false){
 			tileAttribute ("status", key: "PRIMARY_CONTROL") {
 				attributeState "off", label:'off', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ffffff"
 				attributeState "alarm", label:'Alarm Sounding!', action: "off", icon:"st.alarm.alarm.alarm", backgroundColor:"#ff9999"
@@ -244,7 +247,7 @@ metadata {
 			state "default", label:'Beep', action:"beep", icon:"st.Entertainment.entertainment2", backgroundColor: "#99FF99"
 		}
 		standardTile("playBeepSchedule", "device.status", width: 2, height: 2) {
-			state "default", label:'Start', action:"startBeep", icon: "st.Entertainment.entertainment2",backgroundColor: "#99FF99"
+			state "default", label:'Start', action:"startBeep", nextState:"beepSchedule", icon: "st.Entertainment.entertainment2",backgroundColor: "#99FF99"
 			state "beepSchedule", label:'Stop', action:"off", icon: "st.Entertainment.entertainment2", backgroundColor: "#ffffff"
 		}
 		standardTile("playCustomBeep1", "device.status", width: 2, height: 2) {
@@ -280,6 +283,11 @@ def nextTrack() { handleUnsupportedCommand("nextTrack") }
 def setLevel(number) { handleUnsupportedCommand("setLevel") }
 def previousTrack() { handleUnsupportedCommand("previousTrack") }
 def unmute() { handleUnsupportedCommand("unmute") }
+
+private handleUnsupportedCommand(cmd) {
+	log.info "Command $cmd is not supported"
+	return []
+}
 
 // Turns siren off
 def pause() { 
@@ -355,7 +363,7 @@ def playTextAndRestore(message, volume=null) {
 def playText(message, volume=null) {
 	logTrace "playText($message, $volume)"
 	message = cleanMessage(message)
-	def cmds
+	def cmds = []
 	switch (message) {
 		case ["1", "2", "3", "4", "5"]:
 			cmds = playAlarm(message, volume, settings.alarmDuration)
@@ -401,9 +409,7 @@ def playText(message, volume=null) {
 	if (!cmds) {
 		logDebug "'$message' is not a valid command."
 	}
-	else {
-		return cmds
-	}
+	return cmds
 }
 
 private cleanMessage(message) {
@@ -514,11 +520,11 @@ def both() {
 	logDebug "Executing both() command"
 	
 	if (settings.useBeepDelayedAlarm) {
-		startBeepDelayedAlarm()
+		return startBeepDelayedAlarm()
 	}
 	else {
 		changeStatus("alarm")
-		playDefaultAlarm()
+		return playDefaultAlarm()
 	}
 }
 
@@ -526,7 +532,7 @@ def both() {
 def startBeepDelayedAlarm() {
 	logTrace "startBeepDelayedAlarm()"
 	changeStatus("beepDelayedAlarm")
-	startDefaultBeepSchedule()	
+	return startDefaultBeepSchedule()	
 }
 
 private playPendingAlarm() {
@@ -537,23 +543,23 @@ private playPendingAlarm() {
 		def volume = state.scheduledAlarm?.volume
 		def duration = state.scheduledAlarm?.duration
 		state.scheduledAlarm = null
-		customAlarm(sound, volume, duration)
+		return customAlarm(sound, volume, duration)
 	}
 	else {
-		playDefaultAlarm()
+		return playDefaultAlarm()
 	}		
 }
 
 private playDefaultAlarm() {
 	logTrace "playDefaultAlarm()"
-	playAlarm(settings.sirenSound, settings.sirenVolume, settings.alarmDuration)
+	return playAlarm(settings.sirenSound, settings.sirenVolume, settings.alarmDuration)
 }
 
 // Plays sound at volume for duration.
 def customAlarm(sound, volume, duration) {
 	logTrace "customAlarm($sound, $volume, $duration)"
 	changeStatus("customAlarm")
-	playAlarm(sound, volume, duration)
+	return playAlarm(sound, volume, duration)
 }
 
 private playAlarm(sound, volume, duration) {
@@ -585,7 +591,7 @@ private playAlarm(sound, volume, duration) {
 def delayedAlarm(sound, volume, duration, delay) {
 	logTrace "delayedAlarm($sound, $volume, $duration, $delay)"
 	changeStatus("delayedAlarm")
-	startDelayedAlarm(sound, volume, duration, delay)	
+	return startDelayedAlarm(sound, volume, duration, delay)	
 }
 
 private startDelayedAlarm(sound, volume, duration, delay) {
@@ -612,16 +618,16 @@ def beep() {
 	logTrace "beep()"
 	if (!settings.useBeepScheduleForBeep) {
 		changeStatus("beep")
-		playDefaultBeep()	
+		return playDefaultBeep()	
 	}
 	else {
-		startBeep()
+		return startBeep()
 	}
 }
 
 private playDefaultBeep() {
 	logTrace "playDefaultBeep()"
-	playBeep(
+	return playBeep(
 		settings.beepSound,
 		settings.beepVolume,
 		settings.beepRepeat,
@@ -632,44 +638,44 @@ private playDefaultBeep() {
 
 // Plays short beep.
 def customBeep1(volume=null) {
-	customBeep(3, volume, 1, 0, 50)
+	return customBeep(3, volume, 1, 0, 50)
 }
 
 // Plays medium beep
 def customBeep2(volume=null) {
-	customBeep(3, volume, 1, 0, 100)
+	return customBeep(3, volume, 1, 0, 100)
 }
 
 // Plays long beep
 def customBeep3(volume=null) {
-	customBeep(3, volume, 1, 0, 250)
+	return customBeep(3, volume, 1, 0, 250)
 }
 
 // Plays 3 short beeps
 def customBeep4(volume=null) {
-	customBeep(3, volume, 3, 0, 50)
+	return customBeep(3, volume, 3, 0, 50)
 }
 
 // Plays 3 medium beeps
 def customBeep5(volume=null) {
-	customBeep(3, volume, 3, 100 , 100)
+	return customBeep(3, volume, 3, 100 , 100)
 }
 
 // Plays 3 long beeps
 def customBeep6(volume=null) {
-	customBeep(3, volume, 3, 150, 200)
+	return customBeep(3, volume, 3, 150, 200)
 }
 
 // Repeatedly plays the default beep based on the beepEvery and beepStopAfter settings.
 def startBeep() {
 	logTrace "startBeep()"
 	changeStatus("beepSchedule")
-	startDefaultBeepSchedule()	
+	return startDefaultBeepSchedule()	
 }
 
 private startDefaultBeepSchedule() {
 	logTrace "startBeepSchedule()"
-	startBeepSchedule(
+	return startBeepSchedule(
 		settings.beepEvery,
 		settings.beepStopAfter,
 		settings.beepSound,
@@ -685,7 +691,7 @@ def startCustomBeep(beepEverySeconds, stopAfterSeconds, sound, volume, repeat=1,
 	logTrace "startCustomBeep($beepEverySeconds, $stopAfterSeconds, $sound, $volume, $repeat, $repeatDelayMS, $beepLengthMS)"
 	changeStatus("customBeepSchedule")
 	
-	startBeepSchedule(beepEverySeconds, stopAfterSeconds, sound, volume, repeat, repeatDelayMS, beepLengthMS)	
+	return startBeepSchedule(beepEverySeconds, stopAfterSeconds, sound, volume, repeat, repeatDelayMS, beepLengthMS)	
 }
 
 private startBeepSchedule(beepEverySeconds, stopAfterSeconds, sound, volume, repeat, repeatDelayMS, beepLengthMS) {
@@ -771,7 +777,7 @@ def customBeep(sound, volume, repeat=1, repeatDelayMS=1000, beepLengthMS=100) {
 	
 	logTrace "customBeep($sound, $volume, $repeat, $repeatDelayMS, $beepLengthMS)"
 	changeStatus("customBeep")
-	playBeep(sound, volume, repeat, repeatDelayMS, beepLengthMS)
+	return playBeep(sound, volume, repeat, repeatDelayMS, beepLengthMS)
 }
 
 private playBeep(sound, volume, repeat, repeatDelayMS, beepLengthMS) {
@@ -854,11 +860,7 @@ def updated() {
 		
 		initializeCheckin()
 		
-		def cmds = []		
-		if (!state.useSecureCommands) {
-			cmds << supportedSecurityGetCmd()	
-		}
-		
+		def cmds = []
 		cmds += configure()
 		
 		return response(delayBetween(cmds, 200))
@@ -904,41 +906,37 @@ private startHealthPollSchedule() {
 def healthPoll() {
 	logTrace "healthPoll()"	
 	sendHubCommand(new physicalgraph.device.HubAction(versionGetCmd()))
+	return []
 }
 
 def ping() {
 	logTrace "ping()"
-	// Don't allow it to ping the device more than once per minute.
+	def result = []
 	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		logDebug "Attempting to ping device."
 		// Restart the polling schedule in case that's the reason why it's gone too long without checking in.
 		startHealthPollSchedule()
 		
-		return versionGetCmd()
-	}	
+		result << versionGetCmd()
+	}
+	return result
 }
 
 def configure() {
 	logTrace "configure()"
-	def cmds = []	
-	if (state.useSecureCommands != null) {
-		logDebug "Secure Commands ${state.useSecureCommands ? 'Enabled' : 'Disabled'}"
-		cmds << sendNotificationsSetCmd()
-		cmds << manufacturerGetCmd()
-		cmds << versionGetCmd()
-		cmds << switchGetCmd()		
-	}
-	else {
-		cmds << response(supportedSecurityGetCmd())
-	}
+	def cmds = [
+		sendNotificationsSetCmd(),
+		manufacturerGetCmd(),
+		versionGetCmd(),
+		switchGetCmd()	
+	]
 	return cmds
 }
 
-// Parses incoming message warns if not paired securely
 def parse(String description) {
 	def result = []
 	if (description != null && description != "updated") {
-		def cmd = zwave.parse(description, [0x25:1, 0x59:1, 0x70:1, 0x72:2, 0x85:2, 0x86:1, 0x98:1])
+		def cmd = zwave.parse(description, commandClassVersions)
 
 		if (cmd) {
 			result += zwaveEvent(cmd)
@@ -973,26 +971,16 @@ private convertToLocalTimeString(dt) {
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
 	def result = []
 	if (cmd) {
-		def encapCmd = cmd.encapsulatedCommand([0x25:1, 0x59:1, 0x70:1, 0x72:2, 0x85:2, 0x86:1, 0x98:1])
+		def encapCmd = cmd.encapsulatedCommand(commandClassVersions)
 
 		if (encapCmd) {	
-			result = zwaveEvent(encapCmd)
+			result += zwaveEvent(encapCmd)
 		}
 		else {
 			log.debug "Unable to encapsulate: $cmd"
 		}
 	}
 	return result
-}
-
-def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityCommandsSupportedReport cmd) {
-	state.useSecureCommands = true
-	
-	def cmds = []
-	cmds << response("delay 2000")
-	cmds += response(configure())
-	
-	return cmds
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerSpecificReport cmd) {
@@ -1026,9 +1014,8 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 
 // Handles the scheduling of beeps.
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
-	def result = []
-	result << response(playScheduledBeep())
-	return result
+	logTrace "BasicReport: $cmd"
+	return response(playScheduledBeep())
 }
 
 // Writes unexpected commands to debug log
@@ -1063,16 +1050,6 @@ private basicGetCmd() {
 	return secureCmd(zwave.basicV1.basicGet())
 }
 
-private supportedSecurityGetCmd() {
-	logDebug "Checking for Secure Command Support"
-	
-	state.useSecureCommands = true // force secure cmd			
-	def cmd = secureCmd(zwave.securityV1.securityCommandsSupportedGet())
-	state.useSecureCommands = false // reset secure cmd
-	
-	return cmd
-}
-
 private versionGetCmd() {
 	return secureCmd(zwave.versionV1.versionGet())
 }
@@ -1081,13 +1058,50 @@ private manufacturerGetCmd() {
 	secureCmd(zwave.manufacturerSpecificV2.manufacturerSpecificGet())
 }
 
-private secureCmd(physicalgraph.zwave.Command cmd) {
-	if (state.useSecureCommands) {		
-		zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
-	} else {		
-		cmd.format()
+private secureCmd(cmd) {
+	if (canSecureCmd(cmd)) {
+		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
+	}
+	else {
+		return cmd.format()
+	}	
+}
+
+private canSecureCmd(cmd) {
+	// This code was extracted from example by @ClassicGOD
+	def cmdClassId = Integer.toHexString(cmd.commandClassId)?.toUpperCase()
+	
+	return zwaveInfo?.zw?.contains("s") && (zwaveInfo?.sec?.contains(cmdClassId) || cmdClassId == "20") // Basic CC needs to be secure, but it's not in zwaveInfo.sec
+}
+
+private getCommandClassVersions() {
+	[	        
+		0x20: 1,	// Basic
+		0x25: 1,	// Switch Binary		
+		0x2B: 1,	// Scene Activation 
+		0x2C: 1,	// Scene Actuator Conf 
+		0x59: 1,  // AssociationGrpInfo
+		0x5E: 2,  // ZwaveplusInfo
+		0x70: 1,  // Configuration
+		0x72: 2,  // ManufacturerSpecific
+		0x73: 1,  // Powerlevel
+		0x7A: 2,	// Firmware Update Md
+		0x85: 2,  // Association
+		0x86: 1,	// Version (2)
+		0x98: 1		// Security
+	]
+}
+
+private getVersionSafeCmdClass(cmdClass) {
+	def version = commandClassVersions[safeToInt(cmdClass)]
+	if (version) {
+		return zwave.commandClass(cmdClass, version)
+	}
+	else {
+		return zwave.commandClass(cmdClass)
 	}
 }
+
 
 private getCheckinIntervalSettingMinutes() {
 	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting)
@@ -1134,6 +1148,7 @@ private getDefaultOptionSuffix() {
 private safeToInt(val, defaultVal=-1) {
 	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
 }
+
 
 private int validateSound(sound, int defaultSound=1) {
 	return validateRange(sound, defaultSound, 1, 5, "Sound")
