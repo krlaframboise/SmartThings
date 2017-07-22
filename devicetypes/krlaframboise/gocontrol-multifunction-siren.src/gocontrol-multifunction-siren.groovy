@@ -27,6 +27,7 @@
  *
  *    1.8 (07/22/2017)
  *    	- Fixed issue caused by the hub firmware update 000.018.00018
+ *    	- If you're on hub v1 or you installed the device prior to May 2016, make sure you test the device after updating to this version.
  *
  *    1.7.4 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
