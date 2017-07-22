@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.10
+ *  Aeon Labs Multifunction Siren v 1.10.1
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -13,8 +13,9 @@
  *
  *	Changelog:
  *
- *  1.10 (07/22/2017)
- *    	- Enhanced security command class implementation.
+ *  1.10.1 (07/22/2017)
+ *    	- Fixed issue caused by the hub firmware update 000.018.00018
+ *    	- If you're on hub v1 or you installed the device prior to May 2016, make sure you test the device after updating to this version.
  *
  *  1.9.4 (05/23/2017)
  *    	- SmartThings fixed parse issue so changed it back to using response instead of sendhubaction.
@@ -935,15 +936,12 @@ def configure() {
 
 def parse(String description) {
 	def result = []
-	if (description != null && description != "updated") {
-		def cmd = zwave.parse(description, commandClassVersions)
-
-		if (cmd) {
-			result += zwaveEvent(cmd)
-		}
-		else {
-			logDebug "Unable to parse: $description"
-		}
+	def cmd = zwave.parse(description, commandClassVersions)
+	if (cmd) {
+		result += zwaveEvent(cmd)
+	}
+	else {
+		logDebug "Unable to parse: $description"
 	}
 	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		result << createLastCheckinEvent()
@@ -974,6 +972,7 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 		def encapCmd = cmd.encapsulatedCommand(commandClassVersions)
 
 		if (encapCmd) {	
+			state.useSecureCommands = true
 			result += zwaveEvent(encapCmd)
 		}
 		else {
@@ -1059,19 +1058,12 @@ private manufacturerGetCmd() {
 }
 
 private secureCmd(cmd) {
-	if (canSecureCmd(cmd)) {
+	if (zwaveInfo?.zw?.contains("s") || state.useSecureCommands) {
 		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
 	}
 	else {
 		return cmd.format()
 	}	
-}
-
-private canSecureCmd(cmd) {
-	// This code was extracted from example by @ClassicGOD
-	def cmdClassId = Integer.toHexString(cmd.commandClassId)?.toUpperCase()
-	
-	return zwaveInfo?.zw?.contains("s") && (zwaveInfo?.sec?.contains(cmdClassId) || cmdClassId == "20") // Basic CC needs to be secure, but it's not in zwaveInfo.sec
 }
 
 private getCommandClassVersions() {
@@ -1091,17 +1083,6 @@ private getCommandClassVersions() {
 		0x98: 1		// Security
 	]
 }
-
-private getVersionSafeCmdClass(cmdClass) {
-	def version = commandClassVersions[safeToInt(cmdClass)]
-	if (version) {
-		return zwave.commandClass(cmdClass, version)
-	}
-	else {
-		return zwave.commandClass(cmdClass)
-	}
-}
-
 
 private getCheckinIntervalSettingMinutes() {
 	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting)
