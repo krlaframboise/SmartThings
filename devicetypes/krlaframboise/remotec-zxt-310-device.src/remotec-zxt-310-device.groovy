@@ -239,12 +239,14 @@ def on() {
 	logTrace "Executing on()"
 	sendEvent(createEventMap("switch", "on", false))
 	pushTriggeredBtns("on")
+    return []
 }
 
 def off() {
 	logTrace "Executing off()"
 	sendEvent(createEventMap("switch", "off", false))
 	pushTriggeredBtns("off")
+    return []
 }
 
 def push() {

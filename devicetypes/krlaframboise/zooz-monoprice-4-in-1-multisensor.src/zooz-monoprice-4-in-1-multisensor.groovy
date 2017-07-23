@@ -1,5 +1,5 @@
 /**
- *  Zooz/Monoprice 4-in-1 Multisensor 1.3.7
+ *  Zooz/Monoprice 4-in-1 Multisensor 1.3.8
  *
  *  Zooz Z-Wave 4-in-1 Sensor (ZSE40)
  *
@@ -12,6 +12,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.3.8 (07/23/2017)
+ *    	- Enhanced security cc check and removed legacy fingerprints.
  *
  *    1.3.7 (06/25/2017)
  *    	- Set default primary status when first included.
@@ -97,9 +100,7 @@ metadata {
 		attribute "pLight", "number"
 		attribute "lxLight", "number"
 		attribute "firmwareVersion", "string"
-						
-		fingerprint deviceId: "0x0701", inClusters: "0x5E, 0x98, 0x86, 0x72, 0x5A, 0x85, 0x59, 0x73, 0x80, 0x71, 0x31, 0x70, 0x84, 0x7A"
-		
+							
 		fingerprint mfr:"027A", prod:"2021", model:"2101", deviceJoinName: "Zooz 4-in-1 Multisensor"
 		
 		fingerprint mfr:"0109", prod:"2021", model:"2101", deviceJoinName: "Zooz/Monoprice 4-in-1 Multisensor"
@@ -569,26 +570,18 @@ private getLedIndicatorModeParamNum() { return 7 }
 def parse(String description) {
 	def result = []
 	
-	sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
-	
-	if (description.startsWith("Err 106")) {
-		state.useSecureCmds = false
-		log.warn "Secure Inclusion Failed: ${description}"
-		result << createEvent( name: "secureInclusion", value: "failed", eventType: "ALERT", descriptionText: "This sensor failed to complete the network security key exchange. If you are unable to control it via SmartThings, you must remove it from your network and add it again.")
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
+		state.lastCheckinTime = new Date().time
+		sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
 	}
-	else if (description.startsWith("Err")) {
-		log.warn "Parse Error: $description"
-		result << createEvent(descriptionText: "$device.displayName $description", isStateChange: true)
+	
+	def cmd = zwave.parse(description, commandClassVersions)
+	if (cmd) {
+		result += zwaveEvent(cmd)
 	}
 	else {
-		def cmd = zwave.parse(description, getCommandClassVersions())
-		if (cmd) {
-			result += zwaveEvent(cmd)
-		}
-		else {
-			logDebug "Unable to parse description: $description"
-		}
-	}	
+		logDebug "Unable to parse description: $description"
+	}
 	return result
 }
 
@@ -597,15 +590,10 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 		
 	def result = []
 	if (encapCmd) {
-		state.useSecureCmds = true
 		result += zwaveEvent(encapCmd)
 	}
-	else if (cmd.commandClassIdentifier == 0x5E) {
-		logTrace "Unable to parse ZwaveplusInfo cmd"
-	}
 	else {
-		log.warn "Unable to extract encapsulated cmd from $cmd"
-		result << createEvent(descriptionText: "$cmd")
+		log.warn "Unable to extract encapsulated cmd from $cmd"		
 	}
 	return result
 }
@@ -1092,13 +1080,14 @@ private configGetCmd(paramNumber) {
 }
 
 private secureCmd(cmd) {
-	if (state.useSecureCmds == false) {
-		return cmd.format()
-	}
-	else {
+	if (zwaveInfo?.zw?.contains("s") || ("0x98" in device.rawDescription?.split(" "))) {
 		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
 	}
+	else {
+		return cmd.format()
+	}	
 }
+
 
 private safeToInt(val, defaultVal=0) {
 	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
@@ -1129,5 +1118,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	// log.trace "$msg"
+	 // log.trace "$msg"
 }
