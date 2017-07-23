@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.10.1
+ *  Aeon Labs Multifunction Siren v 1.10.2
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -12,6 +12,9 @@
  *      Kevin LaFramboise (krlaframboise)
  *
  *	Changelog:
+ *
+ *  1.10.2 (07/23/2017)
+ *    	- Added legacy fingerprint support for security cc check.
  *
  *  1.10.1 (07/22/2017)
  *    	- Fixed issue caused by the hub firmware update 000.018.00018
@@ -137,8 +140,6 @@ metadata {
 		command "customBeep6"
 
 		fingerprint mfr: "0086", prod: "0104", model: "0050", deviceJoinName: "Aeon Labs Siren"
-		
-		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98,0x25,0x70,0x85,0x59,0x72,0x2B,0x2C,0x86,0x7A,0x73", outClusters: "0x5A,0x82"
 	}
 
 	simulator {
@@ -972,7 +973,6 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 		def encapCmd = cmd.encapsulatedCommand(commandClassVersions)
 
 		if (encapCmd) {	
-			state.useSecureCommands = true
 			result += zwaveEvent(encapCmd)
 		}
 		else {
@@ -1058,7 +1058,7 @@ private manufacturerGetCmd() {
 }
 
 private secureCmd(cmd) {
-	if (zwaveInfo?.zw?.contains("s") || state.useSecureCommands) {
+	if (zwaveInfo?.zw?.contains("s") || ("0x98" in device.rawDescription?.split(" "))) {
 		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
 	}
 	else {

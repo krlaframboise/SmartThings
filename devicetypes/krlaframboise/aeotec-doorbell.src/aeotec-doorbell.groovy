@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell v 1.14
+ *  Aeotec Doorbell v 1.14.1
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
@@ -12,6 +12,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.14.1 (07/23/2017)
+ *    	- Added legacy fingerprint support for security cc check. 
  *
  *  1.14 (07/22/2017)
  *    	- Fixed issue caused by the hub firmware update 000.018.00018
@@ -144,8 +147,6 @@ metadata {
 		command "playTrackAtVolume"		
 
 		fingerprint mfr: "0086", prod: "0104", model: "0038"
-
-		fingerprint deviceId: "0x1005", inClusters: "0x5E,0x98,0x25,0x70,0x72,0x59,0x85,0x73,0x7A,0x5A", outClusters: "0x82"
 	}
 
 	simulator {
@@ -686,14 +687,12 @@ def refresh() {
 // Parses incoming message
 def parse(String description) {
 	def result = []
-	if (description != null && description != "updated") {    
-		def cmd = zwave.parse(description, [0x20:1,0x25:1,0x59:1,0x70:1,0x72:2,0x82:1,0x85:2,0x86:1,0x98:1])
-		if (cmd) {
-			result += zwaveEvent(cmd)
-		} 
-		else {
-			logDebug("No Command: $cmd")
-		}
+	def cmd = zwave.parse(description, commandClassVersions)
+	if (cmd) {
+		result += zwaveEvent(cmd)
+	} 
+	else {
+		logDebug("No Command: $cmd")
 	}
 	if (canCheckin()) {
 		result << createLastCheckinEvent()
@@ -728,7 +727,6 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 	if (cmd) {
 		def encapCmd = cmd.encapsulatedCommand(commandClassVersions)
 		if (encapCmd) {
-			state.useSecureCmds = true
 			result += zwaveEvent(encapCmd)
 		}
 		else {
@@ -989,7 +987,7 @@ private secureCmd(cmd) {
 }
 
 private getUseSecureCmds() {
-	return zwaveInfo?.zw?.contains("s") || state.useSecureCmds
+	return (zwaveInfo?.zw?.contains("s") || ("0x98" in device.rawDescription?.split(" ")))
 }
 
 private getSkipDoorbellCheckSetting() {

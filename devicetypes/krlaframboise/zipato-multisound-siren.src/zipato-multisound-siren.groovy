@@ -1,5 +1,5 @@
 /**
- *  Zipato Multisound Siren v1.6
+ *  Zipato Multisound Siren v1.6.1
  *     (Zipato Z-Wave Indoor Multi-Sound Siren -
  *        Model:PH-PSE02)
  *  
@@ -13,6 +13,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *  1.6.1 (07/23/2017)
+ *    	- Added legacy fingerprint support for security cc check.
  *
  *  1.6 (07/22/2017)
  *    	- Fixed issue caused by the hub firmware update 000.018.00018
@@ -619,7 +622,6 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 	
 	def result = []
 	if (encapsulatedCmd) {
-		state.useSecureCmds = true
 		result += zwaveEvent(encapsulatedCmd)
 	}
 	else {
@@ -915,7 +917,7 @@ private configGetCmd(paramNumber) {
 }
 
 private secureCmd(cmd) {
-	if (zwaveInfo?.zw?.contains("s") || state.useSecureCmds) {
+	if (zwaveInfo?.zw?.contains("s") || ("0x98" in device.rawDescription?.split(" "))) {
 		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
 	}
 	else {
