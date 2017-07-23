@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.8.1
+ *  GoControl Multifunction Siren v 1.8.2
  *
  *  Devices:
  *    GoControl/Linear (Model#: WA105DBZ-1 / ZM1601US-3)
@@ -24,6 +24,9 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.8.2 (07/23/2017)
+ *   		- Added legacy fingerprint support for security cc check. 
  *
  *    1.8.1 (07/22/2017)
  *    	- Fixed issue caused by the hub firmware update 000.018.00018
@@ -649,7 +652,7 @@ private batteryGetCmd() {
 }
 
 private secureCmd(cmd) {
-	if (zwaveInfo?.zw?.contains("s") || state.useSecureCommands) {
+	if (zwaveInfo?.zw?.contains("s") || ("0x98" in device.rawDescription?.split(" "))) {
 		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
 	}
 	else {
@@ -694,7 +697,6 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 	
 	def encapCmd = cmd.encapsulatedCommand(commandClassVersions)
 	if (encapCmd) {
-		state.useSecureCommands = true
 		result += zwaveEvent(encapCmd)
 	}
 	else {
