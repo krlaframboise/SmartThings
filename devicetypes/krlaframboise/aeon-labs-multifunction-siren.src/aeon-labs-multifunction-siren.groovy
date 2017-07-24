@@ -1,5 +1,5 @@
 /**
- *  Aeon Labs Multifunction Siren v 1.10.2
+ *  Aeon Labs Multifunction Siren v 1.10.3
  *      (Aeon Labs Siren - Model:ZW080-A17)
  *
  * (https://community.smartthings.com/t/release-aeon-labs-multifunction-siren/40652?u=krlaframboise)
@@ -13,7 +13,7 @@
  *
  *	Changelog:
  *
- *  1.10.2 (07/23/2017)
+ *  1.10.3 (07/23/2017)
  *    	- Added legacy fingerprint support for security cc check.
  *
  *  1.10.1 (07/22/2017)
@@ -857,7 +857,7 @@ private finalizeOldStatus(oldStatus, newStatus) {
 // Stores preferences and displays device settings.
 def updated() {
 	logTrace "updated()"
-	if (!isDuplicateCommand(state.lastUpdated, 1000)) {
+	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
 		state.lastUpdated = new Date().time
 		
 		initializeCheckin()
@@ -928,8 +928,6 @@ def configure() {
 	logTrace "configure()"
 	def cmds = [
 		sendNotificationsSetCmd(),
-		manufacturerGetCmd(),
-		versionGetCmd(),
 		switchGetCmd()	
 	]
 	return cmds
@@ -945,13 +943,13 @@ def parse(String description) {
 		logDebug "Unable to parse: $description"
 	}
 	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
+		state.lastCheckinTime = new Date().time
 		result << createLastCheckinEvent()
 	}
 	return result
 }
 
-private createLastCheckinEvent() {
-	state.lastCheckinTime = new Date().time
+private createLastCheckinEvent() {	
 	logDebug "Device Checked In"	
 	return createEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
 }
@@ -980,11 +978,6 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 		}
 	}
 	return result
-}
-
-def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerSpecificReport cmd) {
-	logDebug("$cmd")
-	return []
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
@@ -1051,10 +1044,6 @@ private basicGetCmd() {
 
 private versionGetCmd() {
 	return secureCmd(zwave.versionV1.versionGet())
-}
-
-private manufacturerGetCmd() {
-	secureCmd(zwave.manufacturerSpecificV2.manufacturerSpecificGet())
 }
 
 private secureCmd(cmd) {
