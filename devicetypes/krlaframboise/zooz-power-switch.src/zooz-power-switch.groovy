@@ -70,19 +70,19 @@ metadata {
 			state "refresh", label:'Refresh', action: "refresh", icon:"st.secondary.refresh-icon", defaultState: true
 		}
 		valueTile("energy", "device.energy", width: 2, height: 2) {
-			state "val", label:'${currentValue} ${unit}', unit: "kWh", defaultState: true
+			state "val", label:'${currentValue} kWh'
 		}
 		valueTile("power", "device.power", width: 2, height: 2) {
-			state "val", label:'${currentValue} ${unit}', unit: "W", defaultState: true
+			state "val", label:'${currentValue} W'
 		}
 		valueTile("voltage", "device.voltage", width: 2, height: 2) {
-			state "val", label:'${currentValue} ${unit}', unit: "V", defaultState: true
+			state "val", label:'${currentValue} V'
 		}
 		valueTile("current", "device.current", width: 2, height: 2) {
-			state "val", label:'${currentValue} ${unit}', unit: "A", defaultState: true
+			state "val", label:'${currentValue} A'
 		}
 		main "switch"
-		details(["switch", "overload", "refresh", "energy", "power", "voltage", "current"])
+		details(["switch", "refresh", "energy", "power", "voltage", "current"])
 	}
 }
 
@@ -107,29 +107,14 @@ def updated() {
 }
 
 def configure() {
+	def result = []
 	def cmds = []
-	
 	configParams.each { param ->	
 		cmds += updateConfigVal(param)
 	}
-
-	if (!getAttrValue("switch")) {
-		cmds << switchBinaryGetCmd()
-	}
-	if (!getAttrValue("power")) {
-		cmds << meterGetCmd(meterScalePower)
-	}
-	if (!getAttrValue("energy")) {
-		cmds << meterGetCmd(meterScaleEnergy)
-	}
-	if (!getAttrValue("voltage")) {
-		cmds << meterGetCmd(meterScaleVoltage)
-	}
-	if (!getAttrValue("current")) {
-		cmds << meterGetCmd(meterScaleCurrent)
-	}
-	
-	return delayBetweenCmds(cmds)
+	result += delayBetweenCmds(cmds)
+	result += refresh()	
+	return result
 }
 
 private updateConfigVal(param) {
@@ -209,7 +194,7 @@ private secureCmd(cmd) {
 	}	
 }
 
-private delayBetweenCmds(cmds, delay=50) {
+private delayBetweenCmds(cmds, delay=500) {
 	return cmds ? delayBetween(cmds, delay) : []
 }
 
@@ -306,11 +291,11 @@ private createSwitchEvent(value, physical) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd) {
-	// logTrace "MeterReport: $cmd"
+	logTrace "MeterReport: $cmd"
 	def result = []	
 	def name
 	def unit 
-	def val = cmd.scaledMeterValue
+	def val = roundTwoPlaces(cmd.scaledMeterValue)
 	
 	switch (cmd.scale) {
 		case meterScaleEnergy:
