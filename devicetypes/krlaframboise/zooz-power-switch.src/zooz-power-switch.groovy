@@ -1,6 +1,6 @@
 /**
- *  Zooz Power Switch v0.0.2
- *  (Model: ZEN15)
+ *  Zooz Power Switch / Zooz Smart Plug v1.0
+ *  (Models: ZEN15, ZEN06)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -10,8 +10,8 @@
  *
  *  Changelog:
  *
- *    0.0.2 (07/26/2017)
- *      - Beta Release
+ *    1.0 (07/26/2017)
+ *      - Initial Release
  *
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -55,12 +55,14 @@ metadata {
 				
 		command "reset"
 
-		fingerprint mfr:"027A", prod:"0101", model:"000D", deviceJoinName: "Zooz Power Switch"		
+		fingerprint mfr:"027A", prod:"0101", model:"000D", deviceJoinName: "Zooz Power Switch"
+		
+		fingerprint mfr:"027A", prod:"0101", model:"000A", deviceJoinName: "Zooz Smart Plug"
 	}
 
 	simulator { }
 	
-		preferences {
+	preferences {
 		configParams?.each {			
 			getOptionsInput(it)
 		}
@@ -349,21 +351,21 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport 
 def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
 	logTrace "SwitchBinaryReport: ${cmd}"
 	def result = []
-	result << createSwitchEvent(cmd.value, false)
+	result << createSwitchEvent(cmd.value, "digital")
 	return result
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	logTrace "BasicReport: ${cmd}"
 	def result = []
-	result << createSwitchEvent(cmd.value, true)
+	result << createSwitchEvent(cmd.value, "physical")
 	return result
 }
 
-private createSwitchEvent(value, physical) {
+private createSwitchEvent(value, type) {
 	def eventVal = (value == 0xFF) ? "on" : "off"
 	def map = createEventMap("switch", eventVal, null, "Switch is ${eventVal}")
-	map.physical = physical
+	map.type = type
 	return createEvent(map)
 }
 
