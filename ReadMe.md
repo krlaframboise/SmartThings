@@ -457,21 +457,6 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
-<h3>Zooz Power Switch/Zooz Smart Plug</h3>
-
-<ul>
-<li>This is a device handler for the Zooz Z-Wave Power Switch (ZEN15) and Zooz Z-Wave Smart Plug (ZEN06).<br /></li>
-<li>Reports Power, Energy, Voltage, and Current</li>
-<li>Tracks high and low values for Power, Voltage, and Current.</li>
-<li>Reports Energy Duration and Cost.</li>
-<li>Creates Digital events when turned on/off from SmartApp and Physical events when the button is used.</li>
-<li>Optionally display Power, Energy, Voltage, and Current events in the Recently tab.</li>
-<!--<li><a href="https://community.smartthings.com/t/release-zooz-power-strip/68860?u=krlaframboise">View Documentation in SmartThings Forum</a></li>-->
-<li><a id="ZoozPowerSwitch" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-switch.src/zooz-power-switch.groovy">View Zooz Power Switch/Zooz Smart Plug - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
 <h3>Zooz Power Strip</h3>
 
 <ul>
@@ -491,6 +476,21 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>Main Switch Delay setting allows the Main Switch to turn the outlets on/off gradually instead of all at once.</li>
 <li><a href="https://community.smartthings.com/t/release-zooz-power-strip/68860?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a id="ZoozPowerStrip" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-strip.src/zooz-power-strip.groovy">View Zooz Power Strip - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Zooz Power Switch/Zooz Smart Plug</h3>
+
+<ul>
+<li>This is a device handler for the Zooz Z-Wave Power Switch (ZEN15) and Zooz Z-Wave Smart Plug (ZEN06).<br /></li>
+<li>Reports Power, Energy, Voltage, and Current</li>
+<li>Tracks high and low values for Power, Voltage, and Current.</li>
+<li>Reports Energy Duration and Cost.</li>
+<li>Creates Digital events when turned on/off from SmartApp and Physical events when the button is used.</li>
+<li>Optionally display Power, Energy, Voltage, and Current events in the Recently tab.</li>
+<!--<li><a href="https://community.smartthings.com/t/release-zooz-power-strip/68860?u=krlaframboise">View Documentation in SmartThings Forum</a></li>-->
+<li><a id="ZoozPowerSwitch" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-switch.src/zooz-power-switch.groovy">View Zooz Power Switch/Zooz Smart Plug - Device Handler Code</a></li>
 </ul>
 
 <hr />
