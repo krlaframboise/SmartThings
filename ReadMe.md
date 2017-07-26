@@ -51,7 +51,9 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="#wireless-smoke-detector-sensor">Wireless Smoke Detector Sensor</a></li>
 			<li><a href="#zipato-multisound-siren">Zipato Multisound Siren</a></li>
 			<li><a href="#zoozmonoprice-4-in-1-multisensor">Zooz 4-in-1 Multisensor</a></li>
+			<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Smart Plug</a></li>
 			<li><a href="#zooz-power-strip">Zooz Power Strip</a></li>
+			<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Power Switch</a></li>
 			<li><a href="#zooz-smart-chime">Zooz Smart Chime</a></li>
 			<li><a href="#zooz-water-sensor">Zooz Water Sensor</a></li>
 		</ul>
@@ -451,6 +453,21 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>The setting <em>Automatically Clear Tamper</em> allows you to choose whether it raises the tamper clear event when the device cover is closed or if you have to press the "Refresh" button to clear it.<br></li>
 <li><a href="https://community.smartthings.com/t/release-zooz-4-in-1-multisensor/82989?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-monoprice-4-in-1-multisensor.src/zooz-monoprice-4-in-1-multisensor.groovy">View Zooz/Monoprice 4-in-1 Multisensor - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Zooz Power Switch/Zooz Smart Plug</h3>
+
+<ul>
+<li>This is a device handler for the Zooz Z-Wave Power Switch (ZEN15) and Zooz Z-Wave Smart Plug (ZEN06).<br /></li>
+<li>Reports Power, Energy, Voltage, and Current</li>
+<li>Tracks high and low values for Power, Voltage, and Current.</li>
+<li>Reports Energy Duration and Cost.</li>
+<li>Creates Digital events when turned on/off from SmartApp and Physical events when the button is used.</li>
+<li>Optionally display Power, Energy, Voltage, and Current events in the Recently tab.</li>
+<!--<li><a href="https://community.smartthings.com/t/release-zooz-power-strip/68860?u=krlaframboise">View Documentation in SmartThings Forum</a></li>-->
+<li><a id="ZoozPowerSwitch" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-switch.src/zooz-power-switch.groovy">View Zooz Power Switch/Zooz Smart Plug - Device Handler Code</a></li>
 </ul>
 
 <hr />
