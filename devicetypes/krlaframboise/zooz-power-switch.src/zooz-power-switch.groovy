@@ -1,5 +1,5 @@
 /**
- *  Zooz Power Switch v0.0.1
+ *  Zooz Power Switch v0.0.2
  *  (Model: ZEN15)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    0.0.1 (07/25/2017)
+ *    0.0.2 (07/26/2017)
  *      - Beta Release
  *
  *
@@ -44,6 +44,9 @@ metadata {
 		attribute "lastCheckin", "string"
 		attribute "history", "string"
 		attribute "current", "number"
+		attribute "energyTime", "number"
+		attribute "energyCost", "string"
+		attribute "energyDuration", "string"
 		
 		["power", "voltage", "current"].each {
 			attribute "${it}Low", "number"
@@ -57,15 +60,22 @@ metadata {
 
 	simulator { }
 	
-	preferences {
+		preferences {
 		configParams?.each {			
 			getOptionsInput(it)
 		}
 		
-		input "debugOutput", "bool", 
-			title: "Enable debug logging?", 
-			defaultValue: true, 
-			required: false
+		input "energyPrice", "decimal",
+			title: "\$/kWh Cost:",
+			defaultValue: energyPriceSetting,
+			required: false,
+			displayDuringSetup: true
+			
+		["Power", "Energy", "Voltage", "Current"].each {
+			getBoolInput("display${it}", "Display ${it} Activity", true)
+		}
+
+		getBoolInput("debugOutput", "Enable Debug Logging", true)
 	}
 
 	tiles(scale: 2) {
@@ -82,16 +92,16 @@ metadata {
 			state "refresh", label:'Reset', action: "reset", icon:"st.secondary.refresh-icon"
 		}
 		valueTile("energy", "device.energy", width: 2, height: 2) {
-			state "val", label:'${currentValue} kWh', backgroundColor: "#cccccc"
+			state "energy", label:'${currentValue} kWh', backgroundColor: "#cccccc"
 		}
 		valueTile("power", "device.power", width: 2, height: 2) {
-			state "val", label:'${currentValue} W', backgroundColor: "#cccccc"
+			state "power", label:'${currentValue} W', backgroundColor: "#cccccc"
 		}
 		valueTile("voltage", "device.voltage", width: 2, height: 2) {
-			state "val", label:'${currentValue} V', backgroundColor: "#cccccc"
+			state "voltage", label:'${currentValue} V', backgroundColor: "#cccccc"
 		}
 		valueTile("current", "device.current", width: 2, height: 2) {
-			state "val", label:'${currentValue} A', backgroundColor: "#cccccc"
+			state "current", label:'${currentValue} A', backgroundColor: "#cccccc"
 		}
 		standardTile("history", "device.history", decoration:"flat",width: 6, height: 3) {
 			state "history", label:'${currentValue}'
@@ -112,6 +122,14 @@ private getOptionsInput(param) {
 	}
 }
 
+private getBoolInput(name, title, defaultVal) {
+	input "${name}", "bool", 
+		title: "${title}?", 
+		defaultValue: defaultVal, 
+		required: false
+}
+
+
 def updated() {	
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
 		state.lastUpdated = new Date().time
@@ -131,7 +149,13 @@ def configure() {
 		cmds += updateConfigVal(param)
 	}
 	result += delayBetweenCmds(cmds)
-	result += refresh()	
+	
+	if (!getAttrVal("energyTime")) {
+		result += reset()
+	}
+	else {
+		result += refresh()	
+	}	
 	return result
 }
 
@@ -158,8 +182,11 @@ void updateHealthCheckInterval() {
 			
 		// Set the Health Check interval so that it can be skipped twice plus 5 minutes.
 		def checkInterval = ((minReportingInterval * 2) + (5 * 60))
-	
-		sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+		
+		def eventMap = createEventMap("checkInterval", checkInterval, false)
+		eventMap.data = [protocol: "zwave", hubHardwareId: device.hub.hardwareID]
+		
+		sendEvent(eventMap)
 	}
 }
 
@@ -189,30 +216,30 @@ def refresh() {
 	logTrace "Refreshing"
 	return delayBetweenCmds([
 		switchBinaryGetCmd(),
-		meterGetCmd(meterScaleEnergy),
-		meterGetCmd(meterScalePower),
-		meterGetCmd(meterScaleVoltage),
-		meterGetCmd(meterScaleCurrent)
+		meterGetCmd(meterEnergy),
+		meterGetCmd(meterPower),
+		meterGetCmd(meterVoltage),
+		meterGetCmd(meterCurrent)
 	])
 }
 
 def reset() {
 	logTrace "Resetting"
 	["power", "voltage", "current"].each {
-		sendEvent(createEventMap("${it}Low", null, false))
-		sendEvent(createEventMap("${it}High", null, false))
+		sendEvent(createEventMap("${it}Low", getAttrVal(it), false))
+		sendEvent(createEventMap("${it}High", getAttrVal(it), false))
 	}
-	sendEvent(createEventMap("history", "", false))
-
+	sendEvent(createEventMap("energyTime", new Date().time, false))
+	
 	def result = []
-	// result << meterResetCmd()
+	result << meterResetCmd()
 	result += refresh()
 	return result
 }
 
 
-private meterGetCmd(scale) {
-	return secureCmd(zwave.meterV3.meterGet(scale: scale))
+private meterGetCmd(meter) {
+	return secureCmd(zwave.meterV3.meterGet(scale: meter.scale))
 }
 
 private meterResetCmd() {
@@ -343,36 +370,34 @@ private createSwitchEvent(value, physical) {
 def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd) {
 	logTrace "MeterReport: $cmd"
 	def result = []	
-	def name
-	def unit 
 	def val = roundTwoPlaces(cmd.scaledMeterValue)
-	
+		
+	def meter 
 	switch (cmd.scale) {
-		case meterScaleEnergy:
-			name = "energy"
-			unit = "kWh"
+		case meterEnergy.scale:
+			meter = meterEnergy
 			break
-		case meterScalePower:
-			name = "power"
-			unit = "W"
+		case meterPower.scale:
+			meter = meterPower
 			break
-		case meterScaleVoltage:
-			name = "voltage"
-			unit = "V"
+		case meterVoltage.scale:
+			meter = meterVoltage
 			break
-		case meterScaleCurrent:
-			name = "current"
-			unit = "A"
+		case meterCurrent.scale:
+			meter = meterCurrent
 			break
 		default:
 			logDebug "Unknown Meter Scale: $cmd"
 	}
 	
-	if (name && getAttrVal("$name") != val) {
-		result << createEvent(createEventMap(name, val, null, "${name} is ${val} ${unit}", unit))
+	if (meter?.name && getAttrVal("${meter.name}") != val) {
+		result << createEvent(createEventMap(meter.name, val, meter.displayed, null, meter.unit))
 		
-		if (name != "energy") {
-			result += createHighLowEvents(name, val, unit)
+		if (meter.name == meterEnergy.name) {
+			result += createEnergyEvents(val)
+		}
+		else {
+			result += createHighLowEvents(meter, val)
 		}
 		
 		runIn(5, refreshHistory)
@@ -380,29 +405,71 @@ def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd) {
 	return result
 }
 
-private createHighLowEvents(name, val, unit) {
+private createHighLowEvents(meter, val) {
 	def result = []
 	def highLowNames = [] 
-	
-	if (!getAttrVal("${name}High") || val > getAttrVal("${name}High")) {
-		highLowNames << "${name}High"
+	def highName = "${meter.name}High"
+	def lowName = "${meter.name}Low"
+	if (!getAttrVal(highName) || val > getAttrVal(highName)) {
+		highLowNames << highName
 	}
-	if (!getAttrVal("${name}Low") || val < getAttrVal("${name}Low")) {
-		highLowNames << "${name}Low"
+	if (!getAttrVal(lowName) || meter.value < getAttrVal(lowName)) {
+		highLowNames << lowName
 	}
 	
 	highLowNames.each {
-		result << createEvent(createEventMap("$it", val, false, null, unit))
+		result << createEvent(createEventMap("$it", val, false, null, meter.unit))
 	}
 	return result
+}
+
+private createEnergyEvents(val) {
+	def result = []
+	
+	def cost = "\$${roundTwoPlaces(val * energyPriceSetting)}"
+	if (getAttrVal("energyCost") != cost) {
+		result << createEvent(createEventMap("energyCost", cost, false))
+	}
+	
+	result << createEvent(createEventMap("energyDuration", calculateEnergyDuration(), false))	
+	return result
+}
+
+private calculateEnergyDuration() {
+	def energyTimeMS = getAttrVal("energyTime")
+	if (!energyTimeMS) {
+		return "Unknown"
+	}
+	else {
+		def duration = roundTwoPlaces((new Date().time - energyTimeMS) / 60000)
+		
+		if (duration >= (24 * 60)) {
+			return getFormattedDuration(duration, (24 * 60), "Day")
+		}
+		else if (duration >= 60) {
+			return getFormattedDuration(duration, 60, "Hour")
+		}
+		else {
+			return getFormattedDuration(duration, 0, "Minute")
+		}
+	}
+}
+
+private getFormattedDuration(duration, divisor, name) {
+	if (divisor) {
+		duration = roundTwoPlaces(duration / divisor)
+	}	
+	return "${duration} ${name}${duration == 1 ? '' : 's'}"
 }
 
 def refreshHistory() {
 	def history = ""
 	def items = [:]
+	items["energyDuration"] = "Energy - Duration"
+	items["energyCost"] = "Energy - Cost"
 	["power", "voltage", "current"].each {
-		items["${it}Low"] = "${it.capitalize()} Low"
-		items["${it}High"] = "${it.capitalize()} High"
+		items["${it}Low"] = "${it.capitalize()} - Low"
+		items["${it}High"] = "${it.capitalize()} - High"
 	}
 	items.each { attrName, caption ->
 		def attr = device.currentState("${attrName}")
@@ -413,12 +480,26 @@ def refreshHistory() {
 	sendEvent(createEventMap("history", history, false))
 }
 
-// Meter Scales
-private getMeterScaleEnergy() { return 0 }
-private getMeterScalePower() { return 2 }
-private getMeterScaleVoltage() { return 4 }
-private getMeterScaleCurrent() { return 5 }
+// Meters
+private getMeterEnergy() { 
+	return getMeterMap("energy", 0, "kWh", settings?.displayEnergy != false) 
+}
 
+private getMeterPower() { 
+	return getMeterMap("power", 2, "W", settings?.displayPower != false)
+}
+
+private getMeterVoltage() { 
+	return getMeterMap("voltage", 4, "V", settings?.displayVoltage != false) 
+}
+
+private getMeterCurrent() { 
+	return getMeterMap("current", 5, "A", settings?.displayCurrent != false)
+}
+
+private getMeterMap(name, scale, unit, displayed) {
+	return [name:name, scale:scale, unit:unit, displayed:displayed]
+}
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	logDebug "Unhandled zwaveEvent: $cmd"
@@ -463,23 +544,23 @@ private getPowerValueChangeParam() {
 }
 
 private getPowerPercentageChangeParam() {
-	return createConfigParamMap(152, "Power Report Percentage Change", 1, getPercentageOptions(10, [zeroName: "No Reports"]), "powerPercentageChange")
+	return createConfigParamMap(152, "Power Report Percentage Change", 1, getPercentageOptions(10, "No Reports"), "powerPercentageChange")
 }
 
 private getPowerReportIntervalParam() {
-	return createConfigParamMap(171, "Power Reporting Interval", 4, getIntervalOptions(30, [zeroName:"No Reports"]), "powerReportingInterval")
+	return createConfigParamMap(171, "Power Reporting Interval", 4, getIntervalOptions(30, "No Reports"), "powerReportingInterval")
 }
 
 private getEnergyReportIntervalParam() {
-	return createConfigParamMap(172, "Energy Reporting Interval", 4, getIntervalOptions(300, [zeroName:"No Reports"]), "energyReportingInterval")	
+	return createConfigParamMap(172, "Energy Reporting Interval", 4, getIntervalOptions(300, "No Reports"), "energyReportingInterval")	
 }
 
 private getVoltageReportIntervalParam() {
-	return createConfigParamMap(173, "Voltage Reporting Interval", 4, getIntervalOptions(0, [zeroName:"No Reports"]), "voltageReportingInterval")	
+	return createConfigParamMap(173, "Voltage Reporting Interval", 4, getIntervalOptions(0, "No Reports"), "voltageReportingInterval")	
 }
 
 private getElectricityReportIntervalParam() {
-	return createConfigParamMap(174, "Electrical Current Reporting Interval", 4, getIntervalOptions(0, [zeroName:"No Reports"]), "electricityReportingInterval")	
+	return createConfigParamMap(174, "Electrical Current Reporting Interval", 4, getIntervalOptions(0, "No Reports"), "electricityReportingInterval")	
 }
 
 private getParamStoredIntVal(param) {
@@ -505,12 +586,16 @@ private createConfigParamMap(num, name, size, options, prefName, val=null) {
 }
 
 // Settings
+private getEnergyPriceSetting() {
+	return safeToDec(settings?.energyPrice, 0.12)
+}
+
 private getDebugOutputSetting() {
 	return settings?.debugOutput != false
 }
 
 private getMinimumReportingInterval() {
-	def minVal = maxInterval
+	def minVal = (60 * 60 * 24 * 7)
 	[powerReportIntervalParam, energyReportIntervalParam, voltageReportIntervalParam, electricityReportIntervalParam].each {
 		def val = convertOptionSettingToInt(it.options, it.val)
 		if (val && val < minVal) {
@@ -520,54 +605,25 @@ private getMinimumReportingInterval() {
 	return minVal
 }
 
-private getIntervalOptions(defaultVal=null, data=[:]) {
+private getIntervalOptions(defaultVal=null, zeroName=null) {
 	def options = [:]
-	def min = data?.zeroName ? 0 : (data?.min != null ? data.min : 1)
-	def max = data?.max != null ? data?.max : maxInterval
-	
-	[0,5,10,15,30,45].each {
-		if (withinRange(it, min, max)) {
-			if (it == 0 && data?.zeroName != null) {
-				options["${data?.zeroName}"] = it
-			}
-			else {
-				options["${it} Second${x == 1 ? '' : 's'}"] = it
-			}
-		}
+	if (zeroName) {
+		options["${zeroName}"] = 0
 	}
-
-	[1,2,3,4,5,10,15,30,45].each {
-		def val = (it * 60)
-		if (withinRange(val, min, max)) {
-			options["${it} Minute${x == 1 ? '' : 's'}"] = val
-		}
-	}
-
-	[1,2,3,6,9,12,18].each {
-		def val = (it * 60 * 60)
-		if (withinRange(val, min, max)) {
-			options["${it} Hour${x == 1 ? '' : 's'}"] = val
-		}
-	}	
-	
-	[1,3,5].each {
-		def val = (it * 60 * 60 * 24)
-		if (withinRange(val, min, max)) {
-			options["${it} Day${x == 1 ? '' : 's'}"] = val
-		}
-	}
-	
-	[1,2].each {
-		def val = (it * 60 * 60 * 24 * 7)
-		if (withinRange(val, min, max)) {
-			options["${it} Week${x == 1 ? '' : 's'}"] = val
-		}
-	}	
+	options << getIntervalOptionsRange("Second", 1, [5,10,15,30,45])
+	options << getIntervalOptionsRange("Minute", 60, [1,2,3,4,5,10,15,30,45])
+	options << getIntervalOptionsRange("Hour", (60 * 60), [1,2,3,6,9,12,18])
+	options << getIntervalOptionsRange("Day", (60 * 60 * 24), [1,3,5])
+	options << getIntervalOptionsRange("Week", (60 * 60 * 24 * 7), [1,2])
 	return setDefaultOption(options, defaultVal)
 }
 
-private getMaxInterval() {
-	return (2 * 60 * 60 * 24 * 7)
+private getIntervalOptionsRange(name, multiplier, range) {
+	def options = [:]
+	range?.each {
+		options["${it} ${name}${it == 1 ? '' : 's'}"] = (it * multiplier)
+	}
+	return options
 }
 
 private getPowerValueOptions() {
@@ -583,33 +639,18 @@ private getPowerValueOptions() {
 	return setDefaultOption(options, 50)
 }
 
-private getPercentageOptions(defaultVal=null, data=[:]) {
+private getPercentageOptions(defaultVal=null, zeroName=null) {
 	def options = [:]
-	def min = data?.zeroName ? 0 : (data?.min != null ? data.min : 1)
-	def max = data?.max != null ? data?.max : 100
-		
-	[0,1,2,3,4,5].each {
-		if (withinRange(it, min, max)) {
-			if (it == 0 && data?.zeroName != null) {
-				options["${data?.zeroName}"] = it
-			}
-			else {
-				options["${it}%"] = it
-			}
-		}
-	}
-	
+	if (zeroName) {
+		options["${zeroName}"] = 0
+	}	
+	for (int i = 1; i <= 5; i += 1) {
+		options["${i}%"] = i
+	}		
 	for (int i = 10; i <= 100; i += 5) {
-		if (withinRange(i, min, max)) {
-			options["${i}%"] = i
-		}
-	}
-	
+		options["${i}%"] = i
+	}	
 	return setDefaultOption(options, defaultVal)
-}
-
-private withinRange(val, min, max) {
-	return ((min == null || val >= min) && (max == null || val <= max))
 }
 
 private convertOptionSettingToInt(options, settingVal) {
@@ -649,18 +690,16 @@ private getDefaultOptionSuffix() {
 }
 
 private createEventMap(name, value, displayed=null, desc=null, unit=null) {	
-	def newVal = "${value}"	
-	displayed = (displayed == null ? (getAttrVal(name) != newVal) : displayed)
 	def eventMap = [
 		name: name,
 		value: value,
-		displayed: displayed,
+		displayed: (displayed == null ? ("${getAttrVal(name)}" != "${value}") : displayed),
 		isStateChange: true
 	]
 	if (unit) {
 		eventMap.unit = unit
 	}
-	if (desc) {
+	if (desc && eventMap.displayed) {
 		logDebug desc
 		eventMap.descriptionText = "${device.displayName} - ${desc}"
 	}
