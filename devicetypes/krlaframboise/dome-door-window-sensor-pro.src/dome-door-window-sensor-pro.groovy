@@ -5,7 +5,7 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:  
+ *  URL to documentation:  https://community.smartthings.com/t/release-dome-door-window-sensor-pro-official/94739?u=krlaframboise
  *    
  *
  *  Changelog:
