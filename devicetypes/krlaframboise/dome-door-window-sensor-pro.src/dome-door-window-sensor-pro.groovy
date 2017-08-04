@@ -50,11 +50,9 @@ metadata {
 	simulator { }
 	
 	preferences {
-		getOptionsInput(ledIndicatorParam)
-		getOptionsInput(openClosedReportingParam)
-		getOptionsInput(tempReportingParam)
-		getOptionsInput(tempOffsetParam)
-		getOptionsInput(tempUnitsParam)
+		configParams.each {
+			getOptionsInput(it)
+		}
 	
 		getOptionsInput("checkinInterval", "Checkin Interval", checkinIntervalSetting, wakeUpIntervalOptions)
 		
@@ -98,7 +96,7 @@ metadata {
 		}
 		
 		valueTile("battery", "device.battery", inactiveLabel: false, width: 2, height: 2, decoration: "flat") {
-			state "battery", label:'${currentValue}% battery', unit:""
+			state "battery", label:'${currentValue}% Battery', unit:""
 		}
 		
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
@@ -137,12 +135,14 @@ private getOptionsInput(name, title, defaultVal, options) {
 }
 
 private getOptionsInput(param) {
-	input "${param.prefName}", "enum",
-		title: "${param.name}:",
-		defaultValue: "${param.val}",
-		required: false,
-		displayDuringSetup: true,
-		options: param.options?.collect { name, val -> name }
+	if (param?.prefName) {
+		input "${param.prefName}", "enum",
+			title: "${param.name}:",
+			defaultValue: "${param.val}",
+			required: false,
+			displayDuringSetup: true,
+			options: param.options?.collect { name, val -> name }
+	}
 }
 
 def updated() {
@@ -395,19 +395,32 @@ def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cm
 	return []
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
-	logTrace "NotificationReport: $cmd"
-	sendLastCheckinEvent()
-	
+def zwaveEvent(physicalgraph.zwave.commands.alarmv2.AlarmReport cmd) {
+	logTrace "AlarmReport[zwaveAlarmEvent: $cmd.zwaveAlarmEvent, zwaveAlarmType: $cmd.zwaveAlarmType]"
 	def result = []
-	if (cmd.notificationType == 0x06) {
-		result += handleContactEvent(cmd.event)
+	if (cmd.zwaveAlarmType == 0x06) {
+		result += handleContactEvent(cmd.zwaveAlarmEvent)
 	}
-	else if (cmd.notificationType == 0x07) {
-		result += handleTamperEvent(cmd.event)
+	else if (cmd.zwaveAlarmType == 0x07) {
+		result += handleTamperEvent(cmd.zwaveAlarmEvent)
 	}
 	return result
 }
+
+// def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
+	// logTrace "NotificationReport[event: $cmd.event, notificationType: $cmd.notificationType]" 
+	
+	// sendLastCheckinEvent()
+	
+	// def result = []
+	// if (cmd.notificationType == 0x06) {
+		// result += handleContactEvent(cmd.event)
+	// }
+	// else if (cmd.notificationType == 0x07) {
+		// result += handleTamperEvent(cmd.event)
+	// }
+	// return result
+// }
 
 private handleContactEvent(event) {
 	def result = []	
@@ -487,7 +500,7 @@ private getCommandClassVersions() {
 		0x5A: 1,  // DeviceResetLocally
 		0x5E: 2,  // ZwaveplusInfo
 		0x70: 2,  // Configuration (v1)
-		0x71: 3,  // Notification (v4)
+		0x71: 2,  // Notification (v4)
 		0x72: 2,  // ManufacturerSpecific
 		0x73: 1,  // Powerlevel
 		0x7A: 2,  // FirmwareUpdateMd
