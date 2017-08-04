@@ -7,6 +7,7 @@
 	<li><a href="#aeon-labs-multifunction-siren">Aeon Labs Multifunction Siren</a></li>
 	<li><a href="#alarm-switch">Alarm Switch</a></li>
 	<li><a href="#dome-door-sensor">Dome Door Sensor</a></li>
+	<li><a href="#dome-doorwindow-sensor-pro">Dome Door/Window Sensor Pro</a></li>
 	<li><a href="#dome-leak-sensor">Dome Leak Sensor</a></li>
 	<li><a href="#dome-motion-sensor">Dome Motion Sensor</a></li>
 	<li><a href="#dome-mouser">Dome Mouser</a></li>			
@@ -84,6 +85,17 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li>Supports all functionality that the device offers</li>
 <li><a href="https://community.smartthings.com/t/release-dome-door-sensor-official/76321?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-door-sensor.src/dome-door-sensor.groovy">View Dome Door Sensor - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Dome Door/Window Sensor Pro</h3>
+
+<ul>
+<li>This is the official device handler for the Dome Door/Window Sensor Pro (DMDP1)</li>
+<li>Supports all functionality that the device offers</li>
+<li><a href="https://community.smartthings.com/t/release-dome-door-window-sensor-pro-official/94739?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/dome-door-window-sensor-pro.src/dome-door-window-sensor-pro.groovy">View Dome Door/Window Sensor Pro - Device Handler Code</a></li>
 </ul>
 
 <hr />
