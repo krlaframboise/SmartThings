@@ -1,9 +1,6 @@
 /**
- *  Zooz/Monoprice 4-in-1 Multisensor 1.3.8
- *
- *  Zooz Z-Wave 4-in-1 Sensor (ZSE40)
- *
- *  Monoprice Z-Wave Plus 4-in-1 Motion Sensor with Temperature, Humidity, and Light Sensors (P/N 15902)
+ *  Zooz/Monoprice 4-in-1 Multisensor v1.4
+ *		(Models: Zooz ZSE40, Monoprice P/N 15902)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -13,55 +10,8 @@
  *
  *  Changelog:
  *
- *    1.3.8 (07/23/2017)
- *    	- Enhanced security cc check and removed legacy fingerprints.
- *
- *    1.3.7 (06/25/2017)
- *    	- Set default primary status when first included.
- *    	- Fixed UI issue caused by bug in version 2.4 of the mobile app.
- *
- *    1.3.6 (05/24/2017)
- *    	- Made illuminance events appear in recently tab because CoRE was ignoring the values.
- *    	- Added device name to description fields.
- *    	- Added a setting that causes the primary status to get rounded to the nearest whole number.
- *
- *    1.3.4 (04/29/2017)
- *    	- Made refresh command return null to fix possible issue it's causing with webCoRE.
- *
- *    1.3.3 (04/23/2017)
- *    	- SmartThings broke parse method response handling so switched to sendhubaction.
- *
- *    1.3.2 (04/20/2017)
- *      - Added workaround for ST Health Check bug.
- *
- *    1.3.1 (03/28/2017)
- *      - Added setting for reporting max lux illuminance.
- *
- *    1.3 (03/27/2017)
- *      - Added Light % to LUX Conversion
- *      - Added Lux Offset and main tile option.
- *      - Fixed syncing issue between main tile and actual values.
- *
- *    1.2.1 (03/12/2017)
- *      - Added Health Check capability.
- *      - Added offsets for Temp/Humidity/light
- *      - Made main and secondary tiles configurable.
- *
- *    1.1.3 (01/18/2017)
- *      - Removed changes made in the previous 2 versions because they aren't needed.
- *
- *    1.1 (01/15/2017)
- *      - Added firmware attribute
- *			- Added new fingerprint for latest model of the Zooz 4-in-1 sensor.
- *			- Added new LED Indicator Mode for updated Zooz model.
- *			- Added temperature scale setting
- *			- Replaced enum settings with numbers because defaultValue doesn't work with enums on the Android Mobile App.
- *
- *    1.0.2 (01/12/2017)
- *      - Fixed light tile text and changed minimum light threshold to 5 because that's the lowest value supported by the latest firmware version of the zooz 4-in-1 sensor.
- *
- *    1.0.1 (01/12/2017)
- *      - Changed illuminance from lux to %.
+ *    1.4 (08/05/2017)
+ *    	- Misc enhancements and bug fixes
  *
  *    1.0 (01/08/2017)
  *      - Initial Release
@@ -95,6 +45,9 @@ metadata {
 		
 		attribute "lastCheckin", "string"
 		attribute "lastUpdate", "string"
+		
+		attribute "pendingChanges", "number"
+		
 		attribute "primaryStatus", "string"
 		attribute "secondaryStatus", "string"
 		attribute "pLight", "number"
@@ -114,124 +67,41 @@ metadata {
 			defaultValue: primaryTileStatusSetting,
 			required: false,
 			options: primaryStatusOptions
-		input "roundPrimaryStatus", "bool", 
-			title: "Round the Primary Status to a whole number?", 
-			defaultValue: false, 
-			displayDuringSetup: true, 
-			required: false
+
+		getBoolInput("roundPrimaryStatus", "Round the Primary Status to a whole number?", false)
+
 		input "secondaryTileStatus", "enum",
 			title: "Secondary Status:",
 			defaultValue: secondaryTileStatusSetting,
 			required: false,
-			options: secondaryStatusOptions
-		input "tempScale", "number",
-			title: "Temperature Scale [0-1]${getNameValueSettingDesc(tempUnits)}",
-			displayDuringSetup: true,
-			required:false,
-			defaultValue: tempScaleSetting,
-			range: "0..1"
-		input "tempTrigger", "number",
-			title: "Temperature Change Trigger [1-50]\n(1 = 0.1°)\n(50 = 5.0°)",			
-			displayDuringSetup: true,
-			required:false,
-			defaultValue: tempTriggerSetting,
-			range: "1..50"
-		input "tempOffset", "number",
-			title: "Temperature Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1°)\n(1 = Add 1°)",			
-			displayDuringSetup: true,
-			required:false,
-			defaultValue: tempOffsetSetting,
-			range: "-25..25"
-		input "humidityTrigger", "number",
-			title: "Humidity Change Trigger [1-50]\n(1% - 50%)",
-			displayDuringSetup: true,
-			required:false,
-			defaultValue: humidityTriggerSetting,
-			range: "1..50"
-		input "humidityOffset", "number",
-			title: "Humidity % Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1%)\n(1 = Add 1%)",			
-			displayDuringSetup: true,
-			required:false,
-			defaultValue: humidityOffsetSetting,
-			range: "-25..25"
-		input "lightTrigger", "number",
-			title: "Light Change Trigger [5-50]\n(5% - 50%)",
-			displayDuringSetup: true,
-			required:false,
-			defaultValue: lightTriggerSetting,
-			range: "5..50"
-		input "lightOffset", "number",
-			title: "Light % Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1%)\n(1 = Add 1%)",
-			displayDuringSetup: true,
-			required:false,
-			defaultValue: lightOffsetSetting,
-			range: "-25..25"
-		input "lxLightOffset", "number",
-			title: "Light Lux Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1 lx)\n(1 = Add 1 lx)",
-			displayDuringSetup: true,
-			required:false,
-			defaultValue: lxLightOffsetSetting,
-			range: "-25..25"
-		input "reportLx", "bool", 
-			title: "Report Illuminance as Lux?\n(When enabled, a calculated lux level will be used for illuminance instead of the default %.)",
-			defaultValue: reportLxSetting,
-			displayDuringSetup: true, 
-			required: false
-		input "maxLx", "number",
-			title: "Lux value to report when light level is at 100%:",
-			defaultValue: maxLxSetting,
-			displayDuringSetup: true,
-			required: false
-		input "motionTime", "number",
-			title: "Motion Retrigger Time (Minutes)",
-			displayDuringSetup: true,
-			required:false,
-			defaultValue: motionTimeSetting,
-			range: "1..255"
-		input "motionSensitivity", "number",
-			title: "Motion Sensitivity [1-7]\n(1 = Most Sensitive)\n(7 = Least Sensitive)",
-			displayDuringSetup: true,
-			required:false,
-			defaultValue: motionSensitivitySetting,
-			range: "1..7"
-		input "ledIndicatorMode", "number",
-			title: "LED Indicator Mode [1-4]${getNameValueSettingDesc(ledIndicatorModes)}",
-			displayDuringSetup: true,
-			required: false,
-			defaultValue: ledIndicatorModeSetting,
-			range: "1..4"
-		input "checkinInterval", "number",
-			title: "Minimum Check-in Interval [0-167]\n(0 = 10 Minutes [FOR TESTING ONLY])\n(1 = 1 Hour)\n(167 = 7 Days)",
-			defaultValue: checkinIntervalSetting,
-			range: "0..167",
-			displayDuringSetup: true, 
-			required: false
-		input "reportBatteryEvery", "number", 
-			title: "Battery Reporting Interval [1-167]\n(1 = 1 Hour)\n(167 = 7 Days)", 
-			description: "This setting can't be less than the Minimum Check-in Interval.",
-			defaultValue: batteryReportingIntervalSetting,
-			range: "1..167",
-			displayDuringSetup: true, 
-			required: false		
-		input "autoClearTamper", "bool", 
-			title: "Automatically Clear Tamper?\n(The tamper detected event is raised when the device is opened.  This setting allows you to decide whether or not to have the clear event automatically raised when the device closes.)",
-			defaultValue: false,
-			displayDuringSetup: true, 
-			required: false		
-		input "debugOutput", "bool", 
-			title: "Enable debug logging?", 
-			defaultValue: true, 
-			displayDuringSetup: true, 
-			required: false
+			options: secondaryStatusOptions		
+
+		getParamInput(tempScaleParam)
+		getParamInput(tempTriggerParam)
+		getNumberInput("tempOffset", "Temperature Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1°)\n(1 = Add 1°)", "-25..25", tempOffsetSetting)
+		getParamInput(humidityTriggerParam)	
+		getNumberInput("humidityOffset", "Humidity % Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1%)\n(1 = Add 1%)", "-25..25", humidityOffsetSetting)
+		getParamInput(lightTriggerParam)
+		getNumberInput("lightOffset", "Light % Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1%)\n(1 = Add 1%)", "-25..25", lightOffsetSetting)
+		getNumberInput("lxLightOffset", "Light Lux Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1 lx)\n(1 = Add 1 lx)", "-25..25", lxLightOffsetSetting)
+		getBoolInput("reportLx", "Report Illuminance as Lux?\n(When enabled, a calculated lux level will be used for illuminance instead of the default %.)", reportLxSetting)
+		getNumberInput("maxLx", "Lux value to report when light level is at 100%:", "0..5000", maxLxSetting)
+		getParamInput(motionTimeParam)
+		getParamInput(motionSensitivityParam)
+		getParamInput(ledIndicatorModeParam)
+		getNumberInput("checkinInterval", "Minimum Check-in Interval [0-167]\n(0 = 10 Minutes [FOR TESTING ONLY])\n(1 = 1 Hour)\n(167 = 7 Days)", "0..167", checkinIntervalSetting)
+		getNumberInput("reportBatteryEvery", "Battery Reporting Interval [1-167]\n(1 = 1 Hour)\n(167 = 7 Days)\nThis setting can't be less than the Minimum Check-in Interval.", "1..67", batteryReportingIntervalSetting)
+		getBoolInput("autoClearTamper", "Automatically Clear Tamper?\n(The tamper detected event is raised when the device is opened.  This setting allows you to decide whether or not to have the clear event automatically raised when the device closes.)", false)
+		getBoolInput("debugOutput", "Enable debug logging?", true)
 	}
 
 	tiles(scale: 2) {
-		multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4, canChangeIcon: true){
+		multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4){
 			tileAttribute ("device.primaryStatus", key: "PRIMARY_CONTROL") {
-				attributeState "default",
-					label:'${currentValue}',
-					icon: "st.motion.motion.inactive",
-					backgroundColor:"#cccccc"
+				attributeState "primaryStatus", 
+					label:'${currentValue}', 
+					icon:"st.motion.motion.inactive",
+					backgroundColor:"#ffffff"			
 				attributeState "inactive", 
 					label:'NO MOTION', 
 					icon:"st.motion.motion.inactive", 
@@ -269,35 +139,65 @@ metadata {
 			state "pLight", label:'${currentValue}% \nLight', unit: ""
 		}
 
-		valueTile("lxLight", "device.lxLight", decoration: "flat", inactiveLabel: false, width: 2, height: 2){
+		valueTile("lxLight", "device.lxLight", decoration: "flat", width: 2, height: 2){
 			state "lxLight", label:'${currentValue}lx \nLight', unit: ""
 		}
 		
-		valueTile("motion", "device.motion", inactiveLabel: false, width: 2, height: 2){
-			state "inactive", label:'No \nMotion', backgroundColor:"#ffffff"
-			state "active", label:'Motion', backgroundColor:"#00a0dc"
+		valueTile("motion", "device.motion", width: 2, height: 2){
+			state "inactive", label:'${currentValue}', backgroundColor:"#ffffff"
+			state "active", label:'${currentValue}', backgroundColor:"#00a0dc"
 		}
 		
-		valueTile("tampering", "device.tamper", inactiveLabel: false, width: 2, height: 2) {			
-			state "clear", label:'No \nTamper', backgroundColor:"#ffffff"
-			state "detected", label:'Tamper', backgroundColor: "#e86d13"
+		valueTile("tampering", "device.tamper", width: 2, height: 2) {			
+			state "clear", label:'${currentValue}', backgroundColor:"#ffffff"
+			state "detected", label:'${currentValue}', backgroundColor: "#e86d13"
 		}
 		
 		valueTile("battery", "device.battery", decoration: "flat", inactiveLabel: false, width: 2, height: 2){
 			state "default", label:'${currentValue}% \nBattery', unit: ""
-		}		
+		}
 		
-		standardTile("refresh", "device.refresh", inactiveLabel: false, width: 2, height: 2) {
-			state "default", label: "Refresh", action: "refresh", icon:"st.secondary.refresh-icon"
+		valueTile("pending", "device.pendingChanges", decoration: "flat", width: 2, height: 2){
+			state "pendingChanges", label:'${currentValue} Change(s) Pending'
+			state "0", label: ''
+			state "-1", label:'Updating Settings'
 		}
 		
 		valueTile("lastUpdate", "device.lastUpdate", decoration: "flat", inactiveLabel:false, width: 2, height: 2){
 			state "lastUpdate", label:'Settings\nUpdated\n\n${currentValue}'
 		}
 		
+		standardTile("refresh", "device.refresh", inactiveLabel: false, width: 2, height: 2) {
+			state "default", label: "Refresh", action: "refresh", icon:"st.secondary.refresh-icon"
+		}
+		
 		main("mainTile")
-		details(["mainTile", "humidity", "temperature", "lxLight", "battery", "pLight", "motion", "tampering", "refresh", "lastUpdate"])
+		details(["mainTile", "humidity", "temperature", "lxLight", "battery", "pLight", "motion", "tampering", "pending", "lastUpdate", "refresh"])
 	}
+}
+
+private getNumberInput(name, title, range, defaultVal) {	
+	input "${name}", "number", 
+		title: "${title}", 
+		range: "${range}",
+		defaultValue: defaultVal, 
+		required: false
+}
+
+private getBoolInput(name, title, defaultVal) {
+	input "${name}", "bool", 
+		title: "${title}", 
+		defaultValue: defaultVal, 
+		required: false
+}
+
+private getParamInput(param) {	
+	input "${param.prefName}", "number",
+		title: "${param.name}:",
+		defaultValue: "${param.val}",
+		required: false,
+		displayDuringSetup: true,
+		range: "${param.range}"
 }
 
 def updated() {	
@@ -307,19 +207,38 @@ def updated() {
 		logTrace "updated()"
 		
 		initializeOffsets()
-						
-		if (settings?.ledIndicatorModeSetting == 4) {
-			logWarn "LED Indicator Mode #4 is only available in the Zooz device with firmware v16.9 and above."
+
+		if (!isNewZoozDevice() && settings && settings["${ledIndicatorModeParam.prefName}"] == 4) {
+			state["configVal${ledIndicatorModeParam.num}"] = 4			
+			log.warn "LED Indicator Mode #4 is only available in the Zooz device with firmware v16.9 and above."
 		}
-				
+
 		if (!getAttrValue("tamper")) {
 			sendEvent(createTamperEventMap("clear"))
 		}
 
-		logForceWakeupMessage("The configuration will be updated the next time the device wakes up.")
-		state.pendingChanges = true
+		if (checkForPendingChanges()) {
+			logForceWakeupMessage("The configuration will be updated the next time the device wakes up.")
+		}		
 	}	
 }
+
+private checkForPendingChanges() {
+	def changes = 0
+	configParams.each {
+		if (hasPendingChange(it)) {		
+			changes += 1
+		}
+	}
+	if (checkinIntervalChanged) {
+		changes += 1
+	}
+	if (changes != getAttrValue("pendingChanges")) {
+		sendEvent(createEventMap("pendingChanges", changes, "", false))
+	}
+	return (changes != 0)
+}
+
 
 private initializeOffsets() {
 	def eventMaps = []
@@ -368,49 +287,43 @@ def configure() {
 		cmds << versionGetCmd()
 	}
 	
-	if (state.pendingChanges) {		
-		sendEvent(name: "lastUpdate", value: convertToLocalTimeString(new Date()), displayed: false)
-		
-		initializeCheckin()
-		
-		cmds += delayBetween([
-			wakeUpIntervalSetCmd(checkinIntervalSettingSeconds),
-			configSetCmd(tempScaleParamNum, tempScaleSetting),
-			configSetCmd(tempTriggerParamNum, tempTriggerSetting),
-			configSetCmd(humidityTriggerParamNum, humidityTriggerSetting),
-			configSetCmd(lightTriggerParamNum, lightTriggerSetting),
-			configSetCmd(motionTimeParamNum, motionTimeSetting),
-			configSetCmd(motionSensitivityParamNum, motionSensitivitySetting),
-			configSetCmd(ledIndicatorModeParamNum, ledIndicatorModeSetting),
-			configGetCmd(tempScaleParamNum),
-			configGetCmd(tempTriggerParamNum),
-			configGetCmd(humidityTriggerParamNum),
-			configGetCmd(lightTriggerParamNum),
-			configGetCmd(motionTimeParamNum),
-			configGetCmd(motionSensitivityParamNum),
-			configGetCmd(ledIndicatorModeParamNum)
-		], 50)
+	if (checkinIntervalChanged) {
+		logTrace "Updating wakeup interval"
+		cmds << wakeUpIntervalSetCmd(checkinIntervalSettingSeconds)
+		cmds << wakeUpIntervalGetCmd()
 	}
-	else {
+	
+	configParams.each { param ->
+		cmds += updateConfigVal(param)
+	}
+	
+	if (state.pendingRefresh != false) {
+		state.pendingRefresh = false
 		cmds += refreshSensorData()
 	}
-	return sendResponse(cmds)
+	else if (canReportBattery()) {
+		cmds << batteryGetCmd()
+	}
+	return cmds ? delayBetween(cmds, 50) : []	
 }
 
-private sendResponse(cmds) {
-	def actions = []
-	cmds?.each { cmd ->
-		actions << new physicalgraph.device.HubAction(cmd)
-	}	
-	sendHubCommand(actions)
-	return []
+private updateConfigVal(param) {
+	def result = []	
+	if (hasPendingChange(param)) {	
+		def newVal = param.val
+		logDebug "${param.prefName}(#${param.num}): changing ${getParamStoredVal(param)} to ${newVal}"
+		result << configSetCmd(param, newVal)
+		result << configGetCmd(param)
+	}		
+	return result
 }
 
-private initializeCheckin() {
-	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
-	def checkInterval = ((checkinIntervalSettingSeconds * 2) + (2 * 60))
-	
-	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+private getCheckinIntervalChanged() {
+	return (state.checkinInterval != checkinIntervalSettingSeconds)
+}
+
+private hasPendingChange(param) {
+	return (param.val != getParamStoredVal(param) || state.refreshAll)
 }
 
 // Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
@@ -439,23 +352,11 @@ private getPrimaryTileStatusSetting() {
 private getSecondaryTileStatusSetting() {	
 	return settings?.secondaryTileStatus ?: "none"
 }
-private getTempScaleSetting() {
-	return safeToInt(settings?.tempScale, (isNewZoozDevice() ? 1 : 0))
-}
-private getTempTriggerSetting() {
-	return safeToInt(settings?.tempTrigger, 10)
-}
 private getTempOffsetSetting() {
 	return safeToInt(settings?.tempOffset, 0)
 }
-private getHumidityTriggerSetting() {
-	return safeToInt(settings?.humidityTrigger, 10)
-}
 private getHumidityOffsetSetting() {
 	return safeToInt(settings?.humidityOffset, 0)
-}
-private getLightTriggerSetting() {
-	return safeToInt(settings?.lightTrigger, 10)
 }
 private getLightOffsetSetting() {
 	return safeToInt(settings?.lightOffset, 0)
@@ -468,15 +369,6 @@ private getReportLxSetting() {
 }
 private getMaxLxSetting() {
 	return safeToInt(settings?.maxLx, 50)
-}
-private getMotionTimeSetting() {
-	return safeToInt(settings?.motionTime, 3)
-}
-private getMotionSensitivitySetting() {
-	return safeToInt(settings?.motionSensitivity, 4)
-}
-private getLedIndicatorModeSetting() {
-	return safeToInt(settings?.ledIndicatorMode, 3)
 }
 private getCheckinIntervalSetting() {
 	return (safeToInt(settings?.checkinInterval, (isNewZoozDevice() ? 12 : 6)))
@@ -549,7 +441,7 @@ private getSecondaryStatusOptions() {
 }
 
 private isNewZoozDevice() {
-	return (settings?.firmwareVersion != 265)
+	return (getAttrValue("firmwareVersion") != "5.1")
 }
 
 // Sensor Types
@@ -558,23 +450,67 @@ private getHumiditySensorType() { return 5 }
 private getLightSensorType() { return 3 }
 
 // Configuration Parameters
-private getTempScaleParamNum() { return 1 }
-private getTempTriggerParamNum() { return 2 }
-private getHumidityTriggerParamNum() { return 3 }
-private getLightTriggerParamNum() { return 4 }
-private getMotionTimeParamNum() { return 5 }
-private getMotionSensitivityParamNum() { return 6 }
-private getLedIndicatorModeParamNum() { return 7 }
+private getConfigParams() {
+	return [		
+		tempScaleParam,
+		tempTriggerParam,
+		humidityTriggerParam,
+		lightTriggerParam,
+		motionTimeParam,
+		motionSensitivityParam,
+		ledIndicatorModeParam
+	]
+}
 
+private getTempScaleParam() {
+	return createConfigParamMap(1, "Temperature Scale [0-1]${getNameValueSettingDesc(tempUnits)}", 1, "tempScale", "0..1", (isNewZoozDevice() ? 1 : 0))
+}
+
+private getTempTriggerParam() {
+	return createConfigParamMap(2, "Temperature Change Trigger [1-50]\n(1 = 0.1°)\n(50 = 5.0°)", 1, "tempTrigger", "1..50", 10)
+}
+
+private getHumidityTriggerParam() {
+	return createConfigParamMap(3, "Humidity Change Trigger [1-50]\n(1% - 50%)", 1, "humidityTrigger", "1..50", 10)
+}
+
+private getLightTriggerParam() {
+	return createConfigParamMap(4, "Light Change Trigger [5-50]\n(5% - 50%)", 1, "lightTrigger", "5..50", 10)
+}
+
+private getMotionTimeParam() {
+	return createConfigParamMap(5, "Motion Retrigger Time (Minutes)", 1, "motionTime", "1..255", 3)
+}
+
+private getMotionSensitivityParam() {
+	return createConfigParamMap(6, "Motion Sensitivity [1-7]\n(1 = Most Sensitive)\n(7 = Least Sensitive)", 1, "motionSensitivity", "1..7", 4)
+}
+
+private getLedIndicatorModeParam() {		
+	return createConfigParamMap(7, "LED Indicator Mode [1-4]${getNameValueSettingDesc(ledIndicatorModes)}", 1, "ledIndicatorMode", "1..4", 3)
+}
+
+
+private getParamStoredVal(param) {
+	return state["configVal${param.num}"]	
+}
+
+private createConfigParamMap(num, name, size, prefName, range, val) {
+	if (settings?."${prefName}" != null) {
+		val = settings?."${prefName}"
+	}
+	return [
+		num: num, 
+		name: name, 
+		size: size, 
+		prefName: prefName,
+		range: range,
+		val: val
+	]
+}
 
 def parse(String description) {
 	def result = []
-	
-	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
-		state.lastCheckinTime = new Date().time
-		sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
-	}
-	
 	def cmd = zwave.parse(description, commandClassVersions)
 	if (cmd) {
 		result += zwaveEvent(cmd)
@@ -605,7 +541,7 @@ private getCommandClassVersions() {
 		0x59: 1,  // AssociationGrpInfo
 		0x5A: 1,  // DeviceResetLocally
 		0x5E: 2,  // ZwaveplusInfo
-		0x70: 1,  // Configuration
+		0x70: 2,  // Configuration
 		0x71: 3,  // Alarm v1 or Notification v4
 		0x72: 2,  // ManufacturerSpecific
 		0x73: 1,  // Powerlevel
@@ -618,30 +554,54 @@ private getCommandClassVersions() {
 	]
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
-{
-	logTrace "WakeUpNotification: $cmd"
-	def result = []
+def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd) {
+	state.checkinInterval = cmd.seconds
 	
-	if (state.pendingChanges != false) {
-		result += configure()
-	}
-	else if (state.pendingRefresh) {
-		result += refreshSensorData()
-	}
-	else if (canReportBattery()) {
-		result << batteryGetCmd()
+	sendUpdatingEvent()
+	
+	def msg = "Minimum Check-in Interval is ${cmd.seconds / 60} Minutes"
+	if (cmd.seconds == 600) {
+		log.warn "$msg"
 	}
 	else {
-		logTrace "Skipping battery check because it was already checked within the last ${batteryReportingIntervalSetting} hours."
+		logDebug "$msg"
 	}
 	
-	if (result) {
-		result << "delay 2000"
-	}
-	result << wakeUpNoMoreInfoCmd()
+	// Set the Health Check interval so that it reports offline 5 minutes after it's missed 2 checkins.
+	def val = ((cmd.seconds * 2) + (5 * 60))
 	
-	return sendResponse(result)
+	def eventMap = createEventMap("checkInterval", val, "", false)
+
+	eventMap.data = [protocol: "zwave", hubHardwareId: device.hub.hardwareID]
+	
+	runIn(5, finalizeConfiguration)
+	
+	return [ createEvent(eventMap) ]
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
+	logTrace "WakeUpNotification: $cmd"
+	def cmds = []
+	
+	sendLastCheckinEvent()
+	
+	cmds += configure()
+		
+	if (cmds) {
+		cmds << "delay 1200"
+	}
+	
+	cmds << wakeUpNoMoreInfoCmd()
+	return response(cmds)
+}
+
+private sendLastCheckinEvent() {
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
+		state.lastCheckinTime = new Date().time			
+
+		logDebug "Device Checked In"
+		sendEvent(createEventMap("lastCheckin", convertToLocalTimeString(new Date()), "", false))
+	}
 }
 
 private canReportBattery() {
@@ -651,7 +611,7 @@ private canReportBattery() {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
-	logTrace "BatteryReport: $cmd"
+	// logTrace "BatteryReport: $cmd"
 	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
 	if (val > 100) {
 		val = 100
@@ -671,7 +631,7 @@ def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerS
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
-	logTrace "VersionCommandClassReport: ${cmd}"
+	logTrace "VersionReport: ${cmd}"
 	
 	def version = "${cmd.applicationVersion}.${cmd.applicationSubVersion}"
 	logDebug "Firmware Version: ${version}"
@@ -683,50 +643,41 @@ def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 	return result 
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {
-	logTrace "ConfigurationReport: $cmd"
-	def configVal = cmd.scaledConfigurationValue
-	def paramVal = configVal
-	def paramName
-	switch (cmd.parameterNumber) {
-		case tempScaleParamNum:
-			paramName = "Temperature Unit"
-			paramVal = tempUnits.find { it.value == configVal }?.name
-			break
-		case tempTriggerParamNum:
-			paramName = "Temperature Change Trigger"
-			paramVal = "${configVal / 10}°"
-			break
-		case humidityTriggerParamNum:
-			paramName = "Humidity Change Trigger"
-			paramVal = "${configVal}%"
-			break
-		case lightTriggerParamNum:
-			paramName = "Light Change Trigger"
-			paramVal = "${configVal}%"
-			break
-		case motionTimeParamNum:
-			paramName = "Motion Retrigger Time"
-			paramVal = "${configVal} Minutes"
-			break
-		case motionSensitivityParamNum:
-			paramName = "Motion Sensitivity"
-			paramVal = configVal
-			break
-		case ledIndicatorModeParamNum:
-			paramName = "LED Indicator Mode"
-			paramVal = ledIndicatorModes.find { it.value == configVal }?.name
-			break
-		default:	
-			paramName = "Parameter #${cmd.parameterNumber}"
-	}		
-	if (paramName) {
-		if (paramVal == null) {
-			paramVal = configVal
-		}
-		logDebug "${paramName}: ${paramVal}"
-	} 
-	state.pendingChanges = false
+def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {	
+	// logTrace "ConfigurationReport: ${cmd}"
+	sendUpdatingEvent()
+	
+	def val = cmd.configurationValue[0]
+		
+	def configParam = configParams.find { param ->
+		param.num == cmd.parameterNumber
+	}
+	
+	if (configParam) {
+		logDebug "${configParam.name}(#${configParam.num}) = ${val}"
+		state["configVal${cmd.parameterNumber}"] = val
+	}	
+	else {
+		logDebug "Parameter ${cmd.parameterNumber} = ${val}"
+	}
+	
+	runIn(5, finalizeConfiguration)
+	return []
+}
+
+private sendUpdatingEvent() {
+	if (getAttrValue("pendingChanges") != -1) {
+		sendEvent(createEventMap("pendingChanges", -1, "", false))
+	}
+}
+
+def finalizeConfiguration() {
+	logTrace "finalizeConfiguration()"
+	state.refreshAll = false
+	
+	checkForPendingChanges()
+	
+	sendEvent(createEventMap("lastUpdate", convertToLocalTimeString(new Date()), "", false))
 	return []
 }
 
@@ -736,7 +687,7 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
-	logTrace "Basic Set: $cmd"	
+	// logTrace "Basic Set: $cmd"	
 	return handleMotionEvent(cmd.value)
 }
 
@@ -757,8 +708,8 @@ private handleMotionEvent(val) {
 
 
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
+	// logTrace "NotificationReport: $cmd"
 	def result = []	
-	logTrace "NotificationReport: $cmd"
 	if (cmd.notificationType == 7) {
 		if (cmd.eventParameter[0] == 3 || cmd.event == 3) {		
 			result += handleTamperEvent(cmd.v1AlarmLevel)
@@ -885,7 +836,7 @@ private createStatusEventMaps(eventMaps, onlyIfNew) {
 			primaryStatus = formatPrimaryStatusNumber(primaryStatus)
 		}
 		result += createEventMaps("primaryStatus", primaryStatus, "", false, onlyIfNew)
-	}
+	}	
 	
 	def secondaryStatus = getSecondaryStatus(eventMaps)
 	if (secondaryStatus || secondaryTileStatusSetting == "none") {
@@ -957,23 +908,27 @@ private getDescriptionText(data) {
 	}	
 }
 
-
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	logDebug "Unhandled Command: $cmd"
 	return []
 }
 
 
-// Resets the tamper attribute to clear and requests the device to be refreshed.
 def refresh() {	
-	if (getAttrValue("tamper") != "clear") {
-		sendEvent(createTamperEventMap("clear"))		
+	if (device.currentValue("tamper") != "clear") {
+		logDebug "Clearing Tamper"
+		sendEvent(createTamperEventMap("clear"))
+	}
+	else if (state.pendingRefresh) {	
+		sendEvent(createEventMap("pendingChanges", configParams.size(), "", false))			
+		state.refreshAll = true		
+		logForceWakeupMessage "All configuration settings will be sent to the device and its data will be refreshed the next time it wakes up."
 	}
 	else {
-		logForceWakeupMessage("The sensor data will be refreshed the next time the device wakes up.")
 		state.pendingRefresh = true
+		logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."
 	}
-	return null
+	return []
 }
 
 private createTamperEventMap(val) {
@@ -1033,8 +988,11 @@ private getAttrValue(attrName) {
 	}
 }
 
+private wakeUpIntervalGetCmd() {
+	return secureCmd(zwave.wakeUpV2.wakeUpIntervalGet())
+}
+
 private wakeUpIntervalSetCmd(val) {
-	logTrace "wakeUpIntervalSetCmd(${val})"
 	return secureCmd(zwave.wakeUpV2.wakeUpIntervalSet(seconds:val, nodeid:zwaveHubNodeId))
 }
 
@@ -1062,21 +1020,12 @@ private sensorMultilevelGetCmd(sensorType) {
 	return secureCmd(zwave.sensorMultilevelV5.sensorMultilevelGet(scale: 2, sensorType: sensorType))
 }
 
-private configSetCmds(paramNumber, val) {	
-	logTrace "Setting config param #${paramNumber} to ${val}"
-	return [
-		secureCmd(zwave.configurationV1.configurationSet(parameterNumber: paramNumber, size: 1, configurationValue: [val])),
-		configGetCmd(paramNumber)
-	]
+private configSetCmd(param, val) {
+	return secureCmd(zwave.configurationV2.configurationSet(parameterNumber: param.num, size: param.size, configurationValue: [val]))
 }
 
-private configSetCmd(paramNumber, val) {	
-	logTrace "Setting config param #${paramNumber} to ${val}"
-	return secureCmd(zwave.configurationV1.configurationSet(parameterNumber: paramNumber, size: 1, configurationValue: [val]))	
-}
-
-private configGetCmd(paramNumber) {
-	return secureCmd(zwave.configurationV1.configurationGet(parameterNumber: paramNumber))
+private configGetCmd(param) {
+	return secureCmd(zwave.configurationV2.configurationGet(parameterNumber: param.num))
 }
 
 private secureCmd(cmd) {
@@ -1099,12 +1048,16 @@ private safeToDec(val, defaultVal=0) {
 
 private convertToLocalTimeString(dt) {
 	def timeZoneId = location?.timeZone?.ID
-	if (timeZoneId) {
-		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	def localDt = "$dt"
+	try {
+		if (timeZoneId) {
+			localDt = dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+		}
 	}
-	else {
-		return "$dt"
-	}	
+	catch (e) {
+		// Hub TimeZone probably not set.
+	}
+	return localDt
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
@@ -1118,5 +1071,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	 // log.trace "$msg"
+	// log.trace "$msg"
 }
