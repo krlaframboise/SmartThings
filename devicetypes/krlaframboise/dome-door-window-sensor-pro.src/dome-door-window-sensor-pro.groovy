@@ -1,5 +1,5 @@
 /**
- *  Dome Door/Window Sensor Pro
+ *  Dome Door/Window Sensor Pro v1.0.1
  *  (Model: DMDP1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.1 (08/05/2017)
+ *      - Bug fix for Pending Changes status.
  *
  *    1.0 (07/29/2017)
  *      - Initial Release
@@ -295,12 +298,18 @@ private sendLastCheckinEvent() {
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd) {
 	state.checkinInterval = cmd.seconds
 	
+	sendUpdatingEvent()
+	
+	logDebug "Checkin Interval = ${cmd.seconds / 60} Minutes"
+		
 	// Set the Health Check interval so that it reports offline 5 minutes after it's missed 2 checkins.
 	def val = ((cmd.seconds * 2) + (5 * 60))
 	
 	def eventMap = createEventMap("checkInterval", val, false)
 
 	eventMap.data = [protocol: "zwave", hubHardwareId: device.hub.hardwareID]
+	
+	runIn(5, finalizeConfiguration)
 
 	return [ createEvent(eventMap) ]
 }
@@ -330,6 +339,8 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {	
 	logTrace "ConfigurationReport: ${cmd}"
+	
+	sendUpdatingEvent()
 	if (getAttrVal("pendingChanges") != -1) {
 		sendEvent(createEventMap("pendingChanges", -1, false))
 	}
@@ -351,6 +362,12 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport 
 	
 	runIn(5, finalizeConfiguration)
 	return []
+}
+
+private sendUpdatingEvent() {
+	if (getAttrVal("pendingChanges") != -1) {
+		sendEvent(createEventMap("pendingChanges", -1, false))
+	}
 }
 
 def finalizeConfiguration() {
