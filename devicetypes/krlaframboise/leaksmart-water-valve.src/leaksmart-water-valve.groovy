@@ -1,5 +1,5 @@
 /**
- *  LeakSMART Water Valve v 1.2
+ *  LeakSMART Water Valve v 1.2.1
  *     (Mode: 8830000L)
  *  
  *  Capabilities:
@@ -12,6 +12,9 @@
  *      
  *
  *  Changelog:
+ *
+ *    1.2.1 (08/12/2017)
+ *      - Create switch events when the open/close state changes.
  *
  *    1.2 (08/20/2016)
  *      - Changed lower battery limit to 5.0
@@ -122,6 +125,7 @@ def parse(String description) {
 			def val = (evt.value == "on") ? "open" : "closed"
 			logDebug "Valve is $val"
 			result << createEvent(name: "contact", value: val)
+			result << createEvent(name: "switch", value: evt.value, displayed:false)
 			result << createEvent(name: "lastPoll",value: new Date().time, isStateChange: true, displayed: false)
 		}
 		else {
