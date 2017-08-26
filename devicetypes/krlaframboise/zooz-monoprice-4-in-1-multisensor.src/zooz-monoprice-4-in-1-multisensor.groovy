@@ -1,5 +1,5 @@
 /**
- *  Zooz/Monoprice 4-in-1 Multisensor v1.4
+ *  Zooz/Monoprice 4-in-1 Multisensor v1.4.1
  *		(Models: Zooz ZSE40, Monoprice P/N 15902)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.4.1 (08/26/2017)
+ *    	- Fixed Wakeup interval bug.
  *
  *    1.4 (08/05/2017)
  *    	- Misc enhancements and bug fixes
@@ -375,7 +378,7 @@ private getCheckinIntervalSetting() {
 }
 private getCheckinIntervalSettingSeconds() {
 	if (checkinIntervalSetting == 0) {
-		return (10 * 60)
+		return (10 * 60 * 60)
 	}
 	else {
 		return (checkinIntervalSetting * 60 * 60)
