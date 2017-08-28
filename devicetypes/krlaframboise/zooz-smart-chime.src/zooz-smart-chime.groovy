@@ -92,9 +92,9 @@ metadata {
 			range: "0..1",
 			defaultValue: sirenLEDSetting,
 			required: false,
-			displayDuringSetup: true		
+			displayDuringSetup: true
 		input "onChimeSound", "number",
-			title: "Switch On Chime Sound [0-10]:",
+			title: "Switch On Chime Sound [0-10]:\n1=two tone\n2=fur elise\n3=westminister chimes\n4=high-low chime\n5=?\n6=?\n7=fire alarm\n8=buzzer alarm\n9=multi-beep alarm\n10=single beep",
 			range: "0..10",
 			required: false,
 			displayDuringSetup: true,
