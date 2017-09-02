@@ -1,5 +1,5 @@
 /**
- *  GoControl Motion Sensor v1.3.2
+ *  GoControl Motion Sensor v1.3.3
  *    (Model: WAPIRZ-1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.3.3 (09/01/2017)
+ *    	- Added workaround for SmartThings breaking the convertTemperatureIfNeeded function for precision 0.
  *
  *    1.3.2 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -177,9 +180,9 @@ def ping() {
 }
 
 def refresh() {	
-	clearTamperDetected()
-	logDebug "The re-trigger wait time will be sent to the device the next time it wakes up.  If you want this change to happen immediately, open the back cover of the device until the red light turns solid and then close it."
-	state.pendingConfig = true
+	// clearTamperDetected()
+	// logDebug "The re-trigger wait time will be sent to the device the next time it wakes up.  If you want this change to happen immediately, open the back cover of the device until the red light turns solid and then close it."
+	// state.pendingConfig = true	
 }
 
 private clearTamperDetected() {	
@@ -216,6 +219,7 @@ private batteryGetCmd() {
 
 
 def parse(String description) {	
+	// log.trace "$description"
 	def result = []
 	
 	sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
@@ -318,14 +322,15 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	return []
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv2.SensorMultilevelReport cmd)
-{
+def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv2.SensorMultilevelReport cmd){
+	// logTrace "SensorMultilevelReport: $cmd"
 	def result = []
 	
 	if (cmd.sensorType == 1) {
 		def cmdScale = cmd.scale == 1 ? "F" : "C"
-		def newTemp = safeToInt(convertTemperatureIfNeeded(cmd.scaledSensorValue, cmdScale, cmd.precision), 0)
-				
+		def temp = "${convertTemperatureIfNeeded(cmd.scaledSensorValue, cmdScale, cmd.precision)}"
+		def newTemp = safeToInt(temp.endsWith(".") ? temp.replace(".", "") : temp)
+
 		if (tempOffsetSetting != 0) {
 			newTemp = (newTemp + tempOffsetSetting)
 			logDebug "Adjusted temperature by ${tempOffsetSetting}°"
