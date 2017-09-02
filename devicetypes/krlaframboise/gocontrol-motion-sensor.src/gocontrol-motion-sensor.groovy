@@ -1,5 +1,5 @@
 /**
- *  GoControl Motion Sensor v1.3.4
+ *  GoControl Motion Sensor v1.3.5
  *    (Model: WAPIRZ-1)
  *
  *  Author: 
@@ -10,8 +10,9 @@
  *
  *  Changelog:
  *
- *    1.3.4 (09/01/2017)
+ *    1.3.5 (09/01/2017)
  *    	- Added workaround for SmartThings breaking the convertTemperatureIfNeeded function for precision 0.
+ *    	- Added +52°F offset when the temperature is <= -21°F to correct a firmware bug. 
  *
  *    1.3.2 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -328,7 +329,11 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv2.SensorMultilevelR
 	
 	if (cmd.sensorType == 1) {
 		def cmdScale = cmd.scale == 1 ? "F" : "C"
-		def temp = "${convertTemperatureIfNeeded(cmd.scaledSensorValue, cmdScale, cmd.precision)}"
+		
+		// Workaround for firmware bug that adds a -52°F offset when temperature drops below 32°F
+		def sensorVal = (cmd.scaledSensorValue <= -21) ? cmd.scaledSensorValue + 52 : cmd.scaledSensorValue 
+		
+		def temp = "${convertTemperatureIfNeeded(sensorVal, cmdScale, cmd.precision)}"
 		def newTemp = safeToInt(temp.endsWith(".") ? temp.replace(".", "") : temp)
 
 		if (tempOffsetSetting != 0) {
