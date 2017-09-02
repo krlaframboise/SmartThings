@@ -1,12 +1,12 @@
 /**
- *  Other Device Viewer v0.0 (ALPHA)
+ *  Other Device Viewer v0.1 (ALPHA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
  *
- *    0.0 (09/01/2017)
+ *    0.1 (09/02/2017)
  *			- Alpha Relase
  *
  *  Licensed under the Apache License, Version 2.0 (the
@@ -592,13 +592,13 @@ def capabilityPage(params) {
 			state.lastCapabilitySetting = capSetting
 			section("${getPluralName(capSetting)}") {
 				if (capSetting.name in ["Switch","Light"]) {
-					href(
-						name: "allOffSwitchLink", 
-						title: "Turn Off All ${getPluralName(capSetting)}",
-						description: "",
-						page: "toggleSwitchPage",
-						required: false
-					)
+					// href(
+						// name: "allOffSwitchLink", 
+						// title: "Turn Off All ${getPluralName(capSetting)}",
+						// description: "",
+						// page: "toggleSwitchPage",
+						// required: false
+					// )
 					getSwitchToggleLinks(getDeviceCapabilityListItems(capSetting))
 				}
 				else {				
@@ -945,7 +945,7 @@ private extractDevices() {
 	// log.trace "extractDevices()"
 	def devices = []
 	try {
-		def data = settings?.hubBridge?.currentValue("allDevices")
+		def data = settings?.hubBridge?.currentValue("deviceList")
 		if (data) {
 			def slurper = new groovy.json.JsonSlurper()
 			devices = slurper.parseText(data)		
@@ -1675,12 +1675,12 @@ private capabilitySettings() {
 			activeState: "detected",
 			imageOnly: true
 		],
-		[
-			name: "Switch",
-			pluralName: "Switches",		
-			activeState: "on",
-			imageOnly: true
-		],		
+		// [
+			// name: "Switch",
+			// pluralName: "Switches",		
+			// activeState: "on",
+			// imageOnly: true
+		// ],		
 		[
 			name: "Temperature Measurement",
 			pluralName: "Temperature Sensors",
@@ -1926,11 +1926,11 @@ private api_getToggleItemsHtml(currentUrl, listItems) {
 		imageName = imageName?.replace("-on", "")?.replace("-off", "")
 	}	
 	
-	if (imageName in ["light", "switch"]) {
-		html += api_getItemHtml("Turn All Off", "${imageName}-off all-command", "${currentUrl}/off", "", "")	
+	// if (imageName in ["light", "switch"]) {
+		// html += api_getItemHtml("Turn All Off", "${imageName}-off all-command", "${currentUrl}/off", "", "")	
 		
-		html += api_getItemHtml("Turn All On", "${imageName}-on all-command", "${currentUrl}/on", "", "")
-	}
+		// html += api_getItemHtml("Turn All On", "${imageName}-on all-command", "${currentUrl}/on", "", "")
+	// }
 	return html
 }
 
