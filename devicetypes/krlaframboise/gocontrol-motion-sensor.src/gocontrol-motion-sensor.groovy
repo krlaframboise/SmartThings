@@ -1,5 +1,5 @@
 /**
- *  GoControl Motion Sensor v1.3.3
+ *  GoControl Motion Sensor v1.3.4
  *    (Model: WAPIRZ-1)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.3.3 (09/01/2017)
+ *    1.3.4 (09/01/2017)
  *    	- Added workaround for SmartThings breaking the convertTemperatureIfNeeded function for precision 0.
  *
  *    1.3.2 (04/23/2017)
@@ -180,9 +180,9 @@ def ping() {
 }
 
 def refresh() {	
-	// clearTamperDetected()
-	// logDebug "The re-trigger wait time will be sent to the device the next time it wakes up.  If you want this change to happen immediately, open the back cover of the device until the red light turns solid and then close it."
-	// state.pendingConfig = true	
+	clearTamperDetected()
+	logDebug "The re-trigger wait time will be sent to the device the next time it wakes up.  If you want this change to happen immediately, open the back cover of the device until the red light turns solid and then close it."
+	state.pendingConfig = true	
 }
 
 private clearTamperDetected() {	
