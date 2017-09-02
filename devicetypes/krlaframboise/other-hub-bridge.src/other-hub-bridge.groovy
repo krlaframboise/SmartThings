@@ -120,11 +120,11 @@ private initialize() {
 
 def autoRefresh() {
 	logDebug "autoRefresh()..."
-	def minimumRefreshInterval = (refreshIntervalSettingMinutes * 60 * 1000)
+	// def minimumRefreshInterval = (refreshIntervalSettingMinutes * 60 * 1000)
 	
-	if(!state.lastRefresh || ((new Date().time - state.lastRefresh) >= minimumRefreshInterval)) {
+	// if(!state.lastRefresh || ((new Date().time - state.lastRefresh) >= minimumRefreshInterval)) {
 		refresh()
-	}
+	// }
 }
 
 def refresh() {
