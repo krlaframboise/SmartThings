@@ -1,13 +1,13 @@
 /**
- *  Other Hub Device Viewer v0.0 (ALPHA)
+ *  Other Hub Device Viewer v0.0.3 (BETA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
  *
- *    0.0 (09/02/2017)
- *			- Alpha Relase
+ *    0.0.3 (09/03/2017)
+ *			- Beta Relase
  *
  *  Licensed under the Apache License, Version 2.0 (the
  *  "License"); you may not use this file except in
@@ -568,19 +568,12 @@ def capabilityPage(params) {
 		if (capSetting) {
 			state.lastCapabilitySetting = capSetting
 			section("${getPluralName(capSetting)}") {
-				if (capSetting.name in ["Switch","Light"]) {
-					// href(
-						// name: "allOffSwitchLink", 
-						// title: "Turn Off All ${getPluralName(capSetting)}",
-						// description: "",
-						// page: "toggleSwitchPage",
-						// required: false
-					// )
-					getSwitchToggleLinks(getDeviceCapabilityListItems(capSetting))
-				}
-				else {				
+				// if (capSetting.name in ["Switch","Light"]) {
+					// getSwitchToggleLinks(getDeviceCapabilityListItems(capSetting))
+				// }
+				// else {
 					getParagraphs(getDeviceCapabilityListItems(capSetting))
-				}
+				// }
 			}
 		}
 		else {
@@ -1802,23 +1795,23 @@ private api_getRefreshInterval(cmd) {
 
 private api_getCapabilityHtml(cap, currentUrl, deviceId, cmd) {	
 	def html = ""
-	if (api_isToggleSwitchCmd(cmd)) {		
-		if (deviceId) {
-			html = "<h1>${api_toggleSwitch(cap, deviceId, cmd)}</h1>"
-		}
-		else {
-			html = api_toggleSwitches(cap, cmd)
-		}
+	// if (api_isToggleSwitchCmd(cmd)) {		
+		// if (deviceId) {
+			// html = "<h1>${api_toggleSwitch(cap, deviceId, cmd)}</h1>"
+		// }
+		// else {
+			// html = api_toggleSwitches(cap, cmd)
+		// }
 	
-		html = "<div class=\"command-results\">$html</div>"		
-	}			
+		// html = "<div class=\"command-results\">$html</div>"		
+	// }			
 	
-	if (cap.name in ["Switch","Light", "Alarm"]) {
-		html += api_getToggleItemsHtml(currentUrl, getDeviceCapabilityListItems(cap))
-	}
-	else {
+	// if (cap.name in ["Switch","Light", "Alarm"]) {
+		// html += api_getToggleItemsHtml(currentUrl, getDeviceCapabilityListItems(cap))
+	// }
+	// else {
 		html += api_getItemsHtml(getDeviceCapabilityListItems(cap))
-	}
+	// }
 	return html
 }
 
