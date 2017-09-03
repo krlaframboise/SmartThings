@@ -159,7 +159,7 @@ def refresh() {
 }
 
 private scheduleFinishRefresh() {
-	def delay = "${(commandDelaySetting / 1000)}".toDouble()?.round(0)?.toInteger() ?: 1
+	def delay = "${(commandDelaySetting / 1000)}".toDouble()?.round(0)?.toInteger() ?: 2
 	runIn((delay * 3), finishRefresh)
 }
 
@@ -169,7 +169,7 @@ def refreshDevices() {
 
 private getUnrefreshedDevicePaths() {
 	def paths = []
-	state.deviceList?.findAll { it.refreshedAt != state.lastRefresh }?.each {		
+	state.deviceList?.findAll {  it.refreshedAt != state.lastRefresh }?.each {		
 		paths << "/device/ui/data/${it.id}"
 	}	
 	return paths
@@ -250,7 +250,7 @@ def parse(String description) {
 private sendLastCheckinEvent() {
 	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		state.lastCheckinTime = new Date().time
-		sendEvent(name:"lastCheckin", value: convertToLocalTimeString(new Date()), display:false)
+		sendEvent(name:"lastCheckin", value: convertToLocalTimeString(new Date()), displayed:false)
 	}
 }
 
@@ -419,7 +419,7 @@ private getDeviceSummary() {
 
 // Settings
 private getCommandDelaySetting() {
-	return safeToInt(settings?.commandDelay, 3000)
+	return safeToInt(settings?.commandDelay, 0)
 }
 
 private getExcludedDeviceIdsSetting() {
