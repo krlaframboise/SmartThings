@@ -1599,15 +1599,15 @@ private capabilitySettings() {
 			attributeName: "illuminance",
 			units: " lx"
 		],
-		[
-			name: "Light",
-			prefName: "light",
-			prefType: "switch",
-			capabilityName: "Switch",
-			attributeName: "switch",
-			activeState: "on",		
-			imageOnly: true
-		],
+		// [
+			// name: "Light",
+			// prefName: "light",
+			// prefType: "switch",
+			// capabilityName: "Switch",
+			// attributeName: "switch",
+			// activeState: "on",		
+			// imageOnly: true
+		// ],
 		[
 			name: "Lock",
 			activeState: "locked",
@@ -1647,12 +1647,12 @@ private capabilitySettings() {
 			activeState: "detected",
 			imageOnly: true
 		],
-		// [
-			// name: "Switch",
-			// pluralName: "Switches",		
-			// activeState: "on",
-			// imageOnly: true
-		// ],		
+		[
+			name: "Switch",
+			pluralName: "Switches",		
+			activeState: "on",
+			imageOnly: true
+		],		
 		[
 			name: "Temperature Measurement",
 			pluralName: "Temperature Sensors",
