@@ -1,5 +1,5 @@
 /**
- *  Vision Shock Sensor v1.2.1
+ *  Vision Shock Sensor v1.2.2
  *  (ZS 5101)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation: https://community.smartthings.com/t/release-vision-shock-sensor-zs-5101/81628?u=krlaframboise
  *    
  *  Changelog:
+ *
+ *    1.2.2 (08/31/2017)
+ *    	- testing
  *
  *    1.2.1 (08/31/2017)
  *    	- Using Notification Report to detect activity is unreliable in the Monoprice version so switched to BasicSet.
@@ -315,7 +318,7 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 }	
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
-	// logTrace "Basic Set: $cmd"	
+	log.warn "Basic Set: $cmd"	
 	def result = []
 	createPrimaryEventMaps(cmd.value == 0XFF)?. each {
 		result << createEvent(it)
@@ -324,7 +327,7 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
-	logTrace "SensorBinaryReport: $cmd"	
+	log.warn "SensorBinaryReport: $cmd"	
 	return []
 }
 
@@ -336,7 +339,7 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 
 // Contact event is being created using Sensor Binarry command class so this event is ignored.
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
-	// logTrace "NotificationReport: $cmd"		
+	log.warn "NotificationReport: $cmd"
 	def result = []
 	if (cmd.notificationType == 7) {
 		if (cmd.event == 2 || cmd.v1AlarmType == 2) {

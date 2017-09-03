@@ -263,18 +263,17 @@ private storeDeviceList(data) {
 		
 		if (!excludedDeviceIdsSetting?.find { "$it" == "${dev.id}"}) {
 			def item = state.deviceList.find { it.id == dev.id }
-			def displayName = "${dev.name} (${dev.id})"
 			if (item) {
 				// logTrace "Updating Device: $desc"
 		
 				ids.remove(ids?.find { "$it" == "${dev.id}" })				
-				item.displayName = displayName
+				item.displayName = "${dev.name}"
 				item.lastActivity = dev.lastActivityTime
 			}
 			else {
 				// logTrace "Adding Device: ${desc}"
 				
-				state.deviceList << [id: dev.id, displayName: displayName, lastActivity:dev.lastActivityTime]
+				state.deviceList << [id: dev.id, displayName: "${dev.name}", lastActivity:dev.lastActivityTime]
 			}			
 		}		
 	}
@@ -386,7 +385,7 @@ private sendRefreshedEvent() {
 private getDeviceSummary() {
 	def lines = []
 	state.deviceList?.each {
-		lines << "${it.displayName}"
+		lines << "${it.displayName} (${it.id})"
 	}
 	return lines ? lines.sort().join("\n") : ""
 }
