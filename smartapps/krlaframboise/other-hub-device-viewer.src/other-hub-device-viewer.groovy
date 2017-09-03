@@ -897,7 +897,12 @@ private extractDevices() {
 }
 
 private Date getLastActivityDate(device) {
-	return Date.parse("yyyy-MM-dd'T'HH:mm:ss", "${device.lastActivity}".replace("+00:00", ""))
+	if (device?.lastActivity) {
+		return Date.parse("yyyy-MM-dd'T'HH:mm:ss", "${device.lastActivity}".replace("+00:00", ""))		
+	}
+	else {
+		return new Date((new Date().time - (90 * 24 * 60 * 60)))
+	}
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
