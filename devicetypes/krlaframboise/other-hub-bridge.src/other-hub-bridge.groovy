@@ -1,12 +1,12 @@
 /**
- *  Other Hub Bridge 0.1 (ALPHA)
+ *  Other Hub Bridge 0.0.2 (ALPHA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
  *
- *    0.1 (09/02/2017)
+ *    0.0.2 (09/??/2017)
  *			- Alpha Relase
  *
  *
@@ -21,7 +21,7 @@
  */
 metadata {
 	definition (name: "Other Hub Bridge", namespace: "krlaframboise", author: "Kevin LaFramboise") {
-		capability "Sensor"
+		capability "Bridge"
 		capability "Refresh"
 
 		attribute "status", "string"
@@ -31,12 +31,6 @@ metadata {
 	}
 
 	preferences {
-		input "otherHubIP", "string",
-			title: "Other Hub IP:\n(Example: 192.168.0.0)",
-			required: true		
-		input "otherHubPort", "string",
-			title: "Other Hub Port:\n(Example: 8080)",
-			required: true
 		input "refreshInterval", "enum",
 			title: "Refresh Interval:",
 			defaultValue: refreshIntervalSetting,
@@ -73,22 +67,16 @@ def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 2000)) {
 		state.lastUpdated = new Date().time
 		logDebug "updated()..."
+		unschedule()
 		initialize()
 	}
 }
 
 private initialize() {
-	def dni = otherHubDeviceNetworkId
-	if (dni != ":" && device.deviceNetworkId != dni) {
-		log.warn "Attempting to change the Device Network Id from ${device.deviceNetworkId} to ${dni}, but you might have to make this change manually in the IDE."
-		device.deviceNetworkId = "$dni"		
-	}
-	else if (!state.deviceList) {
+	if (!state.deviceList) {
 		runIn(2, refresh)
 	}
-	
-	unschedule()
-	
+		
 	if (dni != ":") {
 		switch (refreshIntervalSettingMinutes) {
 			case 0:
@@ -120,11 +108,7 @@ private initialize() {
 
 def autoRefresh() {
 	logDebug "autoRefresh()..."
-	// def minimumRefreshInterval = (refreshIntervalSettingMinutes * 60 * 1000)
-	
-	// if(!state.lastRefresh || ((new Date().time - state.lastRefresh) >= minimumRefreshInterval)) {
-		refresh()
-	// }
+	refresh()
 }
 
 def refresh() {
@@ -134,26 +118,28 @@ def refresh() {
 		logDebug "Requesting Device List"
 		state.skippedRefresh = 0
 		state.updating = false		
-		sendRequests(["/device/list/data"])
+		sendRequests(["/device/list/data"])		
 	}
 	else {
 		logDebug "Refresh already in progress"
 		state.skippedRefresh = (state.skippedRefresh != null ? state.skippedRefresh : 0) + 1
-	}		
+	}
 	return []
 }
 
 def refreshDevices() {
-	def paths = unrefreshedDevicePaths	
-	if (!paths) {
+	// def paths = unrefreshedDevicePaths	
+	// if (!paths) {
 		logDebug "Refreshing All Devices"
 		state.lastRefresh = new Date().time
-		paths = unrefreshedDevicePaths
-	}	
-	else {
-		logDebug "Refreshing Unrefreshed Devices"
-	}
-	sendRequests(paths)
+		// paths = unrefreshedDevicePaths
+	// }	
+	// else {
+		// logDebug "Refreshing Unrefreshed Devices"
+	// }
+	// sendRequests(paths)
+	sendRequests(unrefreshedDevicePaths)
+	return []
 }
 
 private getUnrefreshedDevicePaths() {
@@ -166,19 +152,26 @@ private getUnrefreshedDevicePaths() {
 
 private sendRequests(paths, method="GET") {
 	// logTrace "${method} ${paths}"
-	def cmds = []
+	def hostAddress = otherHubAddress
+	if (hostAddress) {
 	
-	paths.each {
-		cmds << new physicalgraph.device.HubAction(
-			method: "$method",
-			path: "$it",
-			headers: ["HOST": otherHubAddress],
-			query: [
-				callback: hubAddress
-			]
-		)
+		def cmds = []
+		paths.each {
+			cmds << new physicalgraph.device.HubAction(
+				method: "$method",
+				path: "$it",
+				headers: ["HOST": "$hostAddress"],
+				query: [
+					callback: hubAddress
+				]
+			)
+		}
+		
+		sendHubCommand(cmds, 5000)		
 	}
-	sendHubCommand(cmds, 5000)
+	else {
+		log.warn "Invalid otherHubAddress: ${otherHubAddress}"
+	}
 }
 
 private getHubAddress() {
@@ -186,24 +179,47 @@ private getHubAddress() {
 }
 
 private getOtherHubAddress() {
-	return "${otherHubIPSetting}:${otherHubPortSetting}"
+	def ip = getDataValue("ip")
+	def port = getDataValue("port")
+	return (ip != null && port != null) ? "${convertHexToIP(ip)}:${convertHexToInt(port)}" : ""
 }
 
-def parse(String description) {
-	// logTrace "parse: ${description}"
+def sync(ip, port) {
+	logTrace "sync($ip, $port)..."
+	def existingIp = getDataValue("ip")
+	def existingPort = getDataValue("port")
+	if (ip && ip != existingIp) {
+		updateDataValue("ip", ip)
+	}
+	if (port && port != existingPort) {
+		updateDataValue("port", port)
+	}
+}
 
-	def msg = parseLanMessage(description)
-	if (isDeviceDetailsData(msg?.data)) {
-		storeDevice(msg?.data)
-		runIn(15, finishStoringDevices, [overwrite: true])
-	}
-	else if (msg?.data) {
-		storeDeviceList(msg?.data)
-		if (!state.updating) {
-			state.updating = true
-			runIn(5, refreshDevices)
+
+def parse(String description) {
+	// logTrace "parse(${description})..."
+	// logTrace "parse..."
+
+	// if (!state.updating) {
+		def msg = parseLanMessage(description)
+		// logTrace "parsedLanMessage: $msg"
+		// logTrace "parsedLanMessage..."
+		if (isDeviceDetailsData(msg?.data)) {
+			storeDevice(msg?.data)
+			runIn(15, finishStoringDevices, [overwrite: true])
 		}
-	}
+		else if (msg?.data) {
+			storeDeviceList(msg?.data)
+			if (!state.updating) {
+				state.updating = true
+				runIn(5, refreshDevices)
+			}
+		}
+	// }
+	// else {
+		// runIn(15, finishStoringDevices, [overwrite: true])
+	// }
 	return []
 }
 
@@ -236,7 +252,7 @@ private storeDeviceList(data) {
 			else {
 				// logTrace "Adding Device: ${desc}"
 				
-				state.deviceList << [id: dev.id, name: dev.name, lastActivity:dev.lastActivityTime]
+				state.deviceList << [id: dev.id, displayName: dev.name, lastActivity:dev.lastActivityTime]
 			}			
 		}		
 	}
@@ -318,21 +334,22 @@ def finishStoringDevices() {
 	
 	sendEvent(name:"deviceSummary", value: deviceSummary, displayed: false, isStateChange: true)
 			
-	if (unrefreshedDevicePaths) {
-		if (!isDuplicateCommand(state.lastRefresh, (5 * 60 * 1000))) {
-			// It's within the minimum reporting interval so refresh the devices that were missed the previous run.
-			runIn(0, refreshDevices)
-		}
-		else {
-			sendRefreshedEvent()
-		}
-	}
-	else {
+	// if (unrefreshedDevicePaths) {
+		// if (!isDuplicateCommand(state.lastRefresh, (5 * 60 * 1000))) {
+			// // It's within the minimum reporting interval so refresh the devices that were missed the previous run.
+			// runIn(0, refreshDevices)
+		// }
+		// else {
+			// sendRefreshedEvent()
+		// }
+	// }
+	// else {
 		logDebug "All Devices Refreshed"
 		state.updating = false
 		sendEvent(name: "status", value: "Online", displayed: false, isStateChange: true)
 		sendRefreshedEvent()
-	}	
+	// }	
+	return []
 }
 
 private sendRefreshedEvent() {
@@ -348,15 +365,8 @@ private getDeviceSummary() {
 	return lines ? lines.sort().join("\n") : ""
 }
 
+
 // Settings
-private getOtherHubIPSetting() {
-	return settings?.otherHubIP ?: ""
-}
-
-private getOtherHubPortSetting() {
-	return settings?.otherHubPort ?: ""
-}
-
 private getRefreshIntervalSettingMinutes() {
 	return convertOptionSettingToInt(refreshIntervalOptions, refreshIntervalSetting)
 }
@@ -402,22 +412,12 @@ private convertToLocalTimeString(dt) {
 	}	
 }
 
-private getOtherHubDeviceNetworkId() {
-	def portHex = convertToHex(otherHubPortSetting, "%04x")
-	return "${otherHubIPHex}:${portHex}"
+private String convertHexToIP(hex) {
+	[convertHexToInt(hex[0..1]), convertHexToInt(hex[2..3]), convertHexToInt(hex[4..5]), convertHexToInt(hex[6..7])].join(".")
 }
 
-private getOtherHubIPHex() {
-	return otherHubIPSetting?.tokenize( "." )?.collect { convertToHex(it, "%02x") }?.join()
-}
-
-private convertToHex(val, hexFormat) {
-	if ("$val".isInteger()) {
-		return "$val".format(hexFormat, "$val".toInteger())?.toUpperCase()
-	}
-	else {
-		return ""
-	}
+private Integer convertHexToInt(hex) {
+	Integer.parseInt(hex,16)
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
