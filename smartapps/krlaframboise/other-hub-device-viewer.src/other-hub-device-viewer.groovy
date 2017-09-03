@@ -71,7 +71,7 @@ def mainPage() {
 			}
 		}
 		section("Settings") {			
-			input "hubBridge", "capability.sensor",
+			input "hubBridge", "capability.bridge",
 				title: "Other Hub Bridge?",
 				required: true
 			if (settings?.hubBridge) {
@@ -504,15 +504,7 @@ private enableDashboardPage() {
 // Lists all devices and their last event times.
 def lastEventPage() {
 	dynamicPage(name:"lastEventPage") {		
-		section ("Time Since Last Event") {
-			href(
-				name: "refreshLastEventLink", 
-				title: "Refresh Data",
-				description: "${getRefreshLastEventLinkDescription()}",
-				page: "refreshLastEventPage",
-				required: false
-			)
-			
+		section ("Time Since Last Event") {			
 			def items = getAllDeviceLastEventListItems()?.unique()
 			if (settings.lastEventSortByValue != false) {
 				items?.each { it.sortValue = (it.sortValue * -1) }
