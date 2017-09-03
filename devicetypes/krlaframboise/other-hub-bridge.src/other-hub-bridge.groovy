@@ -42,6 +42,10 @@ metadata {
 			required: false,
 			displayDuringSetup: true,
 			options: refreshIntervalOptions.collect { it.name }
+		input "commandDelay", "number",
+			title: "Enter the delay that should be used between commands being sent to the device: (milliseconds)",
+			defaultValue: commandDelaySetting,
+			required: false
 		input "debugLogging", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -49,6 +53,16 @@ metadata {
 			required: false
 		input "infoLogging", "bool", 
 			title: "Enable Info logging?", 
+			defaultValue: true, 
+			displayDuringSetup: true, 
+			required: false
+		input "debugLogging", "bool", 
+			title: "Enable debug logging?", 
+			defaultValue: true, 
+			displayDuringSetup: true, 
+			required: false
+		input "traceLogging", "bool", 
+			title: "Enable trace logging?", 
 			defaultValue: true, 
 			displayDuringSetup: true, 
 			required: false
@@ -173,7 +187,7 @@ private sendRequests(paths, method="GET") {
 			)
 		}
 		
-		sendHubCommand(cmds, 1000)		
+		sendHubCommand(cmds, commandDelaySetting)
 	}
 	else {
 		log.warn "Invalid otherHubAddress: ${otherHubAddress}"
@@ -392,6 +406,10 @@ private getDeviceSummary() {
 
 
 // Settings
+private getCommandDelaySetting() {
+	return safeToInt(settings?.commandDelay, 3000)
+}
+
 private getExcludedDeviceIdsSetting() {
 	return settings?.excludedDeviceIds?.split(",")?.collect { it.trim() } ?: []
 }
@@ -466,5 +484,7 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	log.trace "$msg"
+	if (settings?.traceLogging != false) {
+		log.trace "$msg"
+	}
 }
