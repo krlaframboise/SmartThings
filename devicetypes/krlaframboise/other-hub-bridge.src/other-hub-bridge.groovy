@@ -145,7 +145,7 @@ def refresh() {
 		
 		state.skippedRefresh = 0		
 		state.lastRefresh = new Date().time
-		runIn(15, finishRefresh)
+		scheduleFinishRefresh()
 		
 		sendEvent(name: "status", value: "Refreshing", displayed: false, isStateChange: true)		
 		
@@ -156,6 +156,11 @@ def refresh() {
 		state.skippedRefresh = (state.skippedRefresh ?: 0) + 1
 	}
 	return []
+}
+
+private scheduleFinishRefresh() {
+	def delay = "${(commandDelaySetting / 1000)}".toDouble()?.round(0)?.toInteger() ?: 1
+	runIn((delay * 3), finishRefresh)
 }
 
 def refreshDevices() {	
@@ -225,7 +230,7 @@ def parse(String description) {
 	
 	if (isDeviceDetailsData(msg?.data)) {
 		storeDevice(msg?.data)		
-		runIn(15, finishRefresh, [overwrite: true])
+		scheduleFinishRefresh()
 	}
 	else if (isSmartAppListData(msg?.data)) {	
 		logInfo "${device.displayName} is Online" // Device Watch Pinged Device
@@ -298,7 +303,10 @@ private storeDeviceList(data) {
 		
 		state.deviceList.remove(state.deviceList.find { "${it.id}" == "$id" })
 	}
-	logDebug "Found ${state?.deviceList?.size() ?: 0} Devices"
+	
+	if (!device.currentValue("deviceSummary")) {
+		sendDeviceSummaryEvent()
+	}
 }
 
 private storeDevice(data) {
@@ -367,7 +375,7 @@ def finishRefresh() {
 	
 	sendEvent(name:"deviceList", value: jsonVal, displayed: false, isStateChange: true)	
 	
-	sendEvent(name:"deviceSummary", value: deviceSummary, displayed: false, isStateChange: true)
+	sendDeviceSummaryEvent()
 	
 	def skipped = unrefreshedDevicePaths?.size() ?: 0
 	def total = state.deviceList?.size() ?: 0
@@ -389,6 +397,10 @@ def finishRefresh() {
 		sendRefreshedEvent()
 	}	
 	return []
+}
+
+private sendDeviceSummaryEvent() {
+	sendEvent(name:"deviceSummary", value: deviceSummary, displayed: false, isStateChange: true)
 }
 
 private sendRefreshedEvent() {
