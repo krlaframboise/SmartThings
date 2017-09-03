@@ -1,12 +1,12 @@
 /**
- *  Other Hub Bridge 0.0.2 (ALPHA)
+ *  Other Hub Bridge 0.0.3 (ALPHA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
  *
- *    0.0.2 (09/??/2017)
+ *    0.0.3 (09/03/2017)
  *			- Alpha Relase
  *
  *
@@ -23,7 +23,9 @@ metadata {
 	definition (name: "Other Hub Bridge", namespace: "krlaframboise", author: "Kevin LaFramboise") {
 		capability "Bridge"
 		capability "Refresh"
+		capability "Health Check"
 
+		attribute "lastCheckin", "string"
 		attribute "status", "string"
 		attribute "refreshed", "string"
 		attribute "deviceList", "string"		
@@ -31,6 +33,9 @@ metadata {
 	}
 
 	preferences {
+		input "excludedDeviceIds", "string",
+			title: "Excluded Device Ids:\n(example: 32,25,43)", 
+			required: false
 		input "refreshInterval", "enum",
 			title: "Refresh Interval:",
 			defaultValue: refreshIntervalSetting,
@@ -39,6 +44,11 @@ metadata {
 			options: refreshIntervalOptions.collect { it.name }
 		input "debugLogging", "bool", 
 			title: "Enable debug logging?", 
+			defaultValue: true, 
+			displayDuringSetup: true, 
+			required: false
+		input "infoLogging", "bool", 
+			title: "Enable Info logging?", 
 			defaultValue: true, 
 			displayDuringSetup: true, 
 			required: false
@@ -76,33 +86,31 @@ private initialize() {
 	if (!state.deviceList) {
 		runIn(2, refresh)
 	}
-		
-	if (dni != ":") {
-		switch (refreshIntervalSettingMinutes) {
-			case 0:
-				// Auto Refresh Disabled
-				break
-			case 5:
-				runEvery5Minutes(autoRefresh)
-				break
-			case 10:
-				runEvery10Minutes(autoRefresh)
-				break
-			case 15:
-				runEvery15Minutes(autoRefresh)
-				break
-			case 30:
-				runEvery30Minutes(autoRefresh)
-				break
-			case [60, 120]:
-				runEvery1Hour(autoRefresh)
-				break
-			default:
-				runEvery3Hours(autoRefresh)			
-		}
-	}
-	else {
-		log.warn "Auto Refresh Disabled because the Other Hub Settings are incomplete or invalid."
+	
+	def checkInterval = ((refreshIntervalSettingMinutes * 60) + (60 * 5))
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "LAN", hubHardwareId: device.hub.hardwareID])	
+
+	switch (refreshIntervalSettingMinutes) {
+		case 0:
+			// Auto Refresh Disabled
+			break
+		case 5:
+			runEvery5Minutes(autoRefresh)
+			break
+		case 10:
+			runEvery10Minutes(autoRefresh)
+			break
+		case 15:
+			runEvery15Minutes(autoRefresh)
+			break
+		case 30:
+			runEvery30Minutes(autoRefresh)
+			break
+		case [60, 120]:
+			runEvery1Hour(autoRefresh)
+			break
+		default:
+			runEvery3Hours(autoRefresh)			
 	}
 }
 
@@ -111,35 +119,33 @@ def autoRefresh() {
 	refresh()
 }
 
+def ping() {
+	logDebug "ping()..."
+	sendRequests(["/installedapp/list/data"])
+}
+
 def refresh() {
   logTrace "refresh()..."
 	if (!state.updating || state.skippedRefresh >= 3) {
-		sendEvent(name: "status", value: "refreshing", displayed: false, isStateChange: true)
 		logDebug "Requesting Device List"
-		state.skippedRefresh = 0
-		state.updating = false		
+		
+		state.skippedRefresh = 0		
+		state.lastRefresh = new Date().time
+		runIn(15, finishRefresh)
+		
+		sendEvent(name: "status", value: "Refreshing", displayed: false, isStateChange: true)		
+		
 		sendRequests(["/device/list/data"])		
 	}
 	else {
 		logDebug "Refresh already in progress"
-		state.skippedRefresh = (state.skippedRefresh != null ? state.skippedRefresh : 0) + 1
+		state.skippedRefresh = (state.skippedRefresh ?: 0) + 1
 	}
 	return []
 }
 
-def refreshDevices() {
-	// def paths = unrefreshedDevicePaths	
-	// if (!paths) {
-		logDebug "Refreshing All Devices"
-		state.lastRefresh = new Date().time
-		// paths = unrefreshedDevicePaths
-	// }	
-	// else {
-		// logDebug "Refreshing Unrefreshed Devices"
-	// }
-	// sendRequests(paths)
-	sendRequests(unrefreshedDevicePaths)
-	return []
+def refreshDevices() {	
+	sendRequests(unrefreshedDevicePaths)	
 }
 
 private getUnrefreshedDevicePaths() {
@@ -167,7 +173,7 @@ private sendRequests(paths, method="GET") {
 			)
 		}
 		
-		sendHubCommand(cmds, 5000)		
+		sendHubCommand(cmds, 1000)		
 	}
 	else {
 		log.warn "Invalid otherHubAddress: ${otherHubAddress}"
@@ -198,33 +204,51 @@ def sync(ip, port) {
 
 
 def parse(String description) {
-	// logTrace "parse(${description})..."
-	// logTrace "parse..."
-
-	// if (!state.updating) {
-		def msg = parseLanMessage(description)
-		// logTrace "parsedLanMessage: $msg"
-		// logTrace "parsedLanMessage..."
-		if (isDeviceDetailsData(msg?.data)) {
-			storeDevice(msg?.data)
-			runIn(15, finishStoringDevices, [overwrite: true])
+	def msg = parseLanMessage(description)
+	// logTrace "parsedLanMessage: $msg"
+	
+	sendLastCheckinEvent()
+	
+	if (isDeviceDetailsData(msg?.data)) {
+		storeDevice(msg?.data)		
+		runIn(15, finishRefresh, [overwrite: true])
+	}
+	else if (isSmartAppListData(msg?.data)) {	
+		logInfo "${device.displayName} is Online" // Device Watch Pinged Device
+	}
+	else if (isDeviceListData(msg?.data)) {		
+		storeDeviceList(msg?.data)
+		
+		if (!state.updating) {
+			state.updating = true
+			logInfo "Refreshing ${state.deviceList?.size() ?: 0} Devices"
+			runIn(1, refreshDevices)
 		}
-		else if (msg?.data) {
-			storeDeviceList(msg?.data)
-			if (!state.updating) {
-				state.updating = true
-				runIn(5, refreshDevices)
-			}
-		}
-	// }
-	// else {
-		// runIn(15, finishStoringDevices, [overwrite: true])
-	// }
+	}
 	return []
 }
 
+private sendLastCheckinEvent() {
+	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
+		state.lastCheckinTime = new Date().time
+		sendEvent(name:"lastCheckin", value: convertToLocalTimeString(new Date()), display:false)
+	}
+}
+
 private isDeviceDetailsData(data) {
-	return "${data?.id}".isNumber()
+	return fieldInData("currentStates", data)
+}
+
+private isDeviceListData(data) {
+	return fieldInData("lastActivityTime", data)
+}
+
+private isSmartAppListData(data) {
+	return fieldInData("appTypeId", data)
+}
+
+private fieldInData(field, data) {
+	return (data?.toString()?.contains("${field}:") == true)
 }
 
 private storeDeviceList(data) {
@@ -237,22 +261,20 @@ private storeDeviceList(data) {
 	data?.each { dev ->
 		def desc = "[id:${dev.id}, displayName:${dev.name}, lastActivity:${dev.lastActivityTime}]"
 		
-		if (dev.name == "Device") {
-			logTrace "Ignoring Device: ${desc}"
-		}
-		else {
+		if (!excludedDeviceIdsSetting?.find { "$it" == "${dev.id}"}) {
 			def item = state.deviceList.find { it.id == dev.id }
+			def displayName = "${dev.name} (${dev.id})"
 			if (item) {
 				// logTrace "Updating Device: $desc"
 		
 				ids.remove(ids?.find { "$it" == "${dev.id}" })				
-				item.displayName = dev.name
+				item.displayName = displayName
 				item.lastActivity = dev.lastActivityTime
 			}
 			else {
 				// logTrace "Adding Device: ${desc}"
 				
-				state.deviceList << [id: dev.id, displayName: dev.name, lastActivity:dev.lastActivityTime]
+				state.deviceList << [id: dev.id, displayName: displayName, lastActivity:dev.lastActivityTime]
 			}			
 		}		
 	}
@@ -263,7 +285,7 @@ private storeDeviceList(data) {
 		
 		state.deviceList.remove(state.deviceList.find { "${it.id}" == "$id" })
 	}
-	logDebug "Found ${data?.size() ?: 0} Devices"
+	logDebug "Found ${state?.deviceList?.size() ?: 0} Devices"
 }
 
 private storeDevice(data) {
@@ -327,28 +349,32 @@ private getSupportedCapabilities() {
 }
 
 
-def finishStoringDevices() {
+def finishRefresh() {
 	def jsonVal = groovy.json.JsonOutput.toJson(state.deviceList)
 	
 	sendEvent(name:"deviceList", value: jsonVal, displayed: false, isStateChange: true)	
 	
 	sendEvent(name:"deviceSummary", value: deviceSummary, displayed: false, isStateChange: true)
-			
-	// if (unrefreshedDevicePaths) {
-		// if (!isDuplicateCommand(state.lastRefresh, (5 * 60 * 1000))) {
-			// // It's within the minimum reporting interval so refresh the devices that were missed the previous run.
-			// runIn(0, refreshDevices)
-		// }
-		// else {
-			// sendRefreshedEvent()
-		// }
-	// }
-	// else {
-		logDebug "All Devices Refreshed"
+	
+	def skipped = unrefreshedDevicePaths?.size() ?: 0
+	def total = state.deviceList?.size() ?: 0
+	if (skipped) {
+		if (isDuplicateCommand(state.lastRefresh, (4 * 60 * 1000))) {
+			// It's within the minimum reporting interval so refresh the devices that were missed the previous run.
+			logInfo "Attempting to Refresh ${skipped} Skipped Devices."
+			runIn(0, refreshDevices)
+		}
+		else {
+			logInfo "${(total - skipped)} Devices Refreshed / ${skipped} Devices Skipped"
+			sendRefreshedEvent()
+		}
+	}
+	else {
+		logInfo "${total} Devices Refreshed"
 		state.updating = false
 		sendEvent(name: "status", value: "Online", displayed: false, isStateChange: true)
 		sendRefreshedEvent()
-	// }	
+	}	
 	return []
 }
 
@@ -367,6 +393,10 @@ private getDeviceSummary() {
 
 
 // Settings
+private getExcludedDeviceIdsSetting() {
+	return settings?.excludedDeviceIds?.split(",")?.collect { it.trim() } ?: []
+}
+
 private getRefreshIntervalSettingMinutes() {
 	return convertOptionSettingToInt(refreshIntervalOptions, refreshIntervalSetting)
 }
@@ -422,6 +452,12 @@ private Integer convertHexToInt(hex) {
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
 	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
+}
+
+private logInfo(msg) {
+	if (settings?.infoLogging != false) {
+		log.info msg
+	}
 }
 
 private logDebug(msg) {
