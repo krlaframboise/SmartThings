@@ -1,12 +1,12 @@
 /**
- *  Other Hub Bridge 0.0.3 (ALPHA)
+ *  Other Hub Bridge 0.0.5 (ALPHA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
  *
- *    0.0.3 (09/03/2017)
+ *    0.0.5 (09/04/2017)
  *			- Alpha Relase
  *
  *
@@ -19,6 +19,7 @@
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
  */
+ 
 metadata {
 	definition (name: "Other Hub Bridge", namespace: "krlaframboise", author: "Kevin LaFramboise") {
 		capability "Bridge"
@@ -27,9 +28,12 @@ metadata {
 
 		attribute "lastCheckin", "string"
 		attribute "status", "string"
+		attribute "progress", "string"
 		attribute "refreshed", "string"
-		attribute "deviceList", "string"		
-		attribute "deviceSummary", "string"
+		
+		command "childOn"
+		command "childOff"
+		command "childRefresh"
 	}
 
 	preferences {
@@ -42,10 +46,6 @@ metadata {
 			required: false,
 			displayDuringSetup: true,
 			options: refreshIntervalOptions.collect { it.name }
-		input "commandDelay", "number",
-			title: "Enter the delay that should be used between commands being sent to the device: (milliseconds)",
-			defaultValue: commandDelaySetting,
-			required: false
 		input "debugLogging", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -55,7 +55,7 @@ metadata {
 			title: "Enable Info logging?", 
 			defaultValue: true, 
 			displayDuringSetup: true, 
-			required: false
+			required: false		
 		input "debugLogging", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -68,23 +68,29 @@ metadata {
 			required: false
 	}
 
-	tiles() {     	
-		standardTile("status", "device.status", height:1, width:1, key: "PRIMARY_CONTROL") {
+	tiles (scale: 2) {     	
+		standardTile("status", "device.status", height:2, width:2, key: "PRIMARY_CONTROL") {
 			state "default", label:'${currentValue}', icon: "st.Lighting.light99-hue"
 		}
-		standardTile("refreshed", "device.refreshed", decoration: "flat", height:1, width:1) {
+		standardTile("refreshed", "device.refreshed", decoration: "flat", height:2, width:2) {
 			state "default", label:'Refreshed \n ${currentValue}'
 		}
-		standardTile("refresh", "device.refresh", height:1, width:1) {
+		standardTile("refresh", "device.refresh", height:2, width:2) {
 			state "default", label:'Refresh', action:"refresh.refresh", icon:"st.secondary.refresh-icon"
 		}
-		standardTile("deviceSummary", "device.deviceSummary", decoration: "flat", height:3, width:3) {
+		standardTile("progress", "device.progress", decoration: "flat", height:2, width:6) {
 			state "default", label:'${currentValue}'
 		}
-
-		main "status"
-		details(["status", "refreshed", "refresh", "deviceSummary"])
+		childDeviceTiles("deviceList")
 	}
+}
+
+def installed() {
+	logDebug "installed()..."
+}
+
+def uninstalled() {
+	logTrace "uninstalled()..."
 }
 
 def updated() {
@@ -97,6 +103,10 @@ def updated() {
 }
 
 private initialize() {
+	if (state.retries == null) {
+		state.retries = 0
+	}
+	
 	if (!state.deviceList) {
 		runIn(2, refresh)
 	}
@@ -109,73 +119,125 @@ private initialize() {
 			// Auto Refresh Disabled
 			break
 		case 5:
-			runEvery5Minutes(autoRefresh)
+			runEvery5Minutes(refresh)
 			break
 		case 10:
-			runEvery10Minutes(autoRefresh)
+			runEvery10Minutes(refresh)
 			break
 		case 15:
-			runEvery15Minutes(autoRefresh)
+			runEvery15Minutes(refresh)
 			break
 		case 30:
-			runEvery30Minutes(autoRefresh)
+			runEvery30Minutes(refresh)
 			break
 		case [60, 120]:
-			runEvery1Hour(autoRefresh)
+			runEvery1Hour(refresh)
 			break
 		default:
-			runEvery3Hours(autoRefresh)			
+			runEvery3Hours(refresh)			
 	}
 }
 
-def autoRefresh() {
-	logDebug "autoRefresh()..."
-	refresh()
-}
-
-def ping() {
+void ping() {
 	logDebug "ping()..."
 	sendRequests(["/installedapp/list/data"])
 }
 
-def refresh() {
+void childOn(dni) {
+	logTrace "childOn(${dni})..."
+	sendRunAction(dni, "switch.on")	
+}
+
+void childOff(dni) {
+	logTrace "childOff(${dni})..."
+	sendRunAction(dni, "switch.off")	
+}
+
+private sendRunAction(dni, command) {
+	// logTrace "${method} ${paths}"	
+	
+	def child = childDevices?.find { "${it.deviceNetworkId}" == "$dni" }
+	if (child) {
+				
+		def msg = "Sending command ${command} to ${child.displayName}"				
+		logInfo "$msg"
+		sendMainEvent("progress", msg)
+	
+		def cmds = []		
+		cmds << new physicalgraph.device.HubAction(
+			method: "POST",
+			path: "/device/runaction",
+			headers: ["HOST": "${otherHubAddress}", "Content-Type": "application/json"],
+			body: [deviceId: "${child.currentDeviceId}", action: "${command}", args: []]
+		)		
+		sendHubCommand(cmds, 0)	
+		
+		runIn(3, refreshDetails, [data:[deviceId: child.currentDeviceId]])
+	}
+	else {
+		log.warn "Unable to send command ${command} for Device NULL"
+	}
+}
+
+void childRefresh(dni) {
+	logTrace "childRefresh($dni})..."
+	def child = childDevices?.find { "${it.deviceNetworkId}" == "$dni" }
+	if (child) {
+		refreshDetails([deviceId: child.deviceId])
+	}	
+}
+
+void refreshDetails(data) {	
+	if (data?.deviceId) {
+		state.pendingAction = true
+		sendRequests([getDevicePath(data.deviceId)])
+	}	
+}
+
+void refresh() {
   logTrace "refresh()..."
-	if (!state.updating || state.skippedRefresh >= 3) {
+	if (!state.refreshing || state.skippedRefresh >= 3) {
 		logDebug "Requesting Device List"
 		
 		state.skippedRefresh = 0		
 		state.lastRefresh = new Date().time
-		scheduleFinishRefresh()
+				
+		sendMainEvent("status", "Refreshing")		
+		sendMainEvent("progress", "Requesting Device List")
 		
-		sendEvent(name: "status", value: "Refreshing", displayed: false, isStateChange: true)		
-		
-		sendRequests(["/device/list/data"])		
+		sendRequests(["/device/list/data"])
 	}
 	else {
 		logDebug "Refresh already in progress"
 		state.skippedRefresh = (state.skippedRefresh ?: 0) + 1
 	}
-	return []
 }
 
 private scheduleFinishRefresh() {
-	def delay = "${(commandDelaySetting / 1000)}".toDouble()?.round(0)?.toInteger() ?: 2
-	runIn((delay * 3), finishRefresh)
+	runIn(15, finishRefresh)
 }
 
-def refreshDevices() {	
+void refreshDevices() {
 	sendRequests(unrefreshedDevicePaths)	
 }
 
 private getUnrefreshedDevicePaths() {
 	def paths = []
-	state.deviceList?.findAll {  it.refreshedAt != state.lastRefresh }?.each {		
-		paths << "/device/ui/data/${it.id}"
-	}	
+
+	state.deviceList?.each { dev ->
+		if (!childDevices?.find { "${it.currentDeviceId}" == "${dev.id}" && "${it?.currentLastRefresh}" == "${state.lastRefresh}" }) {
+			paths << getDevicePath("${dev.id}")
+		}
+	}
+	
 	return paths
 }
 
-private sendRequests(paths, method="GET") {
+private getDevicePath(deviceId) {
+	return "/device/ui/data/${deviceId}"
+}
+
+private void sendRequests(paths) {
 	// logTrace "${method} ${paths}"
 	def hostAddress = otherHubAddress
 	if (hostAddress) {
@@ -183,16 +245,17 @@ private sendRequests(paths, method="GET") {
 		def cmds = []
 		paths.each {
 			cmds << new physicalgraph.device.HubAction(
-				method: "$method",
+				method: "GET",
 				path: "$it",
 				headers: ["HOST": "$hostAddress"],
 				query: [
 					callback: hubAddress
 				]
-			)
+			)			
 		}
 		
-		sendHubCommand(cmds, commandDelaySetting)
+		scheduleFinishRefresh()
+		sendHubCommand(cmds, 0)
 	}
 	else {
 		log.warn "Invalid otherHubAddress: ${otherHubAddress}"
@@ -209,7 +272,7 @@ private getOtherHubAddress() {
 	return (ip != null && port != null) ? "${convertHexToIP(ip)}:${convertHexToInt(port)}" : ""
 }
 
-def sync(ip, port) {
+void sync(ip, port) {
 	logTrace "sync($ip, $port)..."
 	def existingIp = getDataValue("ip")
 	def existingPort = getDataValue("port")
@@ -229,20 +292,17 @@ def parse(String description) {
 	sendLastCheckinEvent()
 	
 	if (isDeviceDetailsData(msg?.data)) {
-		storeDevice(msg?.data)		
-		scheduleFinishRefresh()
+		updateChildDeviceDetails(msg?.data)
 	}
 	else if (isSmartAppListData(msg?.data)) {	
 		logInfo "${device.displayName} is Online" // Device Watch Pinged Device
 	}
-	else if (isDeviceListData(msg?.data)) {		
-		storeDeviceList(msg?.data)
-		
-		if (!state.updating) {
-			state.updating = true
-			logInfo "Refreshing ${state.deviceList?.size() ?: 0} Devices"
-			runIn(1, refreshDevices)
-		}
+	else if (isDeviceListData(msg?.data)) {
+		updateChildDeviceList(msg?.data)
+
+		logInfo "Refreshing ${state.deviceList?.size() ?: 0} Devices"
+		state.refreshing = true
+		refreshDevices()
 	}
 	return []
 }
@@ -250,7 +310,7 @@ def parse(String description) {
 private sendLastCheckinEvent() {
 	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		state.lastCheckinTime = new Date().time
-		sendEvent(name:"lastCheckin", value: convertToLocalTimeString(new Date()), displayed:false)
+		sendMainEvent("lastCheckin", convertToLocalTimeString(new Date()))
 	}
 }
 
@@ -270,67 +330,144 @@ private fieldInData(field, data) {
 	return (data?.toString()?.contains("${field}:") == true)
 }
 
-private storeDeviceList(data) {
-	if (state.deviceList == null) {
-		state.deviceList = []
-	}
-	
-	def ids = state.deviceList.collect { "${it.id}" }
+private updateChildDeviceList(data) {
+	logTrace "updateChildDeviceList..."
+	def deviceList = []
 	
 	data?.each { dev ->
-		def desc = "[id:${dev.id}, displayName:${dev.name}, lastActivity:${dev.lastActivityTime}]"
-		
 		if (!excludedDeviceIdsSetting?.find { "$it" == "${dev.id}"}) {
-			def item = state.deviceList.find { it.id == dev.id }
-			if (item) {
-				// logTrace "Updating Device: $desc"
-		
-				ids.remove(ids?.find { "$it" == "${dev.id}" })				
-				item.displayName = "${dev.name}"
-				item.lastActivity = dev.lastActivityTime
+			deviceList << [id: "${dev.id}", lastActivityTime: dev.lastActivityTime, name: "${dev.name}"]
+		}
+	}
+	
+	if (deviceList.size() > 0) {
+		childDevices?.each { child ->
+			if (!deviceList.find { "${it.id}" == "${child?.currentDeviceId}" }) {
+				logInfo "Deleting ${child.displayName}"
+				// deleteChildDevice(child.deviceNetworkId)
 			}
-			else {
-				// logTrace "Adding Device: ${desc}"
-				
-				state.deviceList << [id: dev.id, displayName: "${dev.name}", lastActivity:dev.lastActivityTime]
-			}			
-		}		
+		}
 	}
 	
-	// Remove devices that no longer exist.
-	ids.each { id ->
-		logTrace "Removing Device Id: $id"
-		
-		state.deviceList.remove(state.deviceList.find { "${it.id}" == "$id" })
-	}
-	
-	if (!device.currentValue("deviceSummary")) {
-		sendDeviceSummaryEvent()
-	}
+	sendMainEvent("progress", "Refreshing ${deviceList.size()} Devices")
+	state.deviceList = deviceList
 }
 
-private storeDevice(data) {
-	logTrace "storeDevice: ${data?.name}"
-	def item = state.deviceList.find { it.id == data.id }
-	if (item) {
-		def attrValues = getAttributeValues(data)
-		item.deviceNetworkId = "OtherHub${data.deviceNetworkId}"
-		item.status = "Online"			
-		item.currentValues = attrValues
-		item.capabilities = getCapabilities(attrValues)
-		item.refreshedAt = state.lastRefresh		
+private updateChildDeviceDetails(data) {
+	// logTrace "updateChildDevice: ${data?.name}"
+	
+	def lastActivity = state.deviceList?.find { "${it.id}" == "${data.id}" }?.lastActivityTime
+	
+	def attributes = getAttributes(data)
+	def capabilities = getCapabilities(attributes)
+	
+	def child = childDevices?.find { "${it.currentDeviceId}" == "${data.id}" }
+	
+	if (!child) {
+		if (attributes?.find { k,v -> "$k" == "switch" }) {
+			logTrace "Adding Switch: ${data.name}"
+			child = addNewChildDevice(data, "Other Hub Switch")
+		}
+				
+		if (!child) {
+			logTrace "Adding Device: ${data.name}"
+			child = addNewChildDevice(data, "Other Hub Device")
+		}
+		
+		if (child) {		
+			sendChildEvent(child, "deviceId", "${data.id}")
+		}
 	}
 	else {
-		log.warn "Id ${data.id} not found in deviceList"
+		logTrace "Updating ${data.name}"
+	}
+	
+	if (child) {
+		def otherHubData = [
+			id: child.deviceNetworkId, 
+			displayName: child.displayName, 
+			activity: lastActivity,
+			attrs: attributes,
+			caps: capabilities
+		]
+		sendChildEvent(child, "otherHubData", groovy.json.JsonOutput.toJson(otherHubData))
+		
+		sendChildEvent(child, "lastRefresh", state.lastRefresh)
+				
+		if (child.hasCapability("Switch")) {
+			def switchVal = attributes?."switch" ?: "off"
+			if (switchVal) {
+				def displayed = ("${child.currentSwitch}" != "$switchVal")
+				child.sendEvent(name: "switch", value: "${switchVal}".toLowerCase(), displayed: displayed, isStateChange: true)					
+			}
+		}
+		sendChildEvent(child, "status", getChildStatus(attributes))
 	}
 }
 
-private getAttributeValues(data) {
+private addNewChildDevice(data, deviceType) {
+	try {
+		return addChildDevice(
+			"krlaframboise",
+			"${deviceType}",
+			"${getChildDNI(data.id)}", 
+			null,
+			[
+				name: "OHB-${data.name}",
+				label: "OHB-${data.name}",				
+				// componentName: "OHB-Device${data.id}", 
+				// componentLabel: "${data.name}",
+				isComponent: false,
+				completedSetup: true
+			])
+	}
+	catch (e) {
+		if ("$e".contains("UnknownDeviceTypeException")) {
+			log.warn "Device Type Handler Not Installed: ${deviceType}"
+		}
+		else {
+			log.error "$e"
+		}
+	}
+}
+
+private getChildStatus(attrs) {
+	def attrStatuses = []
+	attrs?.each { k, v ->
+		def attrStatus = "$v"
+		switch("$k") {
+			case "battery":
+				attrStatus = "${attrStatus}%"
+				break
+			case "temperature":
+				attrStatus = "${attrStatus}°"
+				break
+		}
+		if (!attrStatuses.find { "$it" == "$attrStatus" }) {
+			attrStatuses << "$attrStatus"
+		}
+	}
+	return attrStatuses?.join("/") ?: ""
+}
+
+private sendMainEvent(name, value, displayed=false) {
+	sendEvent(name: "$name", value: value, displayed: displayed)
+}
+
+private sendChildEvent(child, name, value, displayed=false) {
+	child?.sendEvent(name: "$name", value: value, displayed: displayed)
+}
+
+private getChildDNI(deviceId) {
+	return "OHB-Device${deviceId}"
+}
+
+private getAttributes(data) {
 	def attrValues =[:]
 	supportedCapabilities.each { key, value ->
 		def attr = data.currentStates["${key}"]
 		if (attr) {
-			attrValues["${attr.name}"] = (attr.dataType == "NUMBER") ? attr.numberValue : attr.value
+			attrValues["${attr.name}"] = ("${attr.dataType}" == "NUMBER") ? attr.numberValue : attr.value
 		}
 	}
 	return attrValues
@@ -370,58 +507,49 @@ private getSupportedCapabilities() {
 }
 
 
-def finishRefresh() {
-	def jsonVal = groovy.json.JsonOutput.toJson(state.deviceList)
-	
-	sendEvent(name:"deviceList", value: jsonVal, displayed: false, isStateChange: true)	
-	
-	sendDeviceSummaryEvent()
-	
+void finishRefresh() {
 	def skipped = unrefreshedDevicePaths?.size() ?: 0
-	def total = state.deviceList?.size() ?: 0
-	if (skipped) {
-		if (isDuplicateCommand(state.lastRefresh, (4 * 60 * 1000))) {
-			// It's within the minimum reporting interval so refresh the devices that were missed the previous run.
-			logInfo "Attempting to Refresh ${skipped} Skipped Devices."
-			runIn(0, refreshDevices)
-		}
-		else {
-			logInfo "${(total - skipped)} Devices Refreshed / ${skipped} Devices Skipped"
-			sendRefreshedEvent()
-		}
+	
+	if (state.refreshing && !state.pendingAction && skipped && state.retries <= 3) {
+		state.retries = (state.retries + 1)
+			
+		// It's within the minimum reporting interval so refresh the devices that were missed the previous run.
+		def msg = "Refreshing ${skipped} Skipped Devices."
+		logInfo "$msg"
+		sendMainEvent("progress", "$msg")
+		runIn(3, refreshDevices)
+	}
+	else if (!state.refreshing && state.pendingAction) {
+		state.pendingAction = false		
+		sendRefreshedEvent("Device Refreshed")
 	}
 	else {
-		logInfo "${total} Devices Refreshed"
-		state.updating = false
-		sendEvent(name: "status", value: "Online", displayed: false, isStateChange: true)
-		sendRefreshedEvent()
+		def total = state.deviceList?.size() ?: 0
+		def refreshStatus = skipped ? "${total - skipped} of ${total}" : "All"
+	
+		state.refreshing = false		
+		sendRefreshedEvent("${refreshStatus} Devices Refreshed")
 	}	
-	return []
 }
 
-private sendDeviceSummaryEvent() {
-	sendEvent(name:"deviceSummary", value: deviceSummary, displayed: false, isStateChange: true)
-}
-
-private sendRefreshedEvent() {
+private sendRefreshedEvent(msg) {
+	logInfo "$msg"
+	state.retries = 0
 	def dt = state.lastRefresh ? new Date(state.lastRefresh) : new Date()
-	sendEvent(name: "refreshed", value:  convertToLocalTimeString(dt), displayed: false, isStateChange: true)
+	sendMainEvent("refreshed", convertToLocalTimeString(dt))
+	
+	sendMainEvent("status", "Online")
+	sendMainEvent("progress", "$msg")	
+	
+	runIn(5, clearProgress)
 }
 
-private getDeviceSummary() {
-	def lines = []
-	state.deviceList?.each {
-		lines << "${it.displayName} (${it.id})"
-	}
-	return lines ? lines.sort().join("\n") : ""
+def clearProgress() {
+	sendMainEvent("progress", "")
 }
 
 
 // Settings
-private getCommandDelaySetting() {
-	return safeToInt(settings?.commandDelay, 0)
-}
-
 private getExcludedDeviceIdsSetting() {
 	return settings?.excludedDeviceIds?.split(",")?.collect { it.trim() } ?: []
 }
@@ -454,7 +582,7 @@ private getRefreshIntervalOptions() {
 }
 
 private convertOptionSettingToInt(options, settingVal) {
-	return safeToInt(options?.find { "${settingVal}" == it.name }?.value, 0)
+	return safeToInt(options?.find { "${settingVal}" == "${it.name}" }?.value, 0)
 }
 
 private safeToInt(val, defaultVal=-1) {
