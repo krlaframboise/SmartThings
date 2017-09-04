@@ -1,14 +1,15 @@
 /**
- *  Other Hub Bridge 0.0.6 (ALPHA)
+ *  Other Hub Bridge 0.0.7 (ALPHA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
  *
- *    0.0.6 (09/04/2017)
+ *    0.0.7 (09/04/2017)
  *			- Fixed bug with duplicate device creation.
  *			- Disabled automatic refresh on install to allow the user to specify the excluded device ids.
+ *			- Automatically exclude devices with the device type "Device".
  *
  *    0.0.5 (09/04/2017)
  *			- Alpha Relase
@@ -348,7 +349,7 @@ private updateChildDeviceList(data) {
 	def deviceList = []
 	
 	data?.each { dev ->
-		if (!excludedDeviceIdsSetting?.find { "$it" == "${dev.id}"}) {
+		if (dev.deviceTypeName != "Device" && !excludedDeviceIdsSetting?.find { "$it" == "${dev.id}"}) {
 			deviceList << [id: "${dev.id}", lastActivityTime: dev.lastActivityTime, name: "${dev.name}"]
 		}
 	}
