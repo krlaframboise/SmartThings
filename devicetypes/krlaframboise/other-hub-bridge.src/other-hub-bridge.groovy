@@ -1,12 +1,12 @@
 /**
- *  Other Hub Bridge 0.0.8 (ALPHA)
+ *  Other Hub Bridge 0.0.9 (ALPHA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
  *
- *    0.0.8 (09/04/2017)
+ *    0.0.9 (09/04/2017)
  *			- Fixed bug with duplicate device creation.
  *			- Disabled automatic refresh on install to allow the user to specify the excluded device ids.
  *			- Automatically exclude devices with the device type "Device".
@@ -228,7 +228,7 @@ void refresh() {
 }
 
 private scheduleFinishRefresh() {
-	runIn((state.devicesAdded ? 60 : 15), finishRefresh)
+	runIn(30, finishRefresh)
 }
 
 void refreshDevices() {
@@ -525,7 +525,7 @@ private getSupportedCapabilities() {
 void finishRefresh() {
 	def skipped = unrefreshedDevicePaths?.size() ?: 0
 	
-	if (state.refreshing && !state.pendingAction && skipped && state.retries <= 3) {
+	if (state.refreshing && !state.devicesAdded && !state.pendingAction && skipped && state.retries <= 3) {
 		state.retries = (state.retries + 1)
 			
 		// It's within the minimum reporting interval so refresh the devices that were missed the previous run.
