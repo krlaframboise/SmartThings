@@ -1,12 +1,12 @@
 /**
- *  Other Hub Device Viewer v0.0.3 (ALPHA)
+ *  Other Hub Device Viewer v0.0.4 (ALPHA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
  *
- *    0.0.3 (09/03/2017)
+ *    0.0.4 (09/04/2017)
  *			- Alpha Relase
  *
  *  Licensed under the Apache License, Version 2.0 (the
@@ -51,14 +51,15 @@ definition(
 // Main Menu Page
 def mainPage() {	
 	dynamicPage(name:"mainPage", uninstall:true, install:true) {
-		if (settings?.hubBridge) {
-			if (getAllDevices().size() != 0) {				
+		if (settings?.ohDevices) {
+			def devices = getAllDevices()
+			if (devices?.size() != 0) {				
 				section() {
 					getDashboardHref()
 				}
 			}
 			section() {
-				if (getAllDevices().size() != 0) {				
+				if (devices?.size() != 0) {				
 					state.lastCapabilitySetting = null
 					getPageLink("lastEventLink",
 						"All Devices - Last Event",
@@ -72,7 +73,11 @@ def mainPage() {
 			input "hubBridge", "capability.bridge",
 				title: "Other Hub Bridge?",
 				required: true
-			if (settings?.hubBridge) {
+			input "ohDevices", "capability.bridge",
+				title: "Choose Other Hub Devices",
+				multiple: true,
+				required: false
+			if (settings?.ohDevices) {
 				getPageLink("displaySettingsLink",
 					"Display Settings",
 					"displaySettingsPage")
@@ -504,7 +509,7 @@ def toggleSwitchPage(params) {
 		section () {
 			paragraph "Wait a few seconds before pressing Done to ensure that the previous page refreshes correctly."
 			if (params.deviceId) {
-				def device = params.deviceId ? getAllDevices().find { it.id == params.deviceId } : null
+				def device = params.deviceId ? getAllDevices().find { "${it.id}" == "${params.deviceId}" } : null
 				def newState = device?.currentSwitch == "off" ? "on" : "off"
 				paragraph toggleSwitch(device, newState)
 			}
@@ -518,14 +523,18 @@ def toggleSwitchPage(params) {
 }
 
 private toggleSwitch(device, newState) {
-	if (device) {	
+	def hubBridge = settings?.hubBridge
+	if (device && hubBridge?.hasCommand("childOn")) {
 		if (newState == "on") {
-			device.on()
+			hubBridge.childOn(device.id)
 		}
 		else {
-			device.off()
+			hubBridge.childOff(device.id)			
 		}		
 		return "Turned ${device.displayName} ${newState.toUpperCase()}"
+	}
+	else if (!hubBridge.hasCommand("childOn")) {
+		log.warn "The selected Hub Bridge is not a Other Hub Bride"
 	}
 }
 
@@ -537,12 +546,12 @@ def capabilityPage(params) {
 		if (capSetting) {
 			state.lastCapabilitySetting = capSetting
 			section("${getPluralName(capSetting)}") {
-				// if (capSetting.name in ["Switch","Light"]) {
-					// getSwitchToggleLinks(getDeviceCapabilityListItems(capSetting))
-				// }
-				// else {
+				if (capSetting.name in ["Switch","Light"]) {
+					getSwitchToggleLinks(getDeviceCapabilityListItems(capSetting))
+				}
+				else {
 					getParagraphs(getDeviceCapabilityListItems(capSetting))
-				// }
+				}
 			}
 		}
 		else {
@@ -588,7 +597,7 @@ private getSwitchToggleLinks(listItems) {
 			description: "",
 			page: "toggleSwitchPage", 
 			required: false,
-			params: [deviceId: it.deviceId]
+			params: [deviceId: "${it.deviceId}"]
 		)
 	}
 }
@@ -648,7 +657,7 @@ private getDeviceAllCapabilitiesListItem(selectedCapSettings, device) {
 }
 
 private hasCapability(device, capabilityName) {
-	return device?.capabilities?.find { it == capabilityName } ? true : false
+	return device?.caps?.find { "${it}" == "${capabilityName}" } ? true : false
 }
 
 private getDeviceCapabilityListItems(cap) {
@@ -709,7 +718,7 @@ private getDeviceLastEventListItem(device) {
 	def listItem = [
 		value: lastEventTime ? now - lastEventTime : Long.MAX_VALUE,
 		status: lastEventTime ? "${getTimeSinceLastActivity(now - lastEventTime)}" : "N/A",
-		deviceId: device.deviceNetworkId
+		deviceId: device.id
 	]
 	
 	listItem.title = getDeviceStatusTitle(device, listItem.status)
@@ -763,9 +772,7 @@ private getOnlineOfflineStatus(deviceStatus) {
 
 private getDeviceCapabilityStatusItem(device, cap) {
 	try {
-		// def attrName = getAttributeName(cap)
-		// log.info "$attrName"
-		return getCapabilityStatusItem(cap, device.displayName, "${device.currentValues[getAttributeName(cap)]}")
+		return getCapabilityStatusItem(cap, device.displayName, "${device.attrs[getAttributeName(cap)]}")
 	}
 	catch (e) {
 		log.error "Device: ${device?.displayName} - Capability: $cap - Error: $e"
@@ -868,27 +875,29 @@ private getSelectedCapabilitySettings(timeout) {
 }
 
 private getAllDNIs() {
-	return getAllDevices().collect { it.deviceNetworkId }
+	return getAllDevices().collect { it.id }
 }
 
 private getAllDevices() {
-	def result = []
-	if (!isDuplicateCommand(state.lastGetAllDevices, 15000)) {
-		state.lastGetAllDevices = new Date().time
-		state.allDevices = extractDevices() ?: []	
-	}
-	return state.allDevices
+	// if (!isDuplicateCommand(state.lastGetAllDevices, 15000)) {
+		// state.lastGetAllDevices = new Date().time
+		// state.allDevices = extractDevices() ?: []	
+	// }
+	// return state.allDevices
+	// }
+	return extractDevices()
 }
 
 private extractDevices() {
 	// log.trace "extractDevices()"
 	def devices = []
 	try {
-		def data = settings?.hubBridge?.currentValue("deviceList")
-		if (data) {
-			def slurper = new groovy.json.JsonSlurper()
-			devices = slurper.parseText(data)		
-		}		
+		def slurper = new groovy.json.JsonSlurper()
+		settings?.ohDevices?.each {
+			if (it.hasAttribute("otherHubData") && it.currentOtherHubData) {
+				devices << slurper.parseText(it.currentOtherHubData)
+			}
+		}
 	}
 	catch (e) {
 		log.error "$e"
@@ -897,8 +906,8 @@ private extractDevices() {
 }
 
 private Date getLastActivityDate(device) {
-	if (device?.lastActivity) {
-		return Date.parse("yyyy-MM-dd'T'HH:mm:ss", "${device.lastActivity}".replace("+00:00", ""))		
+	if (device?.activity) {
+		return Date.parse("yyyy-MM-dd'T'HH:mm:ss", "${device.activity}".replace("+00:00", ""))		
 	}
 	else {
 		return new Date((new Date().time - (90 * 24 * 60 * 60)))
@@ -1068,17 +1077,15 @@ def installed() {
 
 // Resets subscriptions, scheduling and ensures all settings are initialized.
 def updated() {
-	unsubscribe()
-	unschedule()
-	state.refreshingDashboard = false
+	// unsubscribe()
+	// unschedule()
+	// state.refreshingDashboard = false
 	
-	if (state.capabilitySettings) {
-		cleanState()
-	}
+	// initialize()
 	
-	initialize()
+	// logDebug "State Used: ${(state.toString().length() / 100000)*100}%"
 	
-	logDebug "State Used: ${(state.toString().length() / 100000)*100}%"
+	// log.warn "${extractDevices()}"	
 }
 
 private initialize() {
@@ -1090,16 +1097,6 @@ private initialize() {
 	runIn(2, performScheduledTasks)
 	
 	initializeDevicesCache()
-}
-
-// Starting with version 1.9, the capabilitySettings are
-// no longer stored in state so this cleans up the old data.
-private cleanState() {
-	def sentNotifications = state.sentNotifications
-	def devicesCache = state.devicesCache
-	state.clear()
-	state.sentNotifications = sentNotifications
-	state.devicesCache = devicesCache
 }
 
 // Remove cached data for devices no longer selected and
@@ -1144,7 +1141,7 @@ void refreshDeviceActivityCache() {
 		
 			if (lastActivity) {
 				lastActivity.cachedTime = cachedTime
-				getDeviceCache(device.deviceNetworkId).activity = lastActivity
+				getDeviceCache(device.id).activity = lastActivity
 			}
 			
 		}	
@@ -1754,23 +1751,23 @@ private api_getRefreshInterval(cmd) {
 
 private api_getCapabilityHtml(cap, currentUrl, deviceId, cmd) {	
 	def html = ""
-	// if (api_isToggleSwitchCmd(cmd)) {		
-		// if (deviceId) {
-			// html = "<h1>${api_toggleSwitch(cap, deviceId, cmd)}</h1>"
-		// }
-		// else {
-			// html = api_toggleSwitches(cap, cmd)
-		// }
+	if (api_isToggleSwitchCmd(cmd)) {		
+		if (deviceId) {
+			html = "<h1>${api_toggleSwitch(cap, deviceId, cmd)}</h1>"
+		}
+		else {
+			html = api_toggleSwitches (cap, cmd)
+		}
 	
-		// html = "<div class=\"command-results\">$html</div>"		
-	// }			
+		html = "<div class=\"command-results\">$html</div>"		
+	}			
 	
-	// if (cap.name in ["Switch","Light", "Alarm"]) {
-		// html += api_getToggleItemsHtml(currentUrl, getDeviceCapabilityListItems(cap))
-	// }
-	// else {
+	if (cap.name in ["Switch","Light", "Alarm"]) {
+		html += api_getToggleItemsHtml(currentUrl, getDeviceCapabilityListItems(cap))
+	}
+	else {
 		html += api_getItemsHtml(getDeviceCapabilityListItems(cap))
-	// }
+	}
 	return html
 }
 
@@ -1814,7 +1811,7 @@ private api_toggleSwitches(cap, cmd) {
 }
 
 private api_toggleSwitch(cap, deviceId, cmd) {
-	def device = deviceId ? getAllDevices().find { it.id == deviceId } : null
+	def device = deviceId ? getAllDevices().find { "${it.id}" == "${deviceId}" } : null
 		
 	if (device) {
 		def newState = api_getNewSwitchState(device, cmd)
@@ -1835,7 +1832,7 @@ private api_getNewSwitchState(device, cmd) {
 		return cmd
 	}
 	else if (cmd == "toggle") {
-		return device?.currentSwitch == "off" ? "on" : "off"
+		return device?.attrs?."switch" == "off" ? "on" : "off"
 	}
 	else {
 		return ""
