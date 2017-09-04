@@ -1,10 +1,14 @@
 /**
- *  Other Hub Bridge 0.0.5 (ALPHA)
+ *  Other Hub Bridge 0.0.6 (ALPHA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    0.0.6 (09/04/2017)
+ *			- Fixed bug with duplicate device creation.
+ *			- Disabled automatic refresh on install to allow the user to specify the excluded device ids.
  *
  *    0.0.5 (09/04/2017)
  *			- Alpha Relase
@@ -42,7 +46,7 @@ metadata {
 			required: false
 		input "refreshInterval", "enum",
 			title: "Refresh Interval:",
-			defaultValue: refreshIntervalSetting,
+			defaultValue: "Disabled",
 			required: false,
 			displayDuringSetup: true,
 			options: refreshIntervalOptions.collect { it.name }
@@ -107,12 +111,7 @@ private initialize() {
 		state.retries = 0
 	}
 	
-	if (!state.deviceList) {
-		runIn(2, refresh)
-	}
-	
-	def checkInterval = ((refreshIntervalSettingMinutes * 60) + (60 * 5))
-	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "LAN", hubHardwareId: device.hub.hardwareID])	
+	initializeHealthCheck()
 
 	switch (refreshIntervalSettingMinutes) {
 		case 0:
@@ -135,6 +134,20 @@ private initialize() {
 			break
 		default:
 			runEvery3Hours(refresh)			
+	}
+}
+
+private initializeHealthCheck() {
+	if (refreshIntervalSettingMinutes || state.checkInterval) {
+		def checkInterval = (24 * 60 * 60) // default 1 day
+		if (refreshIntervalSettingMinutes) {
+			checkInterval = ((refreshIntervalSettingMinutes * 60) + (5 * 60))
+		}
+		if (checkInterval != state.checkInterval) {
+			state.checkInterval = checkInterval
+			
+			sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "LAN", hubHardwareId: device.hub.hardwareID])
+		}
 	}
 }
 
@@ -364,6 +377,7 @@ private updateChildDeviceDetails(data) {
 	def child = childDevices?.find { "${it.currentDeviceId}" == "${data.id}" }
 	
 	if (!child) {
+		state.pendingAdd = true
 		if (attributes?.find { k,v -> "$k" == "switch" }) {
 			logTrace "Adding Switch: ${data.name}"
 			child = addNewChildDevice(data, "Other Hub Switch")
@@ -510,7 +524,7 @@ private getSupportedCapabilities() {
 void finishRefresh() {
 	def skipped = unrefreshedDevicePaths?.size() ?: 0
 	
-	if (state.refreshing && !state.pendingAction && skipped && state.retries <= 3) {
+	if (state.refreshing && !state.pendingAdd && !state.pendingAction && skipped && state.retries <= 3) {
 		state.retries = (state.retries + 1)
 			
 		// It's within the minimum reporting interval so refresh the devices that were missed the previous run.
@@ -527,7 +541,10 @@ void finishRefresh() {
 		def total = state.deviceList?.size() ?: 0
 		def refreshStatus = skipped ? "${total - skipped} of ${total}" : "All"
 	
-		state.refreshing = false		
+		state.refreshing = false
+		state.pendingAction = false
+		state.pendingAdd = false		
+		
 		sendRefreshedEvent("${refreshStatus} Devices Refreshed")
 	}	
 }
