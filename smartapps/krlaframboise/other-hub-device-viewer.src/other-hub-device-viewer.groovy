@@ -1,13 +1,13 @@
 /**
- *  Other Hub Device Viewer v0.0.4 (ALPHA)
+ *  SmartThings: Other Hub Device Viewer v0.1 (BETA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
  *
- *    0.0.4 (09/04/2017)
- *			- Alpha Relase
+ *    0.1 (09/05/2017)
+ *			- Beta Relase
  *
  *  Licensed under the Apache License, Version 2.0 (the
  *  "License"); you may not use this file except in
@@ -510,7 +510,7 @@ def toggleSwitchPage(params) {
 			paragraph "Wait a few seconds before pressing Done to ensure that the previous page refreshes correctly."
 			if (params.deviceId) {
 				def device = params.deviceId ? getAllDevices().find { "${it.id}" == "${params.deviceId}" } : null
-				def newState = device?.currentSwitch == "off" ? "on" : "off"
+				def newState = "${device?.attrs?.switch}" == "off" ? "on" : "off"
 				paragraph toggleSwitch(device, newState)
 			}
 			else {
@@ -525,7 +525,7 @@ def toggleSwitchPage(params) {
 private toggleSwitch(device, newState) {
 	def hubBridge = settings?.hubBridge
 	if (device && hubBridge?.hasCommand("childOn")) {
-		if (newState == "on") {
+		if ("${newState}" == "on") {
 			hubBridge.childOn(device.id)
 		}
 		else {
@@ -878,24 +878,15 @@ private getAllDNIs() {
 	return getAllDevices().collect { it.id }
 }
 
-private getAllDevices() {
-	// if (!isDuplicateCommand(state.lastGetAllDevices, 15000)) {
-		// state.lastGetAllDevices = new Date().time
-		// state.allDevices = extractDevices() ?: []	
-	// }
-	// return state.allDevices
-	// }
-	return extractDevices()
-}
-
-private extractDevices() {
-	// log.trace "extractDevices()"
+private getAllDevices() {	
 	def devices = []
 	try {
 		def slurper = new groovy.json.JsonSlurper()
 		settings?.ohDevices?.each {
 			if (it.hasAttribute("otherHubData") && it.currentOtherHubData) {
-				devices << slurper.parseText(it.currentOtherHubData)
+				def device = slurper.parseText(it.currentOtherHubData)
+				device?.id = it.currentDeviceId
+				devices << device
 			}
 		}
 	}
@@ -1077,15 +1068,13 @@ def installed() {
 
 // Resets subscriptions, scheduling and ensures all settings are initialized.
 def updated() {
-	// unsubscribe()
-	// unschedule()
-	// state.refreshingDashboard = false
+	unsubscribe()
+	unschedule()
+	state.refreshingDashboard = false
 	
-	// initialize()
+	initialize()
 	
-	// logDebug "State Used: ${(state.toString().length() / 100000)*100}%"
-	
-	// log.warn "${extractDevices()}"	
+	logDebug "State Used: ${(state.toString().length() / 100000)*100}%"
 }
 
 private initialize() {
@@ -1653,10 +1642,17 @@ private initializeAppEndpoint() {
 }
 
 mappings {
+	path("/event/:name/:value/:deviceId") {action: [GET: "api_event"]}
 	path("/dashboard") {action: [GET: "api_dashboard"]}
 	path("/dashboard/:capability") {action: [GET: "api_dashboard"]}	
 	path("/dashboard/:capability/:cmd") {action: [GET: "api_dashboard"]}
 	path("/dashboard/:capability/:cmd/:deviceId") {action: [GET: "api_dashboard"]}	
+}
+
+private api_event() {
+	logDebug "Device ${params?.deviceId} ${params?.name} is ${params?.value}"
+	settings?.hubBridge?.childEvent("${params?.deviceId}", "${params?.name}", params.value)
+	return []
 }
 
 private api_dashboardUrl(capName=null) {	
@@ -1719,7 +1715,7 @@ def api_dashboard() {
 		
 		if (params.capability == "events") {
 			def items = getAllDeviceLastEventListItems()?.unique()
-			if (settings.lastEventSortByValue != false) {
+			if (settings?.lastEventSortByValue != false) {
 				items?.each { it.sortValue = (it.sortValue * -1) }
 			}
 			html = api_getItemsHtml(items)
@@ -1842,7 +1838,7 @@ private api_getNewSwitchState(device, cmd) {
 private api_getToggleItemsHtml(currentUrl, listItems) {
 	def html = ""
 			
-	listItems.unique().each {		
+	listItems.unique().each {	
 		html += api_getItemHtml(it.title, it.image, "${currentUrl}/toggle/${it.deviceId}", it.deviceId, it.status)
 	}
 	
@@ -1854,20 +1850,15 @@ private api_getToggleItemsHtml(currentUrl, listItems) {
 		imageName = imageName?.replace("-on", "")?.replace("-off", "")
 	}	
 	
-	// if (imageName in ["light", "switch"]) {
-		// html += api_getItemHtml("Turn All Off", "${imageName}-off all-command", "${currentUrl}/off", "", "")	
-		
-		// html += api_getItemHtml("Turn All On", "${imageName}-on all-command", "${currentUrl}/on", "", "")
-	// }
 	return html
 }
 
 private api_getItemsHtml(listItems) {
 	def html = ""		
 	
-	listItems.sort { it.sortValue }
+	listItems?.sort { it.sortValue }
 	
-	listItems.unique().each {				
+	listItems?.unique().each {				
 		html += api_getItemHtml(it.title, it.image, null, it.deviceId, it.status)
 	}
 	return html
@@ -1875,7 +1866,7 @@ private api_getItemsHtml(listItems) {
 
 private api_getItemHtml(text, imageName, url, deviceId, status) {
 	def imageClass = imageName ? imageName?.replace(".png", "") : ""
-	def deviceClass = deviceId ? deviceId?.replace(" ", "-") : "none"
+	def deviceClass = deviceId ? "$deviceId"?.replace(" ", "-") : "none"
 	def html 
 	
 	if (url) {
