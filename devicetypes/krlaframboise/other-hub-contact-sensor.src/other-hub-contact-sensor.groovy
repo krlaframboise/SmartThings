@@ -1,5 +1,5 @@
 /**
- *  Other Hub Device 1.0
+ *  Other Hub Contact Sensor 1.0
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -20,9 +20,10 @@
  *  for the specific language governing permissions and limitations under the License.
  */
 metadata {
-	definition (name: "Other Hub Device", namespace: "krlaframboise", author: "Kevin LaFramboise") {
+	definition (name: "Other Hub Contact Sensor", namespace: "krlaframboise", author: "Kevin LaFramboise") {
 		capability "Bridge"
 		capability "Refresh"
+		capability "Contact Sensor"
 		
 		attribute "status", "string"
 		attribute "deviceId", "number"
@@ -31,11 +32,14 @@ metadata {
 	}
 
 	tiles {
-		multiAttributeTile(name:"status", type: "generic", width: 6, height: 4, canChangeIcon: true){
-			tileAttribute ("device.status", key: "PRIMARY_CONTROL") {
-				attributeState "status", label: '${currentValue}',
-					icon: "st.unknown.zwave.static-controller",
-					backgroundColor: "#ffffff"
+		multiAttributeTile(name:"contact", type: "generic", width: 6, height: 4, canChangeIcon: true){
+			tileAttribute ("device.contact", key: "PRIMARY_CONTROL") {
+				attributeState "open", label: 'OPEN', 
+					icon: "st.contact.contact.open", 
+					backgroundColor: "#e86d13"
+				attributeState "closed", label: 'CLOSED', 
+					icon: "st.contact.contact.closed", 
+					backgroundColor: "#00A0DC"
 			}
 			tileAttribute ("device.status", key: "SECONDARY_CONTROL") {
 				attributeState "status", 
@@ -44,13 +48,11 @@ metadata {
 			}
 		}
 		standardTile("refresh", "device.refresh", height:2, width:2) {
-			state "default", label:'Refresh', 
-				action:"refresh.refresh", 
-				icon:"st.secondary.refresh-icon"
+			state "default", label:'Refresh', action:"refresh.refresh", icon:"st.secondary.refresh-icon"
 		}
 	}
 }
 
 void refresh() {
-	parent.childRefresh(device.deviceNetworkId)
+	parent.childRefresh(device.currentValue("deviceId"))
 }

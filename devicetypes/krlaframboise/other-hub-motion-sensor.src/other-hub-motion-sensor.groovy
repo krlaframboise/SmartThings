@@ -1,5 +1,5 @@
 /**
- *  Other Hub Switch 1.0
+ *  Other Hub Motion Sensor 1.0
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -20,10 +20,10 @@
  *  for the specific language governing permissions and limitations under the License.
  */
 metadata {
-	definition (name: "Other Hub Switch", namespace: "krlaframboise", author: "Kevin LaFramboise") {
+	definition (name: "Other Hub Motion Sensor", namespace: "krlaframboise", author: "Kevin LaFramboise") {
 		capability "Bridge"
 		capability "Refresh"
-		capability "Switch"
+		capability "Motion Sensor"
 		
 		attribute "status", "string"
 		attribute "deviceId", "number"
@@ -32,28 +32,14 @@ metadata {
 	}
 
 	tiles {
-		multiAttributeTile(name:"switch", type: "generic", width: 6, height: 4, canChangeIcon: true){
-			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
-				attributeState "off", label: 'OFF', 
-					action: "switch.on", 
-					nextState: "turningOn",
-					icon: "st.switches.switch.off", 
-					backgroundColor: "#ffffff"
-				attributeState "turningOn", label: 'TURNING ON',
-					action: "switch.off", 
-					nextState: "off", 
-					icon: "st.switches.switch.on", 
-					backgroundColor: "#00a0dc"				
-				attributeState "on", label: 'ON', 
-					action: "switch.off",
-					nextState: "turningOff",
-					icon: "st.switches.switch.on", 
-					backgroundColor: "#00a0dc"
-				attributeState "turningOff", label: 'TURNING OFF', 
-					action: "switch.off", 
-					nextState: "off",
-					icon: "st.switches.switch.off", 
-					backgroundColor: "#ffffff"
+		multiAttributeTile(name:"motion", type: "generic", width: 6, height: 4, canChangeIcon: true){
+			tileAttribute ("device.motion", key: "PRIMARY_CONTROL") {
+				attributeState("active", label:'MOTION', 
+					icon:"st.motion.motion.active", 
+					backgroundColor:"#00A0DC")
+				attributeState("inactive", label:'NO MOTION',
+					icon:"st.motion.motion.inactive", 
+					backgroundColor:"#cccccc")
 			}
 			tileAttribute ("device.status", key: "SECONDARY_CONTROL") {
 				attributeState "status", 
@@ -67,15 +53,6 @@ metadata {
 				icon:"st.secondary.refresh-icon"
 		}
 	}
-}
-
-
-void on() {
-	parent.childOn(device.currentValue("deviceId"))
-}
-
-void off() {
-	parent.childOff(device.currentValue("deviceId"))
 }
 
 void refresh() {

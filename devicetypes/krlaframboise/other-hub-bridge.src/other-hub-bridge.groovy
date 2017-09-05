@@ -1,18 +1,13 @@
 /**
- *  Other Hub Bridge 0.0.9 (ALPHA)
+ *  Other Hub Bridge 0.1 (BETA)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
  *
- *    0.0.9 (09/04/2017)
- *			- Fixed bug with duplicate device creation.
- *			- Disabled automatic refresh on install to allow the user to specify the excluded device ids.
- *			- Automatically exclude devices with the device type "Device".
- *
- *    0.0.5 (09/04/2017)
- *			- Alpha Relase
+ *    0.1. (09/05/2017)
+ *			- Beta Relase
  *
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -39,6 +34,7 @@ metadata {
 		command "childOn"
 		command "childOff"
 		command "childRefresh"
+		command "childEvent"
 	}
 
 	preferences {
@@ -157,55 +153,65 @@ void ping() {
 	sendRequests(["/installedapp/list/data"])
 }
 
-void childOn(dni) {
-	logTrace "childOn(${dni})..."
-	sendRunAction(dni, "switch.on")	
+void childOn(deviceId) {
+	logTrace "childOn(${deviceId})..."
+	sendRunAction(deviceId, "switch.on")	
 }
 
-void childOff(dni) {
-	logTrace "childOff(${dni})..."
-	sendRunAction(dni, "switch.off")	
+void childOff(deviceId) {
+	logTrace "childOff(${deviceId})..."
+	sendRunAction(deviceId, "switch.off")	
 }
 
-private sendRunAction(dni, command) {
+private sendRunAction(deviceId, command) {
 	// logTrace "${method} ${paths}"	
 	
-	def child = childDevices?.find { "${it.deviceNetworkId}" == "$dni" }
+	def child = findChildByDeviceId(deviceId)
 	if (child) {
 				
 		def msg = "Sending command ${command} to ${child.displayName}"				
 		logInfo "$msg"
 		sendMainEvent("progress", msg)
 	
-		def cmds = []		
-		cmds << new physicalgraph.device.HubAction(
+		sendHubCommand(new physicalgraph.device.HubAction(
 			method: "POST",
 			path: "/device/runaction",
 			headers: ["HOST": "${otherHubAddress}", "Content-Type": "application/json"],
-			body: [deviceId: "${child.currentDeviceId}", action: "${command}", args: []]
-		)		
-		sendHubCommand(cmds, 0)	
-		
-		runIn(3, refreshDetails, [data:[deviceId: child.currentDeviceId]])
+			body: [deviceId: "${deviceId}", action: "${command}", args: []]
+		))
 	}
 	else {
-		log.warn "Unable to send command ${command} for Device NULL"
+		log.warn "Unable to send command ${command} for Device ${deviceId}"
 	}
 }
 
-void childRefresh(dni) {
-	logTrace "childRefresh($dni})..."
-	def child = childDevices?.find { "${it.deviceNetworkId}" == "$dni" }
+void childEvent(deviceId, name, value) {
+	logTrace "childEvent($deviceId, $name, $value)"
+	def child = findChildByDeviceId(deviceId)
 	if (child) {
-		refreshDetails([deviceId: child.deviceId])
-	}	
+		def slurper = new groovy.json.JsonSlurper()
+		def data = child.currentOtherHubData ? slurper.parseText(child.currentOtherHubData) : [attrs:[:], caps:[:]]
+		
+		data.attrs."$name" = value
+		
+		def now = new Date()
+		data.activity = now		
+		
+		
+		sendChildDataEvents(child, data)
+	}
+	else {
+		log.warn "Device ${deviceId} not found"
+	}
 }
 
-void refreshDetails(data) {	
-	if (data?.deviceId) {
-		state.pendingAction = true
-		sendRequests([getDevicePath(data.deviceId)])
-	}	
+void childRefresh(deviceId) {
+	state.pendingAction = true
+	sendRequests([getDevicePath(deviceId)])
+}
+
+private findChildByDeviceId(deviceId) {
+	return childDevices?.find { "${it.currentDeviceId}" == "$deviceId" }
 }
 
 void refresh() {
@@ -313,7 +319,7 @@ def parse(String description) {
 	}
 	else if (isDeviceListData(msg?.data)) {
 		updateChildDeviceList(msg?.data)
-
+		
 		logInfo "Refreshing ${state.deviceList?.size() ?: 0} Devices"
 		state.refreshing = true
 		refreshDevices()
@@ -372,17 +378,25 @@ private updateChildDeviceDetails(data) {
 	
 	def lastActivity = state.deviceList?.find { "${it.id}" == "${data.id}" }?.lastActivityTime
 	
-	def attributes = getAttributes(data)
-	def capabilities = getCapabilities(attributes)
+	def attrs = getAttributes(data)
+	def caps = getCapabilities(attrs)
 	
 	def child = childDevices?.find { "${it.currentDeviceId}" == "${data.id}" }
 	
 	if (!child) {
 		state.devicesAdded = true
-		if (attributes?.find { k,v -> "$k" == "switch" }) {
+		if (childHasAttribute(attrs, "switch")) {
 			logTrace "Adding Switch: ${data.name}"
 			child = addNewChildDevice(data, "Other Hub Switch")
 		}
+		else if (childHasCapability(caps, "Motion Sensor")) {
+			logTrace "Adding Motion Sensor: ${data.name}"
+			child = addNewChildDevice(data, "Other Hub Motion Sensor")
+		}		
+		else if (childHasCapability(caps, "Contact Sensor")) {
+			logTrace "Adding Contact Sensor: ${data.name}"
+			child = addNewChildDevice(data, "Other Hub Contact Sensor")		
+		}		
 				
 		if (!child) {
 			logTrace "Adding Device: ${data.name}"
@@ -397,27 +411,27 @@ private updateChildDeviceDetails(data) {
 		logTrace "Updating ${data.name}"
 	}
 	
+	sendChildEvent(child, "lastRefresh", state.lastRefresh)
+	
 	if (child) {
 		def otherHubData = [
 			id: child.deviceNetworkId, 
 			displayName: child.displayName, 
 			activity: lastActivity,
-			attrs: attributes,
-			caps: capabilities
+			attrs: attrs,
+			caps: caps
 		]
-		sendChildEvent(child, "otherHubData", groovy.json.JsonOutput.toJson(otherHubData))
 		
-		sendChildEvent(child, "lastRefresh", state.lastRefresh)
-				
-		if (child.hasCapability("Switch")) {
-			def switchVal = attributes?."switch" ?: "off"
-			if (switchVal) {
-				def displayed = ("${child.currentSwitch}" != "$switchVal")
-				child.sendEvent(name: "switch", value: "${switchVal}".toLowerCase(), displayed: displayed, isStateChange: true)					
-			}
-		}
-		sendChildEvent(child, "status", getChildStatus(attributes))
+		sendChildDataEvents(child, otherHubData)
 	}
+}
+
+private childHasAttribute(attrs, attr) {
+	return attrs?.find { k,v -> "$k" == "$attr" } ? true : false
+}
+
+private childHasCapability(caps, cap) {
+	return caps?.find { "$it" == "$cap" } ? true : false
 }
 
 private addNewChildDevice(data, deviceType) {
@@ -446,6 +460,36 @@ private addNewChildDevice(data, deviceType) {
 	}
 }
 
+private sendChildDataEvents(child, data) {
+	if (data?.attrs) {
+		sendChildEvent(child, "status", getChildStatus(data.attrs))
+		
+		sendChildCapabilityEvent(child, "Switch", "switch", (data?.attrs?."switch"?.toLowerCase() ?: "off"))
+		
+		sendChildCapabilityEvent(child, "Motion Sensor", "motion", (data?.attrs?."motion"?.toLowerCase() ?: "inactive"))
+		
+		sendChildCapabilityEvent(child, "Contact Sensor", "contact", (data?.attrs?."contact"?.toLowerCase() ?: "closed"))
+	}
+	
+	if (data) {
+		sendChildEvent(child, "otherHubData", groovy.json.JsonOutput.toJson(data))
+	}
+}
+
+private sendChildCapabilityEvent(child, capName, attrName, value) {
+	if (child.hasCapability("${capName}")) {		
+		if (value) {
+	
+			def oldValue = child."current${attrName.capitalize()}"
+			if ("${oldValue}" != "$value") {
+			
+				child.sendEvent(name: "${attrName}", value: value, displayed: true, isStateChange: true)
+				
+			}
+		}
+	}
+}
+
 private getChildStatus(attrs) {
 	def attrStatuses = []
 	attrs?.each { k, v ->
@@ -465,11 +509,8 @@ private getChildStatus(attrs) {
 	return attrStatuses?.join("/") ?: ""
 }
 
-private sendMainEvent(name, value, displayed=false) {
-	sendEvent(name: "$name", value: value, displayed: displayed)
-}
-
 private sendChildEvent(child, name, value, displayed=false) {
+	// logTrace "sendChildEvent(${child}, ${name}, ${value}, ${displayed})"
 	child?.sendEvent(name: "$name", value: value, displayed: displayed)
 }
 
@@ -498,6 +539,11 @@ private getCapabilities(attrValues) {
 	}
 	return caps
 }
+
+private sendMainEvent(name, value, displayed=false) {
+	sendEvent(name: "$name", value: value, displayed: displayed)
+}
+
 
 private getSupportedCapabilities() {
 	[
@@ -577,7 +623,7 @@ private getRefreshIntervalSettingMinutes() {
 }
 
 private getRefreshIntervalSetting() {
-	return settings?.refreshInterval ?: "5 Minutes"
+	return settings?.refreshInterval ?: "Disabled"
 }
 
 
