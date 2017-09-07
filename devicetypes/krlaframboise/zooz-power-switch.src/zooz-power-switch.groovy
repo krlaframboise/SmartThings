@@ -1,5 +1,5 @@
 /**
- *  Zooz Power Switch / Zooz Smart Plug v1.0
+ *  Zooz Power Switch / Zooz Smart Plug v1.1
  *  (Models: ZEN15, ZEN06)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1 (09/06/2017)
+ *      - Switched history to value tile to fix iOS bug.
  *
  *    1.0 (07/26/2017)
  *      - Initial Release
@@ -105,7 +108,7 @@ metadata {
 		valueTile("current", "device.current", width: 2, height: 2) {
 			state "current", label:'${currentValue} A', backgroundColor: "#cccccc"
 		}
-		standardTile("history", "device.history", decoration:"flat",width: 6, height: 3) {
+		valueTile("history", "device.history", decoration:"flat",width: 6, height: 3) {
 			state "history", label:'${currentValue}'
 		}
 		main "switch"
