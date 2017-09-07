@@ -1,5 +1,5 @@
 /**
- *  Zooz/Monoprice 4-in-1 Multisensor v1.4.1
+ *  Zooz/Monoprice 4-in-1 Multisensor v1.4.2
  *		(Models: Zooz ZSE40, Monoprice P/N 15902)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.4.2 (09/07/2017)
+ *    	- Fixed unsupported led option 4 setting getting resent to devices that don't support it.
  *
  *    1.4.1 (08/26/2017)
  *    	- Fixed Wakeup interval bug.
@@ -326,7 +329,12 @@ private getCheckinIntervalChanged() {
 }
 
 private hasPendingChange(param) {
-	return (param.val != getParamStoredVal(param) || state.refreshAll)
+	if (isNewZoozDevice() || ledIndicatorModeParam.num != param.num || param.val != 4) {
+		return (param.val != getParamStoredVal(param) || state.refreshAll)
+	}
+	else {
+		log.warn "LED Indicator Mode #4 is only available in the Zooz device with firmware v16.9 and above."
+	}
 }
 
 // Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
