@@ -94,7 +94,7 @@ metadata {
 			required: false,
 			displayDuringSetup: true
 		input "onChimeSound", "number",
-			title: "Switch On Chime Sound [0-10]:\n1=two tone\n2=fur elise\n3=westminister chimes\n4=high-low chime\n5=?\n6=?\n7=fire alarm\n8=buzzer alarm\n9=multi-beep alarm\n10=single beep",
+			title: "Switch On Chime Sound [0-10]:\n1=two tone\n2=fur elise\n3=westminister chimes\n4=high-low chime\n5=?\n6=?\n7=fire alarm\n8=buzzer alarm\n9=fast beep alarm\n10=slow beep alarm",
 			range: "0..10",
 			required: false,
 			displayDuringSetup: true,
