@@ -439,7 +439,7 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>Reports Energy Duration and Cost.</li>
 <li>Creates Digital events when turned on/off from SmartApp and Physical events when the button is used.</li>
 <li>Optionally display Power, Energy, Voltage, and Current events in the Recently tab.</li>
-<!--<li><a href="https://community.smartthings.com/t/release-zooz-power-strip/68860?u=krlaframboise">View Documentation in SmartThings Forum</a></li>-->
+<li><a href="https://community.smartthings.com/t/release-zooz-power-switch-zooz-smart-plug/97220?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a id="ZoozPowerSwitch" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-switch.src/zooz-power-switch.groovy">View Zooz Power Switch/Zooz Smart Plug - Device Handler Code</a></li>
 </ul>
 

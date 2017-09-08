@@ -1,5 +1,5 @@
 /**
- *  Vision Shock Sensor v1.2
+ *  Vision Shock Sensor v1.2.1
  *  (ZS 5101)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation: https://community.smartthings.com/t/release-vision-shock-sensor-zs-5101/81628?u=krlaframboise
  *    
  *  Changelog:
+ *
+ *    1.2.1 (08/31/2017)
+ *    	- Using Notification Report to detect activity is unreliable in the Monoprice version so switched to BasicSet.
  *
  *    1.2 (07/23/2017)
  *    	- Fixed potential issue with secure version.
@@ -313,7 +316,11 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
 	// logTrace "Basic Set: $cmd"	
-	return []
+	def result = []
+	createPrimaryEventMaps(cmd.value == 0XFF)?. each {
+		result << createEvent(it)
+	}	
+	return result
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
@@ -329,21 +336,23 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 
 // Contact event is being created using Sensor Binarry command class so this event is ignored.
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
-	// logTrace "NotificationReport: $cmd"
-		
+	// logTrace "NotificationReport: $cmd"		
 	def result = []
 	if (cmd.notificationType == 7) {
 		if (cmd.event == 2 || cmd.v1AlarmType == 2) {
-			createPrimaryEventMaps(cmd.v1AlarmLevel == 0XFF)?. each {
-				result << createEvent(it)
-			}
+			// createPrimaryEventMaps(cmd.v1AlarmLevel == 0XFF)?. each {
+				// result << createEvent(it)
+			// }			
 		}
 		else if (cmd.event == 3) {
 			createSecondaryEventMaps(true)?.each {
 				result << createEvent(it)
 			}
 		}
-		result << createEvent(createLastActivityEventMap())
+		if (!isDuplicateCommand(state.lastActivity, 5000)) {
+			state.lastActivity = new Date().time
+			result << createEvent(createLastActivityEventMap())
+		}
 	}	
 	return result
 }
