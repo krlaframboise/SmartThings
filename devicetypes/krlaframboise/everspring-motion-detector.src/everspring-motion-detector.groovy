@@ -1,5 +1,5 @@
 /**
- *  Everspring Motion Detector v1.0.2
+ *  Everspring Motion Detector v1.0.3
  *    (Model: HSP02)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *   
  *
  *  Changelog:
+ *
+ *    1.0.3 (09/10/2017)
+ *    	- Removed old style fingerprint to eliminate conflicts with other generic sensors.
  *
  *    1.0.2 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -44,7 +47,7 @@ metadata {
 				
 		fingerprint mfr:"0060", prod:"0001", model:"0003"
 					
-		fingerprint deviceId:"0x2001", inClusters:"0x20,0x30,0x70,0x71,0x72,0x80,0x84,0x85,0x86"
+		// fingerprint deviceId:"0x2001", inClusters:"0x20,0x30,0x70,0x71,0x72,0x80,0x84,0x85,0x86"
 	}
 
 	preferences {
