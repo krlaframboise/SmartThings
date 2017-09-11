@@ -1,5 +1,5 @@
 /**
- *  GoControl Contact Sensor v1.10.1
+ *  GoControl Contact Sensor v1.10.2
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.10.2 (09/10/2017)
+ *    	- Removed old style fingerprint to eliminate conflicts with other generic sensors.
  *
  *    1.10.1 (07/01/2017)
  *    	- WARNING: This version may temporarily cause the main tile to display the wrong status, but it will correct itself the next time the device wakes up.  It doesn't effect the actual values being reported and you can immediately correct the primary tile by opening the settings and tapping Done.
@@ -92,7 +95,7 @@ metadata {
 		attribute "lastClosed", "string"
 		attribute "primaryStatus", "string"
 
-		fingerprint deviceId: "0x2001", inClusters: "0x71,0x85,0x80,0x72,0x30,0x86,0x84"			
+		// fingerprint deviceId: "0x2001", inClusters: "0x71,0x85,0x80,0x72,0x30,0x86,0x84"			
 		fingerprint mfr:"014F", prod:"2001", model:"0102"
 	}
 

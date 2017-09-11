@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Contact Sensor v1.2
+ *  GoControl Multifunction Contact Sensor v1.2.1
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation: https://community.smartthings.com/t/release-gocontrol-linear-multifunction-contact-sensor/77659?u=krlaframboise
  *    
  *  Changelog:
+ *
+ *    1.2.1 (09/10/2017)
+ *    	- Removed old style fingerprint to eliminate conflicts with other generic sensors. 
  *
  *    1.2 (07/01/2017)
  *    	- Updated colors to match SmartThing's new color theme.
@@ -72,7 +75,7 @@ metadata {
 		attribute "externalContact", "enum", ["open", "closed"]
 		attribute "lastCheckin", "string"
 
-		fingerprint deviceId: "0x2001", inClusters: "0x71,0x85,0x80,0x72,0x30,0x86,0x84"		
+		//fingerprint deviceId: "0x2001", inClusters: "0x71,0x85,0x80,0x72,0x30,0x86,0x84"		
 		fingerprint mfr:"014F", prod:"2001", model:"0102"
 	}
 

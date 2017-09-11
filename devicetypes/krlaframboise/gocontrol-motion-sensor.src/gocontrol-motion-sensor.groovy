@@ -1,5 +1,5 @@
 /**
- *  GoControl Motion Sensor v1.3.5
+ *  GoControl Motion Sensor v1.3.6
  *    (Model: WAPIRZ-1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.3.6 (09/10/2017)
+ *    	- Removed old style fingerprint to eliminate conflicts with other generic sensors. 
  *
  *    1.3.5 (09/01/2017)
  *    	- Added workaround for SmartThings breaking the convertTemperatureIfNeeded function for precision 0.
@@ -59,7 +62,7 @@ metadata {
  
 		fingerprint mfr:"014F", prod:"2002", model:"0203"
  
-		fingerprint deviceId:"0x2001", inClusters:"0x71, 0x85, 0x80, 0x72, 0x30, 0x86, 0x31, 0x70, 0x84"
+		// fingerprint deviceId:"0x2001", inClusters:"0x71, 0x85, 0x80, 0x72, 0x30, 0x86, 0x31, 0x70, 0x84"
 	}
 
 	preferences {		

@@ -1,5 +1,5 @@
 /**
- *  Zooz Power Switch / Zooz Smart Plug v1.1
+ *  Zooz Power Switch / Zooz Smart Plug v1.2
  *  (Models: ZEN15, ZEN06)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.2 (09/09/2017)
+ *      - The device seems to occasionallly report values that are way above a realitic value for some users so add a check that logs the value as a warning instead of creating events for it.
  *
  *    1.1 (09/06/2017)
  *      - Switched history to value tile to fix iOS bug.
@@ -132,6 +135,28 @@ private getBoolInput(name, title, defaultVal) {
 		title: "${title}?", 
 		defaultValue: defaultVal, 
 		required: false
+}
+
+
+// Meters
+private getMeterEnergy() { 
+	return getMeterMap("energy", 0, "kWh", null, settings?.displayEnergy != false) 
+}
+
+private getMeterPower() { 
+	return getMeterMap("power", 2, "W", 2000, settings?.displayPower != false)
+}
+
+private getMeterVoltage() { 
+	return getMeterMap("voltage", 4, "V", 150, settings?.displayVoltage != false) 
+}
+
+private getMeterCurrent() { 
+	return getMeterMap("current", 5, "A", 18, settings?.displayCurrent != false)
+}
+
+private getMeterMap(name, scale, unit, limit, displayed) {
+	return [name:name, scale:scale, unit:unit, limit: limit, displayed:displayed]
 }
 
 
@@ -379,7 +404,7 @@ def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd) {
 		
 	def meter 
 	switch (cmd.scale) {
-		case meterEnergy.scale:
+		case meterEnergy.scale:			
 			meter = meterEnergy
 			break
 		case meterPower.scale:
@@ -394,8 +419,11 @@ def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd) {
 		default:
 			logDebug "Unknown Meter Scale: $cmd"
 	}
-	
-	if (meter?.name && getAttrVal("${meter.name}") != val) {
+
+	if (meter?.limit && val > meter.limit) {
+		log.warn "Ignored ${meter.name} value ${val}${meter.unit} because the highest possible value is ${meter.limit}${meter.unit}."
+	}
+	else if (meter?.name && getAttrVal("${meter.name}") != val) {
 		result << createEvent(createEventMap(meter.name, val, meter.displayed, null, meter.unit))
 		
 		if (meter.name == meterEnergy.name) {
@@ -406,7 +434,7 @@ def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd) {
 		}
 		
 		runIn(5, refreshHistory)
-	}
+	}	
 	return result
 }
 
@@ -483,27 +511,6 @@ def refreshHistory() {
 		history += "${caption}: ${val} ${unit}\n"
 	}
 	sendEvent(createEventMap("history", history, false))
-}
-
-// Meters
-private getMeterEnergy() { 
-	return getMeterMap("energy", 0, "kWh", settings?.displayEnergy != false) 
-}
-
-private getMeterPower() { 
-	return getMeterMap("power", 2, "W", settings?.displayPower != false)
-}
-
-private getMeterVoltage() { 
-	return getMeterMap("voltage", 4, "V", settings?.displayVoltage != false) 
-}
-
-private getMeterCurrent() { 
-	return getMeterMap("current", 5, "A", settings?.displayCurrent != false)
-}
-
-private getMeterMap(name, scale, unit, displayed) {
-	return [name:name, scale:scale, unit:unit, displayed:displayed]
 }
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
@@ -695,15 +702,20 @@ private getDefaultOptionSuffix() {
 }
 
 private createEventMap(name, value, displayed=null, desc=null, unit=null) {	
+	desc = desc ?: "${name} is ${value}"
+	
 	def eventMap = [
 		name: name,
 		value: value,
 		displayed: (displayed == null ? ("${getAttrVal(name)}" != "${value}") : displayed),
 		isStateChange: true
 	]
+	
 	if (unit) {
 		eventMap.unit = unit
+		desc = "${desc} ${unit}"
 	}
+	
 	if (desc && eventMap.displayed) {
 		logDebug desc
 		eventMap.descriptionText = "${device.displayName} - ${desc}"
