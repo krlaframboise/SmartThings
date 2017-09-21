@@ -94,7 +94,7 @@ metadata {
 			required: false,
 			displayDuringSetup: true
 		input "onChimeSound", "number",
-			title: "Switch On Chime Sound [0-10]:\n1=two tone\n2=fur elise\n3=westminister chimes\n4=high-low chime\n5=?\n6=?\n7=fire alarm\n8=buzzer alarm\n9=fast beep alarm\n10=slow beep alarm",
+			title: "Switch On Chime Sound [0-10]:${getNameValueSettingDesc(soundNameOptions)}",
 			range: "0..10",
 			required: false,
 			displayDuringSetup: true,
@@ -763,6 +763,21 @@ private getSirenLengthOptions() {
 		[name: "1 Minute", value: 2],
 		[name: "5 Minutes", value: 3],
 		[name: "${noLengthMsg}", value: 4] // config value is 255
+	]
+}
+
+private getSoundNameOptions() {
+	[
+		[name:'two tone', value:1],
+		[name:'fur elise', value:2],
+		[name:'westminister chimes', value:3],
+		[name:'high-low chime', value:4],
+		[name:'?', value:5],
+		[name:'?', value:6],
+		[name:'fire alarm', value:7],
+		[name:'buzzer alarm', value:8],
+		[name:'fast beep alarm', value:9],
+		[name:'slow beep alarm', value:10]
 	]
 }
 
