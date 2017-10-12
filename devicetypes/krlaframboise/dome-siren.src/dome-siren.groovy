@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.1.6
+ *  Dome Siren v1.2
  *  (Model: DMS01)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.2 (10/12/2017)
+ *    	- SmartThings broke the ability to set a state value to null which prevented the resetting of sirenStartTime.
  *
  *    1.1.6 (04/27/2017)
  *    	- Bug fix for siren not turning on.
@@ -447,7 +450,7 @@ def stop() { return off() }
 def off() {
 	logDebug "Turning Off()"
 	state.pendingSiren = false
-	state.sirenStartTime = null
+	state.sirenStartTime = false
 	return sirenToggleCmds(0x00)
 }
 
@@ -781,7 +784,7 @@ private handleDeviceOff() {
 		}
 	}
 	state.pendingSiren = false
-	state.sirenStartTime = null
+	state.sirenStartTime = false
 	return result
 }
 
