@@ -1,5 +1,5 @@
 /**
- *  Dome Water Shut-Off v1.2
+ *  Dome Water Shut-Off v1.2.1
  *  (Model: DMWV1)
  *
  *  Author: 
@@ -10,6 +10,9 @@
  *  URL to Manual:  https://s3-us-west-2.amazonaws.com/dome-manuals/SmartThings/SmartThings+Water+Main+Shut-Off+Device+Handler.pdf
  *
  *  Changelog:
+ *
+ *    1.2.1 (10/15/2017)
+ *      - Added workaround for new SmartThings bug with setting state values to null.
  *
  *    1.2 (03/11/2017)
  *      - Added health check capability and self polling functionality.
@@ -276,7 +279,7 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 	
 	if (state.pending?.abortTime && state.pending?.abortTime > new Date().time) {
 		result << createEvent(createEventMap("status", state.pending.pendingValue, false))
-		state.pending = null
+		state.pending = [:]
 	}
 	else {
 		logDebug "Valve is ${reported.value.capitalize()}"
