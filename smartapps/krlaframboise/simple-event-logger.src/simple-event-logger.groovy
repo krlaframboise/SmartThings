@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - SmartApp v 1.4
+ *  Simple Event Logger - SmartApp v 1.4.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,7 +9,7 @@
  *
  *  Changelog:
  *
- *    1.4 (10/22/2017)
+ *    1.4.1 (10/22/2017)
  *      -  The Google Script does NOT need to be updated.
  *      -  Added "Activity" attribute which will log device "online/offline" changes.
  *      -  Added setting that allows you to log the event descriptionText to the description field instead of just the value and unit.
@@ -88,7 +88,7 @@ preferences {
 	page(name: "createTokenPage")
 }
 
-def version() { return "01.03.00" }
+def version() { return "01.04.01" }
 def gsVersion() { return "01.03.00" }
 
 def mainPage() {
@@ -307,7 +307,7 @@ private getOptionsPageContent() {
 			defaultValue: true,
 			required: false
 		input "logReporting", "bool",
-			title: "Log for Reporting?",
+			title: "Include additional columns for short date and hour?",
 			defaultValue: false,
 			required: false
 		input "deleteExtraColumns", "bool",
