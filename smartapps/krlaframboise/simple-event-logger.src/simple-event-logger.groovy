@@ -303,7 +303,7 @@ private getOptionsPageContent() {
 			defaultValue: true,
 			required: false
 		input "useValueUnitDesc", "bool",
-			title: "Use Value and Unit for Descripion?",
+			title: "Use Value and Unit for Description?",
 			defaultValue: true,
 			required: false
 		input "logReporting", "bool",
