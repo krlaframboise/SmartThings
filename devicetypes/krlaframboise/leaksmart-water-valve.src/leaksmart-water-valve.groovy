@@ -1,5 +1,5 @@
 /**
- *  LeakSMART Water Valve v 1.2.1
+ *  LeakSMART Water Valve v 1.3
  *     (Mode: 8830000L)
  *  
  *  Capabilities:
@@ -9,9 +9,15 @@
  *     Kevin LaFramboise (krlaframboise)
  *
  *  Url to Documentation:
- *      
+ *      https://community.smartthings.com/t/release-leaksmart-water-valve/48669
  *
  *  Changelog:
+ *
+ *    1.3 (10/23/2017)
+ *      - Added support for valve attribute events.
+ *
+ *    1.2.1 (08/12/2017)
+ *      - Create switch events when the open/close state changes.
  *
  *    1.2.1 (08/12/2017)
  *      - Create switch events when the open/close state changes.
@@ -125,6 +131,7 @@ def parse(String description) {
 			def val = (evt.value == "on") ? "open" : "closed"
 			logDebug "Valve is $val"
 			result << createEvent(name: "contact", value: val)
+			result << createEvent(name: "valve", value: val)
 			result << createEvent(name: "switch", value: evt.value, displayed:false)
 			result << createEvent(name: "lastPoll",value: new Date().time, isStateChange: true, displayed: false)
 		}
