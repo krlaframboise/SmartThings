@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - SmartApp v 1.3
+ *  Simple Event Logger - SmartApp v 1.4.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,12 @@
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
+ *
+ *    1.4.1 (10/22/2017)
+ *      -  The Google Script does NOT need to be updated.
+ *      -  Added "Activity" attribute which will log device "online/offline" changes.
+ *      -  Added setting that allows you to log the event descriptionText to the description field instead of just the value and unit.
+ *      -  Fixed timeout issue with the Device Attribute Exclusions screen.
  *
  *    1.3 (02/26/2017)
  *      - Requires Google Script Update
@@ -82,7 +88,7 @@ preferences {
 	page(name: "createTokenPage")
 }
 
-def version() { return "01.03.00" }
+def version() { return "01.04.01" }
 def gsVersion() { return "01.03.00" }
 
 def mainPage() {
@@ -182,12 +188,14 @@ private getDevicesPageContent() {
 		
 		getCapabilities().each { 
 			try {
-				input "${it.cap}Pref", "capability.${it.cap}",
-					title: "${it.title}:",
-					multiple: true,
-					hideWhenEmpty: true,
-					required: false,
-					submitOnChange: true
+				if (it.cap) {
+					input "${it.cap}Pref", "capability.${it.cap}",
+						title: "${it.title}:",
+						multiple: true,
+						hideWhenEmpty: true,
+						required: false,
+						submitOnChange: true
+				}
 			}
 			catch (e) {
 				logTrace "Failed to create input for ${it}: ${e.message}"
@@ -235,7 +243,9 @@ def attributeExclusionsPage() {
 				
 				paragraph "If there are some events that should't be logged for specific devices, use the corresponding event fields below to exclude them."
 				paragraph "You can also use the fields below to see which devices support each event."
-					
+				
+				def devices = getSelectedDevices()?.sort { it.displayName }
+				
 				settings?.allowedAttributes?.sort()?.each { attr ->
 				
 					if (startTime && (new Date().time - startTime) > 15000) {
@@ -243,10 +253,10 @@ def attributeExclusionsPage() {
 						startTime = null
 					}
 					else if (startTime) {				
-						try {						
-							def attrDevices = getSelectedDevices()?.findAll{ device ->
+						try {
+							def attrDevices = (isAllDeviceAttr("$attr") ? devices : (devices?.findAll{ device ->
 								device.hasAttribute("${attr}")
-							}?.collect { it.displayName }?.unique()?.sort()
+							}))?.collect { it.displayName }?.unique()
 							if (attrDevices) {
 								input "${attr}Exclusions", "enum",
 									title: "Exclude ${attr} events:",
@@ -292,8 +302,12 @@ private getOptionsPageContent() {
 			title: "Log Event Descripion?",
 			defaultValue: true,
 			required: false
+		input "useValueUnitDesc", "bool",
+			title: "Use Value and Unit for Description?",
+			defaultValue: true,
+			required: false
 		input "logReporting", "bool",
-			title: "Log for Reporting?",
+			title: "Include additional columns for short date and hour?",
 			defaultValue: false,
 			required: false
 		input "deleteExtraColumns", "bool",
@@ -319,7 +333,7 @@ private getOptionsPageContent() {
 		input "googleWebAppUrl", "text",
 			title: "${getWebAppName()} Url",
 			required: true
-		paragraph "The url you enter into this field needs to start with: ${getWebAppBaseUrl()}"
+		paragraph "The url you enter into this field needs to start with: ${webAppBaseUrl} or ${webAppBaseUrl2}"
 		paragraph "If your url does not start like that, go back and copy it from the Script Editor Publish screen in the Google Sheet."		
 	}
 	
@@ -457,11 +471,11 @@ private verifyWebAppUrl(url) {
 		logDebug "The ${getWebAppName()} Url field is required"
 		return false
 	}
-	else if ("$url"?.toLowerCase()?.startsWith(getWebAppBaseUrl())) {
+	else if ("$url"?.toLowerCase()?.startsWith(webAppBaseUrl) || "$url"?.toLowerCase()?.startsWith(webAppBaseUrl2)) {
 		return true
 	}
 	else {		
-		logWarn "The ${getWebAppName()} Url is not valid.  Go back and copy the url from the Google Sheets Script Editor Publish page."
+		logWarn "The ${webAppName} Url is not valid.  Go back and copy the url from the Google Sheets Script Editor Publish page."
 		return false
 	}
 }
@@ -719,12 +733,34 @@ private getNewEvents(startDate, endDate) {
 					device: device.displayName,
 					name: "${attr}",
 					value: event.value,
-					desc: "${event.value}" + (event.unit ? " ${event.unit}" : "")
+					desc: getEventDesc(event)
 				]
 			}
 		}
 	}
 	return events?.unique()?.sort { it.time }
+}
+
+private getEventDesc(event) {
+	if (settings?.useValueUnitDesc != false) {
+		return "${event.value}" + (event.unit ? " ${event.unit}" : "")
+	}
+	else {
+		def desc = "${event?.descriptionText}"
+		if (desc.contains("{")) {
+			desc = replaceToken(desc, "linkText", event.displayName)
+			desc = replaceToken(desc, "displayName", event.displayName)
+			desc = replaceToken(desc, "name", event.name)
+			desc = replaceToken(desc, "value", event.value)
+			desc = replaceToken(desc, "unit", event.unit)
+		}
+		return desc
+	}
+}
+
+private replaceToken(desc, token, value) {
+	desc = "$desc".replace("{{", "|").replace("}}", "|")
+	return desc.replace("| ${token} |", "$value")
 }
 
 private getMaxEventsSetting() {
@@ -742,15 +778,6 @@ private getFormattedLocalTime(utcTime) {
 			logWarn "Unable to get formatted local time for ${utcTime}: ${e.message}"
 			return "${utcTime}"
 		}
-	}
-	else {
-		return ""
-	}
-}
-
-private getEventDesc(desc) {
-	if (settings?.logDesc && !desc?.contains("device.displayName")) {
-		return desc
 	}
 	else {
 		return ""
@@ -784,9 +811,10 @@ private getSupportedAttributes() {
 	def devices = getSelectedDevices()
 	
 	if (devices) {
+	
 		getAllAttributes()?.each { attr ->
 			try {
-				if (devices?.find { it?.hasAttribute("${attr}") }) {
+				if (isAllDeviceAttr("$attr") || devices?.find { it?.hasAttribute("${attr}") }) {
 					supportedAttributes << "${attr}"
 				}
 			}
@@ -800,10 +828,15 @@ private getSupportedAttributes() {
 	return supportedAttributes?.unique()?.sort()
 }
 
+private isAllDeviceAttr(attr) { 
+	return getCapabilities().find { it.allDevices && it.attr == attr } ? true : false
+}
+
 private getAllAttributes() {
 	def attributes = []	
+	
 	getCapabilities().each { cap ->
-		try {
+		try {		
 			if (cap?.attr) {
 				if (cap.attr instanceof Collection) {
 					cap.attr.each { attr ->
@@ -836,7 +869,7 @@ private getSelectedDevices() {
 	def devices = []
 	getCapabilities()?.each {	
 		try {
-			if (settings?."${it.cap}Pref") {
+			if (it.cap && settings?."${it.cap}Pref") {
 				devices << settings?."${it.cap}Pref"
 			}
 		}
@@ -852,6 +885,7 @@ private getCapabilities() {
 		[title: "Actuators", cap: "actuator"],
 		[title: "Sensors", cap: "sensor"],
 		[title: "Acceleration Sensors", cap: "accelerationSensor", attr: "acceleration"],
+		[title: "Device Activity", attr: "activity", allDevices: true],
 		[title: "Alarms", cap: "alarm", attr: "alarm"],
 		[title: "Batteries", cap: "battery", attr: "battery"],
 		[title: "Beacons", cap: "beacon", attr: "presence"],
@@ -942,6 +976,10 @@ private getWebAppName() {
 
 private getWebAppBaseUrl() {
 	return "https://script.google.com/macros/s/"
+}
+
+private getWebAppBaseUrl2() {
+	return "https://script.google.com/macros/u/"
 }
 
 long safeToLong(val, defaultVal=0) {

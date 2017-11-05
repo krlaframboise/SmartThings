@@ -1,5 +1,5 @@
 /**
- *  Remotec ZXT-310 IR Extender v1.0.1
+ *  Remotec ZXT-310 IR Extender v1.0.2
  *     Remotec Z-Wave-to-AV IR Extender(Model: ZXT-310)
  *  
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation: 
  *
  *  Changelog:
+ *
+ *  1.0.2 (10/13/2017)
+ *    	- SmartThings broke the ability to set state values to null so added workaround.
  *
  *  1.0.1 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -105,6 +108,7 @@ metadata {
 		standardTile("epStatus", "device.epStatus", width: 2, height: 2, key: "PRIMARY_CONTROL", canChangeIcon: true) {
 			state "default", label: '${currentValue}', backgroundColor: "#ffffff", icon: "st.unknown.zwave.remote-controller"
 		}
+		//st.Weather.weather12 (moisture)
 		standardTile("switch", "device.switch", width: 2, height: 2) {
 			state "on", label: '${name}', action: "switch.off", icon:"st.Appliances.appliances17",  backgroundColor: "#79b821"
 			state "off", label: '${name}', action: "switch.on", icon:"st.Appliances.appliances17",  backgroundColor: "#ffffff"
@@ -415,7 +419,7 @@ def pushLearn() {
 	else if (state.activeLearnBtn) {
 		updateBtnStatus(state.activeLearnBtn, "assigned")
 		status = "${state.activeLearnBtn.name}\nLearned"
-		state.activeLearnBtn = null
+		state.activeLearnBtn = false
 		autoReset = true
 	}
 	
@@ -497,7 +501,7 @@ private sendEPDataEvent(epNum, data) {
 
 private resetLearnKey(btn) {
 	logDebug "Resetting ${btn.name}"
-	state.activeLearnBtn = null
+	state.activeLearnBtn = false
 	updateBtnStatus(btn, "")
 	sendRemoteStatusEvent("${btn.name} Reset", true)
 	return []
@@ -509,7 +513,7 @@ private learnKey(btn) {
 	if (state.activeLearnBtn) {
 		logDebug "Cancelling Learning because button ${btn.num} was pushed while learning button ${state.activeLearnBtn.num}"
 		updateBtnStatus(state.activeLearnBtn, state.activeLearnBtn.oldStatus)
-		state.activeLearnBtn = null
+		state.activeLearnBtn = false
 		pushLearn()
 	}
 	else {
@@ -640,7 +644,7 @@ private handleLearningStatus(learningStatus) {
 		if (btnStatus) {
 			updateBtnStatus(btn, btnStatus)
 			sendRemoteStatusEvent(status, true)			
-			state.activeLearnBtn = null
+			state.activeLearnBtn = false
 		}
 	}
 	return result ? sendResponse(result) : []
@@ -649,9 +653,9 @@ private handleLearningStatus(learningStatus) {
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd, ep=null) {	
 	// logTrace "BasicReport${getEPSuffix(ep)}: ${cmd}"
 	def result = []
-	if (state.activeBtn?.num) {
+	if (state.activeBtn && state.activeBtn?.num) {
 		result << createEvent(createBtnEventMap(state.activeBtn))
-		state.activeBtn = null
+		state.activeBtn = false
 	}
 	return result
 }
@@ -919,7 +923,7 @@ private sendRemoteStatusEvent(val, autoReset=false) {
 
 def resetRemoteStatus() {
 	if (state.tempRemoteStatus && state.tempRemoteStatus == device.currentValue("remoteStatus")) {
-		state.tempRemoteStatus = null
+		state.tempRemoteStatus = false
 		sendRemoteStatusEvent("")
 	}
 }
