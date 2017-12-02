@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.2
+ *  Dome Siren v1.2.1
  *  (Model: DMS01)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.2.1 (12/02/2017)
+ *    	- Fixed bug with siren play until depleted setting.
  *
  *    1.2 (10/12/2017)
  *    	- SmartThings broke the ability to set a state value to null which prevented the resetting of sirenStartTime.
@@ -921,7 +924,7 @@ private getChimeLEDSetting() {
 	return settings?.chimeLED ?: findDefaultOptionName(ledOptions)
 }
 private getChimeModeSetting() {
-	return 1 // Chime Mode should always be disabled.
+	return 1 // Chime Mode should always be disabled. (2: secondary)
 }
 private getCheckinIntervalSettingMinutes() {
 	return convertOptionSettingToInt(checkinIntervalOptions, checkinIntervalSetting) ?: 720
@@ -1034,7 +1037,7 @@ private getSirenLengthOptions() {
 		[name: "30 Seconds", value: 1],
 		[name: formatDefaultOptionName("1 Minute"), value: 2],
 		[name: "5 Minutes", value: 3],
-		[name: "${noLengthMsg}", value: 4] // config value is 255
+		[name: "${noLengthMsg}", value: 255] // old value 4???
 	]
 }
 
