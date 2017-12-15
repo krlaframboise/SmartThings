@@ -1,5 +1,5 @@
 /**
- *  Zooz/Monoprice 4-in-1 Multisensor v1.4.2
+ *  Zooz/Monoprice 4-in-1 Multisensor v1.5
  *		(Models: Zooz ZSE40, Monoprice P/N 15902)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.5 (12/14/2017)
+ *    	- Added support for new motion reset intervals for firmware version 3.
  *
  *    1.4.2 (09/07/2017)
  *    	- Fixed unsupported led option 4 setting getting resent to devices that don't support it.
@@ -287,11 +290,20 @@ def configure() {
 	def cmds = []		
 	if (!getAttrValue("firmwareVersion")) {		
 		sendEvent(name: "primaryStatus", value: "inactive", displayed: false)
-		// Give inclusion time to finish.
-		logTrace "Waiting 1 second because this is the first time being configured"		
-		cmds << "delay 500"		
 		cmds << versionGetCmd()
 	}
+	
+	if (state.pendingRefresh != false || !allAttributesHaveValues()) {
+		state.pendingRefresh = false
+		cmds += refreshSensorData()
+	}
+	else if (canReportBattery()) {
+		cmds << batteryGetCmd()
+	}
+			
+	configParams.each { param ->
+		cmds += updateConfigVal(param)
+	}	
 	
 	if (checkinIntervalChanged) {
 		logTrace "Updating wakeup interval"
@@ -299,18 +311,11 @@ def configure() {
 		cmds << wakeUpIntervalGetCmd()
 	}
 	
-	configParams.each { param ->
-		cmds += updateConfigVal(param)
-	}
-	
-	if (state.pendingRefresh != false) {
-		state.pendingRefresh = false
-		cmds += refreshSensorData()
-	}
-	else if (canReportBattery()) {
-		cmds << batteryGetCmd()
-	}
 	return cmds ? delayBetween(cmds, 50) : []	
+}
+
+private allAttributesHaveValues() {
+	return (getAttrValue("temperature") != null && getAttrValue("humidity") != null && getAttrValue("illuminance") != null && getAttrValue("battery") != null)
 }
 
 private updateConfigVal(param) {
@@ -455,6 +460,10 @@ private isNewZoozDevice() {
 	return (getAttrValue("firmwareVersion") != "5.1")
 }
 
+private isNewZoozDevice2() {
+	return (isNewZoozDevice() && (getAttrValue("firmwareVersion") != "16.9"))
+}
+
 // Sensor Types
 private getTempSensorType() { return 1 }
 private getHumiditySensorType() { return 5 }
@@ -490,7 +499,12 @@ private getLightTriggerParam() {
 }
 
 private getMotionTimeParam() {
-	return createConfigParamMap(5, "Motion Retrigger Time (Minutes)", 1, "motionTime", "1..255", 3)
+	if (isNewZoozDevice2()) {
+		return createConfigParamMap(5, "Motion Retrigger Time (15-60 Seconds)", 1, "motionTime", "15..60", 15)
+	}
+	else {
+		return createConfigParamMap(5, "Motion Retrigger Time (1-255 Minutes)", 1, "motionTime", "1..255", 3)
+	}
 }
 
 private getMotionSensitivityParam() {
@@ -705,6 +719,8 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
 private handleMotionEvent(val) {
 	def motionVal = (val == 0xFF ? "active" : "inactive")
 	
+	logTrace "Motion ${motionVal}"
+	
 	def eventMaps = []
 	eventMaps += createEventMaps("motion", motionVal, "", null, false)	
 	eventMaps += createStatusEventMaps(eventMaps, false)
@@ -751,6 +767,8 @@ private handleTamperEvent(val) {
 
 
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelReport cmd) {
+	// logTrace "SensorMultilevelReport: ${cmd}"
+	
 	state.lastRefreshed = new Date().time
 	state.pendingRefresh = false	
 	
