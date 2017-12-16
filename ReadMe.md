@@ -41,7 +41,6 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="#gocontrollinear-motion-sensor">GoControl/Linear Motion Sensor</a></li>
 			<li><a href="#gocontrollinear-multifunction-siren">GoControl/Linear/Vision Multifunction Siren</a></li>
 			<li><a href="#leaksmart-water-valve">LeakSmart Water Valve</a></li>
-			<li><a href="#zoozmonoprice-4-in-1-multisensor">Monoprice 4-in-1 Motion Sensor with Temperature, Humidity, and Light Sensors</a></li>
 			<li><a href="#visionmonoprice-shock-sensor">Monoprice Shock Sensor</a></li>
 			<li><a href="#monoprice-z-wave-plus-doorwindow-sensor">Monoprice Z-Wave Plus Door/Window Sensor</a></li>
 			<li><a href="#polling-cree-bulb">Polling Cree Bulb</a></li>
@@ -51,7 +50,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="#visionmonoprice-shock-sensor">Vision Shock Sensor</a></li>
 			<li><a href="#wireless-smoke-detector-sensor">Wireless Smoke Detector Sensor</a></li>
 			<li><a href="#zipato-multisound-siren">Zipato Multisound Siren</a></li>
-			<li><a href="#zoozmonoprice-4-in-1-multisensor">Zooz 4-in-1 Multisensor</a></li>
+			<li><a href="#zooz-4-in-1-sensor">Zooz 4-in-1 Sensor</a></li>
 			<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Smart Plug</a></li>
 			<li><a href="#zooz-power-strip">Zooz Power Strip</a></li>
 			<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Power Switch</a></li>
@@ -452,19 +451,18 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
-<h3>Zooz/Monoprice 4-in-1 Multisensor</h3>
+<h3>Zooz 4-in-1 Sensor</h3>
 
 <ul>
-<li>This is a device handler for the Zooz 4-in-1 Multisensor (ZSE40).</li>
-<li>It's also a device handler for the Monoprice 4-in-1 Motion Sensor with Temperature, Humidity, and Light Sensors (P/N 15902)</li>
+<li>This is a device handler for the Zooz 4-in-1 Sensor (ZSE40).</li>
 <li><strong>After updating the settings, pressing the button on the bottom with a paperclip will automatically apply them.</strong></li>
 <li>If you want to force all the values to refresh, tap the refresh button and then press the button on the bottom with a paperclip.</li> 
 <li>The device wakes up every 6 hours by default, but there's a setting for <em>Minimum Check-in Interval (Hours)</em> which accepts the range 1 to 167.</li>
 <li>There's also a setting for <em>Battery Reporting Interval (Hours)</em> which accepts the same range of values.</li>
 <li>When the cover of the device is opened, it raises the "tamper" event with the value "detected".</li>
 <li>The setting <em>Automatically Clear Tamper</em> allows you to choose whether it raises the tamper clear event when the device cover is closed or if you have to press the "Refresh" button to clear it.<br></li>
-<li><a href="https://community.smartthings.com/t/release-zooz-4-in-1-multisensor/82989?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-monoprice-4-in-1-multisensor.src/zooz-monoprice-4-in-1-multisensor.groovy">View Zooz/Monoprice 4-in-1 Multisensor - Device Handler Code</a></li>
+<li><a href="https://community.smartthings.com/t/release-zooz-4-in-1-sensor/82989?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-4-in-1-sensor.src/zooz-4-in-1-sensor.groovy">View Zooz 4-in-1 Sensor - Device Handler Code</a></li>
 </ul>
 
 <hr />
