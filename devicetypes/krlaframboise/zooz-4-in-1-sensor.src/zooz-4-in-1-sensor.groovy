@@ -144,7 +144,7 @@ metadata {
 		
 		valueTile("motion", "device.motion", width: 2, height: 2){
 			state "inactive", label:'No \nMotion', backgroundColor:"#ffffff"
-			state "active", label:'Motion \nMotion', backgroundColor:"#00a0dc"
+			state "active", label:'Motion', backgroundColor:"#00a0dc"
 		}
 		
 		valueTile("tampering", "device.tamper", width: 2, height: 2) {			
