@@ -51,11 +51,11 @@ metadata {
 		attribute "lxLight", "number"
 		attribute "firmwareVersion", "string"
 
-		// Firmware v2 & v3
-		fingerprint mfr:"027A", prod:"2021", model:"2101"
+		// Firmware 16.9 & 17.9
+		fingerprint mfr:"027A", prod:"2021", model:"2101", deviceJoinName: "Zooz 4-in-1 Sensor"
 		
-		// Firmware v1
-		fingerprint mfr:"0109", prod:"2021", model:"2101"
+		// Firmware 5.1
+		fingerprint mfr:"0109", prod:"2021", model:"2101", deviceJoinName: "Zooz 4-in-1 Sensor"
 	}
 	
 	simulator { }
@@ -143,18 +143,19 @@ metadata {
 		}
 		
 		valueTile("motion", "device.motion", width: 2, height: 2){
-			state "inactive", label:'${currentValue}', backgroundColor:"#ffffff"
-			state "active", label:'${currentValue}', backgroundColor:"#00a0dc"
+			state "inactive", label:'No \nMotion', backgroundColor:"#ffffff"
+			state "active", label:'Motion \nMotion', backgroundColor:"#00a0dc"
 		}
 		
 		valueTile("tampering", "device.tamper", width: 2, height: 2) {			
-			state "clear", label:'${currentValue}', backgroundColor:"#ffffff"
-			state "detected", label:'${currentValue}', backgroundColor: "#e86d13"
+			state "clear", label:'Tamper \nClear', backgroundColor:"#ffffff"
+			state "detected", label:'Tamper \nDetected', backgroundColor: "#e86d13"
 		}
 		
 		valueTile("battery", "device.battery", decoration: "flat", inactiveLabel: false, width: 2, height: 2){
 			state "default", label:'${currentValue}% \nBattery', unit: ""
 		}
+			
 		
 		valueTile("pending", "device.pendingChanges", decoration: "flat", width: 2, height: 2){
 			state "pendingChanges", label:'${currentValue} Change(s) Pending'
@@ -166,12 +167,16 @@ metadata {
 			state "lastUpdate", label:'Settings\nUpdated\n\n${currentValue}'
 		}
 		
+		valueTile("firmwareVersion", "device.firmwareVersion", decoration: "flat", inactiveLabel:false, width: 2, height: 2){
+			state "firmwareVersion", label:'Firmware \n${currentValue}'
+		}
+		
 		standardTile("refresh", "device.refresh", inactiveLabel: false, width: 2, height: 2) {
 			state "default", label: "Refresh", action: "refresh", icon:"st.secondary.refresh-icon"
 		}
 		
 		main("mainTile")
-		details(["mainTile", "humidity", "temperature", "lxLight", "battery", "pLight", "motion", "tampering", "pending", "lastUpdate", "refresh"])
+		details(["mainTile", "humidity", "temperature", "lxLight", "battery", "pLight", "motion", "tampering", "firmwareVersion", "lastUpdate", "refresh","pending"])
 	}
 }
 
@@ -204,14 +209,9 @@ def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
 		state.lastUpdated = new Date().time
 		logTrace "updated()"
-		
+	
 		initializeOffsets()
-
-		if (!isNewZoozDevice() && settings && settings["${ledIndicatorModeParam.prefName}"] == 4) {
-			state["configVal${ledIndicatorModeParam.num}"] = 4			
-			log.warn "LED Indicator Mode #4 is only available in the Zooz device with firmware v16.9 and above."
-		}
-
+					
 		if (!getAttrValue("tamper")) {
 			sendEvent(createTamperEventMap("clear"))
 		}
@@ -324,11 +324,32 @@ private getCheckinIntervalChanged() {
 }
 
 private hasPendingChange(param) {
-	if (isNewZoozDevice() || ledIndicatorModeParam.num != param.num || param.val != 4) {
+	
+	if ((param.num != ledIndicatorModeParam.num || ledIndicatorModeMatchesFirmware(param.val)) && (param.num != motionTimeParam.num || motionTimeMatchesFirmware(param.val))) {
 		return (param.val != getParamStoredVal(param) || state.refreshAll)
 	}
 	else {
-		log.warn "LED Indicator Mode #4 is only available in the Zooz device with firmware v16.9 and above."
+		return false
+	}
+}
+
+private ledIndicatorModeMatchesFirmware(val) {
+	if (firmwareVersion >= firmwareV2 || val != 4) {
+		return true
+	}
+	else {
+		log.warn "LED Indicator Mode #4 is only available in firmware ${firmwareV2} and above."
+		return false
+	}
+}
+
+private motionTimeMatchesFirmware(val) {
+	if (firmwareVersion < firmwareV3 || (val >= 15 && val <= 60)) {
+		return true
+	}
+	else {
+		log.warn "${val} Seconds is not a valid Motion Time for Firmware ${firmwareV3}."
+		return false
 	}
 }
 
@@ -377,7 +398,7 @@ private getMaxLxSetting() {
 	return safeToInt(settings?.maxLx, 50)
 }
 private getCheckinIntervalSetting() {
-	return (safeToInt(settings?.checkinInterval, (isNewZoozDevice() ? 12 : 6)))
+	return (safeToInt(settings?.checkinInterval, (firmwareVersion >= firmwareV2 ? 12 : 6)))
 }
 private getCheckinIntervalSettingSeconds() {
 	if (checkinIntervalSetting == 0) {
@@ -403,7 +424,7 @@ private getDebugOutputSetting() {
 private getNameValueSettingDesc(nameValueMap) {
 	def desc = ""
 	nameValueMap?.sort { it.value }.each { 
-		desc = "${desc}\n(${it.value} - ${it.name})"
+		desc = "${desc}\n(${it.value} = ${it.name})"
 	}
 	return desc
 }
@@ -420,8 +441,8 @@ private getLedIndicatorModes() {
 		[name: "Temperature Off / Motion Off", value: 1],
 		[name: "Temperature Pulse / Motion Flash", value: 2],
 		[name: "Temperature Flash / Motion Flash", value: 3],
-		[name: "Temperature Off / Motion Flash", value: 4]
-	]
+		[name: "Temperature Off / Motion Flash [ONLY FIRMWARE ${firmwareV2} AND ABOVE]", value: 4]
+	]	
 }
 
 private getPrimaryStatusOptions() {
@@ -446,13 +467,14 @@ private getSecondaryStatusOptions() {
 	]
 }
 
-private isNewZoozDevice() {
-	return (getAttrValue("firmwareVersion") != "5.1")
+private getFirmwareVersion() {
+	return safeToDec(getAttrValue("firmwareVersion"), 0.0)
 }
 
-private isNewZoozDevice2() {
-	return (isNewZoozDevice() && (getAttrValue("firmwareVersion") != "16.9"))
-}
+private getFirmwareV1() { return 5.1 }
+private getFirmwareV2() { return 16.9 }
+private getFirmwareV3() { return 17.9 }
+
 
 // Sensor Types
 private getTempSensorType() { return 1 }
@@ -473,7 +495,7 @@ private getConfigParams() {
 }
 
 private getTempScaleParam() {
-	return createConfigParamMap(1, "Temperature Scale [0-1]${getNameValueSettingDesc(tempUnits)}", 1, "tempScale", "0..1", (isNewZoozDevice() ? 1 : 0))
+	return createConfigParamMap(1, "Temperature Scale [0-1]${getNameValueSettingDesc(tempUnits)}", 1, "tempScale", "0..1", (firmwareVersion >= firmwareV2 ? 1 : 0))
 }
 
 private getTempTriggerParam() {
@@ -488,20 +510,15 @@ private getLightTriggerParam() {
 	return createConfigParamMap(4, "Light Change Trigger [5-50]\n(5% - 50%)", 1, "lightTrigger", "5..50", 10)
 }
 
-private getMotionTimeParam() {
-	if (isNewZoozDevice2()) {
-		return createConfigParamMap(5, "Motion Retrigger Time (15-60 Seconds)", 1, "motionTime", "15..60", 15)
-	}
-	else {
-		return createConfigParamMap(5, "Motion Retrigger Time (1-255 Minutes)", 1, "motionTime", "1..255", 3)
-	}
+private getMotionTimeParam() {	
+	return createConfigParamMap(5, "Motion Retrigger Time [1-255 or 15-60]\n(1 Minute - 255 Minutes [FIRMWARE ${firmwareV1} & ${firmwareV2}])\n(15 Seconds - 60 Seconds [FIRMWARE ${firmwareV3}])", 1, "motionTime", "1..255", 15)
 }
 
 private getMotionSensitivityParam() {
 	return createConfigParamMap(6, "Motion Sensitivity [1-7]\n(1 = Most Sensitive)\n(7 = Least Sensitive)", 1, "motionSensitivity", "1..7", 4)
 }
 
-private getLedIndicatorModeParam() {		
+private getLedIndicatorModeParam() {	
 	return createConfigParamMap(7, "LED Indicator Mode [1-4]${getNameValueSettingDesc(ledIndicatorModes)}", 1, "ledIndicatorMode", "1..4", 3)
 }
 
