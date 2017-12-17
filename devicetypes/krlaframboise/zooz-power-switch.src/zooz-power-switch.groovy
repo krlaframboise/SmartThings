@@ -1,5 +1,5 @@
 /**
- *  Zooz Power Switch / Zooz Smart Plug v1.2
+ *  Zooz Power Switch / Zooz Smart Plug v1.4
  *  (Models: ZEN15, ZEN06)
  *
  *  Author: 
@@ -9,6 +9,10 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.4 (12/17/2017)
+ *      - Added Acceleration capability for detecting when power is on or off and setting for the active threshold.
+ *      - Added overload protection override setting.
  *
  *    1.2 (09/09/2017)
  *      - The device seems to occasionallly report values that are way above a realitic value for some users so add a check that logs the value as a warning instead of creating events for it.
@@ -46,6 +50,7 @@ metadata {
 		capability "Configuration"
 		capability "Refresh"
 		capability "Health Check"
+		capability "Acceleration Sensor"
 		
 		attribute "lastCheckin", "string"
 		attribute "history", "string"
@@ -79,6 +84,12 @@ metadata {
 			required: false,
 			displayDuringSetup: true
 			
+		input "inactivePower", "number",
+			title: "Report inactive when power is less than or equal to:",
+			defaultValue: inactivePowerSetting,
+			required: false,
+			displayDuringSetup: true
+			
 		["Power", "Energy", "Voltage", "Current"].each {
 			getBoolInput("display${it}", "Display ${it} Activity", true)
 		}
@@ -91,6 +102,10 @@ metadata {
 			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
 				attributeState "on", label: '${name}', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#00a0dc"
 				attributeState "off", label: '${name}', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
+			}
+			tileAttribute ("device.acceleration", key: "SECONDARY_CONTROL") {
+				attributeState "inactive", label:'INACTIVE'
+				attributeState "active", label:'ACTIVE'
 			}
 		}
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
@@ -369,6 +384,10 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport 
 		logDebug "${configParam.name}(#${configParam.num}) = ${name != null ? name : val} (${val})"
 		state["configVal${cmd.parameterNumber}"] = val
 		
+		if (configParam.num == overloadProtectionParam.num) {
+			refreshHistory()
+		}
+		
 	}	
 	else {
 		logDebug "Parameter ${cmd.parameterNumber} = ${val}"
@@ -408,6 +427,7 @@ def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd) {
 			meter = meterEnergy
 			break
 		case meterPower.scale:
+			createAccelerationEvent(val)		
 			meter = meterPower
 			break
 		case meterVoltage.scale:
@@ -436,6 +456,16 @@ def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd) {
 		runIn(5, refreshHistory)
 	}	
 	return result
+}
+
+private createAccelerationEvent(val) {
+	def deviceActive = (device.currentValue("acceleration") == "active")
+	if (val > inactivePowerSetting &&  !deviceActive) {
+		sendEvent(name:"acceleration", value:"active", displayed:false)
+	}
+	else if (val <= inactivePowerSetting && deviceActive){
+		sendEvent(name:"acceleration", value:"inactive", displayed:false)
+	}
 }
 
 private createHighLowEvents(meter, val) {
@@ -498,12 +528,18 @@ private getFormattedDuration(duration, divisor, name) {
 def refreshHistory() {
 	def history = ""
 	def items = [:]
+			
 	items["energyDuration"] = "Energy - Duration"
 	items["energyCost"] = "Energy - Cost"
 	["power", "voltage", "current"].each {
 		items["${it}Low"] = "${it.capitalize()} - Low"
 		items["${it}High"] = "${it.capitalize()} - High"
 	}
+	
+	if (getParamStoredIntVal(overloadProtectionParam) == 0) {
+		history += "*** Overload Protection Disabled ***\n"
+	}
+	
 	items.each { attrName, caption ->
 		def attr = device.currentState("${attrName}")
 		def val = attr?.value ?: ""
@@ -536,7 +572,7 @@ private getConfigParams() {
 }
 
 private getOverloadProtectionParam() {
-	return createConfigParamMap(20, "Overload Protection", 1, null, null, 1) // 1:Enable
+	return createConfigParamMap(20, "Overload Protection", 1, ["Disabled (NOT RECOMMENDED)":0, "Enabled${defaultOptionSuffix}":1], "overloadProtection")
 }
 
 private getPowerFailureRecoveryParam() {
@@ -600,6 +636,10 @@ private createConfigParamMap(num, name, size, options, prefName, val=null) {
 // Settings
 private getEnergyPriceSetting() {
 	return safeToDec(settings?.energyPrice, 0.12)
+}
+
+private getInactivePowerSetting() {
+	return safeToInt(settings?.inactivePower, 0)
 }
 
 private getDebugOutputSetting() {
