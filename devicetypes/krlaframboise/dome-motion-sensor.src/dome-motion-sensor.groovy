@@ -116,7 +116,7 @@ metadata {
 				attributeState "inactive", 
 					label:'No Motion', 
 					icon:"st.motion.motion.inactive", 
-					backgroundColor:"#ffffff"
+					backgroundColor:"#cccccc"
 				attributeState "active", 
 					label:'Motion', 
 					icon:"st.motion.motion.active", 

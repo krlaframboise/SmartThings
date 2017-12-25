@@ -79,17 +79,11 @@ metadata {
 	}
 
 	tiles(scale: 2) {
-		multiAttributeTile(name:"contact", type: "generic", width: 6, height: 4, canChangeIcon: false){
+		multiAttributeTile(name:"contact", type: "generic", width: 6, height: 4){
 			tileAttribute ("device.contact", key: "PRIMARY_CONTROL") {
-				attributeState "open", 
-					label:'open', 
-					icon:"st.contact.contact.open", 
-					backgroundColor:"#e86d13"
-				attributeState "closed", 
-					label:'closed', 
-					icon:"st.contact.contact.closed", 
-					backgroundColor:"#00a0dc"
-			}			
+				attributeState("open", label:'${name}', icon:"st.contact.contact.open", backgroundColor:"#e86d13")
+				attributeState("closed", label:'${name}', icon:"st.contact.contact.closed", backgroundColor:"#00a0dc")
+			}
 		}	
 		
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
