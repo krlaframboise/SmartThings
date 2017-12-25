@@ -1,5 +1,5 @@
 /**
- *  Dome Motion Sensor v1.1.3
+ *  Dome Motion Sensor v1.1.4
  *  (Model: DMMS1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.4 (12/25/2017)
+ *    	- Implemented new ST color scheme.
  *
  *    1.1.3 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -117,7 +120,7 @@ metadata {
 				attributeState "active", 
 					label:'Motion', 
 					icon:"st.motion.motion.active", 
-					backgroundColor:"#53a7c0"
+					backgroundColor:"#00a0dc"
 			}			
 			tileAttribute ("device.illuminance", key: "SECONDARY_CONTROL") {
 				attributeState "illuminance", 
