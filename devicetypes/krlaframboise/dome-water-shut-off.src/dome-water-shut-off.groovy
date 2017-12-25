@@ -1,5 +1,5 @@
 /**
- *  Dome Water Shut-Off v1.2.1
+ *  Dome Water Shut-Off v1.2.2
  *  (Model: DMWV1)
  *
  *  Author: 
@@ -10,6 +10,9 @@
  *  URL to Manual:  https://s3-us-west-2.amazonaws.com/dome-manuals/SmartThings/SmartThings+Water+Main+Shut-Off+Device+Handler.pdf
  *
  *  Changelog:
+ *
+ *    1.2.2 (12/25/2017)
+ *      - Implemented ST new color scheme.
  *
  *    1.2.1 (10/15/2017)
  *      - Added workaround for new SmartThings bug with setting state values to null.
@@ -82,23 +85,23 @@
 					label:'Closing', 
 					action: "valve.open", 
 					icon:"st.valves.water.closed", 
-					backgroundColor:"#ffe71e"
+					backgroundColor:"#ffffff"
 				attributeState "closed", 
 					label:'Closed', 
 					action: "valve.open", 
 					icon:"st.valves.water.closed", 
-					backgroundColor:"#e86d13",
+					backgroundColor:"#ffffff",
 					nextState: "opening"
 				attributeState "opening", 
 					label:'Opening', 
 					action: "valve.close", 
 					icon:"st.valves.water.open", 
-					backgroundColor:"#ffe71e"
+					backgroundColor:"#00a0dc"
 				attributeState "open", 
 					label:'Open', 
 					action: "valve.close", 
 					icon:"st.valves.water.open", 
-					backgroundColor:"#53a7c0",
+					backgroundColor:"#00a0dc",
 					nextState: "closing"
 			}
 		}
@@ -109,12 +112,12 @@
 				action:"valve.open",
 				icon:"st.valves.water.open",
 				nextState: "open",
-				backgroundColor:"#53a7c0"
+				backgroundColor:"#00a0dc"
 			state "open",
 				label:'Open',
 				action:"valve.open",
 				icon:"st.valves.water.open",
-				background: "#ffffff"	
+				background: "#00a0dc"	
 		}
 		
 		standardTile("closeValve", "device.valve", width: 2, height: 2) {
@@ -122,7 +125,7 @@
 				label:'Close',
 				action:"valve.close",
 				icon:"st.valves.water.closed",
-				backgroundColor:"#e86d13",
+				backgroundColor:"#ffffff",
 				nextState: "closed"
 			state "closed",
 				label:'Close',
