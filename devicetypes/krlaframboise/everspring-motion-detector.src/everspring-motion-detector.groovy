@@ -1,5 +1,5 @@
 /**
- *  Everspring Motion Detector v1.0.3
+ *  Everspring Motion Detector v1.0.4
  *    (Model: HSP02)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *   
  *
  *  Changelog:
+ *
+ *    1.0.4 (12/25/2017)
+ *    	- Implemented ST new color scheme.
  *
  *    1.0.3 (09/10/2017)
  *    	- Removed old style fingerprint to eliminate conflicts with other generic sensors.
@@ -88,16 +91,10 @@ metadata {
 			displayDuringSetup: true
 	}
 	tiles(scale: 2) {
-		multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4, canChangeIcon: true){
+		multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4){
 			tileAttribute ("device.motion", key: "PRIMARY_CONTROL") {
-				attributeState "inactive", 
-					label:'NO MOTION', 
-					icon:"st.motion.motion.inactive", 
-					backgroundColor:"#ffffff"
-				attributeState "active", 
-					label:'MOTION', 
-					icon:"st.motion.motion.active", 
-					backgroundColor:"#53a7c0"
+				attributeState("inactive", label:'NO MOTION', icon:"st.motion.motion.inactive", backgroundColor:"#cccccc")
+				attributeState("active", label:'MOTION', icon:"st.motion.motion.active", backgroundColor:"#00a0dc")
 			}
 			tileAttribute ("device.contact", key: "SECONDARY_CONTROL") {
 				attributeState "closed", label:'No Motion or Lux Above Threshold'
@@ -108,8 +105,8 @@ metadata {
 			state "battery", label:'${currentValue}% battery', unit:"%"
 		}
 		valueTile("tampering", "device.tamper", width: 2, height: 2) {
-			state "detected", label:"Tamper", backgroundColor: "#ff0000"
-			state "clear", label:"No Tamper", backgroundColor: "#cccccc"
+			state "detected", label:"Tamper", backgroundColor: "#e86d13"
+			state "clear", label:"No Tamper", backgroundColor: "#ffffff"
 		}
 		standardTile("refresh", "command.refresh", width: 2, height: 2) {
 			state "default", label:"Refresh", action: "refresh", icon:"st.secondary.refresh-icon"

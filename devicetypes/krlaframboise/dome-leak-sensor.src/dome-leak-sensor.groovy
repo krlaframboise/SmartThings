@@ -1,5 +1,5 @@
 /**
- *  Dome Leak Sensor v1.1.2
+ *  Dome Leak Sensor v1.1.3
  *  (Model: DMWS1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.3 (12/25/2017)
+ *      - Implemented new ST color scheme.
  *
  *    1.1.2 (04/20/2017)
  *      - Added workaround for ST Health Check bug.
@@ -112,7 +115,7 @@ metadata {
 				attributeState "wet", 
 					label:'Wet', 
 					icon:"st.alarm.water.wet", 
-					backgroundColor:"#53a7c0"				
+					backgroundColor:"#00a0dc"
 			}			
 		}	
 		

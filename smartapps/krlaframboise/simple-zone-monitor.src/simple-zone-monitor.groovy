@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.16j [ALPHA]
+ *  Simple Zone Monitor v0.0.17 [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (@krlaframboise)
@@ -15,6 +15,9 @@
  *
  *
  *  Changelog:
+ *
+ *    0.0.17 (12/25/2016)
+ *      - Fixed bug that caused audio notifications to play multiple times if devices were selected more than once from the devices screen.
  *
  *    0.0.16 (10/08/2016)
  *      - Added Ignored Activity feature.
@@ -2031,6 +2034,7 @@ private handleEventNotifications(notificationType, evt) {
 }
 
 def handleNotifications(notificationType, notificationStatusId, eventMsg, zoneMsg="") {		
+
 	getStatusTypeSettings(getStatusNotificationTypeData(notificationType, notificationStatusId)).each {
 		def msg = ""
 		if (it?.prefName?.contains("Custom")) {
@@ -2057,6 +2061,7 @@ def handleNotifications(notificationType, notificationStatusId, eventMsg, zoneMs
 			}
 			else if (it.isDevice) {
 				def devices = findDevices(getNotificationDeviceTypes(), settings["${it.prefName}"])
+						
 				if (devices) {
 					if (it.prefName.contains("Speak")) {						
 						logTrace "Executing speak($msg) on: ${settings[it.prefName]}"
@@ -2425,8 +2430,8 @@ private findDevices(deviceTypes, deviceNameList) {
 				devices << device
 			}
 		}
-	}
-	return devices
+	}	
+	return devices.unique { it.displayName }
 }
 
 private getDevices(deviceTypes) {

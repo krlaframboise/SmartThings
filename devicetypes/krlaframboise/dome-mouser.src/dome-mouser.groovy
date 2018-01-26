@@ -1,5 +1,5 @@
 /**
- *  Dome Mouser v1.1.1
+ *  Dome Mouser v1.1.2
  *  (Model: DMMZ1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.2 (12/25/2017)
+ *      - Implemented new ST color Scheme.
  *
  *    1.1.1 (04/08/2017)
  *      - Changed source of icons.
@@ -89,11 +92,11 @@ metadata {
 				attributeState "armed", 
 					label:'Armed', 
 					icon:"https://s3-us-west-2.amazonaws.com/dome-manuals/SmartThings/mouse.png", 
-					backgroundColor:"#79b821"
+					backgroundColor:"#00a0dc"
 				attributeState "tripped", 
 					label:'Tripped', 
 					icon:"https://s3-us-west-2.amazonaws.com/dome-manuals/SmartThings/rip.png", 
-					backgroundColor:"#bc2323"
+					backgroundColor:"#e86d13"
 			}
 			tileAttribute ("device.status", key: "SECONDARY_CONTROL") {
 				attributeState "disarmed", 
@@ -101,10 +104,10 @@ metadata {
 					backgroundColor:"#ffffff"
 				attributeState "armed", 
 					label:'\"Contact Closed\"', 
-					backgroundColor:"#79b821"
+					backgroundColor:"#00a0dc"
 				attributeState "tripped", 
 					label:'\"Motion Active\"',
-					backgroundColor:"#bc2323"
+					backgroundColor:"#e86d13"
 			}
 		}	
 		
