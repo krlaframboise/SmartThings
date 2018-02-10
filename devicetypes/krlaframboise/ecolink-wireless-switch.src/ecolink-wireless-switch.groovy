@@ -1,5 +1,5 @@
 /**
- *  Ecolink Wireless Switch v0.0 (BETA)
+ *  Ecolink Wireless Switch v1.0
  *  (Models: TLS-ZWAVE5, DLS-ZWAVE5, DDLS2-ZWAVE5)
  *
  *  Author: 
@@ -9,8 +9,8 @@
  *    
  *
  *  Changelog:
- *    0.0 (01/31/2018)
- *      - Beta Release
+ *    1.0 (02/10/2018)
+ *      - Initial Release
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -38,9 +38,7 @@ metadata {
 		capability "Refresh"
 		
 		attribute "lastCheckin", "string"
-		
-		command "scheduledCheckin"
-		
+					
 		fingerprint mfr:"014A", prod:"0006", model:"0001", deviceJoinName: "Ecolink Rocker Switch"
 		
 		fingerprint mfr:"014A", prod:"0006", model:"0002", deviceJoinName: "Ecolink Toggle Switch"
@@ -75,7 +73,7 @@ metadata {
 			}
 		}
 		
-		standardTile("refresh", "device.switch", width: 2, height: 2, inactiveLabel: false, decoration: "flat") {
+		standardTile("refresh", "generic", width: 2, height: 2, inactiveLabel: false, decoration: "flat") {
 			state "default", label:'Refresh', action:"refresh.refresh", icon:"st.secondary.refresh-icon"
 		}
 		
@@ -100,10 +98,9 @@ def updated() {
 		
 		if (!state.lastUpdated) {
 			result += delayBetween([
-				associationSetCmd(1), 
 				switchBinaryGetCmd(), 
 				batteryGetCmd()
-			], 250)
+			], 500)
 		}
 		state.lastUpdated = new Date().time
 		
@@ -184,11 +181,6 @@ private toggleSwitch(val) {
 	]
 }
 
-
-private associationSetCmd(group) {
-	return zwave.associationV2.associationSet(groupingIdentifier:group, nodeId:zwaveHubNodeId).format()
-}
-
 private switchBinaryGetCmd() {
 	return zwave.switchBinaryV1.switchBinaryGet().format()
 }
@@ -253,8 +245,10 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 	def type = (state.pendingValue == cmd.value) ? "digital" : "physical"
 	state.pendingValue = null
 	
+	sendEvent(name: "switch", value: cmd.value ? "on" : "off", type: type, displayed: true, isStateChange: true)
+	
 	return [
-		createEvent([name: "switch", value: cmd.value ? "on" : "off", type: type, displayed: true, isStateChange: true])
+		createEvent(name: "switch", value: cmd.value ? "on" : "off", type: type)
 	]
 }
 
