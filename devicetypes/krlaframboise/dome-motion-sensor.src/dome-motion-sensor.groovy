@@ -216,13 +216,13 @@ private initializeCheckin() {
 	// Set the Health Check interval so that it can be skipped once plus 2 minutes.
 	def checkInterval = ((checkinIntervalSettingMinutes * 2 * 60) + (2 * 60))
 	
-	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID, offlinePingable: "0"])
+	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 }
 
 // // Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
-// def ping() {
-	// logDebug("ping()")
-// }
+def ping() {
+	logDebug("ping()")
+}
 
 // Forces the configuration to be resent to the device the next time it wakes up.
 def refresh() {	
