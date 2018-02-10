@@ -161,7 +161,10 @@ def ping() {
 
 def refresh() {
 	logTrace "refresh()"
-	return [switchBinaryGetCmd(), batteryGetCmd()]
+	def result = []
+	result << switchBinaryGetCmd()
+	result << batteryGetCmd()	
+	return delayBetween(result, 1000)
 }
 
 def on() {	
@@ -235,7 +238,7 @@ private getCommandClassVersions() {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
-	logTrace "BasicrReport: $cmd"	
+	logTrace "BasicReport: $cmd"	
 	return []
 }
 
@@ -244,9 +247,7 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 	
 	def type = (state.pendingValue == cmd.value) ? "digital" : "physical"
 	state.pendingValue = null
-	
-	sendEvent(name: "switch", value: cmd.value ? "on" : "off", type: type, displayed: true, isStateChange: true)
-	
+		
 	return [
 		createEvent(name: "switch", value: cmd.value ? "on" : "off", type: type)
 	]
@@ -303,5 +304,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	// log.trace "$msg"
+	 // log.trace "$msg"
 }
