@@ -1,5 +1,5 @@
 /**
- *  Ecolink Wireless Switch v1.0
+ *  Ecolink Wireless Switch v1.0.1
  *  (Models: TLS-ZWAVE5, DLS-ZWAVE5, DDLS2-ZWAVE5)
  *
  *  Author: 
@@ -9,7 +9,7 @@
  *    
  *
  *  Changelog:
- *    1.0 (02/10/2018)
+ *    1.0.1 (02/10/2018)
  *      - Initial Release
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -37,7 +37,7 @@ metadata {
 		capability "Health Check"
 		capability "Refresh"
 		
-		attribute "lastCheckin", "string"
+		attribute "lastCheckIn", "string"
 					
 		fingerprint mfr:"014A", prod:"0006", model:"0001", deviceJoinName: "Ecolink Rocker Switch"
 		
@@ -49,11 +49,12 @@ metadata {
 	simulator { }
 
 	preferences { 
-		input "checkinInterval", "number", 
-			title: "Checkin Interval Minutes: (15-1440)", 
-			range: "15..1440",
-			defaultValue: 240, 
-			required: false
+		input "checkInInterval", "enum",
+			title: "Check In Interval:",
+			defaultValue: checkInIntervalSetting,
+			required: false,
+			displayDuringSetup: true,
+			options: checkInIntervalOptions.collect { it.name }
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -77,8 +78,8 @@ metadata {
 			state "default", label:'Refresh', action:"refresh.refresh", icon:"st.secondary.refresh-icon"
 		}
 		
-		valueTile("lastActivity", "device.lastCheckin", decoration: "flat", inactiveLabel:false, width: 2, height: 2){
-			state "lastCheckin", label:'Last\nActivity\n\n${currentValue}'
+		valueTile("lastActivity", "device.lastCheckIn", decoration: "flat", inactiveLabel:false, width: 2, height: 2){
+			state "lastCheckIn", label:'Last\nActivity\n\n${currentValue}'
 		}
 		
 		valueTile("battery", "device.battery", decoration: "flat", inactiveLabel: false, width: 2, height: 2){
@@ -104,45 +105,45 @@ def updated() {
 		}
 		state.lastUpdated = new Date().time
 		
-		initializeCheckinSchedule()	
+		initializeCheckInSchedule()	
 	}
 	return result ? response(result) : []
 }
 
-private initializeCheckinSchedule(){
-	sendEvent(name: "checkInterval", value: ((checkinIntervalSettingSeconds * 2) + getMinuteSeconds(2)), displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID, offlinePingable: "1"])
+private initializeCheckInSchedule(){
+	sendEvent(name: "checkInterval", value: ((checkInIntervalSettingMinutes * 2 * 60) + (60 * 2)), displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID, offlinePingable: "1"])
 
 	unschedule()
 	
-	switch (checkIntervalSeconds) {
-		case getMinuteSeconds(15):
-			runEvery15Minutes(scheduledCheckin)
+	switch (checkInIntervalSetting) {
+		case "15 Minutes":
+			runEvery15Minutes(scheduledCheckIn)
 			break
-		case getMinuteSeconds(30):
-			runEvery30Minutes(scheduledCheckin)
+		case "30 Minutes":
+			runEvery30Minutes(scheduledCheckIn)
 			break
-		case { it in [getHourSeconds(3), getHourSeconds(6), getHourSeconds(9), getHourSeconds(12)] }:
-			runEvery3Hours(scheduledCheckin)
+		case { it in ["1 Hour", "2 Hours"] }:
+			runEvery1Hour(scheduledCheckIn)
 			break
 		default:
-			runEvery1Hour(scheduledCheckin)
+			runEvery3Hours(scheduledCheckIn)
 	}
 }
 
-def scheduledCheckin() {
+def scheduledCheckIn() {
 	def result = []
-	if (canCheckin()) {
-		logTrace "scheduledCheckin()"
+	if (canCheckIn()) {
+		logTrace "scheduledCheckIn()"
 		result += sendResponse([batteryGetCmd()])
 	}
 	else {
-		logTrace "Ignored scheduled checkin"
+		logTrace "Ignored scheduled check in"
 	}
 	return result
 }
 
-private canCheckin() {
-	return (!state.lastCheckin || ((new Date().time) - state.lastCheckin > (checkinIntervalSettingSeconds * 1000))) 
+private canCheckIn() {
+	return (!state.lastCheckIn || ((new Date().time) - state.lastCheckIn > (checkInIntervalSettingMinutes * 60 * 1000))) 
 }
 
 private sendResponse(cmds) {
@@ -164,7 +165,7 @@ def refresh() {
 	def result = []
 	result << switchBinaryGetCmd()
 	result << batteryGetCmd()	
-	return delayBetween(result, 1000)
+	return delayBetween(result, 500)
 }
 
 def on() {	
@@ -201,7 +202,7 @@ def parse(String description) {
 	// logTrace "description: $description"
 	def result = []
 	
-	updateLastCheckin()
+	updateLastCheckIn()
 		
 	if ("$description".contains("command: 5E02,")) {
 		logTrace "Ignoring Zwave Plus Command Class because it causes zwave.parse to throw a null exception"
@@ -215,10 +216,10 @@ def parse(String description) {
 	return result
 }
 
-private updateLastCheckin() {
-	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
-		state.lastCheckinTime = new Date().time
-		sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)	
+private updateLastCheckIn() {
+	if (!isDuplicateCommand(state.lastCheckInTime, 60000)) {
+		state.lastCheckInTime = new Date().time
+		sendEvent(name: "lastCheckIn", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)	
 	}
 }
 
@@ -255,9 +256,9 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	logTrace "BatteryReport: $cmd"
-	state.lastCheckin = new Date().time
+	state.lastCheckIn = new Date().time
 	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
-	if (val > 100) {
+	if (val >= 99) {
 		val = 100
 	}
 	return [
@@ -271,16 +272,49 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 }
 
 
-private getCheckinIntervalSettingSeconds() {	
-	return settings?.checkInterval ? getMinuteSeconds(settings.checkinInterval) : getHourSeconds(4)
+private getCheckInIntervalSettingMinutes() {
+	return convertOptionSettingToInt(checkInIntervalOptions, checkInIntervalSetting) ?: 720
 }
 
-private getHourSeconds(hours) {
-	return (hours * 60 * 60)
+private getCheckInIntervalSetting() {
+	return settings?.checkInInterval ?: findDefaultOptionName(checkInIntervalOptions)
 }
 
-private getMinuteSeconds(minutes) {
-	return (minutes * 60)
+
+private getCheckInIntervalOptions() {
+	[
+		[name: "15 Minutes", value: 15],
+		[name: "30 Minutes", value: 30],
+		[name: "1 Hour", value: 60],
+		[name: "2 Hours", value: 120],
+		[name: "3 Hours", value: 180],
+		[name: "6 Hours", value: 360],
+		[name: "9 Hours", value: 540],
+		[name: formatDefaultOptionName("12 Hours"), value: 720],
+		[name: "18 Hours", value: 1080],
+		[name: "24 Hours", value: 1440]
+	]
+}
+
+private convertOptionSettingToInt(options, settingVal) {
+	return safeToInt(options?.find { "${settingVal}" == it.name }?.value, 0)
+}
+
+private formatDefaultOptionName(val) {
+	return "${val}${defaultOptionSuffix}"
+}
+
+private findDefaultOptionName(options) {
+	def option = options?.find { it.name?.contains("${defaultOptionSuffix}") }
+	return option?.name ?: ""
+}
+
+private getDefaultOptionSuffix() {
+	return "   (Default)"
+}
+
+private safeToInt(val, defaultVal=-1) {
+	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
 }
 
 private convertToLocalTimeString(dt) {
