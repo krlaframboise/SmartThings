@@ -1,5 +1,5 @@
 /**
- *  Zooz 4-in-1 Sensor VER 2.0 
+ *  Zooz 4-in-1 Sensor VER 2.0   (TEST)
  *		(Model: ZSE40)
  *
  *  Author: 
@@ -110,11 +110,11 @@ metadata {
 			tileAttribute ("device.primaryStatus", key: "PRIMARY_CONTROL") {
 				attributeState "primaryStatus", 
 					label:'${currentValue}', 
-					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/motion.png",
+					icon:"${resourcesUrl}motion-inactive.png",
 					backgroundColor:"#ffffff"			
 				attributeState "inactive", 
 					label:'NO MOTION', 
-					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/motion.png", 
+					icon:"${resourcesUrl}motion-inactive.png", 
 					backgroundColor:"#ffffff"
 				attributeState "active", 
 					label:'MOTION', 
@@ -130,7 +130,7 @@ metadata {
 		
 		valueTile("temperature", "device.temperature", inactiveLabel: false, width: 2, height: 2) {
 			state "temperature", label:'${currentValue}°',
-			icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/temperature.png"
+			icon: "${resourcesUrl}temperature.png"
 			//icon: "st.alarm.temperature.normal"
 			// ,
 			// backgroundColors:[
@@ -145,36 +145,36 @@ metadata {
 		}
 		
 		valueTile("humidity", "device.humidity", inactiveLabel: false, width: 2, height: 2){
-			state "humidity", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/humidity.png"
+			state "humidity", label:'${currentValue}%', icon: "${resourcesUrl}humidity.png"
 			// state "1", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/humidity-dry.png"
 			// state "100", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/humidity-wet.png"
 		}
 		
 		valueTile("pLight", "device.pLight", inactiveLabel: false, width: 2, height: 2){
-			state "default", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light.png"
+			state "default", label:'${currentValue}%', icon: "${resourcesUrl}light.png"
 			// state "1", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-dark.png"
 			// state "100", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-bright.png"
 		}
 
 		valueTile("lxLight", "device.lxLight", inactiveLabel: false, width: 2, height: 2){
-			state "default", label:'${currentValue}lx', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light.png"
+			state "default", label:'${currentValue}lx', icon: "${resourcesUrl}light.png"
 			// state "1", label:'${currentValue}lx', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-dark.png"
 			// state "100", label:'${currentValue}lx', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-bright.png"
 		}
 		
 		valueTile("motion", "motion", decoration: "flat", inactiveLabel: false, width: 2, height: 2){		
-			state "inactive", label:'No Motion', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/motion-inactive.png"//, backgroundColor: "#cccccc"
-			state "active", label:'Motion', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/motion-active.png"//, backgroundColor: "#00a0dc"
+			state "inactive", label:'No Motion', icon: "${resourcesUrl}motion-inactive.png"//, backgroundColor: "#cccccc"
+			state "active", label:'Motion', icon: "${resourcesUrl}motion-active.png"//, backgroundColor: "#00a0dc"
 		}			
 		
 		standardTile("tampering", "device.tamper", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {			
-			state "clear", label:'No Tamper', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/tamper-clear.png"//, backgroundColor:"#cccccc"
-			state "detected", label:'Tamper', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/tamper-detected.png", action: "clearTamper"//, backgroundColor: "#e86d13"
+			state "clear", label:'No Tamper', icon: "${resourcesUrl}tamper-clear.png"//, backgroundColor:"#cccccc"
+			state "detected", label:'Tamper', icon: "${resourcesUrl}tamper-detected.png", action: "clearTamper"//, backgroundColor: "#e86d13"
 		}
 		
 		valueTile("battery", "device.battery", inactiveLabel: false, width: 2, height: 2){
-			state "default", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/battery.png"
-			state "1", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/battery-low.png"
+			state "default", label:'${currentValue}%', icon: "${resourcesUrl}battery.png"
+			state "1", label:'${currentValue}%', icon: "${resourcesUrl}battery-low.png"
 			// state "100", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/battery-full.png"
 		}
 			
@@ -198,12 +198,16 @@ metadata {
 		}
 		
 		standardTile("refresh", "device.refresh", decoration: "flat", inactiveLabel: false, width: 2, height: 2) {
-			state "default", label: "Refresh", action: "refresh", icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/refresh.png"
+			state "default", label: "Refresh", action: "refresh", icon:"${resourcesUrl}refresh.png"
 		}
 		
 		main("mainTile")
 		details(["mainTile", "humidity", "temperature", "lxLight", "battery", "motion", "pLight", "refresh","pending", "tampering", "firmwareVersion", "lastActivity", "lastUpdate"])
 	}
+}
+
+private getResourcesUrl() {
+	return "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/"
 }
 
 private getNumberInput(name, title, range, defaultVal) {	
