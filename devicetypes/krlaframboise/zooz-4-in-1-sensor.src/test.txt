@@ -1,16 +1,16 @@
 /**
- *  Zooz 4-in-1 Sensor v1.0  (TEST)
+ *  Zooz 4-in-1 Sensor VER 2.0 
  *		(Model: ZSE40)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:  https://community.smartthings.com/t/release-zooz-4-in-1-sensor/82989?u=krlaframboise
+ *  URL to documentation: 
  *    
  *
  *  Changelog:
  *
- *    1.0 (12/16/2017)
+ *    0.0 (02/??/2018)
  *    	- Initial Release
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -25,7 +25,7 @@
  */
 metadata {
 	definition (
-		name: "Zooz 4-in-1 Sensor", 
+		name: "Zooz 4-in-1 Sensor VER 2.0",
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise"
 	) {
@@ -51,11 +51,10 @@ metadata {
 		attribute "lxLight", "number"
 		attribute "firmwareVersion", "string"
 
-		// Firmware 16.9 & 17.9
-		fingerprint mfr:"027A", prod:"2021", model:"2101", deviceJoinName: "Zooz 4-in-1 Sensor"
+		command "clearTamper"
 		
-		// Firmware 5.1
-		fingerprint mfr:"0109", prod:"2021", model:"2101", deviceJoinName: "Zooz 4-in-1 Sensor"
+		// 17.9
+		fingerprint mfr:"027A", prod:"2021", model:"2101", deviceJoinName: "Zooz 4-in-1 Sensor"		
 	}
 	
 	simulator { }
@@ -95,11 +94,13 @@ metadata {
 		
 		
 		//*****  TESTING *****
-		getDecimalInput("rhForcedVal", "Forced RH Value:", "0..100", 0)
-		getDecimalInput("tempForcedVal", "Forced Temp Value:", "0..200", 0)
-		getDecimalInput("lxForcedVal", "Forced Lux Value:", "0..200", 0)
-		getDecimalInput("lightForcedVal", "Forced Light Value:", "0..100", 0)
-		getDecimalInput("batteryForcedVal", "Forced Battery Value:", "0..100", 0)
+		// getDecimalInput("rhForcedVal", "Forced RH Value:", "0..100", 0)
+		// getDecimalInput("tempForcedVal", "Forced Temp Value:", "0..200", 0)
+		// getDecimalInput("lxForcedVal", "Forced Lux Value:", "0..200", 0)
+		// getDecimalInput("lightForcedVal", "Forced Light Value:", "0..100", 0)
+		 // getDecimalInput("batteryForcedVal", "Forced Battery Value:", "0..100", 0)
+		 // getBoolInput("motionForcedActive", "Force Motion Active:", false)
+		 // getBoolInput("tamperForcedDetected", "Force Tamper Detected:", false)
 		//*****  TESTING *****
 		
 	}
@@ -109,11 +110,11 @@ metadata {
 			tileAttribute ("device.primaryStatus", key: "PRIMARY_CONTROL") {
 				attributeState "primaryStatus", 
 					label:'${currentValue}', 
-					icon:"st.motion.motion.inactive",
+					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/motion.png",
 					backgroundColor:"#ffffff"			
 				attributeState "inactive", 
 					label:'NO MOTION', 
-					icon:"st.motion.motion.inactive", 
+					icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/motion.png", 
 					backgroundColor:"#ffffff"
 				attributeState "active", 
 					label:'MOTION', 
@@ -129,7 +130,8 @@ metadata {
 		
 		valueTile("temperature", "device.temperature", inactiveLabel: false, width: 2, height: 2) {
 			state "temperature", label:'${currentValue}°',
-			icon: "st.alarm.temperature.normal"
+			icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/temperature.png"
+			//icon: "st.alarm.temperature.normal"
 			// ,
 			// backgroundColors:[
 				// [value: 31, color: "#153591"],
@@ -143,35 +145,43 @@ metadata {
 		}
 		
 		valueTile("humidity", "device.humidity", inactiveLabel: false, width: 2, height: 2){
-			state "humidity", label:'${currentValue}%', icon: "st.Weather.weather12", unit:""//, backgroundColor:"#0099ff"
+			state "humidity", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/humidity.png"
+			// state "1", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/humidity-dry.png"
+			// state "100", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/humidity-wet.png"
 		}
 		
 		valueTile("pLight", "device.pLight", inactiveLabel: false, width: 2, height: 2){
-			state "pLight", label:'${currentValue}%', icon: "st.illuminance.illuminance.bright", unit: ""//, backgroundColor: "#cccc99"
+			state "default", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light.png"
+			// state "1", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-dark.png"
+			// state "100", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-bright.png"
 		}
 
 		valueTile("lxLight", "device.lxLight", inactiveLabel: false, width: 2, height: 2){
-			state "lxLight", label:'${currentValue}lx', icon: "st.illuminance.illuminance.bright", unit: ""//, backgroundColor: "#cccc99"
+			state "default", label:'${currentValue}lx', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light.png"
+			// state "1", label:'${currentValue}lx', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-dark.png"
+			// state "100", label:'${currentValue}lx', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-bright.png"
 		}
 		
-		valueTile("motion", "motion", inactiveLabel: false, width: 2, height: 2){		
-			state "inactive", label:'No Motion', icon: "st.motion.motion.inactive"//, backgroundColor: "#cccccc"
-			state "active", label:'Motion', icon: "st.motion.motion.active"//, backgroundColor: "#00a0dc"
+		valueTile("motion", "motion", decoration: "flat", inactiveLabel: false, width: 2, height: 2){		
+			state "inactive", label:'No Motion', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/motion-inactive.png"//, backgroundColor: "#cccccc"
+			state "active", label:'Motion', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/motion-active.png"//, backgroundColor: "#00a0dc"
 		}			
 		
-		standardTile("tampering", "device.tamper", inactiveLabel: false, width: 2, height: 2) {			
-			state "clear", label:'No Tamper', icon: "st.secondary.activity"//, backgroundColor:"#cccccc"
-			state "detected", label:'Tamper', icon: "st.secondary.activity", action: "clearTamper"//, backgroundColor: "#e86d13"
+		standardTile("tampering", "device.tamper", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {			
+			state "clear", label:'No Tamper', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/tamper-clear.png"//, backgroundColor:"#cccccc"
+			state "detected", label:'Tamper', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/tamper-detected.png", action: "clearTamper"//, backgroundColor: "#e86d13"
 		}
 		
 		valueTile("battery", "device.battery", inactiveLabel: false, width: 2, height: 2){
-			state "default", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/battery.png", unit: ""//,backgroundColor: "#00ff00"
+			state "default", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/battery.png"
+			state "1", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/battery-low.png"
+			// state "100", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/battery-full.png"
 		}
 			
 		
 		valueTile("pending", "device.pendingChanges", decoration: "flat", width: 2, height: 2){
 			state "pendingChanges", label:'${currentValue} Change(s) Pending'
-			state "0", label: ''
+			state "0", label: 'Updated'
 			state "-1", label:'Updating Settings'
 		}
 		
@@ -187,8 +197,8 @@ metadata {
 			state "firmwareVersion", label:'Firmware \n${currentValue}'
 		}
 		
-		standardTile("refresh", "device.refresh", inactiveLabel: false, width: 2, height: 2) {
-			state "default", label: "Refresh", action: "refresh", icon:"st.secondary.refresh-icon"
+		standardTile("refresh", "device.refresh", decoration: "flat", inactiveLabel: false, width: 2, height: 2) {
+			state "default", label: "Refresh", action: "refresh", icon:"https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/refresh.png"
 		}
 		
 		main("mainTile")
@@ -234,6 +244,7 @@ def updated() {
 		state.lastUpdated = new Date().time
 		logTrace "updated()"
 	
+		
 		// initializeOffsets()
 					
 		if (!getAttrValue("tamper")) {
@@ -246,14 +257,22 @@ def updated() {
 		
 		
 		//******   TESTING *****
+		// sendLastCheckinEvent()
+		// sendForcedEvent("humidity", settings?.rhForcedVal)
+		// sendForcedEvent("temperature", settings?.tempForcedVal)
+		// sendForcedEvent("lxLight", settings?.lxForcedVal)
+		// sendForcedEvent("pLight", settings?.lightForcedVal)
+		// sendForcedEvent("battery", settings?.batteryForcedVal)
+		// sendForcedEvent("motion", settings?.motionForcedActive ? "active" : "inactive")
+		// sendForcedEvent("tamper", settings?.tamperForcedDetected ? "detected" : "clear")		
 		sendLastCheckinEvent()
 		sendForcedEvent("humidity", 100)
 		sendForcedEvent("temperature", 70)
 		sendForcedEvent("lxLight", 45)
 		sendForcedEvent("pLight", 100)
-		sendForcedEvent("battery", 100)
+		sendForcedEvent("battery", 1)
 		sendForcedEvent("motion", "active")
-		sendForcedEvent("tamper", "clear")
+		sendForcedEvent("tamper", "detected")
 		//******   TESTING *****
 	}	
 }
@@ -321,7 +340,6 @@ def configure() {
 	
 	def cmds = []		
 	if (!getAttrValue("firmwareVersion")) {		
-		sendEvent(name: "primaryStatus", value: "inactive", displayed: false)
 		cmds << versionGetCmd()
 	}
 	
@@ -332,22 +350,34 @@ def configure() {
 	else if (canReportBattery()) {
 		cmds << batteryGetCmd()
 	}
-			
-	configParams.each { param ->
-		cmds += updateConfigVal(param)
-	}	
 	
-	if (checkinIntervalChanged) {
-		logTrace "Updating wakeup interval"
-		cmds << wakeUpIntervalSetCmd(checkinIntervalSettingSeconds)
-		cmds << wakeUpIntervalGetCmd()
+	if (state.configured != true) {
+		state.configured = true
+		createCheckIntervalEvent(checkinIntervalSettingSeconds)
+		configParams.each { param ->
+			cmds << configGetCmd(param)
+		}
+	}
+	else {
+		configParams.each { param ->
+			cmds += updateConfigVal(param)
+		}	
+	
+		if (checkinIntervalChanged) {
+			logTrace "Updating wakeup interval"
+			cmds << wakeUpIntervalSetCmd(checkinIntervalSettingSeconds)
+			cmds << wakeUpIntervalGetCmd()
+		}
 	}
 	
-	return cmds ? delayBetween(cmds, 50) : []	
+	return cmds ? delayBetween(cmds, 300) : []	
 }
 
 private allAttributesHaveValues() {
-	return (getAttrValue("temperature") != null && getAttrValue("humidity") != null && getAttrValue("illuminance") != null && getAttrValue("battery") != null)
+	return (getAttrValue("temperature") != null && 
+		getAttrValue("humidity") != null && 
+		getAttrValue("illuminance") != null && 
+		getAttrValue("battery") != null)
 }
 
 private updateConfigVal(param) {
@@ -408,7 +438,7 @@ private refreshSensorData() {
 		sensorMultilevelGetCmd(tempSensorType),
 		sensorMultilevelGetCmd(humiditySensorType),
 		sensorMultilevelGetCmd(lightSensorType)
-	], 50)
+	], 200)
 }
 
 // Settings
@@ -440,11 +470,11 @@ private getMaxLxSetting() {
 	return safeToInt(settings?.maxLx, 50)
 }
 private getCheckinIntervalSetting() {
-	return (safeToInt(settings?.checkinInterval, (firmwareVersion >= firmwareV2 ? 12 : 6)))
+	return safeToInt(settings?.checkinInterval, 4)
 }
 private getCheckinIntervalSettingSeconds() {
 	if (checkinIntervalSetting == 0) {
-		return (10 * 60 * 60)
+		return (4 * 60 * 60)
 	}
 	else {
 		return (checkinIntervalSetting * 60 * 60)
@@ -583,15 +613,18 @@ private createConfigParamMap(num, name, size, prefName, range, val) {
 	]
 }
 
-def parse(String description) {
+def parse(String description) {	
 	def result = []
+	
+	sendLastCheckinEvent()
+	
 	def cmd = zwave.parse(description, commandClassVersions)
 	if (cmd) {
 		result += zwaveEvent(cmd)
 	}
 	else {
 		logDebug "Unable to parse description: $description"
-	}
+	}	
 	return result
 }
 
@@ -640,24 +673,28 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd) {
 	else {
 		logDebug "$msg"
 	}
+		
+	runIn(5, finalizeConfiguration)
 	
+	return [ createCheckIntervalEvent(cmd.seconds) ]
+}
+
+private createCheckIntervalEvent(seconds) {
 	// Set the Health Check interval so that it reports offline 5 minutes after it's missed 2 checkins.
-	def val = ((cmd.seconds * 2) + (5 * 60))
+	def val = ((seconds * 2) + (5 * 60))
 	
 	def eventMap = createEventMap("checkInterval", val, "", false)
 
 	eventMap.data = [protocol: "zwave", hubHardwareId: device.hub.hardwareID]
 	
-	runIn(5, finalizeConfiguration)
-	
-	return [ createEvent(eventMap) ]
+	return createEvent(eventMap)
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
 	logTrace "WakeUpNotification: $cmd"
 	def cmds = []
 	
-	sendLastCheckinEvent()
+	logDebug "Device Woke Up"
 	
 	cmds += configure()
 		
@@ -673,7 +710,6 @@ private sendLastCheckinEvent() {
 	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		state.lastCheckinTime = new Date().time			
 
-		logDebug "Device Checked In"
 		sendEvent(createEventMap("lastCheckin", convertToLocalTimeString(new Date()), "", false))
 	}
 }
@@ -721,7 +757,8 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport 
 	// logTrace "ConfigurationReport: ${cmd}"
 	sendUpdatingEvent()
 	
-	def val = cmd.configurationValue[0]
+	// def val = cmd.configurationValue[0]
+	def val = cmd.scaledConfigurationValue
 		
 	def configParam = configParams.find { param ->
 		param.num == cmd.parameterNumber
@@ -991,13 +1028,8 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	return []
 }
 
-
 def refresh() {	
-	if (device.currentValue("tamper") != "clear") {
-		logDebug "Clearing Tamper"
-		sendEvent(createTamperEventMap("clear"))
-	}
-	else if (state.pendingRefresh) {	
+	if (state.pendingRefresh) {	
 		sendEvent(createEventMap("pendingChanges", configParams.size(), "", false))			
 		state.refreshAll = true		
 		logForceWakeupMessage "All configuration settings will be sent to the device and its data will be refreshed the next time it wakes up."
@@ -1005,7 +1037,16 @@ def refresh() {
 	else {
 		state.pendingRefresh = true
 		logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."
+		// if (device.currentValue("pendingChanges") == "") {
+			// sendEvent(createEventMap("pendingChanges", -2, "", false))
+		// }
 	}
+	return []
+}
+
+def clearTamper() {
+	logDebug "Clearing Tamper"
+	sendEvent(createTamperEventMap("clear"))
 	return []
 }
 
@@ -1099,7 +1140,7 @@ private sensorMultilevelGetCmd(sensorType) {
 }
 
 private configSetCmd(param, val) {
-	return secureCmd(zwave.configurationV2.configurationSet(parameterNumber: param.num, size: param.size, configurationValue: [val]))
+	return secureCmd(zwave.configurationV2.configurationSet(parameterNumber: param.num, size: param.size, scaledConfigurationValue: val))
 }
 
 private configGetCmd(param) {
