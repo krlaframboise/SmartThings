@@ -1,0 +1,112 @@
+/**
+ *  Tile Image TEST
+ *
+ *  Author: 
+ *    Kevin LaFramboise (krlaframboise)
+ *
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License. You may obtain a copy of the License at:
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ *
+ */
+metadata {
+	definition (
+		name: "Tile Image TEST",
+		namespace: "krlaframboise", 
+		author: "Kevin LaFramboise"
+	) {
+		capability "Sensor"
+		capability "Motion Sensor"
+		capability "Illuminance Measurement"
+		capability "Relative Humidity Measurement"
+		capability "Temperature Measurement"		
+		capability "Battery"
+		capability "Tamper Alert"
+		capability "Refresh"
+
+		attribute "motion2", "string"
+	}
+	
+	simulator { }
+	
+	preferences { }
+
+	tiles(scale: 2) {
+		valueTile("temperature", "device.temperature", inactiveLabel: false, width: 2, height: 2) {
+			state "temperature", label:'${currentValue}°',
+			icon: "${resourcesUrl}temperature.png"
+		}
+		
+		valueTile("humidity", "device.humidity", inactiveLabel: false, width: 2, height: 2){
+			state "humidity", label:'${currentValue}%', icon: "${resourcesUrl}humidity.png"
+		}
+		
+		valueTile("illuminance", "device.illuminance", inactiveLabel: false, width: 2, height: 2){
+			state "default", label:'${currentValue}lx', icon: "${resourcesUrl}light.png"
+		}
+		
+		valueTile("motion", "motion", decoration: "flat", width: 2, height: 2){		
+			state "inactive", label:'No Motion', icon: "${resourcesUrl}motion-inactive.png"
+			state "active", label:'No Motion', icon: "${resourcesUrl}motion-active.png"
+		}
+		
+		valueTile("motion2", "motion2", decoration: "flat", width: 2, height: 2){		
+			state "inactive", label:'No\n Motion', icon: "${resourcesUrl}motion-inactive.png"
+			state "active", label:'No\n Motion', icon: "${resourcesUrl}motion-active.png"
+		}
+		
+		valueTile("motion3", "motion2", decoration: "flat", width: 2, height: 2){		
+			state "inactive", label:'No\nMotion', icon: "${resourcesUrl}motion-inactive.png"
+			state "active", label:'No\nMotion', icon: "${resourcesUrl}motion-active.png"
+		}
+		
+		standardTile("tampering", "device.tamper", decoration: "flat", width: 2, height: 2) {			
+			state "clear", label:'No Tamper', icon: "${resourcesUrl}tamper-clear.png"
+			state "detected", label:'Tamper', icon: "${resourcesUrl}tamper-detected.png", action: "refresh"
+		}
+		
+		valueTile("battery", "device.battery", width: 2, height: 2){
+			state "default", label:'${currentValue}%', icon: "${resourcesUrl}battery.png"
+			state "1", label:'${currentValue}%', icon: "${resourcesUrl}battery-low.png"
+		}
+			
+		standardTile("refresh", "device.refresh", decoration: "flat", width: 2, height: 2) {
+			state "default", label: "Refresh", action: "refresh", icon:"${resourcesUrl}refresh.png"
+		}
+		
+		main("motion")
+		details(["motion", "motion2", "motion3", "humidity", "temperature", "illuminance", "battery", "refresh","tampering"])
+	}
+}
+
+private getResourcesUrl() {
+	return "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/"
+}
+
+
+def installed() {
+	updated()
+}
+
+def updated() {	
+	sendForcedEvent("humidity", 100)
+	sendForcedEvent("temperature", 70)
+	sendForcedEvent("illuminance", 100)		
+	sendForcedEvent("motion", "inactive")
+	sendForcedEvent("motion2", "active")
+	sendForcedEvent("battery", 100)
+	sendForcedEvent("tamper", "detected")
+}
+
+private sendForcedEvent(name, val) {
+	sendEvent(name: "$name", value: val, displayed: true, isStateChange: true)
+}
+
+def parse() { }
+def refresh() { }
