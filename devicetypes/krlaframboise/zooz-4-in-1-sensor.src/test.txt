@@ -103,7 +103,7 @@ metadata {
 	}
 
 	tiles(scale: 2) {
-multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4){
+		multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4){
 			tileAttribute ("device.primaryStatus", key: "PRIMARY_CONTROL") {
 				attributeState "primaryStatus", 
 					label:'${currentValue}', 
@@ -125,7 +125,7 @@ multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4){
 			}
 		}
 		
-		standardTile("temperature", "device.temperature", inactiveLabel: false, width: 2, height: 2) {
+		valueTile("temperature", "device.temperature", inactiveLabel: false, width: 2, height: 2) {
 			state "temperature", label:'${currentValue}°',
 			icon: "${resourcesUrl}temperature.png"
 			//icon: "st.alarm.temperature.normal"
@@ -147,7 +147,7 @@ multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4){
 			// state "100", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/humidity-wet.png"
 		}
 		
-		standardTile("pLight", "device.pLight", decoration: "flat", width: 2, height: 2){
+		valueTile("pLight", "device.pLight", decoration: "flat", width: 2, height: 2){
 			state "default", label:'${currentValue}%', icon: "${resourcesUrl}light.png"
 			// state "1", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-dark.png"
 			// state "100", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-bright.png"
@@ -169,7 +169,7 @@ multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4){
 			state "detected", label:'Tamper', icon: "${resourcesUrl}tamper-detected.png", action: "clearTamper"//, backgroundColor: "#e86d13"
 		}
 		
-		standardTile("battery", "device.battery", inactiveLabel: false, width: 2, height: 2){
+		valueTile("battery", "device.battery", inactiveLabel: false, width: 2, height: 2){
 			state "default", label:'${currentValue}%', icon: "${resourcesUrl}battery.png"
 			state "1", label:'${currentValue}%', icon: "${resourcesUrl}battery-low.png"
 			// state "100", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/battery-full.png"
