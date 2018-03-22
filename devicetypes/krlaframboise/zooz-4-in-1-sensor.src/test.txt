@@ -313,13 +313,19 @@ def configure() {
 	logTrace "configure()"
 	
 	def cmds = []		
-	if (!getAttrValue("firmwareVersion")) {		
+	if (!getAttrValue("firmwareVersion")) {
+		sendMotionEvents(0xFF)
 		cmds << versionGetCmd()
 	}
 	
 	if (state.pendingRefresh != false || !allAttributesHaveValues()) {
 		state.pendingRefresh = false
-		cmds += refreshSensorData()
+		cmds += [
+			batteryGetCmd(),
+			sensorMultilevelGetCmd(tempSensorType),
+			sensorMultilevelGetCmd(humiditySensorType),
+			sensorMultilevelGetCmd(lightSensorType)
+		]
 	}
 	else if (canReportBattery()) {
 		cmds << batteryGetCmd()
@@ -344,7 +350,7 @@ def configure() {
 		}
 	}
 	
-	return cmds ? delayBetween(cmds, 300) : []	
+	return cmds ? delayBetween(cmds, 500) : []	
 }
 
 private allAttributesHaveValues() {
@@ -402,17 +408,6 @@ private motionTimeMatchesFirmware(val) {
 // Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
 def ping() {
 	logDebug "ping()"	
-}
-
-private refreshSensorData() {
-	logDebug "Refreshing Sensor Data"
-	return delayBetween([
-		batteryGetCmd(),
-		basicGetCmd(),
-		sensorMultilevelGetCmd(tempSensorType),
-		sensorMultilevelGetCmd(humiditySensorType),
-		sensorMultilevelGetCmd(lightSensorType)
-	], 200)
 }
 
 // Settings
@@ -676,7 +671,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
 	cmds += configure()
 		
 	if (cmds) {
-		cmds << "delay 1200"
+		cmds << "delay 2000"
 	}
 	
 	cmds << wakeUpNoMoreInfoCmd()
@@ -771,15 +766,17 @@ def finalizeConfiguration() {
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	logTrace "BasicReport: $cmd"	
-	return handleMotionEvent(cmd.value)
+	// sendMotionEvents(cmd.value)
+	return []
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
-	// logTrace "Basic Set: $cmd"	
-	return handleMotionEvent(cmd.value)
+	// logTrace "BasicSet: $cmd"	
+	sendMotionEvents(cmd.value)
+	return []
 }
 
-private handleMotionEvent(val) {
+private sendMotionEvents(val) {
 	def motionVal = (val == 0xFF ? "active" : "inactive")
 	
 	logTrace "Motion ${motionVal}"
@@ -788,12 +785,10 @@ private handleMotionEvent(val) {
 	eventMaps += createEventMaps("motion", motionVal, "", null, false)	
 	eventMaps += createStatusEventMaps(eventMaps, false)
 	
-	def result = []
 	eventMaps?.each {
-		it.descriptionText = getDisplayedDescriptionText(it)
-		result << createEvent(it)
+		it.descriptionText = getDisplayedDescriptionText(it)		
+		sendEvent(it)
 	}
-	return result
 }
 
 
@@ -1183,5 +1178,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	log.trace "$msg"
+	// log.trace "$msg"
 }
