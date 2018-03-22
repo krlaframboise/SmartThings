@@ -141,7 +141,7 @@ multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4){
 			// ]
 		}
 		
-		standardTile("humidity", "device.humidity", inactiveLabel: false, width: 2, height: 2){
+		valueTile("humidity", "device.humidity", inactiveLabel: false, width: 2, height: 2){
 			state "humidity", label:'${currentValue}%', icon: "${resourcesUrl}humidity.png"
 			// state "1", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/humidity-dry.png"
 			// state "100", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/humidity-wet.png"
