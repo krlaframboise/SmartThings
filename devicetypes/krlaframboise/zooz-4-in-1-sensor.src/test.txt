@@ -29,7 +29,7 @@
  */
 metadata {
 	definition (
-		name: "Zooz 4-in-1 Sensor", 
+		name: "Zooz 4-in-1 Sensor TEST", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise"
 	) {
