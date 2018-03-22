@@ -29,7 +29,7 @@
  */
 metadata {
 	definition (
-		name: "Zooz 4-in-1 Sensor TEST", 
+		name: "Zooz 4-in-1 Sensor", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise"
 	) {
@@ -147,13 +147,13 @@ multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4){
 			// state "100", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/humidity-wet.png"
 		}
 		
-		standardTile("pLight", "device.pLight", inactiveLabel: false, width: 2, height: 2){
+		standardTile("pLight", "device.pLight", decoration: "flat", width: 2, height: 2){
 			state "default", label:'${currentValue}%', icon: "${resourcesUrl}light.png"
 			// state "1", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-dark.png"
 			// state "100", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-bright.png"
 		}
 
-		standardTile("lxLight", "device.lxLight", inactiveLabel: false, width: 2, height: 2){
+		valueTile("lxLight", "device.lxLight", width: 2, height: 2){
 			state "default", label:'${currentValue}lx', icon: "${resourcesUrl}light.png"
 			// state "1", label:'${currentValue}lx', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-dark.png"
 			// state "100", label:'${currentValue}lx', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-bright.png"
@@ -176,21 +176,21 @@ multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4){
 		}
 			
 		
-		standardTile("pending", "device.pendingChanges", decoration: "flat", width: 2, height: 2){
+		valueTile("pending", "device.pendingChanges", decoration: "flat", width: 2, height: 2){
 			state "pendingChanges", label:'${currentValue} Change(s) Pending'
 			state "0", label: 'Updated'
 			state "-1", label:'Updating Settings'
 		}
 		
-		standardTile("lastUpdate", "device.lastUpdate", decoration: "flat", inactiveLabel:false, width: 2, height: 2){
+		valueTile("lastUpdate", "device.lastUpdate", decoration: "flat", inactiveLabel:false, width: 2, height: 2){
 			state "lastUpdate", label:'Settings\nUpdated\n\n${currentValue}'
 		}
 		
-		standardTile("lastActivity", "device.lastCheckin", decoration: "flat", inactiveLabel:false, width: 2, height: 2){
+		valueTile("lastActivity", "device.lastCheckin", decoration: "flat", inactiveLabel:false, width: 2, height: 2){
 			state "lastCheckin", label:'Last\nActivity\n\n${currentValue}'
 		}
 		
-		standardTile("firmwareVersion", "device.firmwareVersion", decoration: "flat", inactiveLabel:false, width: 2, height: 2){
+		valueTile("firmwareVersion", "device.firmwareVersion", decoration: "flat", inactiveLabel:false, width: 2, height: 2){
 			state "firmwareVersion", label:'Firmware \n${currentValue}'
 		}
 		
