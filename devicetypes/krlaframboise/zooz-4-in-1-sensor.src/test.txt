@@ -125,76 +125,58 @@ metadata {
 			}
 		}
 		
-		valueTile("temperature", "device.temperature", inactiveLabel: false, width: 2, height: 2) {
+		valueTile("temperature", "device.temperature", width: 2, height: 2) {
 			state "temperature", label:'${currentValue}°',
 			icon: "${resourcesUrl}temperature.png"
-			//icon: "st.alarm.temperature.normal"
-			// ,
-			// backgroundColors:[
-				// [value: 31, color: "#153591"],
-				// [value: 44, color: "#1e9cbb"],
-				// [value: 59, color: "#90d2a7"],
-				// [value: 74, color: "#44b621"],
-				// [value: 84, color: "#f1d801"],
-				// [value: 95, color: "#d04e00"],
-				// [value: 96, color: "#bc2323"]
-			// ]
 		}
 		
-		valueTile("humidity", "device.humidity", inactiveLabel: false, width: 2, height: 2){
+		valueTile("humidity", "device.humidity", width: 2, height: 2){
 			state "humidity", label:'${currentValue}%', icon: "${resourcesUrl}humidity.png"
-			// state "1", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/humidity-dry.png"
-			// state "100", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/humidity-wet.png"
 		}
 		
-		valueTile("pLight", "device.pLight", decoration: "flat", width: 2, height: 2){
+		valueTile("pLight", "device.pLight", width: 2, height: 2){
 			state "default", label:'${currentValue}%', icon: "${resourcesUrl}light.png"
-			// state "1", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-dark.png"
-			// state "100", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-bright.png"
 		}
 
 		valueTile("lxLight", "device.lxLight", width: 2, height: 2){
 			state "default", label:'${currentValue}lx', icon: "${resourcesUrl}light.png"
-			// state "1", label:'${currentValue}lx', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-dark.png"
-			// state "100", label:'${currentValue}lx', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/light-bright.png"
 		}
 		
-		standardTile("motion", "motion", decoration: "flat", inactiveLabel: false, width: 2, height: 2){		
-			state "inactive", label:'No Motion', icon: "${resourcesUrl}motion-inactive.png"//, backgroundColor: "#cccccc"
-			state "active", label:'Motion', icon: "${resourcesUrl}motion-active.png"//, backgroundColor: "#00a0dc"
+		standardTile("motion", "motion", width: 2, height: 2){		
+			state "inactive", label:'No Motion', icon: "${resourcesUrl}motion-inactive.png"
+			state "active", label:'Motion', icon: "${resourcesUrl}motion-active.png"
 		}			
 		
-		standardTile("tampering", "device.tamper", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {			
-			state "clear", label:'No Tamper', icon: "${resourcesUrl}tamper-clear.png"//, backgroundColor:"#cccccc"
-			state "detected", label:'Tamper', icon: "${resourcesUrl}tamper-detected.png", action: "clearTamper"//, backgroundColor: "#e86d13"
+		standardTile("tampering", "device.tamper", decoration: "flat", width: 2, height: 2) {			
+			state "clear", label:'No Tamper', icon: "${resourcesUrl}tamper-clear.png"
+			state "detected", label:'Tamper', icon: "${resourcesUrl}tamper-detected.png", action: "clearTamper"
 		}
 		
-		valueTile("battery", "device.battery", inactiveLabel: false, width: 2, height: 2){
+		valueTile("battery", "device.battery", width: 2, height: 2){
 			state "default", label:'${currentValue}%', icon: "${resourcesUrl}battery.png"
 			state "1", label:'${currentValue}%', icon: "${resourcesUrl}battery-low.png"
-			// state "100", label:'${currentValue}%', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/battery-full.png"
 		}
 			
 		
 		valueTile("pending", "device.pendingChanges", decoration: "flat", width: 2, height: 2){
 			state "pendingChanges", label:'${currentValue} Change(s) Pending'
-			state "0", label: 'Updated'
+			state "0", label: 'No Pending Changes'
 			state "-1", label:'Updating Settings'
 		}
 		
-		valueTile("lastUpdate", "device.lastUpdate", decoration: "flat", inactiveLabel:false, width: 2, height: 2){
+		valueTile("lastUpdate", "device.lastUpdate", decoration: "flat", width: 2, height: 2){
 			state "lastUpdate", label:'Settings\nUpdated\n\n${currentValue}'
 		}
 		
-		valueTile("lastActivity", "device.lastCheckin", decoration: "flat", inactiveLabel:false, width: 2, height: 2){
+		valueTile("lastActivity", "device.lastCheckin", decoration: "flat", width: 2, height: 2){
 			state "lastCheckin", label:'Last\nActivity\n\n${currentValue}'
 		}
 		
-		valueTile("firmwareVersion", "device.firmwareVersion", decoration: "flat", inactiveLabel:false, width: 2, height: 2){
+		valueTile("firmwareVersion", "device.firmwareVersion", decoration: "flat", width: 2, height: 2){
 			state "firmwareVersion", label:'Firmware \n${currentValue}'
 		}
 		
-		standardTile("refresh", "device.refresh", decoration: "flat", inactiveLabel: false, width: 2, height: 2) {
+		standardTile("refresh", "device.refresh", width: 2, height: 2, decoration: "flat") {
 			state "default", label: "Refresh", action: "refresh", icon:"${resourcesUrl}refresh.png"
 		}
 		
@@ -539,7 +521,7 @@ private getConfigParams() {
 }
 
 private getTempScaleParam() {
-	return createConfigParamMap(1, "Temperature Scale [0-1]${getNameValueSettingDesc(tempUnits)}", 1, "tempScale", "0..1", (firmwareVersion >= firmwareV2 ? 1 : 0))
+	return createConfigParamMap(1, "Temperature Scale [0-1]${getNameValueSettingDesc(tempUnits)}", 1, "tempScale", "0..1", 1)
 }
 
 private getTempTriggerParam() {
