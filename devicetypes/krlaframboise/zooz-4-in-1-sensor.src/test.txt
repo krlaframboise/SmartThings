@@ -1,5 +1,5 @@
 /**
- *  Zooz 4-in-1 Sensor v1.1  (TEST)
+ *  Zooz 4-in-1 Sensor v2.0
  *		(Model: ZSE40)
  *
  *  Author: 
@@ -10,9 +10,15 @@
  *
  *  Changelog:
  *
- *    1.1 (03/??/2018)
+ *    2.0 (03/??/2018)
  *    	- Added tile icons.
  *    	- Added setting that allows you to choose whether it displays 0, 1, or 2 decimal places for all values.
+ *    	- Changed Offsets to decimal inputs
+ *    	- Fixed: Tiles not populating on initial install.
+ *    	- Fixed: Primary status changes show immediately after saving.
+ *    	- Fixed: Offsets not showing immediately after saving.
+ *    	- Fixed: Motion tile not updating immediately on iOS.
+ *    	- Fixed: Recently tab icons and text.
  *
  *    1.0 (12/16/2017)
  *    	- Initial Release
@@ -85,12 +91,12 @@ metadata {
 
 		getParamInput(tempScaleParam)
 		getParamInput(tempTriggerParam)
-		getNumberInput("tempOffset", "Temperature Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1°)\n(1 = Add 1°)", "-25..25", tempOffsetSetting)
+		getDecimalInput("tempOffset", "Temperature Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1°)\n(1 = Add 1°)", "-25..25", tempOffsetSetting)
 		getParamInput(humidityTriggerParam)	
-		getNumberInput("humidityOffset", "Humidity % Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1%)\n(1 = Add 1%)", "-25..25", humidityOffsetSetting)
+		getDecimalInput("humidityOffset", "Humidity % Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1%)\n(1 = Add 1%)", "-25..25", humidityOffsetSetting)
 		getParamInput(lightTriggerParam)
-		getNumberInput("lightOffset", "Light % Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1%)\n(1 = Add 1%)", "-25..25", lightOffsetSetting)
-		getNumberInput("lxLightOffset", "Light Lux Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1 lx)\n(1 = Add 1 lx)", "-25..25", lxLightOffsetSetting)
+		getDecimalInput("lightOffset", "Light % Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1%)\n(1 = Add 1%)", "-25..25", lightOffsetSetting)
+		getDecimalInput("lxLightOffset", "Light Lux Offset [-25 to 25]\n(0 = No Offset)\n(-1 = Subtract 1 lx)\n(1 = Add 1 lx)", "-25..25", lxLightOffsetSetting)
 		getBoolInput("reportLx", "Report Illuminance as Lux?\n(When enabled, a calculated lux level will be used for illuminance instead of the default %.)", reportLxSetting)
 		getNumberInput("maxLx", "Lux value to report when light level is at 100%:", "0..5000", maxLxSetting)
 		getParamInput(motionTimeParam)
@@ -109,11 +115,11 @@ metadata {
 					label:'${currentValue}', 
 					icon:"${resourcesUrl}motion-inactive.png",
 					backgroundColor:"#ffffff"			
-				attributeState "inactive", 
+				attributeState "No Motion", 
 					label:'NO MOTION', 
 					icon:"${resourcesUrl}motion-inactive.png", 
 					backgroundColor:"#ffffff"
-				attributeState "active", 
+				attributeState "Motion", 
 					label:'MOTION', 
 					icon:"st.motion.motion.active", 
 					backgroundColor:"#00a0dc"
@@ -135,14 +141,14 @@ metadata {
 		}
 		
 		valueTile("pLight", "device.pLight", width: 2, height: 2){
-			state "default", label:'${currentValue}%', icon: "${resourcesUrl}light.png"
+			state "pLight", label:'${currentValue}%', icon: "${resourcesUrl}light.png"
 		}
 
 		valueTile("lxLight", "device.lxLight", width: 2, height: 2){
 			state "default", label:'${currentValue}lx', icon: "${resourcesUrl}light.png"
 		}
 		
-		standardTile("motion", "motion", width: 2, height: 2){		
+		standardTile("motion", "device.motion", width: 2, height: 2){		
 			state "inactive", label:'No Motion', icon: "${resourcesUrl}motion-inactive.png"
 			state "active", label:'Motion', icon: "${resourcesUrl}motion-active.png"
 		}			
@@ -228,7 +234,8 @@ def updated() {
 		logTrace "updated()"
 	
 		initializeOffsets()
-					
+		initializePrimaryTile()
+		
 		if (!getAttrValue("tamper")) {
 			sendEvent(createTamperEventMap("clear"))
 		}
@@ -278,6 +285,15 @@ private initializeOffsets() {
 		eventMap.descriptionText = getDisplayedDescriptionText(eventMap)
 		
 		sendEvent(eventMap)
+	}
+}
+
+private initializePrimaryTile() {
+	def currentStatus = device.currentValue("primaryStatus")
+	def newStatus = getDescriptionText(device.currentState(primaryTileStatusSetting))
+	
+	if ("${newStatus}" != "${currentStatus}") {
+		sendEvent(name: "primaryStatus", value: newStatus, displayed: false)
 	}
 }
 
@@ -406,16 +422,16 @@ private getSecondaryTileStatusSetting() {
 	return settings?.secondaryTileStatus ?: "none"
 }
 private getTempOffsetSetting() {
-	return safeToInt(settings?.tempOffset, 0)
+	return safeToDec(settings?.tempOffset, 0)
 }
 private getHumidityOffsetSetting() {
-	return safeToInt(settings?.humidityOffset, 0)
+	return safeToDec(settings?.humidityOffset, 0)
 }
 private getLightOffsetSetting() {
-	return safeToInt(settings?.lightOffset, 0)
+	return safeToDec(settings?.lightOffset, 0)
 }
 private getLxLightOffsetSetting() {
-	return safeToInt(settings?.lxLightOffset, 0)
+	return safeToDec(settings?.lxLightOffset, 0)
 }
 private getReportLxSetting() {
 	return (settings?.reportLx ?: false)
@@ -890,9 +906,10 @@ private getLxConversionData() {
 
 private applyOffset(val, offsetVal, name, unit) {
 	if (offsetVal) {
-		logDebug "Applying ${offsetVal}${unit} ${name} Offset to ${val}${unit}"
-		val = (safeToDec(val, 0) + safeToDec(offsetVal, 0))
-	}		
+		logDebug "Before Applying ${offsetVal}${unit} ${name} Offset to ${val}${unit}"
+		val = (safeToDec(val, 0) + safeToDec(offsetVal, 0))		
+		logDebug "After Applying ${offsetVal}${unit} ${name} Offset to ${val}${unit}"
+	}
 	return roundVal(val, decimalPlacesSetting)
 }
 
@@ -959,7 +976,7 @@ private getAttrStatusText(attrName, eventMaps=null) {
 private getDescriptionText(data) {
 	switch (data?.name ?: "") {
 		case "motion":
-			return "${data.value}"
+			return "${data.value}" == "active" ? "Motion" : "No Motion"
 			break
 		case "temperature":
 			return "${data.value}°${data.unit}"					
@@ -1117,6 +1134,7 @@ private safeToInt(val, defaultVal=0) {
 }
 
 private safeToDec(val, defaultVal=0) {
+	def decVal = "${val}"?.isBigDecimal() ? "${val}".toBigDecimal() : defaultVal	
 	return "${val}"?.isBigDecimal() ? "${val}".toBigDecimal() : defaultVal
 }
 
