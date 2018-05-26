@@ -2,13 +2,15 @@
 
 <h1>Kevin LaFramboise's Device Type Handlers</h1>
 
-<strong>I'm posting this code on GitHub so that anyone can use it, but this is a private repository so pull requests will be ignored.  If you find a problem or want something added, please post a message on the corresponding topic in the SmartThings forum.</strong>
+<p><strong>I'm posting this code on GitHub so that anyone can use it, but this is a private repository so pull requests will be ignored.  If you find a problem or want something added, please post a message on the corresponding topic in the SmartThings forum.</strong></p> 
 
-<hr>
+<hr />
 
 <ul>
-	<li><a href="#aeon-labs-aeotec-doorbell">Aeon Labs Aeotec Doorbell</a></li>
-	<li><a href="#aeon-labs-multifunction-siren">Aeon Labs Multifunction Siren</a></li>
+	<li><a href="#aeotec-doorbell">Aeotec Doorbell</a></li>
+	<li><a href="#aeotec-nanomote">Aeotec NanoMote One</a></li>
+	<li><a href="#aeotec-nanomote">Aeotec NanoMote Quad</a></li>
+	<li><a href="#aeon-labs-multifunction-siren">Aeotec Siren</a></li>
 	<li><a href="#alarm-switch">Alarm Switch</a></li>
 	<li><a href="#dome-door-sensor">Dome Door Sensor</a></li>
 	<li><a href="#dome-doorwindow-sensor-pro">Dome Door/Window Sensor Pro</a></li>
@@ -28,6 +30,8 @@
 	<li><a href="#gocontrollinear-multifunction-contact-sensor">GoControl/Linear Multifunction Contact Sensor</a></li>
 	<li><a href="#gocontrollinear-motion-sensor">GoControl/Linear Motion Sensor</a></li>
 	<li><a href="#gocontrollinear-multifunction-siren">GoControl/Linear/Vision Multifunction Siren</a></li>
+	<li><a href="#aeotec-nanomote">Hank Scene Controller</a></li>
+	<li><a href="#aeotec-nanomote">Hank Four-Key Scene Controller</a></li>
 	<li><a href="#leaksmart-water-valve">LeakSmart Water Valve</a></li>
 	<li><a href="#visionmonoprice-shock-sensor">Monoprice Shock Sensor</a></li>
 	<li><a href="#monoprice-z-wave-plus-doorwindow-sensor">Monoprice Z-Wave Plus Door/Window Sensor</a></li>
@@ -39,6 +43,7 @@
 	<li><a href="#wireless-smoke-detector-sensor">Wireless Smoke Detector Sensor</a></li>
 	<li><a href="#zipato-multisound-siren">Zipato Multisound Siren</a></li>
 	<li><a href="#zooz-4-in-1-sensor">Zooz 4-in-1 Sensor</a></li>
+	<li><a href="#zooz-motion-sensor-zse18">Zooz Motion Sensor ZSE18</a></li>
 	<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Smart Plug</a></li>
 	<li><a href="#zooz-power-strip">Zooz Power Strip</a></li>
 	<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Power Switch</a></li>
@@ -50,13 +55,26 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 
 <hr />
 
-<h3>Aeon Labs Aeotec Doorbell</h3>
+<h3>Aeotec Doorbell</h3>
 
 <ul>
 <li>DTH for the Aeon Labs Aeotec Doorbell that allows you to use the device as a Switch, Alarm, Tone Generator, Music Player, and Audio Notification. Implements custom commands to allow you to play tracks by track number and change the volume on the fly.<br /></li>
 
 <li><a href="https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/aeotec-doorbell.src">View Aeon Labs Aeotec Doorbell - Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/aeotec-doorbell.src">View Aeotec Doorbell - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Aeotec NanoMote</h3>
+
+<ul>
+<li>This is a device handler for:
+<ul><li>Aeotec NanoMote One (ZWA003-A)</li>
+<li>Aeotec NanoMote Quad (ZWA004-A)</li>
+<li>Hank Scene Controller (HKZW-SCN01)</li>
+<li>Hank Four-Key Scene Controller (HKZW-SCN04)</li></ul></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/aeotec-nanomote.src/aeotec-nanomote.groovy">View Aeotec NanoMote - Device Handler Code</a></li>
 </ul>
 
 <hr />
@@ -405,6 +423,16 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>The setting <em>Automatically Clear Tamper</em> allows you to choose whether it raises the tamper clear event when the device cover is closed or if you have to press the "Refresh" button to clear it.<br></li>
 <li><a href="https://community.smartthings.com/t/release-zooz-4-in-1-sensor/82989?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-4-in-1-sensor.src/zooz-4-in-1-sensor.groovy">View Zooz 4-in-1 Sensor - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Zooz Motion Sensor ZSE18</h3>
+
+<ul>
+<li>This is a device handler for the Zooz Motion Sensor (ZSE18)<br /></li>
+<li>Reports Motion, Acceleration, and Battery</li>
+<li><a id="ZoozMotionSensorZSE" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-motion-sensor-zse18.src/zooz-motion-sensor-zse18.groovy">View Zooz Motion Sensor ZSE18 - Device Handler Code</a></li>
 </ul>
 
 <hr />
