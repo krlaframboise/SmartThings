@@ -26,7 +26,7 @@
  */
 metadata {
 	definition (
-		name: "Aeotec NanoMote", 
+		name: "Aeotec NanoMote2", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise"
 	) {
