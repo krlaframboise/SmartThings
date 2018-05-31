@@ -36,7 +36,7 @@ metadata {
 
 		command "reset"
 		
-		fingerprint mfr:"0208", prod:"0101", model:"0004", deviceJoinName:"Hank RGB Bulb"
+		fingerprint mfr:"0208", prod:"0101", model:"0004", deviceJoinName:"Hank RGBW LED Bulb"
 	}
 
 	simulator {	}
