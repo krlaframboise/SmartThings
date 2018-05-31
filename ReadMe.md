@@ -48,6 +48,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="#gocontrollinear-multifunction-siren">GoControl/Linear/Vision Multifunction Siren</a></li>
 			<li><a href="#aeotec-nanomote">Hank Scene Controller</a></li>
 			<li><a href="#aeotec-nanomote">Hank Four-Key Scene Controller</a></li>
+			<li><a href="#hank-rgbw-led-bulb">Hank RGBW LED Bulb</a></li>
 			<li><a href="#leaksmart-water-valve">LeakSmart Water Valve</a></li>
 			<li><a href="#visionmonoprice-shock-sensor">Monoprice Shock Sensor</a></li>
 			<li><a href="#monoprice-z-wave-plus-doorwindow-sensor">Monoprice Z-Wave Plus Door/Window Sensor</a></li>
@@ -136,6 +137,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li>Aeotec NanoMote Quad (ZWA004-A)</li>
 <li>Hank Scene Controller (HKZW-SCN01)</li>
 <li>Hank Four-Key Scene Controller (HKZW-SCN04)</li></ul></li>
+<li><a href="https://community.smartthings.com/t/release-aeotec-nanomote-one-quad-hank-one-four-button-scene-controller/127563">View Documentation in SmartThings Forum</a><br /></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/aeotec-nanomote.src/aeotec-nanomote.groovy">View Aeotec NanoMote - Device Handler Code</a></li>
 </ul>
 
@@ -366,6 +368,16 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
+<h3>Hank RGBW LED Bulb</h3>
+
+<ul>
+<li>This is a DTH for the Hank RGBW LED Bulb (Model: HKZW-RGB01)<br /></li>
+<li><a href="https://community.smartthings.com/t/release-hank-rgbw-led-bulb/127560">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/hank-rgbw-led-bulb.src/hank-rgbw-led-bulb.groovy">View Hank RGBW LED Bulb - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
 <h3>LeakSmart Water Valve</h3>
 
 <ul>
@@ -556,7 +568,7 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <ul>
 <li>This is a device handler for the Zooz Water Sensor (ZSE30).<br /></li>
-<li>Red LED and optional audbile alarm when water is detected.</li>
+<li>Red LED and optional audible alarm when water is detected.</li>
 <li>Specify the first alarm beep duration, reminder beep duration, interval between beeps, and the total length of time it should send reminders.</li>
 <li><a href="https://community.smartthings.com/t/release-zooz-water-sensor/78223?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a id="ZoozWaterSensor" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-water-sensor.src/zooz-water-sensor.groovy">View Zooz Water Sensor - Device Handler Code</a></li>
