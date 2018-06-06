@@ -1,5 +1,5 @@
 /**
- *  Zooz Motion Sensor ZSE18 v1.0
+ *  Zooz Motion Sensor ZSE18 v1.0.1
  *  (Model: ZSE18)
  *
  *  Author: 
@@ -9,7 +9,7 @@
  *    
  *
  *  Changelog:
- *    0.1 (05/26/2018)
+ *    1.0.1 (06/05/2018)
  *      - Initial Release
  *
  *
@@ -44,25 +44,16 @@ metadata {
 	
 	simulator { }
 	
-	preferences {
-		input "shockAlarmEnabled", "enum",
-			title: "Enable/Disable Shock Alarm:",
-			defaultValue: shockAlarmEnabledSetting,
-			required: false,
-			displayDuringSetup: true,
-			options: shockAlarmEnabledOptions
-		input "motionClearedDelay", "enum",
-			title: "Motion Cleared Delay:",
-			defaultValue: motionClearedDelaySetting,
-			required: false,
-			displayDuringSetup: true,
-			options: motionClearedDelayOptions
-		input "motionSensitivity", "enum",
-			title: "Motion Detection Sensitivity:",
-			defaultValue: motionSensitivitySetting,
-			required: false,
-			displayDuringSetup: true,
-			options: motionSensitivityOptions
+	preferences {			
+		getOptionsInput(motionSensitivityParam)
+		getOptionsInput(motionClearedDelayParam)
+		getOptionsInput(shockAlarmParam)
+		getOptionsInput(ledParam)
+		// getOptionsInput(sendBasicSetParam)
+		// getOptionsInput(basicSetValueParam)
+		// getOptionsInput(sensorBinaryReportsParam)			
+		// getOptionsInput(lowBatteryAlarmParam)
+			
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -78,20 +69,16 @@ metadata {
 				attributeState "active", 
 					label:'MOTION', 
 					icon:"${resourcesUrl}motion-active.png", backgroundColor:"#00a0dc"
-			}			
-			tileAttribute ("device.acceleration", key: "SECONDARY_CONTROL") {
-				attributeState "inactive", label:'NO VIBRATION'
-				attributeState "active", label:'VIBRATION'
-			}
+			}	
 		}
 
 		standardTile("motion", "device.motion", decoration: "flat", width: 2, height: 2) {			
-			state "Inactive", label:'INACTIVE', icon: "${resourcesUrl}motion-inactive.png"
-			state "active", label:'ACTIVE', icon: "${resourcesUrl}motion-active.png"
+			state "inactive", label:'NO MOTION', icon: "${resourcesUrl}motion-inactive.png"
+			state "active", label:'MOTION', icon: "${resourcesUrl}motion-active.png"
 		}		
 		
-		standardTile("acceleration", "device.acceleration", decoration: "flat", width: 2, height: 2) {			
-			state "Inactive", label:'INACTIVE', icon: "${resourcesUrl}acceleration-inactive.png"
+		standardTile("acceleration", "device.acceleration", decoration: "flat", width: 2, height: 2) {
+			state "inactive", label:'INACTIVE', icon: "${resourcesUrl}acceleration-inactive.png"
 			state "active", label:'ACTIVE', icon: "${resourcesUrl}acceleration-active.png"
 		}
 		
@@ -99,14 +86,23 @@ metadata {
 			state "default", label: "Refresh", action: "refresh", icon:"${resourcesUrl}refresh.png"
 		}
 		
-		valueTile("battery", "device.battery", width: 2, height: 2){
-			state "default", label:'${currentValue}%', icon: "${resourcesUrl}battery.png"
+		standardTile("battery", "device.battery", decoration: "flat", width: 2, height: 2) {
+			state "default", label:'${currentValue}%', icon: "${resourcesUrl}battery-default.png"
+			state "100", label:'${currentValue}%', icon: "${resourcesUrl}battery.png"
 			state "1", label:'${currentValue}%', icon: "${resourcesUrl}battery-low.png"
 		}
 		
-		main "mainTile"
+		main(["mainTile", "motion", "acceleration"])
 		details(["mainTile", "motion", "motionMulti", "acceleration", "battery", "refresh"])
 	}
+}
+
+private getOptionsInput(param) {
+	input "configParam${param.num}", "enum",
+		title: "${param.name}:",
+		required: false,
+		defaultValue: "${param.defaultValue}",
+		options: param.options
 }
 
 private getResourcesUrl() {
@@ -128,22 +124,25 @@ def configure() {
 	
 	if (!state.isConfigured) {
 		logTrace "Waiting 2 second because this is the first time being configured"
-		sendEvent(getEventMap("motion", "inactive", false))
-		sendEvent(getEventMap("acceleration", "inactive", false))
-		cmds << "delay 2000"		
+		cmds << "delay 2000"
 	}
 	
-	configData.sort { it.paramNum }.each { 
-		cmds += updateConfigVal(it.paramNum, it.size, it.value)	
-	}	
-	if (cmds) {
-		logDebug "Sending configuration to device."
+	if (!device.currentValue("motion")) {
+		cmds << sensorBinaryGetCmd(12)
 	}
 	
-	if (!isDuplicateCommand(state.lastBattery, (60 * 60 * 1000))) {
+	if (!device.currentValue("acceleration")) {
+		cmds << sensorBinaryGetCmd(8)		
+	}
+	
+	if (canRequestBattery()) {
 		cmds << batteryGetCmd()
 	}
 	
+	configParams.each { 
+		cmds += updateConfigVal(it)
+	}	
+		
 	if (!device.currentValue("checkInterval")) {
 		// ST sets default wake up interval to 4 hours so make it report offline if it goes 8 hours 5 minutes without checking in.
 		def wakeUpIntervalSecs = (4 * 60 * 60)		
@@ -156,13 +155,18 @@ def configure() {
 	return cmds ? delayBetween(cmds, 1000) : []
 }
 
-private updateConfigVal(paramNum, paramSize, val) {
+private canRequestBattery() {
+	return !isDuplicateCommand(state.lastBattery, (60 * 60 * 1000))
+}
+
+private updateConfigVal(param) {
 	def result = []
-	def configVal = state["configVal${paramNum}"]
+	def configVal = state["configVal${param.num}"]
 	
-	if ("${configVal}" != "${val}") {
-		result << configSetCmd(paramNum, paramSize, val)
-		result << configGetCmd(paramNum)
+	if ("${configVal}" != "${param.value}") {
+		logDebug "Changing ${param.name} (#${param.num}) from ${configVal} to ${param.value}"
+		result << configSetCmd(param)
+		result << configGetCmd(param)
 	}		
 	return result
 }
@@ -177,8 +181,8 @@ def ping() {
 def refresh() {	
 	logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."
 	state.lastBattery = null
-	configData.each {
-		state."configVal${it.paramNum}" = null
+	configParams.each {
+		state."configVal${it.num}" = null
 	}
 }
 
@@ -188,20 +192,32 @@ private logForceWakeupMessage(msg) {
 
 
 def parse(String description) {
-	def result = []
-	
-	def cmd = zwave.parse(description, commandClassVersions)
-	if (cmd) {
-		result += zwaveEvent(cmd)
+def result = []
+	try {
+		def cmd = zwave.parse(description, commandClassVersions)
+		if (cmd) {
+			result += zwaveEvent(cmd)
+		}
+		else {
+			logDebug "Unable to parse description: $description"
+		}
+		
+		sendLastCheckInEvent()	
 	}
-	else {
-		logDebug "Unable to parse description: $description"
+	catch (e) {
+		log.error "$e"
 	}
-	
-	sendEvent(name: "lastCheckIn", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
-	
 	return result
 }
+
+private sendLastCheckInEvent() {
+	if (!isDuplicateCommand(state.lastCheckIn, 60000)) {
+		state.lastCheckIn = new Date().time
+
+		sendEvent(name: "lastCheckIn", value: convertToLocalTimeString(new Date()), displayed: false)
+	}
+}
+
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
 	def encapCmd = cmd.encapsulatedCommand(commandClassVersions)
@@ -221,6 +237,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
 	
 	def cmds = []	
 	cmds += configure()
+	
 	if (cmds) {
 		cmds << "delay 2000"
 	}
@@ -247,16 +264,21 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {	
 	logTrace "ConfigurationReport ${cmd}"
 	
-	def name = configData.find { it.paramNum == cmd.parameterNumber }?.name
-	if (name) {	
+	def param = configParams.find { it.num == cmd.parameterNumber }
+	if (param) {	
 		def val = hexBytesToInt(cmd.configurationValue, cmd.size)
 		
-		if (name == "Shock Alarm Enabled" && !shockAlarmEnabledSetting) {
-			sendEvent(getEventMap("acceleration", "inactive", false))
+		if (val == 0) {
+			if (param.num == shockAlarmParam.num) {
+				sendAccelerationEvent("inactive")
+			}
+			else if (param.num == motionSensitivityParam.num) {
+				sendMotionEvent("inactive")
+			}
 		}
 	
-		logDebug "${name} = ${val}"	
-		state."configVal${cmd.parameterNumber}" = val
+		logDebug "${param.name} (#${param.num}) = ${val}"	
+		state."configVal${param.num}" = val
 	}
 	else {
 		logDebug "Parameter ${cmd.parameterNumber}: ${cmd.configurationValue}"
@@ -266,43 +288,59 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	return []
 }
 
-// Creates motion/acceleration events.
+
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
 	logTrace "NotificationReport: $cmd"
 	
-	def result = []	
 	if (cmd.notificationType == 7) {
 		switch (cmd.event) {
 			case 0:
 				if (cmd.eventParameter[0] == 3 || cmd.eventParameter[0] == 9) {
-					logDebug "Acceleration Inactive"				
-					result << createEvent(getEventMap("acceleration", "inactive"))
+					sendAccelerationEvent("inactive")					
 				}
 				else {
-					logDebug "Motion Inactive"				
-					result << createEvent(getEventMap("motion", "inactive"))
+					sendMotionEvent("inactive")
 				}		
 				break
 			case { it == 3 || it == 9}:
-				logDebug "Acceleration Active"
-				result << createEvent(getEventMap("acceleration", "active"))
+				sendAccelerationEvent("active")				
 				break
 			case 8:
-				logDebug "Motion Active"
-				result << createEvent(getEventMap("motion", "active"))
+				sendMotionEvent("active")
 				break
 			default:
 				logDebug "Unknown Notification Event: ${cmd}"
 		}
 	}
-	return result
+	return []
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
 	logTrace "SensorBinaryReport: $cmd"
-	// Ignoring event because motion events are being handled by notification report.
+	
+	switch (cmd.sensorType) {
+		case 8:
+			sendAccelerationEvent(cmd.sensorValue ? "active" : "inactive")
+			break		
+		case 12:
+			sendMotionEvent(cmd.sensorValue ? "active" : "inactive")
+			break			
+		default:
+			logDebug "Unknown Sensor Type: $cmd"
+	}
 	return []
 }
+
+private sendMotionEvent(value) {
+	logDebug "Motion ${value}"
+	sendEvent(getEventMap("motion", value))
+}
+
+private sendAccelerationEvent(value) {
+	logDebug "Acceleration ${value}"
+	sendEvent(getEventMap("acceleration", value))
+}
+
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	logDebug "Ignored Command: $cmd"
@@ -345,12 +383,16 @@ private batteryGetCmd() {
 	return secureCmd(zwave.batteryV1.batteryGet())
 }
 
-private configGetCmd(paramNum) {
-	return secureCmd(zwave.configurationV1.configurationGet(parameterNumber: paramNum))
+private sensorBinaryGetCmd(sensorType) {
+	return secureCmd(zwave.sensorBinaryV2.sensorBinaryGet(sensorType: sensorType))
 }
 
-private configSetCmd(paramNum, size, val) {
-	return secureCmd(zwave.configurationV1.configurationSet(parameterNumber: paramNum, size: size, configurationValue: intToHexBytes(val, size)))
+private configGetCmd(param) {
+	return secureCmd(zwave.configurationV1.configurationGet(parameterNumber: param.num))
+}
+
+private configSetCmd(param) {
+	return secureCmd(zwave.configurationV1.configurationSet(parameterNumber: param.num, size: param.size, configurationValue: intToHexBytes(param.value, param.size)))
 }
 
 private secureCmd(cmd) {
@@ -384,32 +426,72 @@ private getCommandClassVersions() {
 	]
 }
 
-
-// Settings
-private getShockAlarmEnabledSetting() {
-	return settings?.shockAlarmEnabled != null ? safeToInt(settings?.shockAlarmEnabled) : 1
-}
-
-private getMotionSensitivitySetting() {
-	return settings?.motionSensitivity != null	? safeToInt(settings?.motionSensitivity) : 5
-}
-
-private getMotionClearedDelaySetting() {
-	return settings?.motionClearedDelay != null ? safeToInt(settings?.motionClearedDelay) : 30
-}
-
-
 // Configuration Parameters
-private getConfigData() {
-	return [
-		[paramNum: 12, name: "Motion Sensitivity", value: motionSensitivitySetting, size: 1],
-		[paramNum: 18, name: "Motion Cleared Delay", value: motionClearedDelaySetting, size: 2],
-		[paramNum: 17, name: "Shock Alarm Enabled", value: shockAlarmEnabledSetting, size: 1]
-		// paramNum: 14 = Send Basic Set (0:disabled, 1:enabled)
-		// paramNum: 15 - Basic Set Value (0:255, 1: 0)
-		// paramNum: 32 - Low Battery Level (10-50%)
+private getConfigParams() {
+	[
+		motionSensitivityParam,
+		sendBasicSetParam,
+		basicSetValueParam,
+		shockAlarmParam,
+		motionClearedDelayParam,
+		sensorBinaryReportsParam,
+		ledParam,
+		lowBatteryAlarmParam
 	]	
 }
+
+private getMotionSensitivityParam() {
+	return getParam(12, "Motion Sensitivity", 1, 8, motionSensitivityOptions)
+}
+
+private getSendBasicSetParam() {
+	return getParam(14, "Send Basic Set", 1, 0, enabledDisabledOptions)
+}
+
+private getBasicSetValueParam() {
+	return getParam(15, "Basic Set Value", 1, 0, [
+		["0": "Active: 0xFF / Inactive: 0x00"], 
+		["1": "Active: 0x00 / Inactive: 0xFF"]
+	])
+}
+
+private getShockAlarmParam() {
+	return getParam(17, "Shock Alarm", 1, 1, enabledDisabledOptions)
+}
+
+private getMotionClearedDelayParam() {
+	return getParam(18, "Motion Cleared Delay", 2, 30, motionClearedDelayOptions)
+}
+
+private getSensorBinaryReportsParam() {
+	return getParam(19, "Sensor Binary Reports", 1, 0, enabledDisabledOptions)
+}
+
+private getLedParam() {
+	return getParam(20, "Motion LED", 1, 1, enabledDisabledOptions)
+}
+
+private getLowBatteryAlarmParam() {
+	return getParam(32, "Low Battery Level", 1, 10, [["10":"10%"],["25":"25%"],["50":"50%"]])
+}
+
+private getParam(num, name, size, defaultVal, options) {
+	def val = safeToInt((settings ? settings["configParam${num}"] : null), defaultVal) 
+	
+	def map = [num: num, name: name, size: size, defaultValue: defaultVal, value: val]
+	
+	map.options = options?.collect {
+		it.collect { k, v ->
+			if ("${k}" == "${defaultVal}") {
+				v = "${v} [DEFAULT]"		
+			}
+			["$k": "$v"]
+		}
+	}.flatten()	
+	
+	return map
+}
+
 
 private getMotionSensitivityOptions() {	
 	def options = [
@@ -450,7 +532,7 @@ private getMotionClearedDelayOptions() {
 	]
 }
 
-private getShockAlarmEnabledOptions() {
+private getEnabledDisabledOptions() {
 	[
 		["0": "Disabled"],
 		["1": "Enabled"]
@@ -501,5 +583,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	// log.trace "$msg"
+	log.trace "$msg"
 }
