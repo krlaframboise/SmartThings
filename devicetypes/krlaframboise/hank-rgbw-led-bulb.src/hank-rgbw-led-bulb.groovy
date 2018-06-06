@@ -1,5 +1,5 @@
 /**
- *  Hank RGBW LED Bulb v1.0
+ *  Hank RGBW LED Bulb v1.0.1
  *  (Model: HKZW-RGB01)
  *
  *  Author: 
@@ -7,6 +7,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.1 (06/05/2018)
+ *      - Fixed Power Recovery setting and made other bug fixes.
  *
  *    1.0 (05/31/2018)
  *      - Initial Release
@@ -82,20 +85,17 @@ metadata {
 	}
 	
 	preferences {		
-		input "powerRecovery", "bool", 
-			title: "Remember last state when power is restored?", 
-			defaultValue: true, 
-			required: false
-			
+		getConfigParamInput(powerRecoveryParam)
+					
 		input "toggleDuration", "enum",
 			title: "Transition Speed:",
-			defaultValue: 1,
+			defaultValue: "1",
 			required: false,
 			options: [
-				[0:"Instant"],
-				[1:"Fast"],
-				[2:"Medium"],
-				[3:"Slow"]
+				["0": "Instant"],
+				["1": "Fast [DEFAULT]"],
+				["2": "Medium"],
+				["3": "Slow"]
 			]
 		
 		input "debugOutput", "bool", 
@@ -105,8 +105,12 @@ metadata {
 	}
 }
 
-private getPowerRecoverySetting() {
-	return (settings?.powerRecovery) ? 1 : 2
+private getConfigParamInput(param) {
+	input "configParam${param.num}", "enum",
+		title: "${param.name}:",
+		required: false,
+		defaultValue: "${param.defaultValue}",
+		options: param.options
 }
 
 private getToggleDurationSetting() {
@@ -129,7 +133,7 @@ def updated() {
 }
 
 private hasSettingChanges() {
-	return configData.find {  (it.value != state["configVal${it.num}"]) } ? true : false
+	return configParams.find {  (it.value != state["configVal${it.num}"]) } ? true : false
 }
 
 private initializeCheckin() {
@@ -167,9 +171,9 @@ def ping() {
 def configure() {
 	logDebug "configure()..."
 	def cmds = []	
-	configData.each {
-		cmds << configSetCmd(it.num, it.value)
-		cmds << configGetCmd(it.num)
+	configParams.each {
+		cmds << configSetCmd(it)
+		cmds << configGetCmd(it)
 	}		
 	return delayBetween(cmds, 1000)
 }
@@ -229,7 +233,7 @@ def setColor(value) {
 	def hue
 	def saturation
 	if (value.hex) {
-		rgb = value.hex.findAll(/[0-9a-fA-F]{2}/).collect { Integer.parseInt(it, 16) }
+		rgb = "${value.hex}".findAll(/[0-9a-fA-F]{2}/).collect { Integer.parseInt(it, 16) }
 		
 		def hsv = rgbToHSV(rgb[0], rgb[1], rgb[2])
 		if (hsv) {
@@ -300,8 +304,6 @@ private basicGetCmd() {
 }
 
 private switchMultilevelSetCmd(level, duration) {
-	logDebug "switchMultilevelSetCmd($level, $duration)"
-	
 	def levelVal = validateRange(level, 99, 0, 99)
 	
 	def durationVal = validateRange(duration, defaultDimmingDurationSetting, 0, 100)
@@ -317,12 +319,12 @@ private switchColorGetCmd() {
 	return secureCmd(zwave.switchColorV3.switchColorGet())
 }
 
-private configSetCmd(num, val) {
-	return secureCmd(zwave.configurationV1.configurationSet(parameterNumber: num, size: 1,configurationValue: [val]))
+private configSetCmd(param) {
+	return secureCmd(zwave.configurationV1.configurationSet(parameterNumber: param.num, size: param.size,scaledConfigurationValue: param.value))
 }
 
-private configGetCmd(num) {
-	return secureCmd(zwave.configurationV1.configurationGet(parameterNumber: num))
+private configGetCmd(param) {
+	return secureCmd(zwave.configurationV1.configurationGet(parameterNumber: param.num))
 }
 
 private secureCmd(cmd) {
@@ -334,7 +336,7 @@ private secureCmd(cmd) {
 	}	
 }
 
-private getConfigData() {
+private getConfigParams() {
 	return [
 		basicReportParam,
 		powerRecoveryParam
@@ -342,11 +344,42 @@ private getConfigData() {
 }
 
 private getBasicReportParam() {
-	return [num: 24, value: 1]
+	return getParam(24, "Load Status Change Notification", 1, 1, [
+			["0": "Disabled"],
+			["1": "Send Basic Report"],
+			["2": "Send Basic Report for Phyiscal Reports"]
+		])
 }
 
 private getPowerRecoveryParam() {
-	return [num: 21, value: powerRecoverySetting]
+	return getParam(21, "Power Failure Recovery", 1, 1, [
+			["0": "Remember Last State"],
+			["1": "On"],
+			["2": "Off"]
+		])
+}
+
+private getParam(num, name, size, defaultVal, options) {
+	def val = safeToInt((settings ? settings["configParam${num}"] : null), defaultVal) 
+	
+	def map = [
+		num: num, 
+		name: name, 
+		size: size, 
+		defaultValue: defaultVal, 
+		value: val
+	]
+	
+	map.options = options?.collect {
+		it.collect { k, v ->
+			if ("${k}" == "${defaultVal}") {
+				v = "${v} [DEFAULT]"		
+			}
+			["$k": "$v"]
+		}
+	}.flatten()	
+	
+	return map
 }
 
 
