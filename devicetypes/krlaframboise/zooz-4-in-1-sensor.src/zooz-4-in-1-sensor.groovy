@@ -1,5 +1,5 @@
 /**
- *  Zooz 4-in-1 Sensor v2.0
+ *  Zooz 4-in-1 Sensor v2.0.1
  *		(Model: ZSE40)
  *
  *  Author: 
@@ -9,6 +9,10 @@
  *    
  *
  *  Changelog:
+ *
+ *    2.0.1 (06/17/2018)
+ *    	- Added workaround for iOS "number" preferences returning "BigDecimal" values.
+ *    	- Fixed bug with Humidity and Temperature not always getting shown in the Recently tab.
  *
  *    2.0 (03/25/2018)
  *    	- Added tile icons.
@@ -99,10 +103,10 @@ metadata {
 		getNumberInput("maxLx", "Lux value to report when light level is at 100%:", "0..5000", maxLxSetting)
 		getParamInput(motionTimeParam)
 		getParamInput(motionSensitivityParam)
-		getParamInput(ledIndicatorModeParam)
+		getParamInput(ledIndicatorModeParam)		
 		getNumberInput("decimalPlaces", "Round values to how many decimal places?", "0..2", decimalPlacesSetting)
 		getNumberInput("checkinInterval", "Minimum Check-in Interval [0-167]\n(0 = 10 Minutes [FOR TESTING ONLY])\n(1 = 1 Hour)\n(167 = 7 Days)", "0..167", checkinIntervalSetting)
-		getNumberInput("reportBatteryEvery", "Battery Reporting Interval [1-167]\n(1 = 1 Hour)\n(167 = 7 Days)\nThis setting can't be less than the Minimum Check-in Interval.", "1..67", batteryReportingIntervalSetting)
+		getNumberInput("reportBatteryEvery", "Battery Reporting Interval [1-167]\n(1 = 1 Hour)\n(167 = 7 Days)\nThis setting can't be less than the Minimum Check-in Interval.", "1..167", batteryReportingIntervalSetting)
 		getBoolInput("autoClearTamper", "Automatically Clear Tamper?\n(The tamper detected event is raised when the device is opened.  This setting allows you to decide whether or not to have the clear event automatically raised when the device closes.)", false)
 		getBoolInput("debugOutput", "Enable debug logging?", true)
 	}
@@ -412,8 +416,9 @@ private getRoundPrimaryStatusSetting() {
 	return settings?.roundPrimaryStatus ?: false
 }
 private getDecimalPlacesSetting() {
-	return settings?.decimalPlaces != null ? settings?.decimalPlaces : 2
+	return safeToInt(roundVal((settings?.decimalPlaces != null ? settings?.decimalPlaces : 2), 0))
 }
+
 private getPrimaryTileStatusSetting() {
 	return settings?.primaryTileStatus ?: "motion"
 }
@@ -857,13 +862,13 @@ private createTempEventMaps(val, onlyIfNew) {
 	state.actualTemp = val
 	def scale = getTemperatureScale()
 	def offsetVal = applyOffset(val, tempOffsetSetting, "Temperature", "°${scale}")
-	return createEventMaps("temperature", offsetVal, scale, null, onlyIfNew)	
+	return createEventMaps("temperature", offsetVal, scale, true, onlyIfNew)	
 }
 
 private createHumidityEventMaps(val, onlyIfNew) {
 	state.actualHumidity = val
 	def offsetVal = applyOffset(val, humidityOffsetSetting, "Humidity", "%")
-	return createEventMaps("humidity", offsetVal, "%", null, onlyIfNew)
+	return createEventMaps("humidity", offsetVal, "%", true, onlyIfNew)
 }
 
 private createLightEventMaps(val, onlyIfNew) {
