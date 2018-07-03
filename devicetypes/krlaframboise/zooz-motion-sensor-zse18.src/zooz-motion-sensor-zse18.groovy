@@ -1,5 +1,5 @@
 /**
- *  Zooz Motion Sensor ZSE18 v1.0.1
+ *  Zooz Motion Sensor ZSE18 v1.0.3
  *  (Model: ZSE18)
  *
  *  Author: 
@@ -9,7 +9,13 @@
  *    
  *
  *  Changelog:
- *    1.0.1 (06/05/2018)
+ *
+ *    1.0.3 (07/02/2018)
+ *      - Changed battery tile to display USB icon when joined as a powered device.
+ *      - Made updated and refresh methods send commands to device when joined as powered device.
+ *      - Implemented ping command so that Made updated method send changes to device when joined as powered device.
+ *
+ *    1.0.2 (06/07/2018)
  *      - Initial Release
  *
  *
@@ -86,10 +92,11 @@ metadata {
 			state "default", label: "Refresh", action: "refresh", icon:"${resourcesUrl}refresh.png"
 		}
 		
-		standardTile("battery", "device.battery", decoration: "flat", width: 2, height: 2) {
+		standardTile("battery", "device.battery", decoration: "flat", width: 2, height: 2) {			
 			state "default", label:'${currentValue}%', icon: "${resourcesUrl}battery-default.png"
 			state "100", label:'${currentValue}%', icon: "${resourcesUrl}battery.png"
 			state "1", label:'${currentValue}%', icon: "${resourcesUrl}battery-low.png"
+			state "", label:'USB', icon: "${resourcesUrl}usb.png"
 		}
 		
 		main(["mainTile", "motion", "acceleration"])
@@ -114,24 +121,29 @@ def updated() {
 		state.lastUpdated = new Date().time
 		logTrace "updated()"
 
-		logForceWakeupMessage "Configuration changes will be sent to the device the next time it wakes up."		
+		if (!device.currentValue("battery")) {
+			return response(configure())
+		}
+		else {
+			logForceWakeupMessage "Configuration changes will be sent to the device the next time it wakes up."		
+		}
 	}		
 }
 
 def configure() {
 	logTrace "configure()"
 	def cmds = []
-	
+
 	if (!state.isConfigured) {
 		logTrace "Waiting 2 second because this is the first time being configured"
 		cmds << "delay 2000"
 	}
 	
-	if (!device.currentValue("motion")) {
+	if (!device.currentValue("motion") || state.pendingRefresh) {
 		cmds << sensorBinaryGetCmd(12)
 	}
 	
-	if (!device.currentValue("acceleration")) {
+	if (!device.currentValue("acceleration") || state.pendingRefresh) {
 		cmds << sensorBinaryGetCmd(8)		
 	}
 	
@@ -151,12 +163,14 @@ def configure() {
 		def checkInInterval = ((wakeUpIntervalSecs * 2) + (5 * 60)) 
 		sendEvent(name: "checkInterval", value: checkInInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 	}
+	
+	state.pendingRefresh = false
 		
-	return cmds ? delayBetween(cmds, 1000) : []
+	return cmds ? delayBetween(cmds, 500) : []
 }
 
 private canRequestBattery() {
-	return !isDuplicateCommand(state.lastBattery, (60 * 60 * 1000))
+	return !isDuplicateCommand(state.lastBattery, (12 * 60 * 60 * 1000))
 }
 
 private updateConfigVal(param) {
@@ -172,17 +186,32 @@ private updateConfigVal(param) {
 }
 
 
-// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
 def ping() {
 	logDebug "ping()"	
+	return [versionGetCmd()]
 }
 
 // Forces the configuration to be resent to the device the next time it wakes up.
-def refresh() {	
-	logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."
+def refresh() {		
 	state.lastBattery = null
-	configParams.each {
-		state."configVal${it.num}" = null
+	
+	if (state.pendingRefresh) {
+		configParams.each {
+			state."configVal${it.num}" = null
+		}
+	}
+	
+	state.pendingRefresh = true
+	
+	if (!device.currentValue("battery")) {
+		def cmds = []
+		cmds << sensorBinaryGetCmd(12)
+		cmds << sensorBinaryGetCmd(8)	
+		cmds += configure()
+		return cmds
+	}	
+	else {
+		logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."	
 	}
 }
 
@@ -246,18 +275,22 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
+	logTrace "BatteryReport $cmd"
 	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
 	if (val > 100) {
 		val = 100
-	}
-	else if (val < 1) {
-		val = 1
-	}
+	}	
 	state.lastBattery = new Date().time
 	
 	logDebug "Battery ${val}%"
-	sendEvent(getEventMap("battery", val, null, null, "%"))
+	sendEvent(getEventMap("battery", val, "%"))
 	return []
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
+	def version = "${cmd.applicationVersion}.${cmd.applicationSubVersion}"
+	logDebug "Firmware Version: ${version}"	
+	return result 
 }
 
 // Stores the configuration values so that it only updates them when they've changed or a refresh was requested.
@@ -347,21 +380,16 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	return []
 }
 
-private getEventMap(name, value, displayed=null, desc=null, unit=null) {	
-	def isStateChange = (device.currentValue(name) != value)
-	displayed = (displayed == null ? isStateChange : displayed)
+private getEventMap(name, value, unit=null) {	
 	def eventMap = [
 		name: name,
 		value: value,
-		displayed: displayed,
-		isStateChange: isStateChange
+		displayed: true,
+		isStateChange: true
 	]
-	if (desc) {
-		eventMap.descriptionText = desc
-	}
 	if (unit) {
 		eventMap.unit = unit
-	}		
+	}	
 	return eventMap
 }
 
@@ -375,12 +403,15 @@ private wakeUpIntervalGetCmd() {
 }
 
 private wakeUpIntervalSetCmd(seconds) {	
-	log.warn "wakeUpIntervalSetCmd($seconds)"
 	return secureCmd(zwave.wakeUpV2.wakeUpIntervalSet(seconds:seconds, nodeid:zwaveHubNodeId))
 }
 
 private batteryGetCmd() {	
 	return secureCmd(zwave.batteryV1.batteryGet())
+}
+
+private versionGetCmd() {
+	return secureCmd(zwave.versionV1.versionGet())
 }
 
 private sensorBinaryGetCmd(sensorType) {
@@ -583,5 +614,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	log.trace "$msg"
+	// log.trace "$msg"
 }
