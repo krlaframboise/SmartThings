@@ -5,7 +5,7 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation: 
+ *  URL to documentation: https://community.smartthings.com/t/release-zooz-motion-sensor-zse18/129743
  *    
  *
  *  Changelog:
