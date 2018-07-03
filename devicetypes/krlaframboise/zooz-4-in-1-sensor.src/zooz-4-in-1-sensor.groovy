@@ -1,5 +1,5 @@
 /**
- *  Zooz 4-in-1 Sensor v2.0.2
+ *  Zooz 4-in-1 Sensor v2.0.3
  *		(Model: ZSE40)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    2.0.3 (07/02/2018)
+ *    	- Changed decimal place setting to enum.
  *
  *    2.0.2 (06/17/2018)
  *    	- Changed behavior of Refresh tile.
@@ -108,7 +111,13 @@ metadata {
 		getParamInput(motionTimeParam)
 		getParamInput(motionSensitivityParam)
 		getParamInput(ledIndicatorModeParam)		
-		getNumberInput("decimalPlaces", "Round values to how many decimal places?", "0..2", decimalPlacesSetting)
+		
+		input "decimalPlaces", "enum", 
+			title: "Round values to how many decimal places?", 
+			defaultValue: 2, 
+			required: false,
+			options: [[0:"0"],[1:"1"],[2:"2"]]
+		
 		getNumberInput("checkinInterval", "Minimum Check-in Interval [0-167]\n(0 = 10 Minutes [FOR TESTING ONLY])\n(1 = 1 Hour)\n(167 = 7 Days)", "0..167", checkinIntervalSetting)
 		getNumberInput("reportBatteryEvery", "Battery Reporting Interval [1-167]\n(1 = 1 Hour)\n(167 = 7 Days)\nThis setting can't be less than the Minimum Check-in Interval.", "1..167", batteryReportingIntervalSetting)
 		getBoolInput("autoClearTamper", "Automatically Clear Tamper?\n(The tamper detected event is raised when the device is opened.  This setting allows you to decide whether or not to have the clear event automatically raised when the device closes.)", false)
