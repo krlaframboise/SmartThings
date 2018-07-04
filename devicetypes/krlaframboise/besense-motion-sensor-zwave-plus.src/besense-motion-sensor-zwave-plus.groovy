@@ -1,5 +1,5 @@
 /**
- *  BeSense Motion Sensor Zwave Plus v1.0
+ *  BeSense Motion Sensor Zwave Plus v1.0.1
  *  (Model: IX30/IX32)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.0 (06/29/2018)
+ *    1.0.1 (07/04/2018)
  *      - Initial Release
  *
  *
@@ -47,7 +47,7 @@ metadata {
 		
 		// fingerprint mfr:"0214", prod:"0003", model:"0002", deviceJoinName: "BeSense PIR Wall Sensor" // IX30
 		
-		// fingerprint mfr:"0214", prod:"0003", model:"0002", deviceJoinName: "BeSense 360 Ceiling Sensor"
+		// fingerprint mfr:"0214", prod:"0003", model:"0002", deviceJoinName: "BeSense 360 Ceiling Sensor" // IX32
 	}
 	
 	tiles(scale: 2) {
@@ -57,8 +57,8 @@ metadata {
 				attributeState("inactive", label:'NO MOTION', icon:"st.motion.motion.inactive", backgroundColor:"#CCCCCC")
 			}
 			tileAttribute ("device.tamper", key: "SECONDARY_CONTROL") {
-				attributeState("clear", label:'tamper ${currentValue}')
-				attributeState("detected", label:'tamper ${currentValue}')
+				attributeState("clear", label:'')
+				attributeState("detected", label:'TAMPERING')
 			}
 		}
 
