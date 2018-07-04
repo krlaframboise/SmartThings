@@ -11,9 +11,7 @@
  *  Changelog:
  *
  *    1.0.3 (07/02/2018)
- *      - Changed battery tile to display USB icon when joined as a powered device.
- *      - Made updated and refresh methods send commands to device when joined as powered device.
- *      - Implemented ping command so that Made updated method send changes to device when joined as powered device.
+ *      - Misc changes related to joining the device as a powered device.
  *
  *    1.0.2 (06/07/2018)
  *      - Initial Release
