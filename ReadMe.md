@@ -29,8 +29,8 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="#aeon-labs-multifunction-siren">Aeotec Siren</a></li>
 			<li><a href="#alarm-switch">Alarm Switch</a></li>
 			<li><a href="#besense-motion-sensor-zwave-plus">BeSense 360 Ceiling Sensor</a></li>
-			<li><a href="#besense-door-window-sensor-zwave-plus">BeSense Door/Window Sensor</a></li>
-			<li><a href="#besense-doorwindow-sensor-zwave-plus">BeSense PIR Wall Sensor</a></li>
+			<li><a href="#besense-doorwindow-sensor-zwave-plus">BeSense Door/Window Sensor</a></li>
+			<li><a href="#besense-motion-sensor-zwave-plus">BeSense PIR Wall Sensor</a></li>
 			<li><a href="#dome-door-sensor">Dome Door Sensor</a></li>
 			<li><a href="#dome-doorwindow-sensor-pro">Dome Door/Window Sensor Pro</a></li>
 			<li><a href="#dome-leak-sensor">Dome Leak Sensor</a></li>
