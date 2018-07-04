@@ -12,6 +12,9 @@
 	<li><a href="#aeotec-nanomote">Aeotec NanoMote Quad</a></li>
 	<li><a href="#aeon-labs-multifunction-siren">Aeotec Siren</a></li>
 	<li><a href="#alarm-switch">Alarm Switch</a></li>
+	<li><a href="#besense-motion-sensor-zwave-plus">BeSense 360 Ceiling Sensor</a></li>
+	<li><a href="#besense-doorwindow-sensor-zwave-plus">BeSense Door/Window Sensor</a></li>
+	<li><a href="#besense-motion-sensor-zwave-plus">BeSense PIR Wall Sensor</a></li>
 	<li><a href="#dome-door-sensor">Dome Door Sensor</a></li>
 	<li><a href="#dome-doorwindow-sensor-pro">Dome Door/Window Sensor Pro</a></li>
 	<li><a href="#dome-leak-sensor">Dome Leak Sensor</a></li>
@@ -21,6 +24,10 @@
 	<li><a href="#dome-siren">Dome Siren</a></li>
 	<li><a href="#dome-water-shut-off">Dome Water Shut-Off</a></li>
 	<li><a href="#ecolink-motion-sensor">Ecolink Motion Sensor</a></li>
+	<li><a href="#ecolink-wireless-switch">Ecolink Motorized Double Rocker Switch</a></li>
+	<li><a href="#ecolink-wireless-switch">Ecolink Motorized Double Toggle Switch</a></li>
+	<li><a href="#ecolink-wireless-switch">Ecolink Motorized Rocker Switch</a></li>
+	<li><a href="#ecolink-wireless-switch">Ecolink Motorized Toggle Switch</a></li>
 	<li><a href="#everspring-motion-detector">Everspring Motion Detector</a></li>
 	<li><a href="#everspring-temperaturehumidity-detector">Everspring Temperature/Humidity Detector</a></li>
 	<li><a href="#fibaro-motion-sensor-zw5">Fibaro Motion Sensor ZW5</a></li>
@@ -97,6 +104,30 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li>You can set it to automatically turn off after a specified amount of time.<br /></li>
 <li>You can choose which alarm event should be raised when the alarm is activiated (strobe, siren, strobe & siren).</li>
 <li><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/alarm-switch.src">View Alarm Switch - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>BeSense Motion Sensor ZWave Plus</h3>
+
+<ul>
+<li>This is a device handler for:
+<ul><li>BeSense 360 Ceiling Sensor (IX32)</li>
+<li>BeSense PIR Wall Sensor (IX30)</li></ul></li>
+<li>Supports all functionality that the devices offer</li>
+<!--<li><a href="">View Documentation in SmartThings Forum</a></li>-->
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/besense-motion-sensor-zwave-plus.src/besense-motion-sensor-zwave-plus.groovy">View BeSense Motion Sensor ZWave Plus - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>BeSense Door/Window Sensor ZWave Plus</h3>
+
+<ul>
+<li>This is the official device handler for the BeSense Door/Window Sensor (IM20)</li>
+<li>Supports all functionality that the device offers</li>
+<!--<li><a href="">View Documentation in SmartThings Forum</a></li>-->
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/besense-door-window-sensor-zwave-plus.src/besense-door-window-sensor-zwave-plus.groovy">View BeSense Door/Window Sensor ZWave Plus - Device Handler Code</a></li>
 </ul>
 
 <hr />
@@ -192,6 +223,19 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li>This is a device handler for the Ecolink Motion Sensor (PIRZWAVE2.5-ECO)</li>
 <li>Reports Motion, Battery, Tamper, and allows you to change the wakeup interval.</li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/ecolink-motion-sensor.src/ecolink-motion-sensor.groovy">View Ecolink Motion Sensor - Device Handler Code</a></li>
+</ul>
+
+<hr />
+<h3>Ecolink Wireless Switch</h3>
+<ul>
+<li>This is a device handler for:<ul>
+<li>Ecolink Motorized Double Rocker Switch (DDLS2-ZWAVE5)</li>
+<li>Ecolink Motorized Double Toggle Switch (DTLS2-ZWAVE5)</li>
+<li>Ecolink Motorized Rocker Switch (DLS-ZWAVE5)</li>
+<li>Ecolink Motorized Toggle Switch (TLS-ZWAVE5)</li>
+</ul></li>
+<li>Reports Switch, Battery, and allows you to change the wakeup interval.</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/ecolink-wireless-switch.src/ecolink-wireless-switch.groovy">View Ecolink Wireless Switch - Device Handler Code</a></li>
 </ul>
 
 
@@ -444,6 +488,7 @@ Supports the Tamper Alert Capability.<br /></li>
 <ul>
 <li>This is a device handler for the Zooz Motion Sensor (ZSE18)<br /></li>
 <li>Reports Motion, Acceleration, and Battery</li>
+<li><a href="https://community.smartthings.com/t/release-zooz-motion-sensor-zse18/129743?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a id="ZoozMotionSensorZSE" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-motion-sensor-zse18.src/zooz-motion-sensor-zse18.groovy">View Zooz Motion Sensor ZSE18 - Device Handler Code</a></li>
 </ul>
 
