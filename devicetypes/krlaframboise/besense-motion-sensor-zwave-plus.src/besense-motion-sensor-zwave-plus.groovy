@@ -1,5 +1,5 @@
 /**
- *  BeSense Motion Sensor Zwave Plus v1.0.1
+ *  BeSense Motion Sensor ZWave Plus v1.0.1
  *  (Model: IX30/IX32)
  *
  *  Author: 
@@ -26,7 +26,7 @@
  */
 metadata {
 	definition (
-		name: "BeSense Motion Sensor Zwave Plus", 
+		name: "BeSense Motion Sensor ZWave Plus", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise"
 	) {
@@ -43,7 +43,7 @@ metadata {
 		attribute "configStatus", "string"
 		attribute "firmwareVersion", "string"
 		
-		fingerprint mfr:"0214", prod:"0003", model:"0002", deviceJoinName: "BeSense Motion Sensor Zwave Plus"
+		fingerprint mfr:"0214", prod:"0003", model:"0002", deviceJoinName: "BeSense Motion Sensor ZWave Plus"
 		
 		// fingerprint mfr:"0214", prod:"0003", model:"0002", deviceJoinName: "BeSense PIR Wall Sensor" // IX30
 		
