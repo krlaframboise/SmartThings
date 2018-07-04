@@ -9,6 +9,10 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.2 (07/04/2018)
+ *      - Added double toggle switch fingerprint.
+ *
  *    1.0.1 (02/10/2018)
  *      - Initial Release
  *
@@ -44,6 +48,8 @@ metadata {
 		fingerprint mfr:"014A", prod:"0006", model:"0002", deviceJoinName: "Ecolink Toggle Switch"
 		
 		fingerprint mfr:"014A", prod:"0006", model:"0003", deviceJoinName: "Ecolink Double Rocker Switch"
+		
+		fingerprint mfr:"014A", prod:"0006", model:"0004", deviceJoinName: "Ecolink Double Toggle Switch"
 	}
 
 	simulator { }
