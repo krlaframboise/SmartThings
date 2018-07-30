@@ -35,7 +35,6 @@ metadata {
 		name: "Zooz Motion Sensor ZSE18", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise",
-		mnmn: "SmartThings", 
 		vid:"generic-motion-3"
 	) {
 		capability "Sensor"

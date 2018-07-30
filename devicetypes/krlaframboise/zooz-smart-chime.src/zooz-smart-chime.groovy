@@ -47,7 +47,6 @@ metadata {
 		name: "Zooz Smart Chime", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise",
-		mnmn: "SmartThings", 
 		vid:"generic-dimmer"
 	) {
 		capability "Actuator"

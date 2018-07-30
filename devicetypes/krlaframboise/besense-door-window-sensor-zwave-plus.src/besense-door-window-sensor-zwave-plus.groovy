@@ -1,5 +1,5 @@
 /**
- *  BeSense Door/Window Sensor ZWave Plus v1.0
+ *  BeSense Door/Window Sensor ZWave Plus v1.0.1
  *  (Model: IM20)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.1 (07/30/2018)
+ *    	- Added support for new mobile app.
  *
  *    1.0 (07/04/2018)
  *      - Initial Release
@@ -28,7 +31,8 @@ metadata {
 	definition (
 		name: "BeSense Door/Window Sensor ZWave Plus", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		vid:"generic-contact"
 	) {
 		capability "Sensor"
 		capability "Contact Sensor"

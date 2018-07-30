@@ -42,7 +42,6 @@ metadata {
 		name: "Zooz Power Switch", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise",
-		mnmn: "SmartThings", 
 		vid:"generic-switch-power-energy"
 	) {
 		capability "Actuator"

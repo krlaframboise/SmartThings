@@ -52,7 +52,6 @@ metadata {
 		name: "Zooz 4-in-1 Sensor", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise",
-		mnmn: "SmartThings", 
 		vid:"generic-motion-6"
 	) {
 		capability "Sensor"
