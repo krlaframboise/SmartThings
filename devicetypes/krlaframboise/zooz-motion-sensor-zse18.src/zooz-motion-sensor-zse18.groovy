@@ -1,5 +1,5 @@
 /**
- *  Zooz Motion Sensor ZSE18 v1.0.3
+ *  Zooz Motion Sensor ZSE18 v1.0.4
  *  (Model: ZSE18)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.4 (07/30/2018)
+ *      - Added support for new Mobile App.
  *
  *    1.0.3 (07/02/2018)
  *      - Misc changes related to joining the device as a powered device.
@@ -31,7 +34,9 @@ metadata {
 	definition (
 		name: "Zooz Motion Sensor ZSE18", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		mnmn: "SmartThings", 
+		vid:"generic-motion-3"
 	) {
 		capability "Sensor"
 		capability "Motion Sensor"

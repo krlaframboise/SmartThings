@@ -1,5 +1,5 @@
 /**
- *  Zooz 4-in-1 Sensor v2.0.3
+ *  Zooz 4-in-1 Sensor v2.0.4
  *		(Model: ZSE40)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    2.0.4 (07/30/2018)
+ *    	- Added support for new mobile app.
  *
  *    2.0.3 (07/02/2018)
  *    	- Changed decimal place setting to enum.
@@ -48,7 +51,9 @@ metadata {
 	definition (
 		name: "Zooz 4-in-1 Sensor", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		mnmn: "SmartThings", 
+		vid:"generic-motion-6"
 	) {
 		capability "Sensor"
 		capability "Configuration"
