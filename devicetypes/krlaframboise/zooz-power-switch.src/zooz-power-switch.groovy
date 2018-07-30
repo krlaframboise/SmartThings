@@ -1,5 +1,5 @@
 /**
- *  Zooz Power Switch / Zooz Smart Plug v1.4
+ *  Zooz Power Switch / Zooz Smart Plug v1.5
  *  (Models: ZEN15, ZEN06)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.5 (07/30/2018)
+ *      - Added support for new mobile app.
  *
  *    1.4 (12/17/2017)
  *      - Added Acceleration capability for detecting when power is on or off and setting for the active threshold.
@@ -38,7 +41,9 @@ metadata {
 	definition (
 		name: "Zooz Power Switch", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		mnmn: "SmartThings", 
+		vid:"generic-switch-power-energy"
 	) {
 		capability "Actuator"
 		capability "Sensor"
