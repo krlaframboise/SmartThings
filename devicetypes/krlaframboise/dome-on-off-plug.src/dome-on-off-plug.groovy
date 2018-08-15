@@ -1,5 +1,5 @@
 /**
- *  Dome On Off Plug v1.0.2
+ *  Dome On Off Plug v1.0.3
  *  (Model: DMOF1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.2 (08/15/2018)
+ *    	- Added support for new mobile app.
  *
  *    1.0.2 (12/25/2017)
  *    	- Implemented ST new color scheme.
@@ -34,7 +37,8 @@ metadata {
 	definition (
 		name: "Dome On Off Plug", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		vid: "generic-switch-power-energy"
 	) {
 		capability "Actuator"
 		capability "Sensor"

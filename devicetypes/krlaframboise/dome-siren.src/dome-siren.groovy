@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.2.2
+ *  Dome Siren v1.2.3
  *  (Model: DMS01)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.2.3 (08/15/2018)
+ *    	- Added support for new mobile app.
  *
  *    1.2.2 (12/07/2017)
  *    	- Fixed beeping during delayed alarm because SmartThings broke something during a recent update.
@@ -55,7 +58,8 @@ metadata {
 	definition (
 		name: "Dome Siren", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		vid: "generic-siren"
 	) {
 		capability "Actuator"
 		capability "Alarm"

@@ -1,5 +1,5 @@
 /**
- *  Dome Door Sensor v1.1.5
+ *  Dome Door Sensor v1.1.6
  *  (Model: DMWD1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.6 (08/15/2018)
+ *      - Added support for new mobile app.
  *
  *    1.1.5 (12/25/2017)
  *      - Implemented ST Color Scheme
@@ -40,7 +43,8 @@ metadata {
 	definition (
 		name: "Dome Door Sensor", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		vid: "generic-contact"
 	) {
 		capability "Sensor"
 		capability "Contact Sensor"

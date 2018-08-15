@@ -1,5 +1,5 @@
 /**
- *  Dome Mouser v1.1.2
+ *  Dome Mouser v1.1.3
  *  (Model: DMMZ1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.3 (08/15/2018)
+ *      - Added support for new mobile app.
  *
  *    1.1.2 (12/25/2017)
  *      - Implemented new ST color Scheme.
@@ -37,7 +40,8 @@ metadata {
 	definition (
 		name: "Dome Mouser", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		vid: "generic-motion"
 	) {
 		capability "Sensor"
 		capability "Motion Sensor"

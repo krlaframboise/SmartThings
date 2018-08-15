@@ -1,5 +1,5 @@
 /**
- *  Dome Motion Sensor v1.2
+ *  Dome Motion Sensor v1.2.1
  *  (Model: DMMS1)
  *
  *  Author: 
@@ -10,9 +10,8 @@
  *
  *  Changelog:
  *
- *    1.2 (02/09/2018)
- *    	- Added motion retrigger setting.
- *    	- Extended motion sensitivity setting. 
+ *    1.2.1 (08/15/2018)
+ *    	- Added support for new mobile app.
  *
  *    1.1.4 (12/25/2017)
  *    	- Implemented new ST color scheme.
@@ -46,7 +45,8 @@ metadata {
 	definition (
 		name: "Dome Motion Sensor", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		vid: "generic-motion-4"
 	) {
 		capability "Sensor"
 		capability "Motion Sensor"

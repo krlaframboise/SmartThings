@@ -1,5 +1,5 @@
 /**
- *  Dome Water Shut-Off v1.2.2
+ *  Dome Water Shut-Off v1.2.4
  *  (Model: DMWV1)
  *
  *  Author: 
@@ -10,6 +10,11 @@
  *  URL to Manual:  https://s3-us-west-2.amazonaws.com/dome-manuals/SmartThings/SmartThings+Water+Main+Shut-Off+Device+Handler.pdf
  *
  *  Changelog:
+ *
+ *    1.2.3 (08/15/2018)
+ *      - Added support for new mobile app.
+ *
+ *    1.2.3 (reverted)
  *
  *    1.2.2 (12/25/2017)
  *      - Implemented ST new color scheme.
@@ -42,7 +47,8 @@
 	definition (
 		name: "Dome Water Shut-Off", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		vid: "generic-valve"
 	) {
 		capability "Actuator"
 		capability "Sensor"
