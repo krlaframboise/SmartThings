@@ -1,10 +1,12 @@
 /**
  *  Strips Multi-Sensor 1.0
- *  (Models: Strips Drips / Strips Comfort)
+ *  (Models: Strips Drip / Strips Comfort)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
- * 
+ *
+ *  URL to Documentation: https://community.smartthings.com/t/release-strips-drip-strips-comfort/135276?u=krlaframboise
+ *
  *  Changelog:
  *
  *    1.0 (08/31/2018)
