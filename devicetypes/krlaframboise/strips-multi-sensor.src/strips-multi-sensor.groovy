@@ -4,7 +4,7 @@
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
- *
+ * 
  *  Changelog:
  *
  *    1.0 (08/31/2018)
