@@ -46,6 +46,8 @@
 	<li><a href="#polling-cree-bulb">Polling Cree Bulb</a></li>
 	<li><a href="#polling-ge-link-bulb">Polling GE Link Bulb</a></li>
 	<li><a href="#remotec-zxt-310-ir-extender">Remotec ZXT-310 IR Extender</a></li>
+	<li><a href="#strips-multi-sensor">Strips Comfort by Sensative</a></li>
+	<li><a href="#strips-multi-sensor">Strips Drip by Sensative</a></li>
 	<li><a href="#thingshield-timer">ThingShield Timer</a></li>
 	<li><a href="#visionmonoprice-shock-sensor">Vision Shock Sensor</a></li>
 	<li><a href="#wireless-smoke-detector-sensor">Wireless Smoke Detector Sensor</a></li>
@@ -418,6 +420,19 @@ Supports the Tamper Alert Capability.<br /></li>
 <li><a href="https://community.smartthings.com/t/release-remotec-zxt-310-z-wave-to-av-ir-extender/83472?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/remotec-zxt-310-ir-extender.src/remotec-zxt-310-ir-extender.groovy">View Remotec ZXT-310 IR Extender - Device Handler Code</a></li>
 <li>View optional <a href="https://github.com/krlaframboise/SmartThings/blob/master/smartapps/krlaframboise/remotec-zxt-310-device-manager.src/remotec-zxt-310-device-manager.groovy">SmartApp code</a> and optional <a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/remotec-zxt-310-device.src/remotec-zxt-310-device.groovy">Child Device code</a> that allow you to use this device as 6 devices.</a></li>
+</ul>
+
+<hr />
+
+<h3>Strips Multi-Sensor</h3>
+
+<ul>
+<li>This is a device handler for the Strips Comfort by Sensative and Strips Drip by Sensative<br /></li>
+<li>Allows you to change the primary and secondary tiles</li>
+<li>Supports configuration parameters</li>
+<li>Reports Light, Temperature, and Water for both devices</li>
+<li><a href="https://community.smartthings.com/t/release-strips-drip-strips-comfort/135276?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/strips-multi-sensor.src/strips-multi-sensor.groovy">View Strips Multi-Sensor - Device Handler Code</a></li>
 </ul>
 
 <hr />
