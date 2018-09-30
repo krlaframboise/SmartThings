@@ -6,7 +6,7 @@
  *
  *  Changelog:
  *
- *    2.0 (09/30/2018)
+ *    2.0.1 (09/30/2018)
  *      - Initial Release
  *
  *
@@ -31,6 +31,7 @@ metadata {
 		capability "Sensor"
 		capability "Switch"		
 		capability "Outlet"
+		capability "Acceleration Sensor"
 		capability "Power Meter"
 		capability "Energy Meter"
 		capability "Refresh"		

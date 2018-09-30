@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    2.0 (09/30/2018)
+ *    2.0.1 (09/30/2018)
  *      - Initial Release
  *
  *
@@ -35,6 +35,7 @@ metadata {
 		capability "Sensor"
 		capability "Switch"		
 		capability "Outlet"
+		capability "Acceleration Sensor"
 		capability "Power Meter"
 		capability "Energy Meter"
 		capability "Configuration"
@@ -98,21 +99,34 @@ metadata {
 	}
 	
 	
-	preferences {
+	preferences {		
+		getOptionsInput(manualControlParam)
+		
+		configParams.each {
+			if (it.num != manualControlParam.num) {
+				getOptionsInput(it)
+			}
+		}
+		
 		input "mainSwitchDelay", "enum",
 			title: "Main Switch Outlet Delay:",
 			defaultValue: "0",
 			required: false,
 			options:mainSwitchDelayOptions
-			
-		configParams.each {
-			getOptionsInput(it)
-		}
 		
+		input "inactivePower", "enum",
+			title: "Report Acceleration Inactive when Power is Below:",
+			defaultValue: "1.9",
+			required: false,
+			displayDuringSetup: true,
+			options: inactivePowerOptions
+		
+		getBoolInput("displayAcceleration", "Display Acceleration in Secondary Status", false)
+			
 		["Power", "Energy"].each {
 			getBoolInput("display${it}", "Display ${it} Activity", true)
 		}
-
+		
 		getBoolInput("debugOutput", "Enable Debug Logging", true)
 	}
 }
@@ -143,6 +157,8 @@ def installed () {
 def updated() {	
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
 		state.lastUpdated = new Date().time
+		
+		runIn(2, updateSecondaryStatus)
 		
 		def cmds = []
 		if (childDevices?.size() != 5) {
@@ -183,7 +199,7 @@ def configure() {
 	updateHealthCheckInterval()
 	
 	runIn(10, updateSyncStatus)
-		
+			
 	def cmds = []
 	def delay = 1000
 	
@@ -276,9 +292,9 @@ private getAllSwitchCmds(value) {
 	}
 	else {
 		cmds += getChildSwitchCmds(value, null)
-		cmds << "delay 1000"
+		cmds << "delay 2000"
 		(5..1).each { endPoint ->
-			cmds << "delay 1000"
+			cmds << "delay 2000"
 			cmds << switchBinaryGetCmd(endPoint)
 		}
 	}	
@@ -333,11 +349,11 @@ private getRefreshCmds(dni=null) {
 def reset() {
 	logDebug "reset()..."
 	
-	runIn(5, refresh)
+	runIn(10, refresh)
 	
 	def cmds = getResetCmds()	
 	childDevices.each {
-		cmds << "delay 100"
+		cmds << "delay 1000"
 		cmds += getResetCmds(it.deviceNetworkId)
 	}
 	return cmds		
@@ -355,13 +371,11 @@ def childReset(dni) {
 private getResetCmds(dni=null) {
 	def endPoint = getEndPoint(dni)
 	def child = findChildByDeviceNetworkId(dni)
-	def power = getAttrVal("power", child)
+	def power = getAttrVal("power", child) ?: 0
 		
 	executeSendEvent(child, createEventMap("powerLow", power, false))
 	executeSendEvent(child, createEventMap("powerHigh", power, false))
 	executeSendEvent(child, createEventMap("energyTime", new Date().time, false))
-	
-	runIn(5, refreshSecondaryStatus, [data:[dni:dni], overwrite:false])
 	
 	return [meterResetCmd(endPoint)]
 }
@@ -440,7 +454,7 @@ private getCommandClassVersions() {
 		0x5E: 2,	// ZwaveplusInfo
 		0x60: 3,	// Multi Channel (4)
 		0x6C: 1,	// Supervision
-		0x70: 1,	// Configuration
+		0x70: 2,	// Configuration
 		0x71: 3,	// Notification
 		0x72: 2,	// ManufacturerSpecific
 		0x73: 1,	// Powerlevel
@@ -517,7 +531,7 @@ def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 }
 
 
-def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {	
+def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {	
 	state.configured = true
 	
 	updateSyncStatus("Syncing...")
@@ -573,32 +587,25 @@ private setParamStoredValue(paramNum, value) {
 }
 
 
-def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd, endPoint=null) {
+def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd, endPoint=0) {
 	logTrace "SwitchBinaryReport: ${cmd} (CH${endPoint})"
 	
-	sendSwitchEvent(cmd.value, "digital", endPoint)	
+	def value = (cmd.value == 0xFF) ? "on" : "off"
+	
+	executeSendEvent(findChildByEndPoint(endPoint), createEventMap("switch", value))
+	
 	return []
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd, endPoint=null) {
+
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd, endPoint=0) {
 	logTrace "BasicReport: ${cmd} (CH${endPoint})"
 	
 	return []
 }
 
-private sendSwitchEvent(value, type, endPoint) {
-	def eventVal = (value == 0xFF) ? "on" : "off"
-	def map = createEventMap("switch", eventVal, null)
-	map.type = type
-	
-	def child = findChildByEndPoint(endPoint)
-	executeSendEvent(child, map)
-}
 
-
-def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd, endPoint=null) {
-	// logTrace "MeterReport: $cmd (CH${endPoint})"
-	
+def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd, endPoint=0) {
 	def val = roundTwoPlaces(cmd.scaledMeterValue)
 	def child = findChildByEndPoint(endPoint)	
 	
@@ -612,23 +619,19 @@ def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd, endPoint=nu
 		default:
 			logDebug "Unknown Meter Scale: $cmd"
 	}
+	
+	runIn(2, updateSecondaryStatus)
 	return []
 }
 
-private sendEnergyEvents(child, value) {
-	executeSendEvent(child, createEventMap("energy", value, meterEnergy.displayed, meterEnergy.unit))
-	
-	executeSendEvent(child, createEventMap("energyDuration", calculateEnergyDuration(child), false))
-		
-	runIn(2, refreshSecondaryStatus, [data:[dni:child?.deviceNetworkId], overwrite:false])
-}
 
 private sendPowerEvents(child, value) {
 	def highLowNames = [] 
 	
 	executeSendEvent(child, createEventMap("power", value, meterPower.displayed, meterPower.unit))
-	// sendAccelerationEvent(child, val)
 	
+	sendAccelerationEvent(child, value)
+		
 	if (getAttrVal("powerHigh", child) == null || value > getAttrVal("powerHigh", child)) {
 		highLowNames << "powerHigh"
 	}
@@ -637,13 +640,35 @@ private sendPowerEvents(child, value) {
 		highLowNames << "powerLow"
 	}
 	
-	if (highLowNames) {
-		runIn(3, refreshSecondaryStatus, [data:[dni:child?.deviceNetworkId], overwrite:false])
-	}
-	
 	highLowNames.each {
 		executeSendEvent(child, createEventMap("$it", value, false, meterPower.unit))
 	}	
+}
+
+private sendAccelerationEvent(child, value) {
+	def status
+	
+	def deviceActive = (getAttrVal("acceleration", child) == "active")
+	if (value >= inactivePowerSetting &&  !deviceActive) {
+		status ="active"
+	}
+	else if (value < inactivePowerSetting && deviceActive){
+		status = "inactive"
+	}
+	else if (!getAttrVal("acceleration", child)) {
+		status = "inactive"
+	}
+	
+	if (status) {
+		executeSendEvent(child, createEventMap("acceleration", status, false))
+	}
+}
+
+
+private sendEnergyEvents(child, value) {
+	executeSendEvent(child, createEventMap("energy", value, meterEnergy.displayed, meterEnergy.unit))
+	
+	executeSendEvent(child, createEventMap("energyDuration", calculateEnergyDuration(child), false))
 }
 
 private calculateEnergyDuration(child) {
@@ -674,15 +699,25 @@ private getFormattedDuration(duration, divisor, name) {
 }
 
 
-def refreshSecondaryStatus(data=null) {
-	def child = findChildByDeviceNetworkId(data?.dni)
-	def power = getAttrVal("power", child)
-	def energy = getAttrVal("energy", child)
-	def duration = getAttrVal("energyDuration", child)
-	
-	def status =  "${power} ${meterPower.unit} / ${energy} ${meterEnergy.unit} - ${duration}"
-	if (getAttrVal("secondaryStatus", child) != "${status}") {
-		executeSendEvent(child, createEventMap("secondaryStatus", status, false))
+def updateSecondaryStatus() {
+	(0..5).each { endPoint ->	
+		def child = findChildByEndPoint(endPoint)
+		def power = getAttrVal("power", child) ?: 0
+		def energy = getAttrVal("energy", child) ?: 0
+		def duration = getAttrVal("energyDuration", child) ?: ""
+		def active = getAttrVal("acceleration", child) ?: "inactive"
+		
+		if (duration) {
+			duration = " - ${duration}"
+		}
+		
+		def status = settings?.displayAcceleration ? "${active.toUpperCase()} / " : ""
+		
+		status =  "${status}${power} ${meterPower.unit} / ${energy} ${meterEnergy.unit}${duration}"
+		
+		if (getAttrVal("secondaryStatus", child) != "${status}") {
+			executeSendEvent(child, createEventMap("secondaryStatus", status, false))
+		}
 	}
 }
 
@@ -761,7 +796,7 @@ private getAutoOffIntervalParams() {
 	def params = []
 	def ch = 1
 	[7, 11, 15, 19, 23].each {
-		params << getParam(it, "CH${ch} Auto Turn-Off After", 4, 60, autoOnOffIntervalOptions)
+		params << getParam(it, "CH${ch} Auto Turn-Off After", 2, 60, autoOnOffIntervalOptions)
 		ch += 1
 	}	
 	return params
@@ -781,7 +816,7 @@ private getAutoOnIntervalParams() {
 	def params = []
 	def ch = 1
 	[9, 13, 17, 21, 25].each {
-		params << getParam(it, "CH${ch} Auto Turn-On After", 4, 60, autoOnOffIntervalOptions)
+		params << getParam(it, "CH${ch} Auto Turn-On After", 2, 60, autoOnOffIntervalOptions)
 		ch += 1
 	}	
 	return params
@@ -831,7 +866,7 @@ private getPowerReportingThresholdOptions() {
 
 private getPowerOptions() {
 	def options = [:]
-	[1,2,3,4,5,10,15,20,25,50,75,100,150,200,250,500,750,1000,1250,1500,1750,2000,2250,2500].each {
+	[1,2,3,4,5,10,15,20,25,50,75,100,150,200,250,500,750,1000,1250,1500].each {
 		options["${it}"] = "${it} W"
 	}		
 	return options
@@ -850,12 +885,12 @@ private getAutoOnOffIntervalOptions() {
 	options = getTimeOptionsRange(options, "Minute", 1, [1,2,3,4,5,6,7,8,9,10,15,20,25,30,45])
 	options = getTimeOptionsRange(options, "Hour", 60, [1,2,3,4,5,6,7,8,9,10,12,18])
 	options = getTimeOptionsRange(options, "Day", (60 * 24), [1,2,3,4,5,6])
-	options = getTimeOptionsRange(options, "Week", (60 * 24 * 7), [1,2,3,4,5,6])
+	options = getTimeOptionsRange(options, "Week", (60 * 24 * 7), [1,2])
 	return options
 }
 
 private getMainSwitchDelayOptions() {
-	def options = [0:"No Delay",500:"500 Milliseconds"]
+	def options = [0:"Disabled",500:"500 Milliseconds"]
 	options = getTimeOptionsRange(options, "Second", 1000, [1,2,3,4,5,10])
 	return setDefaultOption(options, 0)
 }
@@ -871,15 +906,24 @@ private getEnabledOptions() {
 	return [0:"Disabled", 1:"Enabled"]
 }
 
-
-// Settings
-private getDebugOutputSetting() {
-	return settings?.debugOutput != false
+private getInactivePowerOptions() {
+	def options = [:]
+	[1.9,2,2.1,2.2,2.3,2.4,2.5,2.75,3,3.5,4,4.5,5,7.5,10,15,25,50,75,100,150,200,250,500,1000,1500,2000].each {
+		options[it] = "${it} W"
+	}
+	return setDefaultOption(options, 1.9)
 }
 
+
+// Settings
 private getMainSwitchDelaySetting() {
 	return safeToInt(settings?.mainSwitchDelay)
 }
+
+private getInactivePowerSetting() {
+	return safeToDec(settings?.inactivePower) ?: 1.9
+}
+
 
 private executeSendEvent(child, evt) {
 	if (evt.displayed == null) {
@@ -976,11 +1020,11 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 }
 
 private logDebug(msg) {
-	if (debugOutputSetting) {
+	if (settings?.debugOutput != false) {
 		log.debug "$msg"
 	}
 }
 
 private logTrace(msg) {
-	// log.trace "$msg"
+	log.trace "$msg"
 }
