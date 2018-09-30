@@ -101,9 +101,10 @@ metadata {
 	
 	preferences {		
 		getOptionsInput(manualControlParam)
+		getOptionsInput(ledIndicatorModeParam)
 		
 		configParams.each {
-			if (it.num != manualControlParam.num) {
+			if (it.num != manualControlParam.num && it.num != ledIndicatorModeParam.num) {
 				getOptionsInput(it)
 			}
 		}
