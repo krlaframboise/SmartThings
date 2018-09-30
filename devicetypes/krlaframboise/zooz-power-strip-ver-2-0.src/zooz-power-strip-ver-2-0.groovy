@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    2.0.1 (09/30/2018)
+ *    2.0.2 (09/30/2018)
  *      - Initial Release
  *
  *
@@ -43,7 +43,9 @@ metadata {
 		capability "Health Check"
 		
 		attribute "secondaryStatus", "string"
-		attribute "firmwareVersion", "string"
+		attribute "usb1", "string"
+		attribute "usb2", "string"
+		attribute "firmwareVersion", "string"		
 		attribute "lastCheckin", "string"
 		attribute "energyTime", "number"
 		attribute "energyDuration", "string"
@@ -88,12 +90,18 @@ metadata {
 		standardTile("configure", "device.configure", width: 2, height: 2) {
 			state "default", label:'Sync', action: "configure", icon:"st.secondary.tools"
 		}
-		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:3, height: 1) {
+		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:2, height: 2) {
 			state "firmwareVersion", label:'Firmware ${currentValue}'
 		}		
-		valueTile("syncStatus", "device.syncStatus", decoration:"flat", width:3, height: 1) {
+		valueTile("usb1", "device.usb1", decoration:"flat", width:2, height: 1) {
+			state "usb1", label:'USB1:${currentValue}'
+		}		
+		valueTile("syncStatus", "device.syncStatus", decoration:"flat", width:2, height: 2) {
 			state "syncStatus", label:'${currentValue}'
 		}
+		valueTile("usb2", "device.usb2", decoration:"flat", width:2, height: 1) {
+			state "usb2", label:'USB2:${currentValue}'
+		}		
 		
 		childDeviceTiles("deviceList")		
 	}
@@ -329,6 +337,14 @@ def refresh() {
 		cmds << "delay 1000"
 		cmds += getRefreshCmds(it.deviceNetworkId)
 	}
+	
+	// Refresh USB Ports
+	cmds += [
+		"delay 2000",
+		switchBinaryGetCmd(6), 
+		"delay 2000",
+		switchBinaryGetCmd(7)
+	]	
 	return cmds	
 }
 
@@ -593,7 +609,13 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 	
 	def value = (cmd.value == 0xFF) ? "on" : "off"
 	
-	executeSendEvent(findChildByEndPoint(endPoint), createEventMap("switch", value))
+	if (endPoint == 6 || endPoint == 7) {
+		def usb = (endPoint == 6) ? "usb1" : "usb2"
+		executeSendEvent(null,  createEventMap(usb, value))			
+	}
+	else {	
+		executeSendEvent(findChildByEndPoint(endPoint), createEventMap("switch", value))
+	}
 	
 	return []
 }
@@ -1027,5 +1049,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	log.trace "$msg"
+	// log.trace "$msg"
 }
