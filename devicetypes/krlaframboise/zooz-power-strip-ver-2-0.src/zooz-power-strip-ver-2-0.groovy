@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    2.0.2 (09/30/2018)
+ *    2.0.3 (10/01/2018)
  *      - Initial Release
  *
  *
@@ -54,7 +54,7 @@ metadata {
 		
 		command "reset"
 
-		fingerprint manufacturer: "0312", prod: "A000", model: "A001", deviceJoinName: "Zooz Power Strip VER 2.0"
+		fingerprint manufacturer: "027A", prod: "A000", model: "A004", deviceJoinName: "Zooz Power Strip VER 2.0"
 	}
 
 	simulator { }
