@@ -55,6 +55,7 @@
 	<li><a href="#zooz-4-in-1-sensor">Zooz 4-in-1 Sensor</a></li>
 	<li><a href="#zooz-motion-sensor-zse18">Zooz Motion Sensor ZSE18</a></li>
 	<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Smart Plug</a></li>
+	<li><a href="#zooz-power-strip-ver-20">Zooz Power Strip VER 2.0</a></li>
 	<li><a href="#zooz-power-strip">Zooz Power Strip</a></li>
 	<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Power Switch</a></li>
 	<li><a href="#zooz-smart-chime">Zooz Smart Chime</a></li>
@@ -505,6 +506,30 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>Reports Motion, Acceleration, and Battery</li>
 <li><a href="https://community.smartthings.com/t/release-zooz-motion-sensor-zse18/129743?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a id="ZoozMotionSensorZSE" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-motion-sensor-zse18.src/zooz-motion-sensor-zse18.groovy">View Zooz Motion Sensor ZSE18 - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Zooz Power Strip VER 2.0</h3>
+
+<ul>
+<li>This is a device handler for the Zooz Power Strip VER 2.0 (ZEN20).<br /></li>
+<li>A device is created for the Power Strip and each Outlet<br></li>
+<li>Power Strip reports combined power/energy<br></li>
+<li>Outlets report power/energy<br></li>
+<li>A Component Switch is created for each USB Port and they report ON when devices plugged into them are using power. The USB Ports can not be controlled and will not appear in your device list, but they will appear in Smart Apps<br></li>
+<li>Keeps history of low and high power values<br></li>
+<li>The Power Switch device can turn on/off all outlets at the same time or you can choose a delay to use between them.<br></li>
+<li>Enable/Disable Manual Operation<br></li>
+<li>Power recovery options<br></li>
+<li>LED options<br></li>
+<li>Auto on/off intervals for each Outlet<br></li>
+<li>Power and Energy reporting intervals<br></li>
+<li>Power reporting threshold<br></li>
+<li><strong>THIS DEVICE CAN NOT BE INSTALLED LIKE A REGULAR DEVICE BECAUSE OF A BUG IN SMARTTHINGS SO MAKE SURE YOU FOLLOW <a href="http://www.support.getzooz.com/kb/article/149-how-to-add-your-power-strip-ver-20-to-smartthings/">THESE INSTRUCTIONS</a>!!!</strong><br></li>
+<li><a href="https://community.smartthings.com/t/release-zooz-power-strip-ver-2-0/138231?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-strip-ver-2-0.src/zooz-power-strip-ver-2-0.groovy">View Zooz Power Strip VER 2.0 - Power Strip Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-strip-outlet-ver-2-0.src/zooz-power-strip-outlet-ver-2-0.groovy">View Zooz Power Strip VER 2.0 - Power Strip Outlet Device Handler Code</a></li>
 </ul>
 
 <hr />
