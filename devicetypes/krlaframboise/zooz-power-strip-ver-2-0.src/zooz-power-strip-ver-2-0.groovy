@@ -5,8 +5,10 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:
- *    
+ *  Important Instructions: http://www.support.getzooz.com/kb/article/149-how-to-add-your-power-strip-ver-20-to-smartthings/
+ *
+ *	Documentation: https://community.smartthings.com/t/release-zooz-power-strip-ver-2-0/138231?u=krlaframboise
+ *
  *
  *  Changelog:
  *
