@@ -164,7 +164,7 @@ def updated() {
 		
 		runIn(2, updateSecondaryStatus)
 		
-		runEvery5Minutes(ping)
+		runEvery3Hours(ping)
 		
 		def cmds = []
 		
