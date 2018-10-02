@@ -12,7 +12,7 @@
  *
  *  Changelog:
  *
- *    2.0.4 (10/01/2018)
+ *    2.0.5 (10/01/2018)
  *      - Initial Release
  *
  *
@@ -224,7 +224,7 @@ private addChildUSB(dni, endPoint) {
 	logDebug "Creating USB${usb} Child Device"
 	addChildDevice(
 		"smartthings",
-		"Virtual Switch", 
+		"Zooz Power Strip Outlet", 
 		dni, 
 		null, 
 		[
