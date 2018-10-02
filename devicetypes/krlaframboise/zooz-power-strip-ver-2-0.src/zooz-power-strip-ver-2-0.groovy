@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    2.0.3 (10/01/2018)
+ *    2.0.4 (10/01/2018)
  *      - Initial Release
  *
  *
@@ -35,7 +35,7 @@ metadata {
 		capability "Sensor"
 		capability "Switch"		
 		capability "Outlet"
-		capability "Acceleration Sensor"
+		// capability "Acceleration Sensor"
 		capability "Power Meter"
 		capability "Energy Meter"
 		capability "Configuration"
@@ -43,8 +43,6 @@ metadata {
 		capability "Health Check"
 		
 		attribute "secondaryStatus", "string"
-		attribute "usb1", "string"
-		attribute "usb2", "string"
 		attribute "firmwareVersion", "string"		
 		attribute "lastCheckin", "string"
 		attribute "energyTime", "number"
@@ -90,24 +88,25 @@ metadata {
 		standardTile("configure", "device.configure", width: 2, height: 2) {
 			state "default", label:'Sync', action: "configure", icon:"st.secondary.tools"
 		}
-		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:2, height: 2) {
+		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:3, height: 1) {
 			state "firmwareVersion", label:'Firmware ${currentValue}'
 		}		
-		valueTile("usb1", "device.usb1", decoration:"flat", width:2, height: 1) {
-			state "usb1", label:'USB1:${currentValue}'
-		}		
-		valueTile("syncStatus", "device.syncStatus", decoration:"flat", width:2, height: 2) {
+		valueTile("syncStatus", "device.syncStatus", decoration:"flat", width:3, height: 1) {
 			state "syncStatus", label:'${currentValue}'
 		}
-		valueTile("usb2", "device.usb2", decoration:"flat", width:2, height: 1) {
-			state "usb2", label:'USB2:${currentValue}'
-		}		
 		
 		childDeviceTiles("deviceList")		
 	}
 	
 	
 	preferences {		
+	
+		input "mainSwitchDelay", "enum",
+			title: "Main Switch Outlet Delay:",
+			defaultValue: "0",
+			required: false,
+			options:mainSwitchDelayOptions
+	
 		getOptionsInput(manualControlParam)
 		getOptionsInput(ledIndicatorModeParam)
 		
@@ -117,21 +116,15 @@ metadata {
 			}
 		}
 		
-		input "mainSwitchDelay", "enum",
-			title: "Main Switch Outlet Delay:",
-			defaultValue: "0",
-			required: false,
-			options:mainSwitchDelayOptions
+		// input "inactivePower", "enum",
+			// title: "Report Acceleration Inactive when Power is Below:",
+			// defaultValue: "1.9",
+			// required: false,
+			// displayDuringSetup: true,
+			// options: inactivePowerOptions
 		
-		input "inactivePower", "enum",
-			title: "Report Acceleration Inactive when Power is Below:",
-			defaultValue: "1.9",
-			required: false,
-			displayDuringSetup: true,
-			options: inactivePowerOptions
+		// getBoolInput("displayAcceleration", "Display Acceleration in Secondary Status", false)
 		
-		getBoolInput("displayAcceleration", "Display Acceleration in Secondary Status", false)
-			
 		["Power", "Energy"].each {
 			getBoolInput("display${it}", "Display ${it} Activity", true)
 		}
@@ -167,10 +160,15 @@ def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
 		state.lastUpdated = new Date().time
 		
+		unschedule()
+		
 		runIn(2, updateSecondaryStatus)
 		
+		runEvery5Minutes(ping)
+		
 		def cmds = []
-		if (childDevices?.size() != 5) {
+		
+		if (childDevices?.size() != 7) {
 			cmds += createChildDevices()
 		}
 		
@@ -179,28 +177,62 @@ def updated() {
 	}
 }
 
+
 def createChildDevices() {
 	def cmds = []
 	
 	(1..5).each { endPoint ->
-		if (!findChildByEndPoint(endPoint)) {
-			logDebug "Creating CH${endPoint} Child Device"
+		if (!findChildByEndPoint(endPoint)) {			
 			def dni = "${getChildDeviceNetworkId(endPoint)}"
-			addChildDevice(
-				"krlaframboise", 
-				"Zooz Power Strip Outlet VER 2.0", 
-				dni, 
-				null, 
-				[
-					completedSetup: true,
-					isComponent: false,
-					label: "${device.displayName}-CH${endPoint}"
-				]
-			)
+			addChildOutlet(dni, endPoint)
+			
 			cmds += childReset(dni)
 		}
-	}	
-	return cmds
+	}
+	
+	(6..7).each { endPoint ->		
+		def dni = "${getChildDeviceNetworkId(endPoint)}"
+		if (!findChildByDeviceNetworkId(dni)) {				
+			addChildUSB(dni, endPoint)
+			cmds << switchBinaryGetCmd(endPoint)
+		}
+	}
+	return cmds ? delayBetween(cmds, 1000) : []
+}
+
+private addChildOutlet(dni, endPoint) {
+	logDebug "Creating CH${endPoint} Child Device"
+	addChildDevice(
+		"krlaframboise", 
+		"Zooz Power Strip Outlet VER 2.0", 
+		dni, 
+		null, 
+		[
+			completedSetup: true,
+			isComponent: false,
+			label: "${device.displayName}-CH${endPoint}",
+			componentName: "CH${endPoint}",
+			componentLabel: "CH ${endPoint}"
+		]
+	)
+}
+	
+private addChildUSB(dni, endPoint) {
+	def usb = endPoint - 5
+	logDebug "Creating USB${usb} Child Device"
+	addChildDevice(
+		"smartthings",
+		"Virtual Switch", 
+		dni, 
+		null, 
+		[
+			completedSetup: true,
+			isComponent: true,
+			label: "${device.displayName}-USB${usb}",
+			componentName: "USB${usb}",
+			componentLabel: "USB ${usb} (READ-ONLY)"
+		]
+	)
 }
 
 
@@ -235,7 +267,7 @@ def configure() {
 }
 
 private updateHealthCheckInterval() {
-	def minReportingInterval = (4 * 60 * 60)
+	def minReportingInterval = (3 * 60 * 60)
 	
 	if (state.minReportingInterval != minReportingInterval) {
 		state.minReportingInterval = minReportingInterval
@@ -273,7 +305,7 @@ private getConfigureCmds() {
 
 def ping() {
 	logDebug "ping()..."
-	return [versionGetCmd()]
+	return sendCommands([basicGetCmd()])
 }
 
 
@@ -333,18 +365,18 @@ private getChildSwitchCmds(value, dni) {
 def refresh() {
 	logDebug "refresh()..."
 	def cmds = getRefreshCmds()
-	childDevices.each {
-		cmds << "delay 1000"
-		cmds += getRefreshCmds(it.deviceNetworkId)
-	}
 	
-	// Refresh USB Ports
-	cmds += [
-		"delay 2000",
-		switchBinaryGetCmd(6), 
-		"delay 2000",
-		switchBinaryGetCmd(7)
-	]	
+	(6..7).each {
+		cmds << "delay 1000"
+		cmds << switchBinaryGetCmd(it)
+	}
+		
+	childDevices.each {
+		if (!isUsbEndPoint(endPoint)) {
+			cmds << "delay 1000"
+			cmds += getRefreshCmds(it.deviceNetworkId)
+		}
+	}
 	return cmds	
 }
 
@@ -355,7 +387,7 @@ def childRefresh(dni) {
 
 private getRefreshCmds(dni=null) {
 	def endPoint = getEndPoint(dni)
-	return delayBetween([
+	delayBetween([ 
 		switchBinaryGetCmd(endPoint),
 		meterGetCmd(meterEnergy, endPoint),
 		meterGetCmd(meterPower, endPoint)
@@ -369,9 +401,11 @@ def reset() {
 	runIn(10, refresh)
 	
 	def cmds = getResetCmds()	
-	childDevices.each {
+	childDevices.each { child ->
 		cmds << "delay 1000"
-		cmds += getResetCmds(it.deviceNetworkId)
+		if (child.hasAttribute("power")) {
+			cmds += getResetCmds(child.deviceNetworkId)
+		}
 	}
 	return cmds		
 }
@@ -410,6 +444,10 @@ private sendCommands(cmds) {
 
 private versionGetCmd() {
 	return secureCmd(zwave.versionV1.versionGet())
+}
+
+private basicGetCmd() {
+	return secureCmd(zwave.basicV1.basicGet())
 }
 
 private meterGetCmd(meter, endPoint) {
@@ -609,14 +647,7 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 	
 	def value = (cmd.value == 0xFF) ? "on" : "off"
 	
-	if (endPoint == 6 || endPoint == 7) {
-		def usb = (endPoint == 6) ? "usb1" : "usb2"
-		executeSendEvent(null,  createEventMap(usb, value))			
-	}
-	else {	
-		executeSendEvent(findChildByEndPoint(endPoint), createEventMap("switch", value))
-	}
-	
+	executeSendEvent(findChildByEndPoint(endPoint), createEventMap("switch", value))
 	return []
 }
 
@@ -653,7 +684,7 @@ private sendPowerEvents(child, value) {
 	
 	executeSendEvent(child, createEventMap("power", value, meterPower.displayed, meterPower.unit))
 	
-	sendAccelerationEvent(child, value)
+	// sendAccelerationEvent(child, value)
 		
 	if (getAttrVal("powerHigh", child) == null || value > getAttrVal("powerHigh", child)) {
 		highLowNames << "powerHigh"
@@ -668,24 +699,24 @@ private sendPowerEvents(child, value) {
 	}	
 }
 
-private sendAccelerationEvent(child, value) {
-	def status
+// private sendAccelerationEvent(child, value) {
+	// def status
 	
-	def deviceActive = (getAttrVal("acceleration", child) == "active")
-	if (value >= inactivePowerSetting &&  !deviceActive) {
-		status ="active"
-	}
-	else if (value < inactivePowerSetting && deviceActive){
-		status = "inactive"
-	}
-	else if (!getAttrVal("acceleration", child)) {
-		status = "inactive"
-	}
+	// def deviceActive = (getAttrVal("acceleration", child) == "active")
+	// if (value >= inactivePowerSetting &&  !deviceActive) {
+		// status ="active"
+	// }
+	// else if (value < inactivePowerSetting && deviceActive){
+		// status = "inactive"
+	// }
+	// else if (!getAttrVal("acceleration", child)) {
+		// status = "inactive"
+	// }
 	
-	if (status) {
-		executeSendEvent(child, createEventMap("acceleration", status, false))
-	}
-}
+	// if (status) {
+		// executeSendEvent(child, createEventMap("acceleration", status, false))
+	// }
+// }
 
 
 private sendEnergyEvents(child, value) {
@@ -728,13 +759,15 @@ def updateSecondaryStatus() {
 		def power = getAttrVal("power", child) ?: 0
 		def energy = getAttrVal("energy", child) ?: 0
 		def duration = getAttrVal("energyDuration", child) ?: ""
-		def active = getAttrVal("acceleration", child) ?: "inactive"
+		// def active = getAttrVal("acceleration", child) ?: "inactive"
 		
 		if (duration) {
 			duration = " - ${duration}"
 		}
 		
-		def status = settings?.displayAcceleration ? "${active.toUpperCase()} / " : ""
+		def status = ""
+		
+		// status = settings?.displayAcceleration ? "${active.toUpperCase()} / " : ""
 		
 		status =  "${status}${power} ${meterPower.unit} / ${energy} ${meterEnergy.unit}${duration}"
 		
@@ -763,6 +796,9 @@ private getMeterPower() {
 private getMeterMap(name, scale, unit, displayed) {
 	return [name:name, scale:scale, unit:unit, displayed:displayed]
 }
+
+private getUsbPort1EndPoint() { return 6 }
+private getUsbPort2EndPoint() { return 7 }
 
 
 // Configuration Parameters
@@ -929,13 +965,13 @@ private getEnabledOptions() {
 	return [0:"Disabled", 1:"Enabled"]
 }
 
-private getInactivePowerOptions() {
-	def options = [:]
-	[1.9,2,2.1,2.2,2.3,2.4,2.5,2.75,3,3.5,4,4.5,5,7.5,10,15,25,50,75,100,150,200,250,500,1000,1500,2000].each {
-		options[it] = "${it} W"
-	}
-	return setDefaultOption(options, 1.9)
-}
+// private getInactivePowerOptions() {
+	// def options = [:]
+	// [1.9,2,2.1,2.2,2.3,2.4,2.5,2.75,3,3.5,4,4.5,5,7.5,10,15,25,50,75,100,150,200,250,500,1000,1500,2000].each {
+		// options[it] = "${it} W"
+	// }
+	// return setDefaultOption(options, 1.9)
+// }
 
 
 // Settings
@@ -943,9 +979,9 @@ private getMainSwitchDelaySetting() {
 	return safeToInt(settings?.mainSwitchDelay)
 }
 
-private getInactivePowerSetting() {
-	return safeToDec(settings?.inactivePower) ?: 1.9
-}
+// private getInactivePowerSetting() {
+	// return safeToDec(settings?.inactivePower) ?: 1.9
+// }
 
 
 private executeSendEvent(child, evt) {
@@ -1012,7 +1048,16 @@ private getEndPoint(childDeviceNetworkId) {
 }
 
 private getChildDeviceNetworkId(endPoint) {
-	return "${device.deviceNetworkId}-CH${endPoint}"
+	if (isUsbEndPoint(endPoint)) {
+		return "${device.deviceNetworkId}-USB${endPoint - 5}"		
+	}
+	else {
+		return "${device.deviceNetworkId}-CH${endPoint}"
+	}
+}
+
+private isUsbEndPoint(endPoint) {
+	return endPoint > 5
 }
 
 
