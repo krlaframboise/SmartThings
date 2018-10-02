@@ -71,7 +71,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="#zooz-4-in-1-sensor">Zooz 4-in-1 Sensor</a></li>
 			<li><a href="#zooz-motion-sensor-zse18">Zooz Motion Sensor ZSE18</a></li>
 			<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Smart Plug</a></li>
-			<li><a href="#zooz-power-strip-ver-2.0">Zooz Power Strip VER 2.0</a></li>
+			<li><a href="#zooz-power-strip-ver-20">Zooz Power Strip VER 2.0</a></li>
 			<li><a href="#zooz-power-strip">Zooz Power Strip</a></li>
 			<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Power Switch</a></li>
 			<li><a href="#zooz-smart-chime">Zooz Smart Chime</a></li>
