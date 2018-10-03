@@ -857,7 +857,7 @@ private getAutoOffIntervalParams() {
 	def params = []
 	def ch = 1
 	[7, 11, 15, 19, 23].each {
-		params << getParam(it, "CH${ch} Auto Turn-Off After", 2, 60, autoOnOffIntervalOptions)
+		params << getParam(it, "CH${ch} Auto Turn-Off After", 4, 60, autoOnOffIntervalOptions)
 		ch += 1
 	}	
 	return params
@@ -877,7 +877,7 @@ private getAutoOnIntervalParams() {
 	def params = []
 	def ch = 1
 	[9, 13, 17, 21, 25].each {
-		params << getParam(it, "CH${ch} Auto Turn-On After", 2, 60, autoOnOffIntervalOptions)
+		params << getParam(it, "CH${ch} Auto Turn-On After", 4, 60, autoOnOffIntervalOptions)
 		ch += 1
 	}	
 	return params
