@@ -1,5 +1,5 @@
 /**
- *  Zooz 4-in-1 Sensor v2.0.4
+ *  Zooz 4-in-1 Sensor v2.0.5
  *		(Model: ZSE40)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    2.0.5 (10/10/2018)
+ *    	- Fixed issue causing problems with inclusion process
  *
  *    2.0.4 (07/30/2018)
  *    	- Added support for new mobile app.
@@ -335,6 +338,7 @@ def configure() {
 	def cmds = []		
 	if (!getAttrValue("firmwareVersion")) {
 		sendMotionEvents(0xFF)
+		cmds << "delay 2000"
 		cmds << versionGetCmd()
 	}
 	
@@ -371,7 +375,7 @@ def configure() {
 		}
 	}
 	
-	return cmds ? delayBetween(cmds, 750) : []
+	return cmds ? delayBetween(cmds, 1000) : []
 }
 
 private allAttributesHaveValues() {
@@ -690,14 +694,21 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
 	
 	logDebug "Device Woke Up"
 	
-	cmds += configure()
+	if (getAttrValue("firmwareVersion")) {
+		// Don't execute during inclusion.
+		cmds += configure()
+			
+		if (cmds) {
+			cmds << "delay 2000"
+		}		
 		
-	if (cmds) {
-		cmds << "delay 2000"
+		cmds << wakeUpNoMoreInfoCmd()
 	}
-	
-	cmds << wakeUpNoMoreInfoCmd()
-	return response(cmds)
+	else {
+		cmds << versionGetCmd()
+	}
+
+	return cmds ? response(cmds) : []
 }
 
 private sendLastCheckinEvent() {
