@@ -12,6 +12,9 @@
  *
  *  Changelog:
  *
+ *    2.0.6 (10/16/2018)
+ *      - Added new DTH for USB ports that doesn't display them as switches and works in the new mobile app.  If the new DTH isn't installed it will default to the SmartThings Virtual Switch which also works in the new mobile app.
+ *
  *    2.0.5 (10/01/2018)
  *      - Initial Release
  *
@@ -176,7 +179,7 @@ def updated() {
 		
 		cmds += configure()
 		return cmds ? response(cmds) : []
-	}
+	}	
 }
 
 
@@ -194,8 +197,13 @@ def createChildDevices() {
 	
 	(6..7).each { endPoint ->		
 		def dni = "${getChildDeviceNetworkId(endPoint)}"
-		if (!findChildByDeviceNetworkId(dni)) {				
-			addChildUSB(dni, endPoint)
+		if (!findChildByDeviceNetworkId(dni)) {	
+			try {
+				addChildUSB("krlaframboise", "Zooz Power Strip USB VER 2.0", dni, endPoint)
+			}
+			catch (e) {
+				addChildUSB("smartthings", "Virtual Switch", dni, endPoint)
+			}
 			cmds << switchBinaryGetCmd(endPoint)
 		}
 	}
@@ -213,18 +221,18 @@ private addChildOutlet(dni, endPoint) {
 			completedSetup: true,
 			isComponent: false,
 			label: "${device.displayName}-CH${endPoint}",
-			componentName: "CH${endPoint}",
-			componentLabel: "CH ${endPoint}"
+			componentLabel: "CH ${endPoint}",
+			componentName: "CH${endPoint}"
 		]
 	)
 }
 	
-private addChildUSB(dni, endPoint) {
+private addChildUSB(namespace, deviceType, dni, endPoint) {
 	def usb = endPoint - 5
 	logDebug "Creating USB${usb} Child Device"
 	addChildDevice(
-		"smartthings",
-		"Zooz Power Strip Outlet", 
+		namespace,
+		deviceType,
 		dni, 
 		null, 
 		[

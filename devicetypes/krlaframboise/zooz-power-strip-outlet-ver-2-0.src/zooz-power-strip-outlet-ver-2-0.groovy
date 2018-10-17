@@ -6,6 +6,9 @@
  *
  *  Changelog:
  *
+ *    2.0.2 (10/16/2018)
+ *      - Added support for changing the icon.
+ *
  *    2.0.1 (09/30/2018)
  *      - Initial Release
  *
@@ -31,7 +34,7 @@ metadata {
 		capability "Sensor"
 		capability "Switch"		
 		capability "Outlet"
-		capability "Acceleration Sensor"
+		// capability "Acceleration Sensor"
 		capability "Power Meter"
 		capability "Energy Meter"
 		capability "Refresh"		
@@ -48,7 +51,7 @@ metadata {
 	simulator { }	
 
 	tiles(scale: 2) {
-		multiAttributeTile(name:"switch", type: "generic", width: 6, height: 4){
+		multiAttributeTile(name:"switch", type: "generic", width: 6, height: 4, canChangeIcon: true){
 			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
 				attributeState "on", label: '${name}', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#00a0dc"
 				attributeState "off", label: '${name}', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
