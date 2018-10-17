@@ -591,7 +591,9 @@ Supports the Tamper Alert Capability.<br /></li>
 <li><strong>THIS DEVICE CAN NOT BE INSTALLED LIKE A REGULAR DEVICE BECAUSE OF A BUG IN SMARTTHINGS SO MAKE SURE YOU FOLLOW <a href="http://www.support.getzooz.com/kb/article/149-how-to-add-your-power-strip-ver-20-to-smartthings/">THESE INSTRUCTIONS</a>!!!</strong><br></li>
 <li><a href="https://community.smartthings.com/t/release-zooz-power-strip-ver-2-0/138231?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-strip-ver-2-0.src/zooz-power-strip-ver-2-0.groovy">View Zooz Power Strip VER 2.0 - Power Strip Device Handler Code</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-strip-outlet-ver-2-0.src/zooz-power-strip-outlet-ver-2-0.groovy">View Zooz Power Strip VER 2.0 - Power Strip Outlet Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-strip-outlet-ver-2-0.src/zooz-power-strip-outlet-ver-2-0.groovy">View Zooz Power Strip VER 2.0 - Outlet Device Handler Code</a></li>
+
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-strip-usb-ver-2-0.src/zooz-power-strip-usb-ver-2-0.groovy">View Zooz Power Strip VER 2.0 - USB Port Device Handler Code</a></li>
 </ul>
 
 <hr />
