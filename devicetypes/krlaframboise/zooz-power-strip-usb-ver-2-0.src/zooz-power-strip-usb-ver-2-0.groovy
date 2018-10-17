@@ -37,8 +37,8 @@ metadata {
 	tiles(scale: 2) {
 		multiAttributeTile(name:"switch", type: "generic", width: 6, height: 4, canChangeIcon: true){
 			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
-				attributeState "on", label: '${name}', icon: "st.switches.switch.on", backgroundColor: "#00a0dc"
-				attributeState "off", label: '${name}', icon: "st.switches.switch.off", backgroundColor: "#ffffff"
+				attributeState "on", label: '${name}', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/usb.png", backgroundColor: "#00a0dc"
+				attributeState "off", label: '${name}', icon: "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/usb.png", backgroundColor: "#ffffff"
 			}			
 		}
 	}
