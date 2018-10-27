@@ -297,11 +297,11 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <ul>
 <li>This is a device handler for the Ecolink Siren (SC-ZWAVE5-ECO)</li>
 <li>The device is fully functional if selected as switch:
- <ul><li>**Switch On:** Siren On</li>
- <li>**Switch Off:** Turns Everything Off</li>
- <li>**Set Level 10%:** Chime/Beep</li>
- <li>**Set Level 20%:** Entry/Continuous Tone</li>
- <li>**Set Level 30%:** Exit/Repeating Beep</li>
+ <ul><li>Switch On: Siren On</li>
+ <li>Switch Off: Turns Everything Off</li>
+ <li>Set Level 10%: Chime/Beep</li>
+ <li>Set Level 20%: Entry/Continuous Tone</li>
+ <li>Set Level 30%: Exit/Repeating Beep</li>
  </ul></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/ecolink-siren.src/ecolink-siren.groovy">View Ecolink Siren - Device Handler Code</a></li>
 </ul>
