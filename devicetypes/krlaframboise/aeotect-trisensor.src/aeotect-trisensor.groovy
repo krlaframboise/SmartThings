@@ -5,10 +5,10 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation: 
- *    
+ *  URL to documentation: https://community.smartthings.com/t/release-aeotec-trisensor/140556?u=krlaframboise    
  *
  *  Changelog:
+ *
  *    1.0 (10/27/2018)
  *      - Initial Release
  *
