@@ -6,6 +6,9 @@
  *
  *  Changelog:
  *
+ *    2.1.0 (11/05/2018)
+ *      - Update parent when name changes.
+ *
  *    2.0.2 (10/16/2018)
  *      - Added support for changing the icon.
  *
@@ -87,7 +90,9 @@ metadata {
 def installed() { }
 
 
-def updated() {	}
+def updated() {	
+	parent.childUpdated(device.deviceNetworkId)
+}
 
 
 def on() {

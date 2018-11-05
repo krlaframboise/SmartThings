@@ -12,6 +12,11 @@
  *
  *  Changelog:
  *
+ *    2.1.0 (11/05/2018)
+ *      - Removed USB Child Device
+ *      - Display actual outlet names and their power levels.
+ *      - Configuration changes for firmware 2.0.
+ *
  *    2.0.6 (10/16/2018)
  *      - Added new DTH for USB ports that doesn't display them as switches and works in the new mobile app.  If the new DTH isn't installed it will default to the SmartThings Virtual Switch which also works in the new mobile app.
  *
@@ -53,7 +58,17 @@ metadata {
 		attribute "energyTime", "number"
 		attribute "energyDuration", "string"
 		attribute "powerLow", "number"
-		attribute "powerHigh", "number"
+		attribute "powerHigh", "number"		
+		attribute "usb1Switch", "string"
+		attribute "usb2Switch", "string"
+		
+		(1..5).each {
+			attribute "ch${it}Power", "number"
+			attribute "ch${it}Switch", "string"
+			attribute "ch${it}Name", "string"
+			command "ch${it}On"
+			command "ch${it}Off"
+		}		
 		
 		command "reset"
 
@@ -100,7 +115,73 @@ metadata {
 			state "syncStatus", label:'${currentValue}'
 		}
 		
-		childDeviceTiles("deviceList")		
+		valueTile("ch1Name", "device.ch1Name", decoration:"flat", width:4, height: 1) {
+			state "default", label:'${currentValue}'
+		}
+		valueTile("ch1Power", "device.ch1Power", decoration:"flat", width:1, height: 1) {
+			state "default", label:'${currentValue} W'
+		}
+		standardTile("ch1Switch", "device.ch1Switch", width:1, height: 1) {
+			state "on", label:'ON', action:"ch1Off", backgroundColor: "#00a0dc"
+			state "off", label:'OFF', action:"ch1On"
+		}
+		valueTile("ch2Name", "device.ch2Name", decoration:"flat", width:4, height: 1) {
+			state "default", label:'${currentValue}'
+		}
+		valueTile("ch2Power", "device.ch2Power", decoration:"flat", width:1, height: 1) {
+			state "default", label:'${currentValue} W'
+		}
+		standardTile("ch2Switch", "device.ch2Switch", width:1, height: 1) {
+			state "on", label:'ON', action:"ch2Off", backgroundColor: "#00a0dc"
+			state "off", label:'OFF', action:"ch2On"
+		}		
+		valueTile("ch3Name", "device.ch3Name", decoration:"flat", width:4, height: 1) {
+			state "default", label:'${currentValue}'
+		}
+		valueTile("ch3Power", "device.ch3Power", decoration:"flat", width:1, height: 1) {
+			state "default", label:'${currentValue} W'
+		}
+		standardTile("ch3Switch", "device.ch3Switch", width:1, height: 1) {
+			state "on", label:'ON', action:"ch3Off", backgroundColor: "#00a0dc"
+			state "off", label:'OFF', action:"ch3On"
+		}		
+		valueTile("ch4Name", "device.ch4Name", decoration:"flat", width:4, height: 1) {
+			state "default", label:'${currentValue}'
+		}
+		valueTile("ch4Power", "device.ch4Power", decoration:"flat", width:1, height: 1) {
+			state "default", label:'${currentValue} W'
+		}
+		standardTile("ch4Switch", "device.ch4Switch", width:1, height: 1) {
+			state "on", label:'ON', action:"ch4Off", backgroundColor: "#00a0dc"
+			state "off", label:'OFF', action:"ch4On"
+		}		
+		valueTile("ch5Name", "device.ch5Name", decoration:"flat", width:4, height: 1) {
+			state "default", label:'${currentValue}'
+		}
+		valueTile("ch5Power", "device.ch5Power", decoration:"flat", width:1, height: 1) {
+			state "default", label:'${currentValue} W'
+		}
+		standardTile("ch5Switch", "device.ch5Switch", width:1, height: 1) {
+			state "on", label:'ON', action:"ch5Off", backgroundColor: "#00a0dc"
+			state "off", label:'OFF', action:"ch5On"
+		}		
+		valueTile("usb1Name", "generic", decoration:"flat", width:5, height: 1) {
+			state "default", label:'USB 1 (READ-ONLY)'
+		}
+		valueTile("usb1Switch", "device.usb1Switch", decoration:"flat", width:1, height: 1) {
+			state "on", label:'ON'
+			state "off", label:'OFF'
+		}
+		valueTile("usb2Name", "generic", decoration:"flat", width:5, height: 1) {
+			state "default", label:'USB 2 (READ-ONLY)'
+		}
+		valueTile("usb2Switch", "device.usb2Switch", decoration:"flat", width:1, height: 1) {
+			state "on", label:'ON'
+			state "off", label:'OFF'
+		}
+		
+		main (["switch"])
+		details(detailsTiles)
 	}
 	
 	
@@ -129,13 +210,27 @@ metadata {
 			// options: inactivePowerOptions
 		
 		// getBoolInput("displayAcceleration", "Display Acceleration in Secondary Status", false)
-		
+
 		["Power", "Energy"].each {
 			getBoolInput("display${it}", "Display ${it} Activity", true)
 		}
 		
 		getBoolInput("debugOutput", "Enable Debug Logging", true)
 	}
+}
+
+private getDetailsTiles() {
+	def tiles = ["switch", "energy", "power", "powerHigh", "powerLow", "refresh", "reset", "configure", "firmwareVersion", "syncStatus"]
+	(1..5).each {
+		tiles << "ch${it}Name"
+		tiles << "ch${it}Power"
+		tiles << "ch${it}Switch"
+	}
+	(1..2).each {
+		tiles << "usb${it}Name"
+		tiles << "usb${it}Switch"
+	}
+	return tiles
 }
 
 private getOptionsInput(param) {
@@ -189,7 +284,9 @@ def createChildDevices() {
 	(1..5).each { endPoint ->
 		if (!findChildByEndPoint(endPoint)) {			
 			def dni = "${getChildDeviceNetworkId(endPoint)}"
+			
 			addChildOutlet(dni, endPoint)
+			childUpdated(dni)
 			
 			cmds += childReset(dni)
 		}
@@ -198,12 +295,13 @@ def createChildDevices() {
 	(6..7).each { endPoint ->		
 		def dni = "${getChildDeviceNetworkId(endPoint)}"
 		if (!findChildByDeviceNetworkId(dni)) {	
-			try {
-				addChildUSB("krlaframboise", "Zooz Power Strip USB VER 2.0", dni, endPoint)
-			}
-			catch (e) {
-				addChildUSB("smartthings", "Virtual Switch", dni, endPoint)
-			}
+			// try {
+				// addChildUSB("krlaframboise", "Zooz Power Strip USB VER 2.0", dni, endPoint)
+			// }
+			// catch (e) {
+				// addChildUSB("smartthings", "Virtual Switch", dni, endPoint)
+			// }
+			addChildUSB("smartthings", "Virtual Switch", dni, endPoint)
 			cmds << switchBinaryGetCmd(endPoint)
 		}
 	}
@@ -252,7 +350,7 @@ def configure() {
 	runIn(10, updateSyncStatus)
 			
 	def cmds = []
-	def delay = 1000
+	def delay = 250
 	
 	if (!device.currentValue("firmwareVersion")) {
 		cmds << versionGetCmd()
@@ -309,7 +407,7 @@ private getConfigureCmds() {
 			cmds << configGetCmd(it)
 		}
 	}
-	return cmds ? delayBetween(cmds, 2000) : []
+	return cmds ? delayBetween(cmds, 250) : []
 }
 
 
@@ -353,10 +451,34 @@ private getAllSwitchCmds(value) {
 }
 
 
+def childUpdated(dni) {
+	logDebug "childUpdated(${dni})"
+	def child = findChildByDeviceNetworkId(dni)
+	def endPoint = getEndPoint(dni)
+	def nameAttr = "ch${endPoint}Name"
+	if (child && "${child.displayName}" != "${device.currentValue(nameAttr)}") {
+		sendEvent(name: nameAttr, value: child.displayName, displayed: false)
+	}
+}
+
+
+def ch1On() { childOn(getChildDeviceNetworkId(1)) }
+def ch2On() { childOn(getChildDeviceNetworkId(2)) }
+def ch3On() { childOn(getChildDeviceNetworkId(3)) }
+def ch4On() { childOn(getChildDeviceNetworkId(4)) }
+def ch5On() { childOn(getChildDeviceNetworkId(5)) }
+
 def childOn(dni) {
 	logDebug "childOn(${dni})..."
 	sendCommands(getChildSwitchCmds(0xFF, dni))
 }
+
+
+def ch1Off() { childOff(getChildDeviceNetworkId(1)) }
+def ch2Off() { childOff(getChildDeviceNetworkId(2)) }
+def ch3Off() { childOff(getChildDeviceNetworkId(3)) }
+def ch4Off() { childOff(getChildDeviceNetworkId(4)) }
+def ch5Off() { childOff(getChildDeviceNetworkId(5)) }
 
 def childOff(dni) {
 	logDebug "childOff(${dni})..."
@@ -377,14 +499,20 @@ def refresh() {
 	def cmds = getRefreshCmds()
 	
 	(6..7).each {
-		cmds << "delay 1000"
+		cmds << "delay 250"
 		cmds << switchBinaryGetCmd(it)
 	}
 		
 	childDevices.each {
+		def dni = it.deviceNetworkId
+		def endPoint = getEndPoint(dni)		
 		if (!isUsbEndPoint(endPoint)) {
-			cmds << "delay 1000"
-			cmds += getRefreshCmds(it.deviceNetworkId)
+			cmds << "delay 250"
+			cmds += getRefreshCmds(dni)
+			
+			if (!device.currentValue("ch${endPoint}Name")) {
+				childUpdated(dni)
+			}
 		}
 	}
 	return cmds	
@@ -401,7 +529,7 @@ private getRefreshCmds(dni=null) {
 		switchBinaryGetCmd(endPoint),
 		meterGetCmd(meterEnergy, endPoint),
 		meterGetCmd(meterPower, endPoint)
-	], 1000)
+	], 250)
 }
 
 
@@ -658,6 +786,9 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 	def value = (cmd.value == 0xFF) ? "on" : "off"
 	
 	executeSendEvent(findChildByEndPoint(endPoint), createEventMap("switch", value))
+	
+	def switchName = isUsbEndPoint(endPoint) ? "usb${endPoint - 5}Switch" : "ch${endPoint}Switch"
+	sendEvent(name: switchName, value:value, displayed: false)
 	return []
 }
 
@@ -679,6 +810,7 @@ def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd, endPoint=0)
 			break
 		case meterPower.scale:
 			sendPowerEvents(child, val)
+			sendEvent(name: "ch${endPoint}Power", value: val, unit:"w", displayed: false)
 			break
 		default:
 			logDebug "Unknown Meter Scale: $cmd"
@@ -836,7 +968,8 @@ private getPowerFailureRecoveryParam() {
 }
 
 private getPowerReportingThresholdParam() {
-	return getParam(2, "Power Reporting Threshold", 2, 5, powerReportingThresholdOptions) 
+	def size = isOriginalFirmware() ? 2 : 4
+	return getParam(2, "Power Reporting Threshold", size, 5, powerReportingThresholdOptions) 
 }
 
 private getPowerReportingFrequencyParam() {
@@ -848,7 +981,8 @@ private getEnergyReportingFrequencyParam() {
 }
 
 private getOverloadProtectionParam() {
-	return getParam(5, "Overload Protection", 2, 1500, overloadOptions) 
+	def defaultVal = isOriginalFirmware() ? 1500 : 1800
+	return getParam(5, "Overload Protection", 2, defaultVal, overloadOptions) 
 }
 
 private getAutoOffEnabledParams() {
@@ -938,6 +1072,9 @@ private getPowerOptions() {
 	[1,2,3,4,5,10,15,20,25,50,75,100,150,200,250,500,750,1000,1250,1500].each {
 		options["${it}"] = "${it} W"
 	}		
+	if (!isOriginalFirmware()) {
+		options["1800"] = "1800 W"
+	}
 	return options
 }
 
@@ -1005,7 +1142,7 @@ private executeSendEvent(child, evt) {
 				evt.descriptionText = evt.descriptionText.replace(device.displayName, child.displayName)
 				logDebug "${evt.descriptionText}"
 			}
-			child.sendEvent(evt)
+			child.sendEvent(evt)						
 		}
 		else {
 			sendEvent(evt)
@@ -1068,6 +1205,11 @@ private getChildDeviceNetworkId(endPoint) {
 
 private isUsbEndPoint(endPoint) {
 	return endPoint > 5
+}
+
+private isOriginalFirmware() {
+	def fw = device?.currentValue("firmwareVersion")
+	return "${fw}" == "1.0"
 }
 
 
