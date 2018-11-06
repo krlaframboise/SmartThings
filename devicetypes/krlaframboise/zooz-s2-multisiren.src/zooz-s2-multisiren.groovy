@@ -1,5 +1,5 @@
 /**
- *  Zooz S2 Multisiren v0.0  (ALPHA)
+ *  Zooz S2 Multisiren v1.0
  *  (Models: ZSE19)
  *
  *  Author: 
@@ -10,8 +10,8 @@
  *
  *  Changelog:
  *
- *    0.0 (10/29/2018)
- *      - Alpha Release
+ *    1.0 (11/06/2018)
+ *      - Initial Release
  *
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -42,7 +42,7 @@ metadata {
 		capability "Configuration"
 		capability "Refresh"
 		capability "Health Check"
-		
+				
 		attribute "primaryStatus", "string"
 		attribute "secondaryStatus", "string"
 		attribute "firmwareVersion", "string"		
@@ -57,7 +57,7 @@ metadata {
 		multiAttributeTile(name:"primaryStatus", type: "generic", width: 6, height: 4){
 			tileAttribute ("device.primaryStatus", key: "PRIMARY_CONTROL") {
 				attributeState "off", label: 'OFF', icon: "st.alarm.alarm.alarm", backgroundColor: "#ffffff"
-				attributeState "both", label: 'ALARM', action: "alarm.off", icon: "st.alarm.alarm.alarm", backgroundColor: "#00a0dc"
+				attributeState "alarm", label: 'ALARM', action: "alarm.off", icon: "st.alarm.alarm.alarm", backgroundColor: "#00a0dc"
 				attributeState "play", label: 'PLAYING', action: "alarm.off", icon: "st.alarm.beep.beep", backgroundColor: "#00a0dc"
 			}
 			tileAttribute ("device.secondaryStatus", key: "SECONDARY_CONTROL") {
@@ -93,6 +93,10 @@ metadata {
 			state "default", label:'Sync', action: "configuration.configure", icon:"st.secondary.tools"
 		}
 		
+		valueTile("battery", "device.battery", width: 2, height: 2) {
+			state "default", label:'${currentValue}% Battery'
+		}
+		
 		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:3, height: 1) {
 			state "firmwareVersion", label:'Firmware ${currentValue}'
 		}
@@ -102,7 +106,7 @@ metadata {
 		}
 		
 		main "primaryStatus"
-		details(["primaryStatus", "sliderText", "slider", "off", "alarm", "on", "refresh", "configure", "firmwareVersion", "syncStatus"])
+		details(["primaryStatus", "sliderText", "slider", "off", "alarm", "on", "refresh", "configure", "battery", "firmwareVersion", "syncStatus"])
 	}
 		
 	preferences {	
@@ -117,9 +121,9 @@ metadata {
 		
 		input "switchOnAction", "enum",
 			title: "Switch On Action",
-			defaultValue: "on",
+			defaultValue: "0",
 			required: false,
-			options: setDefaultOption(switchOnActionOptions, "on")
+			options: setDefaultOption(switchOnActionOptions, "0")
 
 		// input "tempOffset", "enum",
 			// title: "Temperature Offset",
@@ -165,7 +169,7 @@ def configure() {
 	runIn(5, updateSyncStatus)
 			
 	def cmds = []
-		
+	
 	if (!device.currentValue("switch")) {
 		sendEvent(getEventMap("switch", "off"))
 		sendEvent(getEventMap("level", 0))
@@ -180,17 +184,11 @@ def configure() {
 	configParams.each { 
 		logDebug "CHANGING ${it.name}(#${it.num}) from ${getParamStoredValue(it.num)} to ${it.value}"
 		cmds << configSetCmd(it, it.value)
+		cmds << configGetCmd(it)
 		cmds << configGetCmd(it)		
 	}
 	
 	return delayBetween(cmds, 250)
-}
-
-
-def speak(msg) {
-	logDebug "speak(${msg})..."
-	
-	
 }
 
 
@@ -205,7 +203,7 @@ def on() {
 			return setLevel(sound)
 		}	
 		else {
-			log.warn "Ignoring 'on' command because Switch On Action Setting is set to 'Do Nothing'"
+			log.warn "Ignoring 'on' command because the Switch On Action setting is set to 'Do Nothing'"
 		}
 	}
 }
@@ -216,13 +214,25 @@ def setLevel(level, duration=null) {
 	def cmds = []
 	def val = safeToInt(level, 0)
 	if (val) {
-		cmds << configSetCmd(playSoundParam, val)
-		cmds << basicGetCmd()
+		if (device.currentValue("alarm") == "off") {
+			runIn(2, clearStatus)
+			sendEvent(getEventMap("primaryStatus", "play"))
+			cmds << configSetCmd(playSoundParam, val)
+		}
+		else {
+			log.warn "Can't play sound #${val} beacuse alarm is on"
+		}		
 	}
 	else {
 		log.warn "${val} is not a valid sound number"
 	}	
-	return cmds ? delayBetween(cmds, 500) : []
+	return cmds
+}
+
+def clearStatus() {
+	if (device.currentValue("alarm") == "off") {
+		sendEvent(getEventMap("primaryStatus", "off"))
+	}
 }
 
 
@@ -257,11 +267,11 @@ def refresh() {
 	
 	runIn(5, updateSecondaryStatus)
 	
+	state.lastBattery = null
 	return delayBetween([		
 		sensorMultilevelGetCmd(tempSensorType),
-		sensorMultilevelGetCmd(humiditySensorType),
-		batteryGetCmd()
-	], 500)	
+		sensorMultilevelGetCmd(humiditySensorType)
+	], 2500)
 }
 
 
@@ -367,6 +377,10 @@ def parse(String description) {
 			state.lastCheckinTime = new Date().time
 			sendEvent(getEventMap("lastCheckin", convertToLocalTimeString(new Date())))
 		}
+		
+		if (!isDuplicateCommand(state.lastBattery, (12 * 60 * 60 * 1000))) {			
+			result << response(batteryGetCmd())
+		}
 	}
 	catch (e) {
 		log.error "${e}"
@@ -413,6 +427,8 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 		val = 1
 	}
 	
+	state.lastBattery = new Date().time
+	
 	sendEvent(getEventMap("battery", val, true, "%"))
 	return []
 }	
@@ -442,7 +458,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport 
 }
 
 private updateHealthCheckInterval(minutes) {
-	def minReportingInterval = (minutes * 60)
+	def minReportingInterval = calculateMinimumReportingInterval()
 	
 	if (state.minReportingInterval != minReportingInterval) {
 		state.minReportingInterval = minReportingInterval
@@ -455,6 +471,15 @@ private updateHealthCheckInterval(minutes) {
 		
 		sendEvent(eventMap)
 	}	
+}
+
+private calculateMinimumReportingInterval() {
+	if (reportingIntervalParam.value < (30 * 60)) {
+		return (30 * 60)
+	}
+	else {
+		return reportingIntervalParam.value
+	}
 }
 
 def updateSyncStatus(status=null) {	
@@ -493,7 +518,7 @@ private setParamStoredValue(paramNum, value) {
 }
 
 
-def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd, endPoint=0) {
+def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
 	logTrace "SwitchBinaryReport: ${cmd}"
 	
 	def primaryStatus = "off"
@@ -727,5 +752,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	log.trace "$msg"
+	// log.trace "$msg"
 }
