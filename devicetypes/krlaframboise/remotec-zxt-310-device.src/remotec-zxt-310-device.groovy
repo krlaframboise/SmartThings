@@ -244,15 +244,15 @@ private sendEventIfNull(name, value) {
 
 def on() { 
 	logTrace "Executing on()"
-	sendEvent(createEventMap("switch", "on", false))
 	pushTriggeredBtns("on")
+	sendEvent(createEventMap("switch", "on", false))
     return []
 }
 
 def off() {
 	logTrace "Executing off()"
-	sendEvent(createEventMap("switch", "off", false))
 	pushTriggeredBtns("off")
+	sendEvent(createEventMap("switch", "off", false))
     return []
 }
 
