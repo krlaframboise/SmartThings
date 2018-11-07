@@ -1,5 +1,5 @@
 /**
- *  Remotec ZXT-310 Device v1.0
+ *  Remotec ZXT-310 Device v1.0.1
  *
  *     (Virtual device used by the Remotec ZXT-310 Device Manager SmartApp)
  *  
@@ -12,6 +12,8 @@
  *
  *  1.0.0 (04/02/2017)
  *    - Initial Release
+ *  1.0.1 (11/06/2018)
+ *    - Added support for ignoring duplicate commands (on / off)
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -77,7 +79,7 @@ metadata {
 				title: "Button ${btn} Ignore Duplicates:",
 				displayDuringSetup: true,
 				required: false,
-				defaultValue: getBtnIgnoreDuplicatesSetting(btn),
+				defaultValue: getBtnIgnoreDuplicatesSetting(btn)
 		}		
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
