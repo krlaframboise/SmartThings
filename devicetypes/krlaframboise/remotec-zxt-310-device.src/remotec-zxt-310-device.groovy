@@ -73,6 +73,11 @@ metadata {
 				required: false,
 				defaultValue: getBtnRepeatSetting(btn),
 				options: btnRepeatOptions.collect { it.name }				
+			input "btn${btn}IgnoreDuplicates", "bool",
+				title: "Button ${btn} Ignore Duplicates:",
+				displayDuringSetup: true,
+				required: false,
+				defaultValue: getBtnIgnoreDuplicatesSetting(btn),
 		}		
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
@@ -257,7 +262,9 @@ def push() {
 private pushTriggeredBtns(eventName) {
 	btns.each { btn ->
 		if (eventName in getBtnTriggerSettingEvents(btn)) {
-			pushButton(btn)
+				if ((!getBtnIgnoreDuplicatesSetting(btn)) || (device.currentValue("switch") != eventName)) {
+				pushButton(btn)
+			}
 		}
 	}
 }
@@ -336,6 +343,10 @@ private getBtnDelaySetting(btn) {
 }
 private getBtnRepeatSetting(btn) {
 	return getOptionSetting("btn${btn}Repeat", btnRepeatOptions)
+}
+private getBtnIgnoreDuplicatesSetting(btn) {
+	def settingName = "btn${btn}IgnoreDuplicates"
+	return (settings && settings[settingName]) ? settings[settingName] : false
 }
 private getBtnTriggerSettingEvents(btn) {
 	def name = getOptionSetting("btn${btn}Trigger", btnTriggerOptions)
