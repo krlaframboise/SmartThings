@@ -1,5 +1,5 @@
 /**
- *  Zooz Motion Sensor ZSE18 v1.0.4
+ *  Zooz Motion Sensor ZSE18 v1.0.5
  *  (Model: ZSE18)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.5 (11/14/2018)
+ *      - Fixed USB Battery icon.
  *
  *    1.0.4 (07/30/2018)
  *      - Added support for new Mobile App.
@@ -46,8 +49,11 @@ metadata {
 		capability "Health Check"
 		
 		attribute "lastCheckIn", "string"
+		attribute "batteryStatus", "string"
 		
 		fingerprint mfr:"027A", prod:"0301", model:"0012", deviceJoinName: "Zooz Motion Sensor ZSE18"
+		
+		fingerprint mfr:"0208", prod:"0201", model:"0012", deviceJoinName: "Zooz Motion Sensor ZSE18"	
 	}
 	
 	simulator { }
@@ -94,11 +100,20 @@ metadata {
 			state "default", label: "Refresh", action: "refresh", icon:"${resourcesUrl}refresh.png"
 		}
 		
-		standardTile("battery", "device.battery", decoration: "flat", width: 2, height: 2) {			
-			state "default", label:'${currentValue}%', icon: "${resourcesUrl}battery-default.png"
-			state "100", label:'${currentValue}%', icon: "${resourcesUrl}battery.png"
-			state "1", label:'${currentValue}%', icon: "${resourcesUrl}battery-low.png"
-			state "", label:'USB', icon: "${resourcesUrl}usb.png"
+		standardTile("battery", "device.batteryStatus", decoration: "flat", width: 2, height: 2) {			
+			state "default", label:'${currentValue}', icon: "${resourcesUrl}battery-default.png"
+			state "100%", label:'${currentValue}', icon: "${resourcesUrl}battery.png"
+			state "99%", label:'${currentValue}', icon: "${resourcesUrl}battery.png"
+			state "98%", label:'${currentValue}', icon: "${resourcesUrl}battery.png"
+			state "97%", label:'${currentValue}', icon: "${resourcesUrl}battery.png"
+			state "96%", label:'${currentValue}', icon: "${resourcesUrl}battery.png"
+			state "95%", label:'${currentValue}', icon: "${resourcesUrl}battery.png"
+			state "1%", label:'${currentValue}', icon: "${resourcesUrl}battery-low.png"
+			state "2%", label:'${currentValue}', icon: "${resourcesUrl}battery-low.png"
+			state "3%", label:'${currentValue}', icon: "${resourcesUrl}battery-low.png"
+			state "4%", label:'${currentValue}', icon: "${resourcesUrl}battery-low.png"
+			state "5%", label:'${currentValue}', icon: "${resourcesUrl}battery-low.png"
+			state "USB", label:'${currentValue}', icon: "${resourcesUrl}usb.png"
 		}
 		
 		main(["mainTile", "motion", "acceleration"])
@@ -118,12 +133,19 @@ private getResourcesUrl() {
 	return "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/"
 }
 
+
+def installed() {
+	initializeBatteryStatus()
+}
+
 def updated() {	
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {		
 		state.lastUpdated = new Date().time
 		logTrace "updated()"
-
-		if (!device.currentValue("battery")) {
+		
+		initializeBatteryStatus()
+		
+		if (device.currentValue("batteryStatus") == "USB") {
 			return response(configure())
 		}
 		else {
@@ -131,6 +153,24 @@ def updated() {
 		}
 	}		
 }
+
+private initializeBatteryStatus() {
+	if (!device.currentValue("batteryStatus")) {	
+		def val 
+		if (device.currentValue("battery")) {
+			def battery = device.currentValue("battery")
+			val = "${battery}%"
+		}
+		else if (device.rawDescription?.contains(",80,")) {
+			val = "UNKNOWN"
+		}
+		else {
+			val = "USB"
+		}
+		sendEvent(getEventMap("batteryStatus", val, false))
+	}
+}
+
 
 def configure() {
 	logTrace "configure()"
@@ -149,7 +189,7 @@ def configure() {
 		cmds << sensorBinaryGetCmd(8)		
 	}
 	
-	if (canRequestBattery()) {
+	if (canRequestBattery() || state.pendingRefresh) {
 		cmds << batteryGetCmd()
 	}
 	
@@ -193,9 +233,11 @@ def ping() {
 	return [versionGetCmd()]
 }
 
-// Forces the configuration to be resent to the device the next time it wakes up.
+
 def refresh() {		
 	state.lastBattery = null
+	
+	initializeBatteryStatus()
 	
 	if (state.pendingRefresh) {
 		configParams.each {
@@ -205,12 +247,8 @@ def refresh() {
 	
 	state.pendingRefresh = true
 	
-	if (!device.currentValue("battery")) {
-		def cmds = []
-		cmds << sensorBinaryGetCmd(12)
-		cmds << sensorBinaryGetCmd(8)	
-		cmds += configure()
-		return cmds
+	if (device.currentValue("batteryStatus") == "USB") {
+		return configure()
 	}	
 	else {
 		logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."	
@@ -223,7 +261,7 @@ private logForceWakeupMessage(msg) {
 
 
 def parse(String description) {
-def result = []
+	def result = []
 	try {
 		def cmd = zwave.parse(description, commandClassVersions)
 		if (cmd) {
@@ -263,12 +301,15 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 	return result
 }
 
+
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
 	logDebug "Device Woke Up"
 	
+	initializeBatteryStatus()
+	
 	def cmds = []	
 	cmds += configure()
-	
+		
 	if (cmds) {
 		cmds << "delay 2000"
 	}
@@ -276,24 +317,29 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
 	return response(cmds)
 }
 
+
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	logTrace "BatteryReport $cmd"
 	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
-	if (val > 100) {
-		val = 100
-	}	
+	
+	if (val > 100) val = 100	
+	if (val < 1) val = 1
+	
 	state.lastBattery = new Date().time
 	
 	logDebug "Battery ${val}%"
+	sendEvent(getEventMap("batteryStatus", "${val}%", false)) 
 	sendEvent(getEventMap("battery", val, "%"))
 	return []
 }
 
+
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 	def version = "${cmd.applicationVersion}.${cmd.applicationSubVersion}"
 	logDebug "Firmware Version: ${version}"	
-	return result 
+	return []
 }
+
 
 // Stores the configuration values so that it only updates them when they've changed or a refresh was requested.
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {	
@@ -349,6 +395,7 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 	}
 	return []
 }
+
 
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
 	logTrace "SensorBinaryReport: $cmd"
@@ -429,7 +476,7 @@ private configSetCmd(param) {
 }
 
 private secureCmd(cmd) {
-	if (zwaveInfo?.zw?.contains("s") || ("0x98" in device.rawDescription?.split(" "))) {
+	if (zwaveInfo?.zw?.contains("s") || ("0x98" in device?.rawDescription?.split(" "))) {
 		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
 	}
 	else {
@@ -443,6 +490,7 @@ private getCommandClassVersions() {
 		0x59: 1,  // AssociationGrpInfo
 		0x5A: 1,  // DeviceResetLocally
 		0x5E: 2,  // ZwaveplusInfo
+		0x6C: 1,	// Supervision
 		0x70: 1,  // Configuration
 		0x71: 3,  // Notification (5)
 		0x72: 2,  // ManufacturerSpecific
@@ -452,12 +500,11 @@ private getCommandClassVersions() {
 		0x84: 2,  // WakeUp
 		0x85: 2,  // Association
 		0x86: 1,	// Version (2)
-		0x98: 1		// Security
-		// 0x6C ???
-		// Security S2
-		// Supervision
+		0x98: 1,	// Security
+		0x9F: 1		// Security 2
 	]
 }
+
 
 // Configuration Parameters
 private getConfigParams() {
@@ -596,13 +643,18 @@ private intToHexBytes(val, size) {
 }
 
 private convertToLocalTimeString(dt) {
-	def timeZoneId = location?.timeZone?.ID
-	if (timeZoneId) {
-		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+	try {
+		def timeZoneId = location?.timeZone?.ID
+		if (timeZoneId) {
+			return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+		}
+		else {
+			return "$dt"
+		}	
 	}
-	else {
+	catch (e) {
 		return "$dt"
-	}	
+	}
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
@@ -616,5 +668,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	// log.trace "$msg"
+	 // log.trace "$msg"
 }
