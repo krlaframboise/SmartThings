@@ -52,8 +52,6 @@ metadata {
 		attribute "batteryStatus", "string"
 		
 		fingerprint mfr:"027A", prod:"0301", model:"0012", deviceJoinName: "Zooz Motion Sensor ZSE18"
-		
-		fingerprint mfr:"0208", prod:"0201", model:"0012", deviceJoinName: "Zooz Motion Sensor ZSE18"	
 	}
 	
 	simulator { }
