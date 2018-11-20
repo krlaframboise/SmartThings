@@ -25,7 +25,7 @@
  */
 
  metadata {
-	definition (name: "Aeotec LED Bulb 6 Multi-White", namespace: "krlaframboise", author: "Kevin LaFramboise") {
+	definition (name: "Aeotec LED Bulb 6 Multi-White", namespace: "krlaframboise", author: "Kevin LaFramboise", vid: "generic-rgbw-color-bulb") {
 		capability "Actuator"
 		capability "Sensor"
 		capability "Switch Level"
