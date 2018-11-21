@@ -1,11 +1,11 @@
 /**
  *  Neo Coolcam Motion Sensor v1.0
- *  (Model: NAS-PD01ZU-T)
+ *  (Model: NAS-PD01ZU-T / NAS-PD01ZE-T)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:  
+ *  URL to documentation:  https://community.smartthings.com/t/release-neo-coolcam-motion-sensor-nas-pd01zu-t/143096?u=krlaframboise
  *
  *  Changelog:
  *
