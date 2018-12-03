@@ -578,7 +578,7 @@ private getLedIndicatorParam() {
 }
 
 private getManualControlParam() {
-	return createConfigParamMap(20, "Manual Control", 1, ["Disabled":0, "Enabled${defaultOptionSuffix}":1], "manualControl")
+	return createConfigParamMap(30, "Manual Control", 1, ["Disabled":0, "Enabled${defaultOptionSuffix}":1], "manualControl")
 }
 
 
