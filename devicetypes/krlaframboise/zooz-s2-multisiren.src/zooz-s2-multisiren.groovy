@@ -1,14 +1,18 @@
 /**
- *  Zooz S2 Multisiren v1.0
+ *  Zooz S2 Multisiren v1.1
  *  (Models: ZSE19)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *	Documentation:
+ *	Documentation: https://community.smartthings.com/t/release-zooz-s2-multisiren-zse19/142891?u=krlaframboise
  *
  *
  *  Changelog:
+ *
+ *    1.1 (12/09/2018)
+ *      - Added tamper capability.
+ *      - Added music player, audio notification, and speech synthesis capabilities to ensure that all sounds can be played using the built-in smart apps.
  *
  *    1.0 (11/06/2018)
  *      - Initial Release
@@ -35,18 +39,30 @@ metadata {
 		capability "Sensor"
 		capability "Alarm"
 		capability "Switch"		
+		capability "Audio Notification"
+		capability "Music Player"
+		capability "Speech Synthesis"
 		capability "Switch Level"
 		capability "Temperature Measurement"
 		capability "Relative Humidity Measurement"
 		capability "Battery"
 		capability "Configuration"
 		capability "Refresh"
+		capability "Tamper Alert"
 		capability "Health Check"
 				
 		attribute "primaryStatus", "string"
 		attribute "secondaryStatus", "string"
 		attribute "firmwareVersion", "string"		
 		attribute "lastCheckin", "string"
+		
+		
+		// Music Player commands used by some apps
+		command "playSoundAndTrack"
+		command "playTrackAtVolume"
+		command "playText"
+		command "playSound"
+		
 
 		fingerprint mfr:"027A", prod:"000C", model:"0003", deviceJoinName: "Zooz S2 Multisiren"
 	}
@@ -200,7 +216,7 @@ def on() {
 	else {
 		def sound = safeToInt(settings?.switchOnAction, 0)
 		if (sound) {
-			return setLevel(sound)
+			return playSound(sound)
 		}	
 		else {
 			log.warn "Ignoring 'on' command because the Switch On Action setting is set to 'Do Nothing'"
@@ -209,10 +225,100 @@ def on() {
 }
 
 
+// Music Player Commands
+def play() {
+	return on()
+}
+
+def pause() {
+	return off()
+}
+
+def stop() {
+	return off()
+}
+
+def mute() {
+	logUnsupportedCommand("mute()")
+}
+def unmute() {
+	logUnsupportedCommand("unmute()")
+}
+def nextTrack() {
+	logUnsupportedCommand("nextTrack()")
+}
+def previousTrack() {
+	logUnsupportedCommand("previousTrack()")
+}
+private logUnsupportedCommand(cmdName) {
+	logTrace "This device does not support the ${cmdName} command."
+}
+ 
+ 
+// Audio Notification Capability Commands
+def playSoundAndTrack(URI, duration=null, track, volume=null) {	
+	playTrack(URI, volume)
+}
+def playTrackAtVolume(URI, volume) {
+	playTrack(URI, volume)
+}
+
+def playTrackAndResume(URI, volume=null, otherVolume=null) {
+	if (otherVolume) {
+		// Fix for Speaker Notify w/ Sound not using command as documented.
+		volume = otherVolume
+	}
+	playTrack(URI, volume)
+}	
+def playTrackAndRestore(URI, volume=null, otherVolume=null) {
+	if (otherVolume) {
+		// Fix for Speaker Notify w/ Sound not using command as documented.
+		volume = otherVolume
+	}
+	playTrack(URI, volume)
+}	
+def playTextAndResume(message, volume=null) {
+	playText(message, volume)
+}	
+def playTextAndRestore(message, volume=null) {
+	playText(message, volume)
+}
+
+def speak(message) {
+	// Using playTrack in case url is passed in.
+	playTrack("$message", null)
+}
+
+def playTrack(URI, volume=null) {
+	logTrace "Executing playTrack($URI, $volume)"
+	def text = getTextFromTTSUrl(URI)
+	playText(!text ? URI : text, volume)	
+}
+
+private getTextFromTTSUrl(URI) {
+	if (URI?.toString()?.contains("/")) {
+		def startIndex = URI.lastIndexOf("/") + 1
+		return URI.substring(startIndex, URI.size())?.toLowerCase()?.replace(".mp3","")
+	}
+	return null
+}
+
+def playText(message, volume=null) {
+	playSound(message)
+}
+
+
 def setLevel(level, duration=null) {
 	logDebug "setLevel(${level})..."	
+	playSound(level)
+}
+
+
+def playSound(sound) {
+	logDebug "playSound(${sound})"
+		
 	def cmds = []
-	def val = safeToInt(level, 0)
+	def val = safeToInt(sound, 0)
 	if (val) {
 		if (device.currentValue("alarm") == "off") {
 			runIn(2, clearStatus)
@@ -224,7 +330,7 @@ def setLevel(level, duration=null) {
 		}		
 	}
 	else {
-		log.warn "${val} is not a valid sound number"
+		log.warn "${sound} is not a valid sound number"
 	}	
 	return cmds
 }
@@ -403,6 +509,25 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 }
 
 
+def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
+	logTrace "NotificationReport: $cmd"
+	
+	if (cmd.notificationType == 7) {
+		def tamperVal 
+		if (cmd.event == 3) {		
+			tamperVal = "detected"
+		}
+		else if (cmd.event == 0 && cmd.eventParameter[0] == 3) {
+			tamperVal = "clear"
+		}
+		logDebug "Tamper ${tamperVal}"
+		sendEvent(getEventMap("tamper", tamperVal))
+		runIn(1, updateSecondaryStatus)
+	}
+	return []
+}
+
+
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 	logTrace "VersionReport: ${cmd}"
 	
@@ -569,8 +694,13 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelR
 def updateSecondaryStatus() {
 	def temp = device.currentValue("temperature")
 	def humidity = device.currentValue("humidity")
+	def value = "${temp}°${getTemperatureScale()} / ${humidity}% RH"
 	
-	sendEvent(name:"secondaryStatus", value:"${temp}°${getTemperatureScale()} / ${humidity}% RH", displayed: false)
+	if (device.currentValue("tamper") == "detected") {
+		value = "TAMPERING / ${value}"
+	}
+	
+	sendEvent(name:"secondaryStatus", value:value, displayed: false)
 }
 
 
@@ -731,7 +861,7 @@ private roundTwoPlaces(val) {
 	return Math.round(safeToDec(val) * 100) / 100
 }
 
-private convertToLocalTimeString(dt) {
+private convertToLocalTimeString(dt) {	
 	def timeZoneId = location?.timeZone?.ID
 	if (timeZoneId) {
 		return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
@@ -752,5 +882,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	// log.trace "$msg"
+	log.trace "$msg"
 }
