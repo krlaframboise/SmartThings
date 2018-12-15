@@ -42,7 +42,6 @@
  */
    
 var getVersion = function() { return "01.03.10"; },
-    dateLocale = "et-EE",
     dateFormatShort = "dd.MM.yyyy",
     dateFormatLong = "dd.MM.yyyy HH:mm:ss";
  
@@ -110,12 +109,14 @@ var logEvents = function(sheet, data, result) {
 
 var logEvent = function(sheet, logDesc, logReporting, event) {
     var dateObject = new Date(event.time),
+        dateFormatted = Utilities.formatDate(dateObject, "GMT", dateFormatLong),
         newRow = [
-          dateObject.toLocaleString(dateLocale),
+          dateFormatted,
           event.device,
           event.name,
           event.value,
         ];
+          
 	if (logDesc || logReporting) {
 		newRow.push(event.desc);
 	}
