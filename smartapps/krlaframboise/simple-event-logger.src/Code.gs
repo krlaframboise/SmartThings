@@ -42,8 +42,8 @@
  */
    
 var getVersion = function() { return "01.03.10"; },
-    dateFormatShort = "dd.MM.yyyy",
-    dateFormatLong = "dd.MM.yyyy HH:mm:ss";
+    dateFormatShort = "dd/MM/yyyy",
+    dateFormatLong = "dd/MM/yyyy HH:mm:ss";
  
 function doGet(e) {
 	var output = "Version " + getVersion()
