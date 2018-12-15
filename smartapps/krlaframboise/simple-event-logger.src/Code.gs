@@ -41,7 +41,10 @@
  *
  */
    
-var getVersion = function() { return "01.03.00"; }
+var getVersion = function() { return "01.03.10"; },
+    dateLocale = "et-EE",
+    dateFormatShort = "dd.MM.yyyy",
+    dateFormatLong = "dd.MM.yyyy HH:mm:ss";
  
 function doGet(e) {
 	var output = "Version " + getVersion()
@@ -64,6 +67,10 @@ function doPost(e) {
 			else {
 				result = logEvents(sheet, data, result);
 			}
+          
+//          IF rows need update to changed format
+//          sheet.getRange("A:A").setNumberFormat(dateFormatLong);
+//          sheet.getRange("F:F").setNumberFormat(dateFormatShort);
 			
 			result.freeSpace = calculateAvailableLogSpace(sheet);
 			sendPostback(data.postBackUrl, result);
@@ -102,12 +109,13 @@ var logEvents = function(sheet, data, result) {
 }
 
 var logEvent = function(sheet, logDesc, logReporting, event) {
-	var newRow = [
-		event.time,
-		event.device,
-		event.name,
-		event.value
-	];
+    var dateObject = new Date(event.time),
+        newRow = [
+          dateObject.toLocaleString(dateLocale),
+          event.device,
+          event.name,
+          event.value,
+        ];
 	if (logDesc || logReporting) {
 		newRow.push(event.desc);
 	}
@@ -128,14 +136,14 @@ var initializeHeaderRow = function(sheet, logDesc, logReporting) {
 			"Event Value"
 		];		
 		sheet.appendRow(header);
-		sheet.getRange("A:A").setNumberFormat('MM/dd/yyyy HH:mm:ss');
+		sheet.getRange("A:A").setNumberFormat(dateFormatLong);
 	}	
 	if (logDesc || logReporting) {
 		sheet.getRange("E1").setValue("Description")
 	}
 	if (logReporting && sheet.getRange("F1").getValue() != "Date") {
 		sheet.getRange("F1").setValue("Date")
-		sheet.getRange("F:F").setNumberFormat('MM/dd/yyyy');
+		sheet.getRange("F:F").setNumberFormat(dateFormatShort);
 		sheet.getRange("G1").setValue("Hour")
 		sheet.getRange("G:G").setNumberFormat('00');
 	}
