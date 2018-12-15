@@ -201,7 +201,7 @@ private getConfigureCmds() {
 		if (state.resyncAll || "${storedVal}" != "${it.value}") {
 			if (state.configured) {
 				logDebug "CHANGING ${it.name}(#${it.num}) from ${storedVal} to ${it.value}"
-				cmds << configSetCmd(it)
+				cmds << configSetCmd(it, it.value)
 			}
 			cmds << configGetCmd(it)
 		}
@@ -267,15 +267,14 @@ def setLevel(level) {
 
 def calibrate() {
 	logDebug "calibrate()..."
-	def cmds = delayBetween([
-		configSetCmd(78, 1, 1),
-		configGetCmd(78),
-		switchMultilevelGetCmd()
+	def cmds = delayBetween([	
+		configSetCmd(forceCalibrationParam, 1),
+		configGetCmd(forceCalibrationParam)
 	], 1000)
 	cmds << "delay 120000"
 	cmds += delayBetween([
-		configSetCmd(78, 1, 0),
-		configGetCmd(78)
+		configSetCmd(forceCalibrationParam, 0),
+		configGetCmd(forceCalibrationParam)
 	], 1000)
 	return cmds
 }
@@ -351,8 +350,8 @@ private switchBinarySetCmd(val) {
 	return secureCmd(zwave.switchBinaryV1.switchBinarySet(switchValue: val))
 }
 
-private configSetCmd(param) {
-	return secureCmd(zwave.configurationV1.configurationSet(parameterNumber: param.num, size: param.size, scaledConfigurationValue: param.value))
+private configSetCmd(param, value) {
+	return secureCmd(zwave.configurationV1.configurationSet(parameterNumber: param.num, size: param.size, scaledConfigurationValue: value))
 }
 
 private configGetCmd(param) {
