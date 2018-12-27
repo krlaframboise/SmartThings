@@ -5,7 +5,7 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:
+ *  URL to documentation:  https://community.smartthings.com/t/release-neo-coolcam-light-switch-2ch/147756
  *    
  *
  *  Changelog:
