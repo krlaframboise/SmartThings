@@ -60,7 +60,8 @@ metadata {
 		attribute "rightPower", "number"
 		attribute "rightSwitch", "string"
 		attribute "rightName", "string"
-				
+		attribute "usbSwitch", "string"
+						
 		command "leftOff"
 		command "leftOn"
 		command "rightOff"
@@ -161,7 +162,7 @@ metadata {
 		}
 				
 		main (["switch"])
-		details(["switch", "energy", "energyDuration", "power", "powerHigh", "powerLow", "voltage", "voltageHigh", "voltageLow", "current", "currentHigh", "currentLow", "refresh", "reset", "configure", "firmwareVersion", "syncStatus", "leftName", "leftPower", "leftSwitch", "rightName", "rightPower", "rightSwitch"])
+		details(["switch", "energy", "energyDuration", "power", "powerHigh", "powerLow", "voltage", "voltageHigh", "voltageLow", "current", "currentHigh", "currentLow", "refresh", "reset", "configure", "firmwareVersion", "syncStatus", "leftName", "leftPower", "leftSwitch", "rightName", "rightPower", "rightSwitch", "usbName", "usbSwitch"])
 	}
 	
 	preferences {
