@@ -1,5 +1,5 @@
 /**
- *  Zooz Double Plug v1.0
+ *  Zooz Double Plug v1.1
  *  (Models: ZEN25)
  *
  *  Author: 
@@ -8,6 +8,12 @@
  *	Documentation:
  *
  *  Changelog:
+ *
+ *    1.1 (01/26/2019)
+ *      - Fixed typo
+ *      - Stopped forcing isStateChange to true so that only events that duplicate events aren't shown.
+ *      - Fixed config parameter options.
+ *      - Fixed other misc issues.
  *
  *    1.0 (01/21/2019)
  *      - Initial Release
@@ -196,7 +202,7 @@ def installed () {
 	sendEvent(name:"energyTime", value:new Date().time, displayed: false)
 	
 	// Make sure the outlets get created if using the new mobile app.
-	runIn(30, createChildDevices) 
+	runIn(10, createChildDevices) 
 }
 
 def updated() {	
@@ -205,25 +211,19 @@ def updated() {
 		
 		unschedule()
 		
-		// runIn(2, updateSecondaryStatus)
-		
 		runEvery3Hours(ping)
 		
-		def cmds = []
-		
 		if (childDevices?.size() != 3) {
-			cmds += createChildDevices()
+			runIn(2, createChildDevices)
 		}
 		
-		cmds += configure()
+		def cmds = getConfigureCmds()
 		return cmds ? response(cmds) : []
 	}	
 }
 
 
 def createChildDevices() {
-	def cmds = []
-	
 	(1..2).each { endPoint ->
 		if (!findChildByEndPoint(endPoint)) {			
 			def dni = "${getChildDeviceNetworkId(endPoint)}"
@@ -231,16 +231,15 @@ def createChildDevices() {
 			addChildOutlet(dni, endPoint)
 			childUpdated(dni)
 			
-			cmds += childReset(dni)
+			sendCommands(childReset(dni))
 		}
 	}
 	
 	def dni = "${getChildDeviceNetworkId(3)}"
 	if (!findChildByDeviceNetworkId(dni)) {	
 		addChildUSB("smartthings", "Virtual Switch", dni)
-		cmds << switchBinaryGetCmd(3)
-	}
-	return cmds ? delayBetween(cmds, 1000) : []
+		sendCommands([switchBinaryGetCmd(3)])
+	}	
 }
 
 private addChildOutlet(dni, endPoint) {
@@ -251,7 +250,7 @@ private addChildOutlet(dni, endPoint) {
 		"krlaframboise", 
 		"Zooz Double Plug Outlet", 
 		dni, 
-		null, 
+		device.getHub().getId(), 
 		[
 			completedSetup: true,
 			isComponent: false,
@@ -268,7 +267,7 @@ private addChildUSB(namespace, deviceType, dni) {
 		namespace,
 		deviceType,
 		dni, 
-		null, 
+		device.getHub().getId(), 
 		[
 			completedSetup: true,
 			isComponent: true,
@@ -284,28 +283,29 @@ def configure() {
 	updateHealthCheckInterval()
 	
 	runIn(10, updateSyncStatus)
+	
+	if (!pendingChanges) {
+		state.resyncAll = true
+	}
 			
 	def cmds = []
-	def delay = 250
-	
+		
 	if (!device.currentValue("firmwareVersion")) {
 		cmds << versionGetCmd()
-		cmds << "delay ${delay}"
+		cmds << "delay 500"
 	}
 	
 	if (device.currentValue("power") == null) {
 		cmds += getRefreshCmds()
-		cmds << "delay ${delay}"
+		cmds << "delay 500"
 	}
 	
 	if (device.currentValue("energy") == null) {
 		cmds += getResetCmds()
-		cmds << "delay ${delay}"
+		cmds << "delay 500"
 	}
 	
-	if (device.currentValue("switch")) {
-		cmds += getConfigureCmds()
-	}
+	cmds += getConfigureCmds()
 	
 	return cmds
 }
@@ -343,7 +343,7 @@ private getConfigureCmds() {
 			cmds << configGetCmd(it)
 		}
 	}
-	return cmds ? delayBetween(cmds, 250) : []
+	return cmds ? delayBetween(cmds, 500) : []
 }
 
 
@@ -397,8 +397,8 @@ def childOff(dni) {
 private getChildSwitchCmds(value, dni) {
 	def endPoint = getEndPoint(dni)	
 	return delayBetween([
-		switchBinarySetCmd(value, endPoint),
-		switchBinaryGetCmd(endPoint)
+		switchBinarySetCmd(value, endPoint)
+		// switchBinaryGetCmd(endPoint)
 	], 500)
 }
 
@@ -417,13 +417,14 @@ def refresh() {
 			cmds << switchBinaryGetCmd(endPoint)
 		}
 		else {
-			cmds += getRefreshCmds(dni)			
+			cmds += getRefreshCmds(dni)
 			if (!device.currentValue("${endPointName}Name")) {
 				childUpdated(dni)
 			}
 		}
 	}
-	return cmds	
+	sendCommands(cmds)
+	return []
 }
 
 def childRefresh(dni) {
@@ -446,12 +447,12 @@ private getRefreshCmds(dni=null) {
 def reset() {
 	logDebug "reset()..."
 	
-	runIn(10, refresh)
+	runIn(5, refresh)
 	
 	def cmds = getResetCmds()	
-	childDevices.each { child ->		
-		if (child.hasCommand("reset")) {
-			cmds << "delay 1000"
+	childDevices.each { child ->	
+		if (!"${child.deviceNetworkId}".endsWith("USB")) {
+			cmds << "delay 500"
 			cmds += getResetCmds(child.deviceNetworkId)
 		}
 	}
@@ -476,6 +477,7 @@ private getResetCmds(dni=null) {
 		executeSendEvent(child, createEventMap("${it}High", getAttrVal(it), false))
 	}
 	executeSendEvent(child, createEventMap("energyTime", new Date().time, false))
+	sendEnergyEvents(child, 0)
 	
 	return [meterResetCmd(endPoint)]
 }
@@ -862,7 +864,7 @@ private getConfigParams() {
 }
 
 private getPowerFailureRecoveryParam() {
-	return getParam(1, "On/Off Status Recovery After Power Failure", 1, 0, [0:"Restore Outlets States From Before Power Faiure", 1:"Turn Outlets On", 2:"Turn Outlets Off"])
+	return getParam(1, "On/Off Status Recovery After Power Failure", 1, 0, [0:"Restore Outlets States From Before Power Failure", 1:"Turn Outlets On", 2:"Turn Outlets Off"])
 }
 
 private getPowerReportingThresholdParam() {
@@ -886,7 +888,7 @@ private getAmpsReportingFrequencyParam() {
 }
 
 private getOverloadProtectionParam() {
-	return getParam(7, "Overload Protection", 1, 10, overloadOptions) 
+	return getParam(7, "Overload Protection", 1, 13, overloadOptions) 
 }
 
 private getLeftAutoOffEnabledParam() {
@@ -953,7 +955,7 @@ private setDefaultOption(options, defaultVal) {
 
 private getOverloadOptions() {
 	def options = [:]
-	(1..10).each {
+	(1..13).each {
 		options["${it}"] = "${it} A"
 	}	
 	return options
@@ -975,7 +977,7 @@ private getPowerOptions() {
 
 private getFrequencyOptions() {
 	def options = [:]
-	options = getTimeOptionsRange(options, "Second", 1, [5,10,15,30,45])
+	options = getTimeOptionsRange(options, "Second", 1, [30,45])
 	options = getTimeOptionsRange(options, "Minute", 60, [1,2,3,4,5,10,15,30,45])
 	options = getTimeOptionsRange(options, "Hour", (60 * 60), [1,2,3,6,9,12,24])
 	return options
@@ -988,12 +990,6 @@ private getAutoOnOffIntervalOptions() {
 	options = getTimeOptionsRange(options, "Day", (60 * 24), [1,2,3,4,5,6])
 	options = getTimeOptionsRange(options, "Week", (60 * 24 * 7), [1,2])
 	return options
-}
-
-private getMainSwitchDelayOptions() {
-	def options = [0:"Disabled",500:"500 Milliseconds"]
-	options = getTimeOptionsRange(options, "Second", 1000, [1,2,3,4,5,10])
-	return setDefaultOption(options, 0)
 }
 
 private getTimeOptionsRange(options, name, multiplier, range) {	
@@ -1009,9 +1005,6 @@ private getEnabledOptions() {
 
 
 // Settings
-private getMainSwitchDelaySetting() {
-	return safeToInt(settings?.mainSwitchDelay)
-}
 
 private executeSendEvent(child, evt) {
 	if (evt.displayed == null) {
@@ -1027,6 +1020,7 @@ private executeSendEvent(child, evt) {
 			child.sendEvent(evt)						
 		}
 		else {
+			logDebug "${evt.descriptionText}"
 			sendEvent(evt)
 		}
 	}
@@ -1037,7 +1031,7 @@ private createEventMap(name, value, displayed=null, unit=null) {
 		name: name,
 		value: value,
 		displayed: displayed,
-		isStateChange: true,
+		// isStateChange: true,
 		descriptionText: "${device.displayName} - ${name} is ${value}"
 	]
 	
