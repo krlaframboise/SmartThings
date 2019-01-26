@@ -1,6 +1,6 @@
 /**
- *  Zooz Power Switch / Zooz Smart Plug v1.5
- *  (Models: ZEN15, ZEN06)
+ *  Zooz Power Switch v1.6
+ *  (Models: ZEN15)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.6 (01/26/2019)
+ *      - Stopped forcing isStateChange to true which will prevent duplicate events.
  *
  *    1.5 (07/30/2018)
  *      - Added support for new mobile app.
@@ -62,6 +65,7 @@ metadata {
 		attribute "energyTime", "number"
 		attribute "energyCost", "string"
 		attribute "energyDuration", "string"
+		attribute "firmwareVersion", "string"		
 		
 		["power", "voltage", "current"].each {
 			attribute "${it}Low", "number"
@@ -133,8 +137,11 @@ metadata {
 		valueTile("history", "device.history", decoration:"flat",width: 6, height: 3) {
 			state "history", label:'${currentValue}'
 		}
+		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:3, height: 1) {
+			state "firmwareVersion", label:'Firmware ${currentValue}'
+		}
 		main "switch"
-		details(["switch", "power", "energy", "refresh", "voltage", "current", "reset", "history"])
+		details(["switch", "power", "energy", "refresh", "voltage", "current", "reset", "history", "firmwareVersion"])
 	}
 }
 
@@ -194,6 +201,11 @@ def configure() {
 	updateHealthCheckInterval()
 		
 	def cmds = []	
+	
+	if (!device.currentValue("firmwareVersion")) {
+		cmds << versionGetCmd()
+	}
+	
 	configParams.each { param ->	
 		cmds += updateConfigVal(param)
 	}
@@ -293,6 +305,10 @@ private meterGetCmd(meter) {
 
 private meterResetCmd() {
 	return secureCmd(zwave.meterV3.meterReset())
+}
+
+private versionGetCmd() {
+	return secureCmd(zwave.versionV1.versionGet())
 }
 
 private switchBinaryGetCmd() {
@@ -397,6 +413,18 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport 
 		logDebug "Parameter ${cmd.parameterNumber} = ${val}"
 	}	
 	return []
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
+	logTrace "VersionReport: ${cmd}"
+	
+	def version = "${cmd.applicationVersion}.${cmd.applicationSubVersion}"
+	
+	if (version != device.currentValue("firmwareVersion")) {
+		logDebug "Firmware: ${version}"
+		sendEvent(name: "firmwareVersion", value: version, displayed:false)
+	}
+	return []	
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
@@ -751,8 +779,8 @@ private createEventMap(name, value, displayed=null, desc=null, unit=null) {
 	def eventMap = [
 		name: name,
 		value: value,
-		displayed: (displayed == null ? ("${getAttrVal(name)}" != "${value}") : displayed),
-		isStateChange: true
+		// isStateChange: true,
+		displayed: (displayed == null ? ("${getAttrVal(name)}" != "${value}") : displayed)
 	]
 	
 	if (unit) {
