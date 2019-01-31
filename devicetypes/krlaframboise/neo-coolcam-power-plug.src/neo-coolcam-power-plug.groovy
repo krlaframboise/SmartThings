@@ -1,5 +1,5 @@
 /**
- *  Neo Coolcam Power Plug v1.0
+ *  Neo Coolcam Power Plug v1.1
  *  (Models: NAS-WR02ZU, NAS-WR02ZE)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1 (01/30/2019)
+ *      - Added security encapsulation because the latest version of this device supports it.
  *
  *    1.0 (11/29/2018)
  *      - Initial Release
@@ -304,35 +307,44 @@ def reset() {
 
 
 private meterGetCmd(meter) {
-	return zwave.meterV3.meterGet(scale: meter.scale).format()
+	return secureCmd(zwave.meterV3.meterGet(scale: meter.scale))
 }
 
 private meterResetCmd() {
-	return zwave.meterV3.meterReset().format()
+	return secureCmd(zwave.meterV3.meterReset())
 }
 
 private basicGetCmd() {
-	return zwave.basicV1.basicGet().format()
+	return secureCmd(zwave.basicV1.basicGet())
 }
 
 private basicSetCmd(val) {
-	return zwave.basicV1.basicSet(value: val).format()
+	return secureCmd(zwave.basicV1.basicSet(value: val))
 }
 
 private switchBinaryGetCmd() {
-	return zwave.switchBinaryV1.switchBinaryGet().format()
+	return secureCmd(zwave.switchBinaryV1.switchBinaryGet())
 }
 
 private switchBinarySetCmd(val) {
-	return zwave.switchBinaryV1.switchBinarySet(switchValue: val).format()
+	return secureCmd(zwave.switchBinaryV1.switchBinarySet(switchValue: val))
 }
 
 private configSetCmd(param, value) {
-	return zwave.configurationV1.configurationSet(parameterNumber: param.num, size: param.size, configurationValue: intToHexBytes(value, param.size)).format()
+	return secureCmd(zwave.configurationV1.configurationSet(parameterNumber: param.num, size: param.size, configurationValue: intToHexBytes(value, param.size)))
 }
 
 private configGetCmd(param) {
-	return zwave.configurationV1.configurationGet(parameterNumber: param.num).format()
+	return secureCmd(zwave.configurationV1.configurationGet(parameterNumber: param.num))
+}
+
+private secureCmd(cmd) {
+	if (zwaveInfo?.zw?.contains("s") || ("0x98" in device.rawDescription?.split(" "))) {
+		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
+	}
+	else {
+		return cmd.format()
+	}	
 }
 
 private getCommandClassVersions() {
@@ -349,7 +361,8 @@ private getCommandClassVersions() {
 		0x72: 2,	// ManufacturerSpecific
 		0x73: 1,	// Powerlevel
 		0x85: 2,	// Association
-		0x86: 1		// Version (2)
+		0x86: 1,	// Version (2)
+		0x98: 1		// Security
 	]
 }
 
@@ -367,6 +380,20 @@ def parse(String description) {
 	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
 		state.lastCheckinTime = new Date().time
 		sendEvent(getEventMap("lastCheckin", convertToLocalTimeString(new Date()), false))
+	}
+	return result
+}
+
+
+def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
+	def encapsulatedCmd = cmd.encapsulatedCommand(commandClassVersions)	
+	
+	def result = []
+	if (encapsulatedCmd) {
+		result += zwaveEvent(encapsulatedCmd)
+	}
+	else {
+		log.warn "Unable to extract encapsulated cmd from $cmd"
 	}
 	return result
 }
