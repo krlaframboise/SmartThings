@@ -1,5 +1,5 @@
 /**
- *  Zooz Double Plug v1.1
+ *  Zooz Double Plug v1.2
  *  (Models: ZEN25)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *	Documentation:
  *
  *  Changelog:
+ *
+ *    1.2 (01/31/2019)
+ *      - Changed USB tile to standardTile
  *
  *    1.1 (01/26/2019)
  *      - Fixed typo
@@ -162,8 +165,8 @@ metadata {
 		valueTile("usbName", "generic", decoration:"flat", width:5, height: 1) {
 			state "default", label:'USB (READ-ONLY)'
 		}
-		valueTile("usbSwitch", "device.usbSwitch", decoration:"flat", width:1, height: 1) {
-			state "on", label:'ON'
+		standardTile("usbSwitch", "device.usbSwitch", width:1, height: 1) {
+			state "on", label:'ON', backgroundColor: "#00a0dc"
 			state "off", label:'OFF'
 		}
 				
