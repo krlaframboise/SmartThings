@@ -1,5 +1,5 @@
 /**
- *  Zooz Double Plug v1.2.1
+ *  Zooz Double Plug v1.2.2
  *  (Models: ZEN25)
  *
  *  Author: 
@@ -9,7 +9,7 @@
  *
  *  Changelog:
  *
- *    1.2.1 (02/03/2019)
+ *    1.2.2 (02/03/2019)
  *      - Fixed unit on Power Threshold setting.
  *
  *    1.2 (01/31/2019)
@@ -894,7 +894,7 @@ private getAmpsReportingFrequencyParam() {
 }
 
 private getOverloadProtectionParam() {
-	return getParam(7, "Overload Protection", 1, 13, overloadOptions) 
+	return getParam(7, "Overload Protection", 1, 10, overloadOptions) 
 }
 
 private getLeftAutoOffEnabledParam() {
@@ -961,7 +961,7 @@ private setDefaultOption(options, defaultVal) {
 
 private getOverloadOptions() {
 	def options = [:]
-	(1..13).each {
+	(1..10).each {
 		options["${it}"] = "${it} A"
 	}	
 	return options
@@ -969,15 +969,9 @@ private getOverloadOptions() {
 
 private getPowerReportingThresholdOptions() {
 	def options = [0:"Disabled"]
-	options += powerOptions
-	return options
-}
-
-private getPowerOptions() {
-	def options = [:]
-	(1..10).each {
+	[1,2,3,4,5,10,25,50,75,100,150,200,250,300,400,500,750,1000,1250,1500,1750,2000,2500,3000,3500,4000,4500,5000,6000,7000,8000,9000,10000,12500,15000].each {
 		options["${it}"] = "${it} W"
-	}		
+	}
 	return options
 }
 
