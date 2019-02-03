@@ -1,5 +1,5 @@
 /**
- *  Zooz Double Plug v1.2
+ *  Zooz Double Plug v1.2.1
  *  (Models: ZEN25)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *	Documentation:
  *
  *  Changelog:
+ *
+ *    1.2.1 (02/03/2019)
+ *      - Fixed unit on Power Threshold setting.
  *
  *    1.2 (01/31/2019)
  *      - Changed USB tile to standardTile
@@ -973,7 +976,7 @@ private getPowerReportingThresholdOptions() {
 private getPowerOptions() {
 	def options = [:]
 	(1..10).each {
-		options["${it}"] = "${it} A"
+		options["${it}"] = "${it} W"
 	}		
 	return options
 }
