@@ -497,8 +497,7 @@ Supports the Tamper Alert Capability.<br /></li>
 <ul>
 <li>This is a device handler for the Neo Coolcam Light Switch 2CH (NAS-SC02ZU-2 / NAS-SC02ZE-2)</li>
 <li><a href="https://community.smartthings.com/t/release-neo-coolcam-light-switch-2ch/147756?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/neo-coolcam-light-switch-2ch.src/neo-coolcam-light-switch-2ch.groovy
- https://community.smartthings.com/t/release-neo-coolcam-light-switch-2ch/147756">View Neo Coolcam Light Switch 2CH - Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/neo-coolcam-light-switch-2ch.src/neo-coolcam-light-switch-2ch.groovy">View Neo Coolcam Light Switch 2CH - Device Handler Code</a></li>
 </ul>
 
 <hr />
