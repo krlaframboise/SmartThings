@@ -83,7 +83,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Power Switch</a></li>
 			<li><a href="#zooz-smart-chime">Zooz Smart Chime</a></li>
 			<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Smart Plug</a></li>
-			<li><a href="#zooz-smart-plug">Zooz Smart Plug VER 2.0</a></li>
+			<li><a href="#zooz-smart-plug-ver-20">Zooz Smart Plug VER 2.0</a></li>
 			<li><a href="#zooz-water-sensor">Zooz Water Sensor</a></li>
 		</ul>
 	</li>
