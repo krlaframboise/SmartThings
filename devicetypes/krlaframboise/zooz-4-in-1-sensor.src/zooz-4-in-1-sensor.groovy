@@ -1,5 +1,5 @@
 /**
- *  Zooz 4-in-1 Sensor v2.0.5
+ *  Zooz 4-in-1 Sensor v2.1
  *		(Model: ZSE40)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    2.1 (02/20/2019)
+ *    	- Changed illuminance and humidity to whole numbers because decimal values for those attributes completely crash the new mobile app.
  *
  *    2.0.5 (10/10/2018)
  *    	- Fixed issue causing problems with inclusion process
@@ -897,14 +900,14 @@ private createTempEventMaps(val, onlyIfNew) {
 private createHumidityEventMaps(val, onlyIfNew) {
 	state.actualHumidity = val
 	def offsetVal = applyOffset(val, humidityOffsetSetting, "Humidity", "%")
-	return createEventMaps("humidity", offsetVal, "%", true, onlyIfNew)
+	return createEventMaps("humidity", Math.round(offsetVal), "%", true, onlyIfNew)
 }
 
 private createLightEventMaps(val, onlyIfNew) {
 	state.actualLight = val
 	def pOffsetVal = applyOffset(val, lightOffsetSetting, "Light", "%")
 	def lxOffsetVal = (val == 100) ? maxLxSetting : applyOffset(calculateLxVal(val), lxLightOffsetSetting, "Light", "lx")
-	def lightOffsetVal = reportLxSetting ? lxOffsetVal : pOffsetVal
+	def lightOffsetVal = reportLxSetting ? Math.round(lxOffsetVal) : Math.round(pOffsetVal)
 	def lightUnit = reportLxSetting ? "lx" : "%"
 	
 	def result = []
