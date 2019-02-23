@@ -1,6 +1,6 @@
 /**
- *  Neo Coolcam Power Plug v1.1
- *  (Models: NAS-WR02ZU, NAS-WR02ZE)
+ *  Neo Coolcam Power Plug v1.2
+ *  (Models: NAS-WR02ZU, NAS-WR02ZE, NAS-WR01ZE)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -10,8 +10,17 @@
  *
  *  Changelog:
  *
+ *    1.2 (02/23/2019)
+ *      - ***WARNING*** because of the paramater number changes mentioned below I had to change the setting names causing all the settings to revert back to their default values.
+ *      - Added support for new EU model that has different config params.
+ *      	- All param numbers changed so numbers are determined by the "prod" in raw description.
+ *      	- Meter Reporting Threshold changed from (0-100%) to (0.01-16A) so still displaying percentage settings, but performing conversion to A for new model before sending to device.
+ *      	- Meter Reporting Interval range changed from (1-65535) to (30-32767) so removed options that are not supported by both models.
+ *      	- Switch Timer Period maximum value changed from 65535 to 32767 so removed options that are not supported by both models.
+ *      	- The options that were removed were just commented out so if you have the original model you can find them near the bottom of the code in the "Setting Options" section and uncomment them.
+ *
  *    1.1 (01/30/2019)
- *      - Added security encapsulation because the latest version of this device supports it.
+ *      - Added security encapsulation because the latest EU version of this device supports it.
  *
  *    1.0 (11/29/2018)
  *      - Initial Release
@@ -62,6 +71,8 @@ metadata {
 		fingerprint mfr: "0258", prod: "0003", model: "0087", deviceJoinName: "NEO Coolcam Power Plug"
 		
 		fingerprint mfr: "0258", prod: "0003", model: "1087", deviceJoinName: "NEO Coolcam Power Plug"  //EU
+		
+		fingerprint mfr: "0258", prod: "0200", model: "1027", deviceJoinName: "NEO Coolcam Power Plug" // New EU		
 	}
 
 	simulator { }
@@ -124,7 +135,7 @@ metadata {
 }
 
 private getParamInput(param) {
-	input "configParam${param.num}", "enum",
+	input "${param.pref}", "enum",
 		title: "${param.name}:",
 		required: false,
 		defaultValue: "${param.value}",
@@ -158,6 +169,8 @@ def installed() {
 	logDebug "installed()..."
 	state.refreshConfig = true
 	
+	state.newModel = isNewModel()
+	
 	return refresh()
 }
 
@@ -184,6 +197,10 @@ def configure() {
 def executeConfigure() {
 	def cmds = []
 	
+	if (state?.newModel == null) {
+		state.newModel = isNewModel()
+	}
+	
 	if (!device.currentValue("switch")) {
 		cmds += reset()
 	}
@@ -196,7 +213,11 @@ def executeConfigure() {
 			log.warn "Unable to set Current Overload Alarm Threshold to ${paramVal} because it must be lower than Current Overload Protection Threshold"
 			paramVal = (overloadProtectionParam.value - 1)
 		}
-				
+		
+		if (state.newModel && param.num == powerReportingThresholdParam.num) {
+			paramVal = getNewModelPowerReportingThreshold(paramVal)
+		}
+		
 		if (state.refreshConfig || "${storedVal}" != "${paramVal}") {
 			logDebug "Changing ${param.name}(#${param.num}) from ${storedVal} to ${paramVal}"
 			cmds << configSetCmd(param, paramVal)
@@ -208,6 +229,19 @@ def executeConfigure() {
 	if (cmds) {
 		sendCommands(cmds)
 	}
+}
+
+private getNewModelPowerReportingThreshold(oldModelVal) {	
+	def newModelVal
+	if (oldModelVal == 0) {
+		// new model doesn't support disabled so using least frequent reporting instead
+		newModelVal = 1600
+	}
+	else {
+		// New model supports 1-1600 (x0.01A) instead of 0-100%
+		newModelVal = Math.round((oldModelVal / 100) * 1600)
+	}
+	return newModelVal
 }
 
 private sendCommands(cmds) {
@@ -254,10 +288,6 @@ def ping() {
 
 def on() {
 	logDebug "on()..."
-	// return delayBetween([
-		// switchBinarySetCmd(0xFF),
-		// switchBinaryGetCmd()
-	// ], 100)
 	return delayBetween([
 		basicSetCmd(0xFF),
 		basicGetCmd()
@@ -267,10 +297,6 @@ def on() {
 
 def off() {
 	logDebug "off()..."
-	// return delayBetween([
-		// switchBinarySetCmd(0x00),
-		// switchBinaryGetCmd()
-	// ], 100)
 	return delayBetween([
 		basicSetCmd(0x00),
 		basicGetCmd()
@@ -280,6 +306,7 @@ def off() {
 
 def refresh() {
 	logDebug "refresh()..."
+	
 	return delayBetween([
 		switchBinaryGetCmd(),
 		meterGetCmd(meterEnergy),
@@ -353,16 +380,20 @@ private getCommandClassVersions() {
 		0x25: 1,	// Switch Binary
 		0x27: 1,	// All Switch
 		0x32: 3,	// Meter v4
+		0x55: 1,	// Transport Service
 		0x59: 1,	// AssociationGrpInfo
 		0x5A: 1,	// DeviceResetLocally
 		0x5E: 2,	// ZwaveplusInfo
+		0x6C: 1,	// Supervision
 		0x70: 1,	// Configuration
 		0x71: 3,  // Notification v8
 		0x72: 2,	// ManufacturerSpecific
 		0x73: 1,	// Powerlevel
 		0x85: 2,	// Association
 		0x86: 1,	// Version (2)
-		0x98: 1		// Security
+		0x8E: 2,	// Multi Channel Association
+		0x98: 1,	// Security 0
+		0x9F: 1		// Security S2
 	]
 }
 
@@ -403,7 +434,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 	logTrace "ConfigurationReport ${cmd}"
 	
 	updateSyncingStatus()
-	runIn(4, refreshSyncStatus)
+	runIn(4, refreshSyncStatus, [overwrite: true])
 	
 	def param = configParams.find { it.num == cmd.parameterNumber }
 	if (param) {	
@@ -447,35 +478,37 @@ private sendSwitchEvent(value, type) {
 def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd) {
 	logTrace "MeterReport: $cmd"
 	def val = roundTwoPlaces(cmd.scaledMeterValue)
-		
-	def meter 
-	switch (cmd.scale) {
-		case meterEnergy.scale:			
-			sendEvent(getEventMap("energyDuration", calculateEnergyDuration(), false))
-			meter = meterEnergy
-			break
-		case meterPower.scale:
-			meter = meterPower
-			break
-		case meterVoltage.scale:
-			meter = meterVoltage
-			break
-		case meterCurrent.scale:
-			meter = meterCurrent
-			break
-		default:
-			logDebug "Unknown Meter Scale: $cmd"
-	}
-
-	if (meter?.name && getAttrVal("${meter.name}") != val) {
-		sendEvent(getEventMap(meter.name, val, null, null, meter.unit))
-		
-		if (meter.name != meterEnergy.name) {
-			sendHighLowEvents(meter, val)
+	
+	if (val >= 0) {
+		def meter 
+		switch (cmd.scale) {
+			case meterEnergy.scale:			
+				sendEvent(getEventMap("energyDuration", calculateEnergyDuration(), false))
+				meter = meterEnergy
+				break
+			case meterPower.scale:
+				meter = meterPower
+				break
+			case meterVoltage.scale:
+				meter = meterVoltage
+				break
+			case meterCurrent.scale:
+				meter = meterCurrent
+				break
+			default:
+				logDebug "Unknown Meter Scale: $cmd"
 		}
-		
-		runIn(5, refreshHistory)
-	}	
+
+		if (meter?.name && getAttrVal("${meter.name}") != val) {
+			sendEvent(getEventMap(meter.name, val, null, null, meter.unit))
+			
+			if (meter.name != meterEnergy.name) {
+				sendHighLowEvents(meter, val)
+			}
+			
+			runIn(5, refreshHistory)
+		}	
+	}
 	return []
 }
 
@@ -563,7 +596,15 @@ def refreshSyncStatus() {
 }
 
 private getPendingChanges() {	
-	return configParams.count { "${it.value}" != "${getParamStoredValue(it.num)}" }
+	def total = 0
+	configParams.each {
+		def val = it.value
+		if (state.isNewModel && it.num == powerReportingThresholdParam.num) {
+			val = getNewModelPowerReportingThreshold(val)
+		}		
+		total += ("${val}" == "${getParamStoredValue(it.num)}") ? 0 : 1
+	}
+	return total
 }
 
 private getParamStoredValue(paramNum) {
@@ -592,56 +633,63 @@ private getConfigParams() {
 }
 
 private getMeterReportsEnabledParam() {
-	return getParam(1, "Meter Reports Enabled", 1, 1, enabledDisabledOptions)
+	def num = state?.newModel ? 6 : 1
+	return getParam(num, "Meter Reports Enabled", 1, 1, enabledDisabledOptions, "meterEnabled")
 }
 
 private getMeterReportingIntervalParam() {
-	return getParam(2, "Meter Reporting Interval", 2, 300, meterReportingIntervalOptions)
+	def num = state?.newModel ? 7 : 2
+	return getParam(num, "Meter Reporting Interval", 2, 300, meterReportingIntervalOptions, "meterInterval")
 }
 
 private getOverloadProtectionParam() {
-	return getParam(3, "Current Overload Protection Threshold", 1, 13, getOverloadOptions(2, 16))
+	def num = state?.newModel ? 7 : 3	
+	return getParam(num, "Current Overload Protection Threshold", 1, 13, getOverloadOptions(2, 16), "overloadProtection")
 }
 
 private getOverloadAlarmParam() {
-	return getParam(4, "Current Overload Alarm Threshold", 1, 12, getOverloadOptions(1, 15))
+	def num = state?.newModel ? 10 : 4	
+	return getParam(num, "Current Overload Alarm Threshold", 1, 12, getOverloadOptions(1, 15), "overloadAlarm")
 }
 
 private getLedEnabledParam() {
-	return getParam(5, "LED Enabled", 1, 1, enabledDisabledOptions)
+	def num = state?.newModel ? 3 : 5
+	return getParam(num, "LED Enabled", 1, 1, enabledDisabledOptions, "ledEnabled")
 }
 
-private getPowerReportingThresholdParam() {
-	return getParam(6, "Power Reporting Threshold", 1, 5, powerReportingThresholdOptions)
+private getPowerReportingThresholdParam() {	
+	def num = state?.newModel ? 9 : 6
+	return getParam(num, "Power Reporting Threshold", 1, 5, powerReportingThresholdOptions, "meterThreshold")
 }
 
 private getRememberSwitchStateParam() {
-	return getParam(7, "Remember Switch State After Power Failure", 1, 1, enabledDisabledOptions)
+	def num = state?.newModel ? 1 : 7	
+	return getParam(num, "Remember Switch State After Power Failure", 1, 1, enabledDisabledOptions, "rememberState")
 }
 
 private getSwitchTimerEnabledParam() {
-	return getParam(8, "Switch Off Timer Enabled", 1, 0, enabledDisabledOptions)
+	def num = state?.newModel ? 4 : 8
+	return getParam(num, "Switch Off Timer Enabled", 1, 0, enabledDisabledOptions, "timerEnabled")
 }
 
 private getSwitchTimerPeriodParam() {
-	return getParam(9, "Swith Off Timer Period", 2, 150, switchTimerPeriodOptions)
+	def num = state?.newModel ? 5 : 9	
+	return getParam(num, "Swith Off Timer Period", 2, 120, switchTimerPeriodOptions, "timerPeriod")
 }
 
 private getPhysicalButtonEnabledParam() {
-	return getParam(10, "Physical Button Enabled", 1, 1, enabledDisabledOptions)
+	def num = state?.newModel ? 2 : 10
+	return getParam(num, "Physical Button Enabled", 1, 1, enabledDisabledOptions, "btnEnabled")
 }
 
 
-private getParam(num, name, size, defaultVal, options=null, range=null) {
-	def val = safeToInt((settings ? settings["configParam${num}"] : null), defaultVal) 
+private getParam(num, name, size, defaultVal, options, pref) {
+	def val = safeToInt((settings ? settings["${pref}"] : null), defaultVal) 
 	
-	def map = [num: num, name: name, size: size, value: val]
-	if (options) {
-		map.valueName = options?.find { k, v -> "${k}" == "${val}" }?.value
-		map.options = setDefaultOption(options, defaultVal)
-	}
-	if (range) map.range = range
-	
+	def map = [num: num, name: name, size: size, value: val, pref:pref]
+	map.valueName = options?.find { k, v -> "${k}" == "${val}" }?.value
+	map.options = setDefaultOption(options, defaultVal)
+		
 	return map
 }
 
@@ -666,7 +714,13 @@ private getEnabledDisabledOptions() {
 private getMeterReportingIntervalOptions() {
 	def options = [:]
 	
-	[5,10,15,20,30,45].each {
+	// if (!state?.newModel) {
+		// [5,10,15,20].each {
+			// options["${it}"] = "${it} Seconds"
+		// }
+	// }
+	
+	[30,45].each {
 		options["${it}"] = "${it} Seconds"
 	}
 	
@@ -683,9 +737,15 @@ private getMeterReportingIntervalOptions() {
 		options["${it * 60}"] = "${it} Minutes"
 	}
 	options["${60 * 60}"] = "1 Hour"
-	(2..18).each {
+	(2..9).each {
 		options["${it * 60 * 60}"] = "${it} Hours"
 	}	
+	
+	// if (state?.newModel) {
+		// (10..18).each {
+			// options["${it * 60 * 60}"] = "${it} Hours"
+		// }	
+	// }
 	return options
 }
 
@@ -737,9 +797,15 @@ private getSwitchTimerPeriodOptions() {
 	}
 	
 	options["60 * 24 * 7"] = "1 Week"
-	(2..6).each {
+	(2..3).each {
 		options["${it * 60 * 24 * 7}"] = "${it} Weeks"
 	}
+	
+	// if (!state?.newModel) {
+		// (4..6).each {
+			// options["${it * 60 * 24 * 7}"] = "${it} Weeks"
+		// }
+	// }
 	
 	return options
 }
@@ -821,6 +887,10 @@ private convertToLocalTimeString(dt) {
 	else {
 		return "$dt"
 	}	
+}
+
+private isNewModel() {
+	return "${device.rawDescription}".contains("prod:0200")
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
