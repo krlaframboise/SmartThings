@@ -1,5 +1,5 @@
 /**
- *  Neo Coolcam Power Plug v1.2.2
+ *  Neo Coolcam Power Plug v1.2.3
  *  (Models: NAS-WR02ZU, NAS-WR02ZE, NAS-WR01ZE)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.2.2 (02/24/2019)
+ *    1.2.3 (02/24/2019)
  *      - ***WARNING*** because of the paramater number changes mentioned below I had to change the setting names causing all the settings to revert back to their default values.
  *      - Added support for new EU model that has different config params.
  *      	- All param numbers changed so numbers are determined by the "prod" in raw description.
@@ -181,7 +181,7 @@ def updated() {
 		
 		logDebug "updated()..."
 		
-		executeConfigure()
+		runIn(2, executeConfigure())
 	}
 }
 
@@ -306,6 +306,8 @@ def off() {
 
 def refresh() {
 	logDebug "refresh()..."
+	
+	runIn(4, refreshSyncStatus, [overwrite: true])
 	
 	return delayBetween([
 		switchBinaryGetCmd(),
