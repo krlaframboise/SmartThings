@@ -1,5 +1,5 @@
 /**
- *  Neo Coolcam Power Plug v1.2.1
+ *  Neo Coolcam Power Plug v1.2.2
  *  (Models: NAS-WR02ZU, NAS-WR02ZE, NAS-WR01ZE)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.2.1 (02/24/2019)
+ *    1.2.2 (02/24/2019)
  *      - ***WARNING*** because of the paramater number changes mentioned below I had to change the setting names causing all the settings to revert back to their default values.
  *      - Added support for new EU model that has different config params.
  *      	- All param numbers changed so numbers are determined by the "prod" in raw description.
@@ -659,7 +659,8 @@ private getLedEnabledParam() {
 
 private getPowerReportingThresholdParam() {	
 	def num = state?.newModel ? 9 : 6
-	return getParam(num, "Power Reporting Threshold", 1, 5, powerReportingThresholdOptions, "meterThreshold")
+	def size = state?.newModel ? 2 : 1
+	return getParam(num, "Power Reporting Threshold", size, 5, powerReportingThresholdOptions, "meterThreshold")
 }
 
 private getRememberSwitchStateParam() {
