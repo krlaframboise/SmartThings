@@ -1,5 +1,5 @@
 /**
- *  Neo Coolcam Power Plug v1.2
+ *  Neo Coolcam Power Plug v1.2.1
  *  (Models: NAS-WR02ZU, NAS-WR02ZE, NAS-WR01ZE)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.2 (02/23/2019)
+ *    1.2.1 (02/24/2019)
  *      - ***WARNING*** because of the paramater number changes mentioned below I had to change the setting names causing all the settings to revert back to their default values.
  *      - Added support for new EU model that has different config params.
  *      	- All param numbers changed so numbers are determined by the "prod" in raw description.
@@ -643,7 +643,7 @@ private getMeterReportingIntervalParam() {
 }
 
 private getOverloadProtectionParam() {
-	def num = state?.newModel ? 7 : 3	
+	def num = state?.newModel ? 8 : 3	
 	return getParam(num, "Current Overload Protection Threshold", 1, 13, getOverloadOptions(2, 16), "overloadProtection")
 }
 
