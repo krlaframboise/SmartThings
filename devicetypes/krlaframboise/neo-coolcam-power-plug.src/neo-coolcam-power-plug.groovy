@@ -1,5 +1,5 @@
 /**
- *  Neo Coolcam Power Plug v1.2.4
+ *  Neo Coolcam Power Plug v1.2.5
  *  (Models: NAS-WR02ZU, NAS-WR02ZE, NAS-WR01ZE)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.2.4 (02/24/2019)
+ *    1.2.5 (02/25/2019)
  *      - ***WARNING*** because of the paramater number changes mentioned below I had to change the setting names causing all the settings to revert back to their default values.
  *      - Added support for new EU model that has different config params.
  *      	- All param numbers changed so numbers are determined by the "prod" in raw description.
@@ -601,7 +601,7 @@ private getPendingChanges() {
 	def total = 0
 	configParams.each {
 		def val = it.value
-		if (state.isNewModel && it.num == powerReportingThresholdParam.num) {
+		if (state.newModel && it.num == powerReportingThresholdParam.num) {
 			val = getNewModelPowerReportingThreshold(val)
 		}		
 		total += ("${val}" == "${getParamStoredValue(it.num)}") ? 0 : 1
