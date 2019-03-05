@@ -5,7 +5,7 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *	Documentation:
+ *	Documentation:  https://community.smartthings.com/t/release-neo-coolcam-siren/156537?u=krlaframboise
  *
  *
  *  Changelog:
