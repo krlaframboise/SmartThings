@@ -5,7 +5,7 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation: 
+ *  URL to documentation: https://community.smartthings.com/t/release-homeseer-flex-sensor/157045
  *
  *  Changelog:
  *
