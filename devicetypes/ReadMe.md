@@ -125,7 +125,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <ul>
 <li>This is a device handler for the Aeotec TriSensor (ZWA005-A)</li>
 <li><a href="https://community.smartthings.com/t/release-aeotec-trisensor/140556?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/aeotect-trisensor.src/aeotect-trisensor.groovy">View Aeotec TriSensor - Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/aeotec-trisensor.src/aeotec-trisensor.groovy">View Aeotec TriSensor - Device Handler Code</a></li>
 </ul>
 
 <hr />
