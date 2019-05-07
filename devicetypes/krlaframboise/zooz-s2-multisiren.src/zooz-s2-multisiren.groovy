@@ -1,5 +1,5 @@
 /**
- *  Zooz S2 Multisiren v1.1
+ *  Zooz S2 Multisiren v1.2
  *  (Models: ZSE19)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *
  *
  *  Changelog:
+ *
+ *    1.2 (05/06/2018)
+ *      - Added volume setting.
  *
  *    1.1 (12/09/2018)
  *      - Added tamper capability.
@@ -140,6 +143,12 @@ metadata {
 			defaultValue: "0",
 			required: false,
 			options: setDefaultOption(switchOnActionOptions, "0")
+			
+		input "chimeVolume", "enum",
+			title: "Chime Volume",
+			defaultValue: chimeVolumeSetting,
+			required: false,
+			options: setDefaultOption(chimeVolumeOptions, "32")
 
 		// input "tempOffset", "enum",
 			// title: "Temperature Offset",
@@ -160,6 +169,9 @@ metadata {
 	}
 }
 
+private getChimeVolumeSetting() {
+	return settings?.chimeVolume ?: "32"
+}
 
 def installed () { 
 	return response(refresh())
@@ -196,6 +208,10 @@ def configure() {
 	if (!device.currentValue("firmwareVersion")) {
 		cmds << versionGetCmd()
 	}
+	
+	logDebug "CHANGING Volume to ${Integer.parseInt(chimeVolumeSetting, 16)}%"
+	cmds << soundSwitchConfigSetVolumeCmd(chimeVolumeSetting)
+	state.chimeVolume = chimeVolumeSetting
 	
 	configParams.each { 
 		logDebug "CHANGING ${it.name}(#${it.num}) from ${getParamStoredValue(it.num)} to ${it.value}"
@@ -420,6 +436,16 @@ private switchBinarySetCmd(val) {
 	return secureCmd(zwave.switchBinaryV1.switchBinarySet(switchValue: val))
 }
 
+private soundSwitchConfigSetVolumeCmd(volume) {
+	def cmd = "7905${volume}01"
+	if (isSecurityEnabled()) {
+		return "988100${cmd}"
+	}
+	else {
+		return cmd
+	}
+}
+
 private configSetCmd(param, value) {
 	return secureCmd(zwave.configurationV1.configurationSet(parameterNumber: param.num, size: param.size, scaledConfigurationValue: value))
 }
@@ -429,12 +455,16 @@ private configGetCmd(param) {
 }
 
 private secureCmd(cmd) {
-	if (zwaveInfo?.zw?.contains("s") || ("0x98" in device.rawDescription?.split(" "))) {
+	if (isSecurityEnabled()) {
 		return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
 	}
 	else {
 		return cmd.format()
 	}	
+}
+
+private isSecurityEnabled() {
+	return zwaveInfo?.zw?.contains("s") || ("0x98" in device.rawDescription?.split(" "))
 }
 
 
@@ -627,7 +657,7 @@ private getSyncStatus() {
 }
 
 private getPendingChanges() {
-	return (configParams.count { isConfigParamSynced(it) ? 0 : 1 })
+	return (configParams.count { isConfigParamSynced(it) ? 0 : 1 } + (settings?.chimeVolume != state.chimeVolume ? 1 : 0))
 }
 
 private isConfigParamSynced(param) {
@@ -798,6 +828,18 @@ private getSwitchOnActionOptions() {
 		options["${it}"] = "Play Sound #${it}"
 	}	
 	return options
+}
+
+private getChimeVolumeOptions() {
+	def options = [:]
+	[1,10,20,30,40,50,60,70,80,90,100].each {
+		options["${convertToHex(it)}"] = "${it}%"
+	}
+	return options
+}
+
+private convertToHex(num) {
+	return Integer.toHexString(num).padLeft(2, "0").toUpperCase()
 }
 
 private getTempOffsetOptions() {
