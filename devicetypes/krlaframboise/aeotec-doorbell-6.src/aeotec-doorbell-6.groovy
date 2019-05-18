@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell 6 v1.0
+ *  Aeotec Doorbell 6 v1.0.1
  *  (Model: ZW162-A)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.0 (05/16/2019)
+ *    1.0.1 (05/17/2019)
  *      - Initial Release
  *
  *
@@ -89,7 +89,7 @@ metadata {
 	tiles(scale: 2) {
 		multiAttributeTile(name:"primaryStatus", type: "generic", width: 6, height: 4){
 			tileAttribute ("device.primaryStatus", key: "PRIMARY_CONTROL") {
-				attributeState "off", label: 'OFF', icon: "st.alarm.alarm.alarm", backgroundColor: "#ffffff"
+				attributeState "off", label: 'OFF', action: "switch.on", icon: "st.alarm.alarm.alarm", backgroundColor: "#ffffff"
 				attributeState "alarm", label: 'ALARM', action: "alarm.off", icon: "st.alarm.alarm.alarm", backgroundColor: "#e86d13"
 				attributeState "chime", label: 'CHIME', action: "switch.off", icon: "st.alarm.beep.beep", backgroundColor: "#00a0dc"
 				attributeState "on", label: 'ON', action: "switch.off", icon:"st.lights.philips.hue-single", backgroundColor:"#00a0dc"
@@ -345,28 +345,27 @@ def updated() {
 def configure() {	
 	logDebug "configure()..."
 	
-	runIn(5, updateSyncStatus)
-	
-	if (!device.currentValue("switch")) {
-		sendEvent(getEventMap("tamper", "clear"))
+	if (!device?.currentValue("switch")) {
+		resetTamper()		
 		sendEvent(getEventMap("alarm", "off"))
 		sendEvent(getEventMap("switch", "off"))
 		sendEvent(getEventMap("level", 0))
 	}
 	
-	if (!device.currentValue("btn1Name")) {
+	if (!device?.currentValue("btn1Name")) {
 		buttons.each {
 			resetButton(it)			
 		}		
 	}
 	
-	if (!device.currentValue("checkInterval")) {
-		initializeCheckin()
-	}
+	initializeCheckin()
+
+	runIn(5, updateSyncStatus)	
 	
+	def cmds = getConfigureCmds()
 	state.syncAll = true
-	def cmds = getConfigureCmds()	
-	return cmds ? delayBetween(cmds, 250) : []
+	
+	return cmds ? delayBetween(cmds, 500) : []
 }
 
 private initializeCheckin() {
@@ -419,7 +418,7 @@ private getConfigureCmds() {
 		cmds += getRefreshBtnsCmds()
 	}
 
-	if (state.syncAll || !device.currentValue("firmwareVersion")) {
+	if (state.syncAll || !device?.currentValue("firmwareVersion")) {
 		cmds << versionGetCmd()
 	}
 	
@@ -667,9 +666,8 @@ def refresh() {
 	
 	updateSyncStatus()
 	
-	sendEventIfNew("tamper", "clear")
-	runIn(2, updateSecondaryStatus)
-	
+	resetTamper()
+		
 	def cmds = [
 		basicGetCmd()
 	]
@@ -750,6 +748,9 @@ def resetButtonAction(data) {
 	}
 	else if (action == "pairing") {
 		sendButtonActionEvent(data?.btnNum, "pair")
+	}
+	if (data?.btn) {
+		sendCmds([ configGetCmd(getButtonInfoParam(data?.btn)) ])
 	}
 }
 
@@ -1021,8 +1022,7 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 	
 	switch(cmd.notificationType) {
 		case 7:
-			sendEvent(getEventMap("tamper", cmd.event == 3 ? "detected" : "clear", true))
-			runIn(2, updateSecondaryStatus)
+			handleTamperEvent(cmd.event == 3 ? "detected" : "clear")
 			break
 		case 8:
 			// Request info of all batteries to determine which one is low/normal.
@@ -1037,13 +1037,17 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 	return []
 }
 
-def updateSecondaryStatus() {
-	def value = ""
-	if (device.currentValue("tamper") == "detected") {
-		value = "TAMPERING"
+private handleTamperEvent(value) {
+	sendEventIfNew("tamper", value, true)
+	sendEventIfNew("secondaryStatus", value == "detected" ? "TAMPERING" : "")
+	if (value == "detected") {
+		runIn(5, resetTamper)
 	}
-	
-	sendEventIfNew("secondaryStatus", value, true)
+}
+
+def resetTamper() {
+	sendEventIfNew("tamper", "clear", true)
+	sendEventIfNew("secondaryStatus", "")	
 }
 
 
@@ -1588,7 +1592,7 @@ private getButtons() {
 
 
 private sendEventIfNew(attr, newValue, displayed=false, unit=null) {
-	if (device.currentValue("${attr}") != newValue) {
+	if (device?.currentValue("${attr}") != newValue) {
 		sendEvent(getEventMap("${attr}", newValue, displayed, unit))
 	}
 }
@@ -1599,7 +1603,7 @@ private getEventMap(name, value, displayed=false, unit=null) {
 		value: value,
 		displayed: displayed,
 		isStateChange: true,
-		descriptionText: "${device.displayName} - ${value}"
+		descriptionText: "${device?.displayName} - ${value}"
 	]
 	
 	if (unit) {

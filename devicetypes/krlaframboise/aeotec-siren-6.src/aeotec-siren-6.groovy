@@ -1,5 +1,5 @@
 /**
- *  Aeotec Siren 6 v1.0
+ *  Aeotec Siren 6 v1.0.1
  *  (Model: ZW164-A)
  *
  *  Author: 
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.0 (05/16/2019)
+ *    1.0.1 (05/17/2019)
  *      - Initial Release
  *
  *
@@ -75,7 +75,7 @@ metadata {
 	tiles(scale: 2) {
 		multiAttributeTile(name:"primaryStatus", type: "generic", width: 6, height: 4){
 			tileAttribute ("device.primaryStatus", key: "PRIMARY_CONTROL") {
-				attributeState "off", label: 'OFF', icon: "st.alarm.alarm.alarm", backgroundColor: "#ffffff"
+				attributeState "off", label: 'OFF', action: "switch.on", icon: "st.alarm.alarm.alarm", backgroundColor: "#ffffff"
 				attributeState "alarm", label: 'ALARM', action: "alarm.off", icon: "st.alarm.alarm.alarm", backgroundColor: "#e86d13"
 				attributeState "chime", label: 'CHIME', action: "switch.off", icon: "st.alarm.beep.beep", backgroundColor: "#00a0dc"
 				attributeState "on", label: 'ON', action: "switch.off", icon:"st.lights.philips.hue-single", backgroundColor:"#00a0dc"
@@ -571,10 +571,7 @@ def refresh() {
 	
 	updateSyncStatus()
 	
-	if (device.currentValue("tamper") != "clear") {
-		sendEvent(getEventMap("tamper", "clear"))
-	}
-	runIn(2, updateSecondaryStatus)
+	resetTamper()
 	
 	return [ basicGetCmd() ]
 }
@@ -741,8 +738,7 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 	
 	switch(cmd.notificationType) {
 		case 7:
-			sendEvent(getEventMap("tamper", cmd.event == 3 ? "detected" : "clear", true))
-			runIn(2, updateSecondaryStatus)
+			handleTamperEvent(cmd.event == 3 ? "detected" : "clear")
 			break
 		case 8:
 			// Ignore button battery notifications
@@ -756,15 +752,17 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 	return []
 }
 
-def updateSecondaryStatus() {
-	def value = ""
-	if (device.currentValue("tamper") == "detected") {
-		value = "TAMPERING"
+private handleTamperEvent(value) {
+	sendEventIfNew("tamper", value, true)
+	sendEventIfNew("secondaryStatus", value == "detected" ? "TAMPERING" : "")
+	if (value == "detected") {
+		runIn(5, resetTamper)
 	}
-	
-	if (device.currentValue("secondaryStatus") != value) {
-		sendEvent(getEventMap("secondaryStatus", value, true))
-	}
+}
+
+def resetTamper() {
+	sendEventIfNew("tamper", "clear", true)
+	sendEventIfNew("secondaryStatus", "")	
 }
 
 
@@ -782,10 +780,7 @@ def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 	logTrace "VersionReport: ${cmd}"
 	
 	def version = "${cmd.applicationVersion}.${cmd.applicationSubVersion}"	
-	if (device.currentValue("firmwareVersion") != version) {
-		logDebug "Firmware: ${version}"
-		sendEvent(getEventMap("firmwareVersion", version))
-	}
+	sendEventIfNew("firmwareVersion", version, true)	
 	return []	
 }
 
@@ -827,9 +822,7 @@ private handleCommunicationQualityReport(val) {
 			value = "Great"
 			break
 	}
-	if (device.currentValue("signal") != value) {
-		sendEvent(getEventMap("signal", value, true))
-	}
+	sendEventIfNew("signal", value, true)	
 }
 
 def updateSyncStatus(status=null) {	
@@ -912,15 +905,9 @@ private handleBasicEvent(rawVal) {
 		state.switchAction = null
 	}
 	
-	if (device.currentValue("alarm") != alarmVal) {
-		sendEvent(getEventMap("alarm", alarmVal, true))
-	}
-	if (device.currentValue("switch") != switchVal) {
-		sendEvent(getEventMap("switch", switchVal, true))
-	}
-	if (device.currentValue("primaryStatus") != statusVal) {
-		sendEvent(getEventMap("primaryStatus", statusVal, (lastAction == "chime")))
-	}
+	sendEventIfNew("alarm", alarmVal, true)
+	sendEventIfNew("switch", switchVal, true)
+	sendEventIfNew("primaryStatus", statusVal, (lastAction == "chime"))	
 }
 
 
@@ -1157,6 +1144,12 @@ private getSwitchOnActionOptions() {
 	return options
 }
 
+
+private sendEventIfNew(attr, newValue, displayed=false, unit=null) {
+	if (device.currentValue("${attr}") != newValue) {
+		sendEvent(getEventMap("${attr}", newValue, displayed, unit))
+	}
+}
 
 private getEventMap(name, value, displayed=false, unit=null) {	
 	def eventMap = [
