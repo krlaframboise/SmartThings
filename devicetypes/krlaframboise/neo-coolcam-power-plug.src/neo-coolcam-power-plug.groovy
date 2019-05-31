@@ -1,5 +1,5 @@
 /**
- *  Neo Coolcam Power Plug v1.2.5
+ *  Neo Coolcam Power Plug v1.2.6
  *  (Models: NAS-WR02ZU, NAS-WR02ZE, NAS-WR01ZE)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.2.6 (05/30/2019)
+ *      - Added fingerprint for new US model and fixed model check.
  *
  *    1.2.5 (02/25/2019)
  *      - ***WARNING*** because of the paramater number changes mentioned below I had to change the setting names causing all the settings to revert back to their default values.
@@ -71,6 +74,8 @@ metadata {
 		fingerprint mfr: "0258", prod: "0003", model: "0087", deviceJoinName: "NEO Coolcam Power Plug"
 		
 		fingerprint mfr: "0258", prod: "0003", model: "1087", deviceJoinName: "NEO Coolcam Power Plug"  //EU
+		
+		fingerprint mfr: "0258", prod: "0100", model: "1027", deviceJoinName: "NEO Coolcam Power Plug" // New US
 		
 		fingerprint mfr: "0258", prod: "0200", model: "1027", deviceJoinName: "NEO Coolcam Power Plug" // New EU		
 	}
@@ -893,7 +898,7 @@ private convertToLocalTimeString(dt) {
 }
 
 private isNewModel() {
-	return "${device.rawDescription}".contains("prod:0200")
+	return "${device.rawDescription}".contains("prod:0200") || "${device.rawDescription}".contains("prod:0100")
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
