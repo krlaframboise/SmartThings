@@ -1,5 +1,5 @@
 /**
- *  Aeotec Siren 6 v1.1
+ *  Aeotec Siren 6 v1.1.1
  *  (Model: ZW164-A)
  *
  *  Author: 
@@ -9,6 +9,10 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.1 (06/01/2019)
+ *      - Fixed setting ranges for firmware 1.4.
+ *      - Misc code cleanup
  *
  *    1.1 (06/01/2019)
  *      - Rewrote a lot of the handler because of changes in the 1.4 firmware.
@@ -469,7 +473,7 @@ def playSound(soundNumber, volume=null) {
 			log.warn "Ignoring playSound(${soundNumber}) because soundNumber must be between 1 and 30."
 		}	
 	}
-	return cmds
+	return cmds ? delayBetween(cmds, 250) : []
 }
 
 private canPlaySound(cmd) {
@@ -634,13 +638,7 @@ private soundSwitchCmd(cmd, endpoint=null) {
 	if (endpoint) {
 		cmd = "600D00${convertToHex(endpoint)}${cmd}"
 	}
-	
-	if (isSecurityEnabled()) {
-		return "988100${cmd}"
-	}
-	else {
-		return cmd
-	}
+	return secureRawCmd(cmd)
 }
 
 private multiChannelCmdEncapCmd(cmd, endpoint) {	
@@ -674,6 +672,15 @@ private secureCmd(cmd) {
 	}	
 }
 
+private secureRawCmd(cmd) {
+	if (isSecurityEnabled()) {
+		return "988100${cmd}"
+	}
+	else {
+		return cmd
+	}
+}
+
 private isSecurityEnabled() {
 	return zwaveInfo?.zw?.contains("s") || ("0x98" in device.rawDescription?.split(" "))
 }
@@ -703,9 +710,9 @@ private getCommandClassVersions() {
 }
 
 
-private getLightEffectConfigVal(brightenTime, dimTime, onTime, offTime) {
-	return [brightenTime, dimTime, onTime, offTime]
-}
+// private getLightEffectConfigVal(brightenTime, dimTime, onTime, offTime) {
+	// return [brightenTime, dimTime, onTime, offTime]
+// }
 
 private getGroupConfigVal(lightEffect, intercept, intervalBetween, continuousPlayCount) {
 	def configVal = [lightEffect, intercept, intervalBetween, continuousPlayCount]
@@ -827,7 +834,8 @@ def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 	logTrace "VersionReport: ${cmd}"
 	
 	def version = "${cmd.applicationVersion}.${cmd.applicationSubVersion}"	
-	sendEventIfNew("firmwareVersion", version, true)	
+	logDebug "Firmware: ${version}"
+	sendEventIfNew("firmwareVersion", version)
 	return []	
 }
 
@@ -874,8 +882,8 @@ private getSyncStatus() {
 private getPendingChanges() {
 	def pendingConfigParams = configParams.count { isConfigParamSynced(it) ? 0 : 1 }
 	def pendingTamper = (tamperVolumeSetting != state.tamperVolume) ? 1 : 0
-	def pendingSirenAssoc = !state.playAssocSet ? 1 : 0
-	return (pendingConfigParams + pendingTamper + pendingSirenAssoc)
+	def pendingPlayAssoc = !state.playAssocSet ? 1 : 0
+	return (pendingConfigParams + pendingTamper + pendingPlayAssoc)
 }
 
 private isConfigParamSynced(param) {
@@ -989,7 +997,6 @@ private getConfigParams() {
 
 private getAllConfigParams() {
 	def params = [		
-		// browseGroupParam,
 		tamperGroupParam,
 		// button1GroupParam,
 		// button2GroupParam,
@@ -1029,10 +1036,6 @@ private getLightEffectParams() {
 		lightEffect7Param
 	]
 }
-
-// private getBrowseGroupParam() {
-	// return getParam(1, "Browse Group", 4, 0x01000000)
-// }
 
 private getTamperGroupParam() {
 	return getParam(2, "Tamper Group", 4, 0x20030001)
@@ -1222,26 +1225,33 @@ private getRepeatOptions(includeUnlimited) {
 	if (includeUnlimited) {
 		options["0"] = "Unlimited"
 	}
-	(1..30).each {
+	(1..15).each {
 		options["${it}"] = "${it}"
-	}	
+	}
+	(4..50).each {
+		options["${it * 5}"] = "${it * 5}"
+	}
 	return options
 }
 
 private getRepeatDelayOptions() {
 	def options = [
-		0:"No Delay",
-		1:"1 Second"
+		0:"No Delay"
 	]
-	(2..14).each {
-		options["${it}"] = "${it} Seconds"
-	}
+	options += durationOptions
 	return options
 }
 
 private getToneInterceptOptions() {
 	def options = [
-		0:"Play Entire Tone",
+		0:"Play Entire Tone"
+	]
+	options += durationOptions
+	return options
+}
+
+private getDurationOptions() {
+	def options = [
 		1:"1 Second"
 	]
 	(2..15).each {
