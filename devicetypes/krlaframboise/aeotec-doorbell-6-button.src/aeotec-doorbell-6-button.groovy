@@ -1,12 +1,12 @@
 /**
- *  Aeotec Doorbell 6 Button (CHILD DEVICE) v1.0
+ *  Aeotec Doorbell 6 Button (CHILD DEVICE) v1.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
  *
- *    1.0 (05/16/2019)
+ *    1.1 (06/01/2019)
  *      - Initial Release
  *
  *
@@ -51,20 +51,28 @@ metadata {
 			}
 		}		
 		
+		standardTile("on", "device.switch", width: 2, height: 2) {
+			state "default", label:'On', action: "switch.on"
+		}
+		
+		standardTile("off", "device.switch", width: 2, height: 2) {
+			state "default", label:'Off', action: "switch.off"
+		}
+		
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
 			state "default", label:'Refresh', action: "refresh", icon:"st.secondary.refresh-icon"
 		}
 		
-		valueTile("battery", "device.battery", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+		valueTile("battery", "device.battery", inactiveLabel: false, decoration: "flat", width: 3, height: 1) {
 			state "battery", label:'${currentValue}% Battery', unit:"%"
 		}
 		
-		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:2, height: 2) {
+		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:3, height: 1) {
 			state "firmwareVersion", label:'Firmware ${currentValue}'
 		}
 		
 		main("switch")
-		details(["switch", "refresh", "battery","firmwareVersion"])
+		details(["switch", "on", "off", "refresh", "battery", "firmwareVersion"])
 	}
 	
 	preferences { 	
@@ -121,9 +129,9 @@ private getToneInterceptSetting() {
 	return safeToInt(settings?.toneIntercept, defaultToneIntercept)
 }
 
-private getDefaultVolume() { return 2 }
+private getDefaultVolume() { return 30 }
 private getDefaultTone() { return 1 }
-private getDefaultLightEffect() { return 3 }
+private getDefaultLightEffect() { return 4 }
 private getDefaultRepeat() { return 1 }
 private getDefaultRepeatDelay() { return 0 }
 private getDefaultToneIntercept() { return 0 }
@@ -184,7 +192,7 @@ def getEventMap(name, value, displayed=false, unit=null) {
 	}	
 	
 	if (displayed) {
-		logDebug "${name} ${value}" + (unit ? "${unit}" : "")
+		logDebug "${eventMap.descriptionText}"
 	}
 	return eventMap
 }
@@ -200,14 +208,13 @@ def setDefaultOption(options, defaultVal) {
 }
 
 
-def getVolumeOptions() {
-	def options = ["0":"Mute", "1":"1 - Low"]	
+private getVolumeOptions() {
+	def options = ["0":"Mute", "1":"1%"]	
 
-	(2..6).each {
-		options["${it}"] = "${it}"
+	(1..20).each {
+		options["${it * 5}"] = "${it * 5}%"
 	}
 	
-	options["7"] = "7 - High"
 	return options
 }
 
@@ -223,14 +230,14 @@ def getToneOptions() {
 
 def getLightEffectOptions() {
 	[
-		0:"Off",
-		1:"On",
-		2:"Slow Pulse",
-		3:"Pulse",
-		4:"Fast Pulse",
-		5:"Flash",
-		6:"Strobe"
-	]	
+		1:"Off",
+		2:"On",
+		4:"Slow Pulse",
+		8:"Pulse",
+		16:"Fast Pulse",
+		32:"Flash",
+		64:"Strobe"
+	]
 }
 
 def getRepeatOptions(includeUnlimited) {
@@ -238,26 +245,33 @@ def getRepeatOptions(includeUnlimited) {
 	if (includeUnlimited) {
 		options["0"] = "Unlimited"
 	}
-	(1..30).each {
+	(1..15).each {
 		options["${it}"] = "${it}"
-	}	
+	}
+	(4..50).each {
+		options["${it * 5}"] = "${it * 5}"
+	}
 	return options
 }
 
 private getRepeatDelayOptions() {
 	def options = [
-		0:"No Delay",
-		1:"1 Second"
+		0:"No Delay"
 	]
-	(2..14).each {
-		options["${it}"] = "${it} Seconds"
-	}
+	options += durationOptions
 	return options
 }
 
 private getToneInterceptOptions() {
 	def options = [
-		0:"Play Entire Tone",
+		0:"Play Entire Tone"
+	]
+	options += durationOptions
+	return options
+}
+
+private getDurationOptions() {
+	def options = [
 		1:"1 Second"
 	]
 	(2..15).each {
