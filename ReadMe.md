@@ -23,11 +23,13 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <ul>
 	<li><p><a href="#device-type-handlers">Device Type Handlers</a></p>
 		<ul>
-			<li><a href="#aeotec-doorbell">Aeotec Doorbell</a></li>
+			<li><a href="#aeotec-doorbell">Aeotec Doorbell GEN5</a></li>
+			<li><a href="#aeotec-doorbell-6">Aeotec Doorbell 6</a></li>
 			<li><a href="#aeotec-led-bulb-6-multi-white">Aeotec LED Bulb 6 Multi-White</a></li>			
 			<li><a href="#aeotec-nanomote">Aeotec NanoMote One</a></li>
 			<li><a href="#aeotec-nanomote">Aeotec NanoMote Quad</a></li>
-			<li><a href="#aeon-labs-multifunction-siren">Aeotec Siren</a></li>
+			<li><a href="#aeon-labs-multifunction-siren">Aeotec Siren GEN5</a></li>
+			<li><a href="#aeotec-siren-6">Aeotec Siren 6</a></li>
 			<li><a href="#aeotec-trisensor">Aeotec TriSensor</a></li>
 			<li><a href="#besense-motion-sensor-zwave-plus">BeSense 360 Ceiling Sensor</a></li>
 			<li><a href="#besense-doorwindow-sensor-zwave-plus">BeSense Door/Window Sensor</a></li>
@@ -158,6 +160,17 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 
 <hr />
 
+<h3>Aeotec Doorbell 6</h3>
+
+<ul>
+<li>This is a device handler for the Aeotec Doorbell 6 (ZW162-A)</li>
+<li><a href="https://community.smartthings.com/t/release-aeotec-doorbell-6/165030">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/aeotec-doorbell-6.src/aeotec-doorbell-6.groovy">View Aeotec Doorbell 6 - Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/aeotec-doorbell-6-button.src/aeotec-doorbell-6-button.groovy">View Aeotec Doorbell 6 Button - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
 <h3>Aeotec LED Bulb 6 Multi-White</h3>
 
 <ul>
@@ -178,6 +191,16 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li>Hank Four-Key Scene Controller (HKZW-SCN04)</li></ul></li>
 <li><a href="https://community.smartthings.com/t/release-aeotec-nanomote-one-quad-hank-one-four-button-scene-controller/127563">View Documentation in SmartThings Forum</a><br /></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/aeotec-nanomote.src/aeotec-nanomote.groovy">View Aeotec NanoMote - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Aeotec Siren 6</h3>
+
+<ul>
+<li>This is a device handler for the Aeotec Siren 6 (ZW164-A)</li>
+<li><a href="https://community.smartthings.com/t/release-aeotec-siren-6/164654">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/aeotec-siren-6.src/aeotec-siren-6.groovy">View Aeotec Siren 6 - Device Handler Code</a></li>
 </ul>
 
 <hr />
