@@ -5,7 +5,7 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *	URL to Documentation:
+ *	URL to Documentation: https://community.smartthings.com/t/release-aeotec-doorbell-6/165030
  *    
  *
  *  Changelog:
