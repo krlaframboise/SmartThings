@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell 6 v1.1
+ *  Aeotec Doorbell 6 v1.1.1
  *  (Model: ZW162-A)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.1 (06/05/2019)
+ *      - Fixed issue with default settings not populating after first save.
  *
  *    1.1 (06/01/2019)
  *      - Initial Release
@@ -252,7 +255,7 @@ private getOptionsInput(name, title, defaultVal, options) {
 	input "${name}", "enum",
 		title: "${title}:",
 		required: false,
-		defaultValue: defaultValue,
+		defaultValue: defaultVal,
 		displayDuringSetup: true,
 		options: options
 }

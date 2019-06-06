@@ -1,5 +1,5 @@
 /**
- *  Aeotec Siren 6 v1.1.1
+ *  Aeotec Siren 6 v1.1.2
  *  (Model: ZW164-A)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.2 (06/05/2019)
+ *      - Fixed issue with default settings not populating after first save.
  *
  *    1.1.1 (06/01/2019)
  *      - Fixed setting ranges for firmware 1.4.
@@ -190,7 +193,7 @@ private getOptionsInput(name, title, defaultVal, options) {
 	input "${name}", "enum",
 		title: "${title}:",
 		required: false,
-		defaultValue: defaultValue,
+		defaultValue: defaultVal,
 		displayDuringSetup: true,
 		options: options
 }
