@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell 6 v1.1.1
+ *  Aeotec Doorbell 6 v1.1.2
  *  (Model: ZW162-A)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.2 (07/09/2019)
+ *      - Fixed issue with volume passed into the playText command being ignored.
  *
  *    1.1.1 (06/05/2019)
  *      - Fixed issue with default settings not populating after first save.
@@ -546,7 +549,7 @@ private getTextFromTTSUrl(URI) {
 }
 
 def playText(message, volume=null) {
-	playSound(message)
+	playSound(message, volume)
 }
 
 

@@ -1,5 +1,5 @@
 /**
- *  Aeotec Siren 6 v1.1.2
+ *  Aeotec Siren 6 v1.1.3
  *  (Model: ZW164-A)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.3 (07/09/2019)
+ *      - Fixed issue with volume passed into the playText command being ignored.
  *
  *    1.1.2 (06/05/2019)
  *      - Fixed issue with default settings not populating after first save.
@@ -444,7 +447,7 @@ private getTextFromTTSUrl(URI) {
 }
 
 def playText(message, volume=null) {
-	playSound(message)
+	playSound(message, volume)
 }
 
 
