@@ -1,5 +1,5 @@
 /**
- *  Aeotec NanoMote One/Quad v1.0
+ *  Aeotec NanoMote One/Quad v1.0.1
  *  (Models: ZWA003-A/ZWA004-A)
  *
  *  Hank Scene Controller/Hank Four-Key Scene Controller
@@ -9,6 +9,13 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.0.1 (07/19/2019)
+ *      - Added meta definitions for new mobile app. 
+ *			- Set value of supportedButtonValues attribute for new mobile app.
+ *      - Set default value of numberOfButtons to 4. 
+ *			- Added sequence number check to prevent duplicate button pushes.
+ *			- Added support for button released in the new mobile app, but I had to use the "double" event because the button capability doesn't support the "released" event.
  *
  *    1.0 (05/26/2018)
  *      - Initial Release
@@ -28,7 +35,10 @@ metadata {
 	definition (
 		name: "Aeotec NanoMote", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		ocfDeviceType: "x.com.st.d.remotecontroller",
+		mmnm: "SmartThings",
+		vid: "generic-button-4"
 	) {
 		capability "Sensor"
 		capability "Battery"
@@ -80,15 +90,33 @@ metadata {
 }
 
 
+def installed() {
+	state.pendingRefresh = true
+	initialize()
+}
+
+
 def updated() {	
 	// This method always gets called twice when preferences are saved.
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {		
 		state.lastUpdated = new Date().time
 		logTrace "updated()"
-
+		
+		initialize()
+		
 		logForceWakeupMessage "The configuration will be updated the next time the device wakes up."		
 	}		
 }
+
+private initialize() {
+	if (!device.currentValue("numberOfButtons")) {
+		sendEvent(name:"numberOfButtons", value:4, displayed: false)	
+	}
+	if (!device.currentValue("supportedButtonValues")) {
+		sendEvent(name: "supportedButtonValues", value: ["pushed", "held", "double"].encodeAsJSON(), displayed: false)
+	}
+}
+
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
 	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
@@ -183,28 +211,32 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 def zwaveEvent(physicalgraph.zwave.commands.centralscenev1.CentralSceneNotification cmd) {
 	logTrace "CentralSceneNotification: ${cmd}"
 	
-	def btn = cmd.sceneNumber
-	def action	
-	switch (cmd.keyAttributes) {
-		case 0:
-			action = "pushed"
-			break
-		case 1:			
-			// Ignore button released event.
-			break
-		case 2:
-			action = "held"
-			break
-	}
-	
-	if (action) {
-		sendButtonEvent(btn, action)
+	if (state.lastSequenceNumber != cmd.sequenceNumber) {	
+		state.lastSequenceNumber = cmd.sequenceNumber
+		
+		def btn = cmd.sceneNumber
+		def action	
+		switch (cmd.keyAttributes) {
+			case 0:
+				action = "pushed"
+				break
+			case 1:			
+				action = "double" // Released
+				break
+			case 2:
+				action = "held"
+				break
+		}
+		
+		if (action) {
+			sendButtonEvent(btn, action)
+		}
 	}
 	return []
 }
 
 private sendButtonEvent(btn, action) {
-	logDebug "Button ${btn} ${action}"
+	logDebug "Button ${btn} ${action}" + (action == "double" ? " (released)" : "")
 	
 	def lastAction = (device.currentValue("numberOfButtons") == 1) ? "${action}" : "${action} ${btn}"
 
@@ -228,7 +260,9 @@ def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerS
 		// Aeotec NanoMote One or Hank Scene Controller
 		btnCount = 1
 	}
-	sendEvent(name: "numberOfButtons", value: btnCount)
+	if (btnCount != device.currentValue("numberOfButtons")) {
+		sendEvent(name: "numberOfButtons", value: btnCount)
+	}
 	return []
 }
 
@@ -342,5 +376,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	// log.trace "$msg"
+	 // log.trace "$msg"
 }
