@@ -1,5 +1,5 @@
 /**
- *  Zooz S2 Multisiren v1.2
+ *  Zooz S2 Multisiren v1.3
  *  (Models: ZSE19)
  *
  *  Author: 
@@ -9,6 +9,10 @@
  *
  *
  *  Changelog:
+ *
+ *    1.3 (08/07/2019)
+ *      - Enhanced UI for new mobile app.
+ *			- Added Tone capability and "Beep Sound" setting.
  *
  *    1.2 (05/06/2018)
  *      - Added volume setting.
@@ -36,7 +40,8 @@ metadata {
 		name: "Zooz S2 Multisiren", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise",
-		vid:"generic-siren"
+		ocfDeviceType: "x.com.st.d.siren", 
+		vid: "generic-siren-11"
 	) {
 		capability "Actuator"
 		capability "Sensor"
@@ -44,6 +49,7 @@ metadata {
 		capability "Switch"		
 		capability "Audio Notification"
 		capability "Music Player"
+		capability "Tone"
 		capability "Speech Synthesis"
 		capability "Switch Level"
 		capability "Temperature Measurement"
@@ -144,6 +150,12 @@ metadata {
 			required: false,
 			options: setDefaultOption(switchOnActionOptions, "0")
 			
+		input "beepSound", "enum",
+			title: "Beep Sound",
+			defaultValue: "1",
+			required: false,
+			options: setDefaultOption(chimeSoundOptions, "1")
+			
 		input "chimeVolume", "enum",
 			title: "Chime Volume",
 			defaultValue: chimeVolumeSetting,
@@ -238,6 +250,12 @@ def on() {
 			log.warn "Ignoring 'on' command because the Switch On Action setting is set to 'Do Nothing'"
 		}
 	}
+}
+
+
+def beep() {
+	logDebug "beep()..."
+	return playSound(safeToInt(settings?.beepSound, 0))
 }
 
 
@@ -824,8 +842,16 @@ private getSwitchOnActionOptions() {
 		"on": "Turn On Siren"	
 	]
 	
-	(1..99).each {
+	(1..37).each {
 		options["${it}"] = "Play Sound #${it}"
+	}	
+	return options
+}
+
+private getChimeSoundOptions() {
+	def options = [:]	
+	(1..37).each {
+		options["${it}"] = "Sound #${it}"
 	}	
 	return options
 }
