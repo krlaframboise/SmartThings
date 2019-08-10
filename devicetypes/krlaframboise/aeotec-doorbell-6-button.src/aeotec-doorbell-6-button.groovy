@@ -1,10 +1,13 @@
 /**
- *  Aeotec Doorbell 6 Button (CHILD DEVICE) v1.1
+ *  Aeotec Doorbell 6 Button (CHILD DEVICE) v1.2
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.2 (08/10/2019)
+ *      - Added setVolume command, but using that command to change the volume won't change it in the settings.
  *
  *    1.1 (06/01/2019)
  *      - Initial Release
@@ -28,6 +31,7 @@ metadata {
 		ocfDeviceType: "oic.d.switch",
 		vid:"generic-switch"
 	) {
+		capability "Actuator"
 		capability "Sensor"
 		capability "Button"
 		capability "Battery"
@@ -36,6 +40,8 @@ metadata {
 		
 		attribute "firmwareVersion", "string"
 		attribute "lastPushed", "string"
+		
+		command "setVolume"
 	}
 	
 	simulator { }	
@@ -146,16 +152,33 @@ def installed() {
 
 def updated() {	
 	logDebug "updated()..."
-	def groupSettings = [
+	
+	parent?.childUpdated(buttonNumber, getGroupSettings(volumeSetting))
+}
+
+def setVolume(volume) {	
+	logDebug "setVolume(${volume})..."
+	
+	parent?.childUpdated(buttonNumber, getGroupSettings(validateVolume(volume)))
+}
+
+private getGroupSettings(volume) {	
+	[
 		"tone": toneSetting,
-		"volume": volumeSetting,
+		"volume": volume,
 		"lightEffect": lightEffectSetting,
 		"repeat": repeatSetting,
 		"repeatDelay": repeatDelaySetting,
 		"toneIntercept": toneInterceptSetting,
 		"childName": device.displayName
 	]
-	parent?.childUpdated(buttonNumber, groupSettings)
+}
+
+private validateVolume(value) {
+	def volume = safeToInt(value, 50)
+	if (volume > 100) volume = 100
+	if (volume < 0) volume = 0
+	return volume
 }
 
 
