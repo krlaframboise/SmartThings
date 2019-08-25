@@ -1,5 +1,5 @@
 /**
- *  Zooz Power Strip VER 2.0
+ *  Zooz Power Strip VER 2.2
  *  (Models: ZEN20)
  *
  *  Author: 
@@ -11,6 +11,9 @@
  *
  *
  *  Changelog:
+ *
+ *    2.2 (08/25/2019)
+ *      - Added new configuration parameters for firmware 2.2.
  *
  *    2.1.0 (11/05/2018)
  *      - Removed USB Child Device
@@ -259,7 +262,7 @@ def installed () {
 def updated() {	
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
 		state.lastUpdated = new Date().time
-		
+
 		unschedule()
 		
 		runIn(2, updateSecondaryStatus)
@@ -292,17 +295,13 @@ def createChildDevices() {
 		}
 	}
 	
-	(6..7).each { endPoint ->		
-		def dni = "${getChildDeviceNetworkId(endPoint)}"
-		if (!findChildByDeviceNetworkId(dni)) {	
-			// try {
-				// addChildUSB("krlaframboise", "Zooz Power Strip USB VER 2.0", dni, endPoint)
-			// }
-			// catch (e) {
-				// addChildUSB("smartthings", "Virtual Switch", dni, endPoint)
-			// }
-			addChildUSB("smartthings", "Virtual Switch", dni, endPoint)
-			cmds << switchBinaryGetCmd(endPoint)
+	if (usbReportingEnabledParam.value != false) {
+		(6..7).each { endPoint ->		
+			def dni = "${getChildDeviceNetworkId(endPoint)}"		
+			if (!findChildByDeviceNetworkId(dni)) {	
+				addChildUSB("smartthings", "Virtual Switch", dni, endPoint)
+				cmds << switchBinaryGetCmd(endPoint)
+			}
 		}
 	}
 	return cmds ? delayBetween(cmds, 1000) : []
@@ -350,12 +349,10 @@ def configure() {
 	runIn(10, updateSyncStatus)
 			
 	def cmds = []
-	def delay = 250
-	
-	if (!device.currentValue("firmwareVersion")) {
-		cmds << versionGetCmd()
-		cmds << "delay ${delay}"
-	}
+	def delay = 500
+
+	cmds << versionGetCmd()
+	cmds << "delay ${delay}"
 	
 	if (device.currentValue("power") == null) {
 		cmds += getRefreshCmds()
@@ -959,6 +956,11 @@ private getConfigParams() {
 	params += autoOffIntervalParams
 	params += autoOnEnabledParams
 	params += autoOnIntervalParams
+	
+	if (isSupportedFirmware(2.2)) {
+		params += meterReportingEnabledParams
+		params << usbReportingEnabledParam
+	}
 
 	return params?.sort { it.num }
 }
@@ -1031,6 +1033,23 @@ private getManualControlParam() {
 
 private getLedIndicatorModeParam() {
 	return getParam(27, "LED Indicator Mode", 1, 1, [0:"LED On When Switch Off", 1:"LED On When Switch On", 2:"LED Always Off"])
+}
+
+private getMeterReportingEnabledParams() {
+	def params = []
+	
+	params << getParam(28, "Meter Reporting Enabled (FIRWARE >= 2.2)", 1, 1, enabledOptions)
+	
+	def ch = 1
+	(29..33).each {
+		params << getParam(it, "CH${ch} Meter Reporting Enabled (FIRWARE >= 2.2)", 1, 1, enabledOptions)
+		ch += 1
+	}	
+	return params
+}
+
+private getUsbReportingEnabledParam() {
+	return getParam(34, "USB Reporting Enabled (FIRWARE >= 2.2)", 1, 1, enabledOptions)
 }
 
 private getParam(num, name, size, defaultVal, options=null) {
@@ -1212,12 +1231,17 @@ private isOriginalFirmware() {
 	return "${fw}" == "1.0"
 }
 
+private isSupportedFirmware(minFirmware) {
+	def fw = device?.currentValue("firmwareVersion")
+	return fw ? safeToDec(fw) >= minFirmware : true
+}
+
 
 private safeToInt(val, defaultVal=0) {
 	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
 }
 
-private safeToDec(val, defaultVal=0) {
+private safeToDec(val, defaultVal=0.0) {
 	return "${val}"?.isBigDecimal() ? "${val}".toBigDecimal() : defaultVal
 }
 
