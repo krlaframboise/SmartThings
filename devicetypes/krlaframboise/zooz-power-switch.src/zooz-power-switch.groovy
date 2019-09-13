@@ -1,5 +1,5 @@
 /**
- *  Zooz Power Switch v2.0
+ *  Zooz Power Switch v2.1
  *  (Models: ZEN15)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    2.1 (09/12/2019)
+ *      - Changed active power setting to decimal.
  *
  *    2.0 (02/10/2019)
  *      - Added support for firmware version 2.0 config parameters.
@@ -47,11 +50,13 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
+ 
 metadata {
 	definition (
 		name: "Zooz Power Switch", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise",
+		author: "Kevin LaFramboise", 
+		ocfDeviceType: "oic.d.switch",
 		vid:"generic-switch-power-energy"
 	) {
 		capability "Actuator"
@@ -99,7 +104,7 @@ metadata {
 			required: false,
 			displayDuringSetup: true
 			
-		input "inactivePower", "number",
+		input "inactivePower", "decimal",
 			title: "Report inactive when power is less than or equal to:",
 			defaultValue: inactivePowerSetting,
 			required: false,
@@ -741,7 +746,7 @@ private getEnergyPriceSetting() {
 }
 
 private getInactivePowerSetting() {
-	return safeToInt(settings?.inactivePower, 0)
+	return safeToDec(settings?.inactivePower, 0)
 }
 
 private getDebugOutputSetting() {
