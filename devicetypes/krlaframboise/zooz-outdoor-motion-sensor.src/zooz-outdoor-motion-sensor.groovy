@@ -1,14 +1,18 @@
 /**
- *  Zooz Outdoor Motion Sensor v1.0
+ *  Zooz Outdoor Motion Sensor v1.1
  *    (Model: ZSE29)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:
+ *  URL to documentation:  https://community.smartthings.com/t/release-zooz-outdoor-motion-sensor-zse29/142893
  *   
  *
  *  Changelog:
+ *
+ *    1.1 (09/12/2019) 
+ *      - Added firmware tile
+ *      - Added settings "Motion Cleared Delay" and "Brightness Trigger", but they're only supported by firmware 1.4 and above.
  *
  *    1.0 (10/16/2017)
  *      - Initial Release 
@@ -24,7 +28,7 @@
  *
  */
 metadata {
-	definition (name:"Zooz Outdoor Motion Sensor", namespace:"krlaframboise", author: "Kevin LaFramboise", vid: "generic-motion-5") {
+	definition (name:"Zooz Outdoor Motion Sensor", namespace:"krlaframboise", author: "Kevin LaFramboise", ocfDeviceType: "x.com.st.d.sensor.motion", vid: "generic-motion-5", genericHandler: "Z-Wave") {
 		capability "Sensor"
 		capability "Battery"
 		capability "Motion Sensor"
@@ -34,22 +38,9 @@ metadata {
 		capability "Health Check"
 
 		attribute "lastCheckIn", "string"
+		attribute "firmwareVersion", "string"		
 		
-		fingerprint mfr:"027A", prod:"0001", model:"0005"
-	}
-
-	preferences {
-		input "checkInInterval", "enum",
-			title: "Check In Interval:",
-			defaultValue: checkInIntervalSetting,
-			required: false,
-			displayDuringSetup: true,
-			options: checkInIntervalOptions
-		input "debugOutput", "bool", 
-			title: "Enable debug logging?", 
-			defaultValue: false, 
-			displayDuringSetup: true, 
-			required: false
+		fingerprint mfr: "027A", prod: "0001", model: "0005", deviceJoinName: "Zooz Outdoor Motion Sensor"
 	}
 
 	tiles(scale: 2) {
@@ -62,6 +53,9 @@ metadata {
 				attributeState("clear", label:'')
 				attributeState("detected", label:'TAMPERING')
 			}
+		}		
+		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:2, height: 2) {
+			state "firmwareVersion", label:'Firmware ${currentValue}'
 		}
 		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2) {
 			state "battery", label:'${currentValue}% Battery', unit:"%"
@@ -70,8 +64,37 @@ metadata {
 			state "default", label:"Refresh", action: "refresh", icon:"st.secondary.refresh-icon"
 		}
 		main("mainTile")
-		details(["mainTile", "battery", "refresh"])
+		details(["mainTile", "firmwareVersion", "battery", "refresh"])
 	}
+	
+	preferences {
+		getParamInput(motionClearedDelayParam)
+		getParamInput(brightnessTriggerParam)
+		
+		getOptionsInput("checkInInterval", "Check In Interval:", checkInIntervalSetting, checkInIntervalOptions)
+		
+		input "debugOutput", "bool", 
+			title: "Enable debug logging?", 
+			defaultValue: true, 
+			displayDuringSetup: true, 
+			required: false
+	}
+}
+
+private getParamInput(param) {
+	input "configParam${param.num}", "enum",
+		title: "${param.name}:",
+		required: false,
+		defaultValue: "${param.value}",
+		options: param.options
+}
+
+private getOptionsInput(name, title, defaultValue, options) {
+	input "${name}", "enum",
+		title: "${title}:",
+		required: false,
+		defaultValue: "${defaultValue}",
+		options: setDefaultOption(options, defaultValue)
 }
 
 
@@ -105,13 +128,39 @@ def configure() {
 		cmds << wakeUpIntervalSetCmd(checkInIntervalSetting)
 		cmds << wakeUpIntervalGetCmd()
 	}
+	
+	if (state.refreshAll || !device.currentValue("firmwareVersion")) {
+		cmds << versionGetCmd()
+	}
 		
 	if (canReportBattery()) {
 		cmds << batteryGetCmd()
 	}
 	
+	configParams.each { param ->		
+		def storedVal = getParamStoredValue(param.num)		
+		if (state.refreshAll || "${storedVal}" != "${param.value}") {
+			if (firmwareSupportsParam(param)) {
+				logDebug "Changing ${param.name}(#${param.num}) from ${storedVal} to ${param.value}"
+				cmds << configSetCmd(param)
+				cmds << configGetCmd(param)
+			}
+			else {
+				logDebug "Ignoring '${param.name}' setting because it's not supported by firmware ${firmwareVersion}."
+			}
+		}
+	}
+	
 	state.refreshAll = false
 	return cmds ? delayBetween(cmds, 1000) : []
+}
+
+private firmwareSupportsParam(param) {
+	return (!param.minFirmware || !firmwareVersion || firmwareVersion >= param.minFirmware)
+}
+
+private getParamStoredValue(paramNum) {
+	return safeToInt(state["configVal${paramNum}"] , null)
 }
 
 
@@ -122,7 +171,7 @@ def ping() {
 
 
 def refresh() {	
-	log.warn "The wakeup interval will be sent to the device the next time it wakes up.  You can force the device to wake up immediately by removing the battery for a few seconds and then putting it back in."
+	log.warn "The settings will be sent to the device the next time it wakes up.  You can force the device to wake up immediately by removing the battery for a few seconds and then putting it back in."
 	state.refreshAll = true
 	return []
 }
@@ -140,8 +189,20 @@ private wakeUpNoMoreInfoCmd() {
 	return secureCmd(zwave.wakeUpV2.wakeUpNoMoreInformation())
 }
 
+private versionGetCmd() {
+	return secureCmd(zwave.versionV1.versionGet())
+}
+
 private batteryGetCmd() {
 	return secureCmd(zwave.batteryV1.batteryGet())
+}
+
+private configGetCmd(param) {
+	return secureCmd(zwave.configurationV2.configurationGet(parameterNumber: param.num))
+}
+
+private configSetCmd(param) {
+	return secureCmd(zwave.configurationV2.configurationSet(parameterNumber: param.num, size: param.size, scaledConfigurationValue: param.value))	
 }
 
 private secureCmd(cmd) {
@@ -161,6 +222,7 @@ private getCommandClassVersions() {
 		0x5A: 1,	// DeviceResetLocally
 		0x5E: 2,	// ZwaveplusInfo
 		0x6C: 1,	// Supervision
+		0x70: 2,	// Configuration
 		0x71: 3,	// Notification (4)
 		0x72: 2,	// ManufacturerSpecific
 		0x73: 1,	// Powerlevel
@@ -176,18 +238,21 @@ private getCommandClassVersions() {
 
 
 def parse(String description) {	
-	def result = []
-	
-	sendLastCheckInEvent()
-	
-	def cmd = zwave.parse(description, commandClassVersions)
-	if (cmd) {
-		result += zwaveEvent(cmd)
+	def result = []	
+	try {
+		sendLastCheckInEvent()
+		
+		def cmd = zwave.parse(description, commandClassVersions)
+		if (cmd) {
+			result += zwaveEvent(cmd)
+		}
+		else {
+			logDebug "Unknown Description: $desc"
+		}
 	}
-	else {
-		logDebug "Unknown Description: $desc"
+	catch (e) {
+		log.error "$e"
 	}
-
 	return result
 }
 
@@ -276,7 +341,29 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 }
 
 
+def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
+	logTrace "VersionReport: ${cmd}"
+	
+	def version = "${cmd.applicationVersion}.${cmd.applicationSubVersion}"
+	
+	if (version != device.currentValue("firmwareVersion")) {
+		logDebug "Firmware: ${version}"
+		sendEvent(name: "firmwareVersion", value: version, displayed:false)
+	}
+	return []	
+}
+
+
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
+	logTrace "BasicSet: $cmd"
+	
+	return []
+}
+
+
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
+	logTrace "NotificationReport: $cmd"
+	
 	if (cmd.notificationType == 7) {
 		switch (cmd.event) {
 			case 3:
@@ -319,35 +406,138 @@ private sendMotionEventMap(val) {
 }
 
 
+def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {	
+	logTrace "ConfigurationReport ${cmd}"
+	
+	def param = configParams.find { it.num == cmd.parameterNumber }
+	if (param) {	
+		def val = cmd.scaledConfigurationValue
+		
+		logDebug "${param.name}(#${param.num}) = ${val}"
+		setParamStoredValue(param.num, val)
+	}
+	else {
+		logDebug "Parameter #${cmd.parameterNumber} = ${cmd.scaledConfigurationValue}"
+	}		
+	return []
+}
+
+private setParamStoredValue(paramNum, value) {
+	state["configVal${paramNum}"] = value
+}
+
+
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	logDebug "Unknown Command: $cmd"
 	return []
 }
 
 
-// Settings
 private getCheckInIntervalSetting() {
 	return safeToInt(settings?.checkInInterval, 14400)
 }
 
- 
+
+// Configuration Parameters
+private getConfigParams() {
+	[
+		motionClearedDelayParam,
+		brightnessTriggerParam
+	]
+}
+
+private getMotionClearedDelayParam() {
+	return getParam(1, "Motion Cleared Delay", 2, 0, motionClearedDelayOptions, 1.4)
+}
+
+private getBrightnessTriggerParam() {
+	return getParam(2, "Brightness Trigger", 2, 0, brightnessTriggerOptions, 1.4)
+}
+
+private getParam(num, name, size, defaultVal, options=null, minFirmware=null) {
+	def val = safeToInt((settings ? settings["configParam${num}"] : null), defaultVal)
+
+	if (minFirmware) {
+		name =  "${name} (FIRMWARE >= ${minFirmware})"
+	}
+	
+	def map = [num: num, name: name, size: size, value: val, minFirmware: minFirmware]
+	if (options) {
+		map.valueName = options?.find { k, v -> "${k}" == "${val}" }?.value
+		map.options = setDefaultOption(options, defaultVal)
+	}
+		
+	return map
+}
+
+private setDefaultOption(options, defaultVal) {
+	return options?.collect { k, v ->
+		if ("${k}" == "${defaultVal}") {
+			v = "${v} [DEFAULT]"		
+		}
+		["$k": "$v"]
+	}
+}
+
+
+// Setting Options
+private getMotionClearedDelayOptions() {
+	def options = [0:"Set Manually on Knob"]
+	
+	(5..30).each {
+		options["${it}"] = "${it} Seconds"
+	}
+	
+	options["45"] = "45 Seconds"
+	options["60"] = "1 Minute"
+	options["75"] = "1 Minute 15 Seconds"
+	options["90"] = "1 Minute 30 Seconds"
+	options["105"] = "1 Minute 45 Seconds"
+	options["120"] = "2 Minutes"
+	options["150"] = "2 Minutes 30 Seconds"
+	
+	[180,240,300,360,420,480,540,600,660,720].each {
+		options["${it}"] = "${it / 60} Minutes"
+	}	
+	return options	
+}
+
+private getBrightnessTriggerOptions() {
+	def options = [0:"Set Manually on Knob"]
+	
+	(3..25).each {
+		options["${it * 10}"] = "${it * 10} lux"
+	}
+	
+	options["255"] = "255 lux"
+	
+	return options
+}
+
 private getCheckInIntervalOptions() {
 	[
-		[600: "10 Minutes"],
-		[1800: "30 Minutes"],
-		[3600: "1 Hour"],
-		[7200: "2 Hours"],
-		[14400: "4 Hours (DEFAULT)"],
-		[28800: "8 Hours"],
-		[43200: "12 Hours"],
-		[86400: "1 Day"]
+		600: "10 Minutes",
+		1800: "30 Minutes",
+		3600: "1 Hour",
+		7200: "2 Hours",
+		14400: "4 Hours",
+		28800: "8 Hours",
+		43200: "12 Hours",
+		86400: "1 Day"
 	]
+}
+
+private getFirmwareVersion() {
+	return safeToDec(device?.currentValue("firmwareVersion"))
 }
 
 private safeToInt(val, defaultVal=0) {
 	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
 }
 
+private safeToDec(val, defaultVal=0) {
+	return "${val}"?.isBigDecimal() ? "${val}".toBigDecimal() : defaultVal
+}
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
 	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
