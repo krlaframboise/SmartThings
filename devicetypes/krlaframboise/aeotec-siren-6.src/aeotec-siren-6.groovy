@@ -1,5 +1,5 @@
 /**
- *  Aeotec Siren 6 v1.1.3
+ *  Aeotec Siren 6 v1.1.4
  *  (Model: ZW164-A)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.4 (09/14/2019)
+ *      - Added fingerprints for EU and AU models.
  *
  *    1.1.3 (07/09/2019)
  *      - Fixed issue with volume passed into the playText command being ignored.
@@ -80,7 +83,9 @@ metadata {
 		command "playText"
 		command "playSound"
 		
-		fingerprint mfr:"0371", prod:"0103", model:"00A4", deviceJoinName:"Aeotec Siren 6"
+		fingerprint mfr:"0371", prod:"0003", model:"00A4", deviceJoinName:"Aeotec Siren 6" // EU
+		fingerprint mfr:"0371", prod:"0103", model:"00A4", deviceJoinName:"Aeotec Siren 6" // US
+		fingerprint mfr:"0371", prod:"0203", model:"00A4", deviceJoinName:"Aeotec Siren 6" // AU
 	}
 
 	simulator { }
