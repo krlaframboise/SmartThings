@@ -5,7 +5,7 @@
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation: 
+ *  URL to documentation: https://community.smartthings.com/t/release-zooz-rgbw-dimmer-zen31/178616?u=krlaframboise
  *    
  *
  *  Changelog:
