@@ -1098,7 +1098,6 @@ def zwaveEvent(physicalgraph.zwave.commands.switchcolorv3.SwitchColorReport cmd)
 }
 
 def checkForColorComponentChanges() {
-	log.warn "checkForColorComponentChanges()..."
 	def rgb = [
 		state["cc${COLOR_COMPONENTS.red}Value"],
 		state["cc${COLOR_COMPONENTS.green}Value"],
