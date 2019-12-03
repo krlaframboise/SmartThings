@@ -157,6 +157,7 @@ metadata {
 		
 		fingerprint deviceId: "0x1000", inClusters: "0x25,0x70,0x72,0x86"
 		fingerprint deviceId: "0x1005", inClusters: "0x25,0x5E,0x72,0x80,0x86"
+		fingerprint mfr: "0109", prod: "2005", model: "0518", deviceJoinName: "Vision Outdoor Siren" //AU
 	}
 
 	simulator {
