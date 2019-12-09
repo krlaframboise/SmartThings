@@ -1,14 +1,20 @@
 /**
- *  Zooz RGBW Dimmer v1.0
+ *  Zooz RGBW Dimmer v1.1
  *  (Model: ZEN31)
  *
- *  Author: 
+ *  Author:
  *    Kevin LaFramboise (krlaframboise)
  *
  *  URL to documentation: https://community.smartthings.com/t/release-zooz-rgbw-dimmer-zen31/178616?u=krlaframboise
- *    
+ *
  *
  *  Changelog:
+ *
+ *    1.1 (12/08/2019)
+ *      - Complete rewrite of DTH.
+ *      - Added sliders for each channel and a color that controls RGB.
+ *		- Added optional child dimmers that allow you to toggle and dim each channel and a dimmer for color that controls RGB.
+ *		- Added optional child switches for each Preset Program
  *
  *    1.0 (11/25/2019)
  *      - Initial Release
@@ -28,27 +34,36 @@ import groovy.transform.Field
 
 @Field static Map commandClassVersions = [
 	0x20: 1,	// Basic
-	0x25: 1,	// Switch Binary
-	0x26: 2,	// Switch Multilevel
-	0x27: 1,	// All Switch
-	0x2B: 1,	// Scene Activation
-	0x2C: 1,	// Scene Actuator Configuration
+	0x22: 1,	// Application Status
+	0x26: 3,	// Switch Multilevel
+	0x31: 5,	// SensorMultilevel
 	0x32: 3,	// Meter
 	0x33: 3,	// Color Control
+	0x55: 1,	// Transport Service
+	0x56: 1,	// CRC16 Encap
 	0x59: 1,	// AssociationGrpInfo
 	0x5A: 1,	// DeviceResetLocally
+	0x5B: 1,	// CentralScene (3)
 	0x5E: 2,	// ZwaveplusInfo
+	0x60: 3,	// Multi Channel (4)
+	0x6C: 1,	// Supervision
 	0x70: 1,	// Configuration
+	0x71: 3,	// Notification (v4)
 	0x72: 2,	// ManufacturerSpecific
 	0x73: 1,	// Powerlevel
+	0x75: 1,	// Protection
 	0x7A: 2,	// Firmware Update Md
 	0x85: 2,	// Association
 	0x86: 1,	// Version (2)
-	0x98: 1		// Security
+	0x8E: 2,	// Multi Channel Association
+	0x98: 1,	// Security S0
+	0x9F: 1		// Security S2
 ]
 
 @Field static Map COLOR_COMPONENTS = [white:0, red:2, green:3, blue:4]
-@Field static Map ENDPOINTS = [white:5,red:2, green:3, blue:4, hsb:3]
+@Field static Map PRESET_PROGRAMS = [fireplace:6, storm:7, rainbow:8, polarLights:9, police:10]
+@Field static List DIMMER_NAMES = ["white", "color", "red", "green", "blue"]
+
 
 metadata {
 	definition (name: "Zooz RGBW Dimmer", namespace: "krlaframboise", author: "Kevin LaFramboise", ocfDeviceType: "oic.d.light", vid: "generic-rgbw-color-bulb") {
@@ -61,30 +76,51 @@ metadata {
 		capability "Refresh"
 		capability "Configuration"
 		capability "Button"
-		
+
 		attribute "firmwareVersion", "string"
 		attribute "syncStatus", "string"
 		attribute "whiteSwitch", "string"
 		attribute "colorSwitch", "string"
+		attribute "redSwitch", "string"
+		attribute "greenSwitch", "string"
+		attribute "blueSwitch", "string"
 		attribute "activeProgram", "string"
-		
+
+		attribute "whiteLevel", "number"
+		attribute "colorLevel", "number"
+		attribute "redLevel", "number"
+		attribute "greenLevel", "number"
+		attribute "blueLevel", "number"
+
 		command "whiteOn"
 		command "whiteOff"
 		command "colorOn"
 		command "colorOff"
-		
+		command "redOn"
+		command "redOff"
+		command "greenOn"
+		command "greenOff"
+		command "blueOn"
+		command "blueOff"
+
+		command "setWhiteLevel", ["NUMBER"]
+		command "setColorLevel", ["NUMBER"]
+		command "setRedLevel", ["NUMBER"]
+		command "setGreenLevel", ["NUMBER"]
+		command "setBlueLevel", ["NUMBER"]
 		command "startFireplaceProgram"
 		command "startStormProgram"
 		command "startRainbowProgram"
 		command "startPolarLightsProgram"
 		command "startPoliceProgram"
+		command "startProgram", ["NUMBER"]
 		command "stopProgram"
-				
+
 		fingerprint mfr:"027A", prod:"0902", model:"2000", deviceJoinName:"Zooz RGBW Dimmer"
 	}
 
 	simulator {	}
-	
+
 	tiles(scale:2) {
 			multiAttributeTile(name:"switch", type: "lighting", width: 6, height: 4, canChangeIcon: true){
 			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
@@ -99,240 +135,404 @@ metadata {
 			tileAttribute ("device.color", key: "COLOR_CONTROL") {
 				attributeState "color", action:"setColor"
 			}
-     }
+		}
 
-		standardTile("whiteSwitch", "device.whiteSwitch", width: 2, height: 2) {
-			state "on", label:'white ${name}', action:"whiteOff", backgroundColor:"#00a0dc"
-			state "off", label:'white ${name}', action:"whiteOn", backgroundColor:"#ffffff"
+		standardTile("whiteLabel", "generic", width: 2, height: 1) {
+			state "default", label:'W', action:"", backgroundColor:"#fefebe"//#ffffcc"
 		}
-		
-		standardTile("colorSwitch", "device.colorSwitch", width: 2, height: 2) {
-			state "on", label:'color ${name}', action:"colorOff", backgroundColor:"#00a0dc"
-			state "off", label:'color ${name}', action:"colorOn", backgroundColor:"#ffffff"
+
+		standardTile("whiteSwitch", "device.whiteSwitch", width: 2, height: 1) {
+			state "on", label:'${name}', action:"whiteOff", backgroundColor:"#00a0dc"
+			state "off", label:'${name}', action:"whiteOn", backgroundColor:"#ffffff"
 		}
-		
+
+		controlTile("whiteSlider", "device.whiteLevel", "slider", width: 2,	height: 1) {
+			state "whiteLevel", action:"setWhiteLevel"
+		}
+
+		standardTile("colorLabel", "generic", width: 2, height: 1) {
+			state "default", label:'RGB', action:"", backgroundColor:"#ffffff"
+		}
+
+		standardTile("colorSwitch", "device.colorSwitch", width: 2, height: 1) {
+			state "on", label:'${name}', action:"colorOff", backgroundColor:"#00a0dc"
+			state "off", label:'${name}', action:"colorOn", backgroundColor:"#ffffff"
+		}
+
+		controlTile("colorSlider", "device.colorLevel", "slider", width: 2, height: 1) {
+			state "colorLevel", action:"setColorLevel"
+		}
+
+		standardTile("redLabel", "generic", width: 2, height: 1) {
+			state "default", label:'R', action:"", backgroundColor:"#ff0000"
+		}
+
+		standardTile("redSwitch", "device.redSwitch", width: 2, height: 1) {
+			state "on", label:'${name}', action:"redOff", backgroundColor:"#00a0dc"
+			state "off", label:'${name}', action:"redOn", backgroundColor:"#ffffff"
+		}
+
+		controlTile("redSlider", "device.redLevel", "slider", width: 2, height: 1) {
+			state "redLevel", action:"setRedLevel"
+		}
+
+		standardTile("greenLabel", "generic", width: 2, height: 1) {
+			state "default", label:'G', action:"", backgroundColor:"#00ff00"
+		}
+
+		standardTile("greenSwitch", "device.greenSwitch", width: 2, height: 1) {
+			state "on", label:'${name}', action:"greenOff", backgroundColor:"#00a0dc"
+			state "off", label:'${name}', action:"greenOn", backgroundColor:"#ffffff"
+		}
+
+		controlTile("greenSlider", "device.greenLevel", "slider", width: 2, height: 1) {
+			state "greenLevel", action:"setGreenLevel"
+		}
+
+		standardTile("blueLabel", "generic", width: 2, height: 1) {
+			state "default", label:'B', action:"", backgroundColor:"#0000ff"
+		}
+
+		standardTile("blueSwitch", "device.blueSwitch", width: 2, height: 1) {
+			state "on", label:'${name}', action:"blueOff", backgroundColor:"#00a0dc"
+			state "off", label:'${name}', action:"blueOn", backgroundColor:"#ffffff"
+		}
+
+		controlTile("blueSlider", "device.blueLevel", "slider",	width: 2, height: 1) {
+			state "blueLevel", action:"setBlueLevel"
+		}
+
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
 			state "default", label:'Refresh', action: "refresh.refresh"
 		}
-		
+
 		valueTile("syncStatus", "device.syncStatus", decoration:"flat", width:2, height: 2) {
 			state "syncStatus", label:'${currentValue}'
 		}
-		
+
 		standardTile("configure", "device.generic", width: 2, height: 2) {
 			state "default", label:'Sync', action: "configure"
 		}
-		
+
 		controlTile("rgbSelector", "device.color", "color", height: 6, width: 6, inactiveLabel: false) {
 			state "color", action:"setColor"
 		}
-		
+
 		valueTile("power", "device.power", width: 2, height: 2) {
 			state "power", label:'${currentValue} W', backgroundColor: "#cccccc"
 		}
-		
+
 		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:2, height: 2) {
 			state "firmwareVersion", label:'Firmware ${currentValue}'
 		}
-		
+
 		standardTile("fireplace", "device.activeProgram", width: 2, height: 2) {
 			state "default", label:'Fireplace', action: "startFireplaceProgram", backgroundColor:"#ffffff"
 			state "6", label:'Fireplace', action: "stopProgram", backgroundColor:"#00a0dc"
 		}
-		
+
 		standardTile("storm", "device.activeProgram", width: 2, height: 2) {
 			state "default", label:'Storm', action: "startStormProgram", backgroundColor:"#ffffff"
 			state "7", label:'Storm', action: "stopProgram", backgroundColor:"#00a0dc"
 		}
-		
+
 		standardTile("rainbow", "device.activeProgram", width: 2, height: 2) {
 			state "default", label:'Rainbow', action: "startRainbowProgram", backgroundColor:"#ffffff"
 			state "8", label:'Rainbow', action: "stopProgram", backgroundColor:"#00a0dc"
 		}
-		
+
 		standardTile("polarLights", "device.activeProgram", width: 2, height: 2) {
 			state "default", label:'Polar Lights', action: "startPolarLightsProgram", backgroundColor:"#ffffff"
 			state "9", label:'Polar Lights', action: "stopProgram", backgroundColor:"#00a0dc"
 		}
-		
+
 		standardTile("police", "device.activeProgram", width: 2, height: 2) {
 			state "default", label:'Police', action: "startPoliceProgram", backgroundColor:"#ffffff"
 			state "10", label:'Police', action: "stopProgram", backgroundColor:"#00a0dc"
-		}		
+		}
+
+		standardTile("stop", "device.activeProgram", width: 2, height: 2) {
+			state "default", label:'Stop', action: "stopProgram", backgroundColor:"#00a0dc"
+			state "0", label:'Stop', action: "stopProgram", backgroundColor:"#ffffff"
+
+		}
 
 		main(["switch"])
-		details(["switch", "power", "colorSwitch", "whiteSwitch", "refresh", "syncStatus", "configure", "stop", "fireplace", "storm", "rainbow", "polarLights", "police", "firmwareVersion", "rgbSelector"])
+		details(["switch", "whiteLabel", "whiteSlider", "whiteSwitch", "redLabel", "redSlider", "redSwitch", "greenLabel", "greenSlider", "greenSwitch", "blueLabel", "blueSlider", "blueSwitch", "colorLabel", "colorSlider", "colorSwitch", "power", "syncStatus", "firmwareVersion", "refresh", "configure", "stop", "fireplace", "storm", "rainbow", "polarLights", "police", "rgbSelector"])
 	}
-	
+
 	preferences {		
-		getBoolInput("createColorSwitch", "Create Child On/Off Switch for Color?", false)
-		getBoolInput("createWhiteSwitch", "Create Child On/Off Switch for White?", false)
-	
+		input title: "\n*** ATTENTION ***",
+			description: "The settings screen in the new SmartThings Mobile App crashes constantly so you should use the Classic Mobile App to change these settings.", 
+			displayDuringSetup: false, 
+			type: "paragraph", 
+			element: "paragraph"
+			
+		input title: "\n\nDevice Configuration",
+			description: "", 
+			displayDuringSetup: false, 
+			type: "paragraph", 
+			element: "paragraph"
+		
 		getParamInput(powerRecoveryParam)
 		getParamInput(dimmerRampRateLocalParam)
 		getParamInput(dimmerRampRateRemoteParam)
-		
-		// getParamInput(powerReportingThresholdParam)
 		getParamInput(powerReportingFrequencyParam)
 		getParamInput(energyReportingThresholdParam)
 		getParamInput(energyReportingFrequencyParam)
-		// getParamInput(analogVoltageReportingThresholdParam)
-		// getParamInput(analogReportingFrequencyParam)
-		
 		getParamInput(switchModeParam)
-		
 		getParamInput(input1TypeParam)
 		getParamInput(input2TypeParam)
 		getParamInput(input3TypeParam)
 		getParamInput(input4TypeParam)
-		
 		getParamInput(input1SceneParam)
 		getParamInput(input2SceneParam)
 		getParamInput(input3SceneParam)
 		getParamInput(input4SceneParam)
-		
-		// getParamInput(activeReportsParam)
+		// getParamInput(powerReportingThresholdParam)
+		// getParamInput(analogVoltageReportingThresholdParam)
+		// getParamInput(analogReportingFrequencyParam)
 		// getParamInput(singleClickOnFrameParam)
 		// getParamInput(singleClickOffFrameParam)
 		// getParamInput(doubleClickOffFrameParam)
 		// getParamInput(presetProgramsParam)
 		
+		input title: "\n\nCreate Child Devices for Color Channels",
+			description: "The new SmartThings Mobile App doesn't support custom user interfaces so you can't control the channels independently like you can with the Classic Mobile App, but enabling a 'Create Child Dimmer for ...' setting will create a child dimmer device for the corresponding channel.\n\nThe child device can be used in both mobile apps to turn that channel on/off or change its brightness.\n\nWARNING: Disabling the setting will delete the child dimmer it created when that setting was enabled.\n\nYOU MUST INSTALL THE 'CHILD DIMMER' DTH TO USE THIS FEATURE", 
+			displayDuringSetup: false, 
+			type: "paragraph", 
+			element: "paragraph"
+			
+		getBoolInput("createWhiteDimmer", "Create Child Dimmer for White?", false)
+		getBoolInput("createColorDimmer", "Create Child Dimmer for Color?\n(Allows you to control Red, Green, and Blue together.)", false)
+		getBoolInput("createRedDimmer", "Create Child Dimmer for Red?", false)
+		getBoolInput("createGreenDimmer", "Create Child Dimmer for Green?", false)
+		getBoolInput("createBlueDimmer", "Create Child Dimmer for Blue?", false)
+
+		input title: "\n\nCreate Child Devices for the Preset Programs",
+			description: "Enabling a 'Create Child Switch for ...' setting will create a child switch device for the corresponding Preset Program.\n\nTurning on that child device will start the program and turning it off will stop the program.\n\nWARNING: Disabling the setting will delete the child device it created when that setting was enabled.", 
+			displayDuringSetup: false, 
+			type: "paragraph", 
+			element: "paragraph"
+			
+		getBoolInput("createFireplaceSwitch", "Create Child Switch for Fireplace Program?", false)
+		getBoolInput("createStormSwitch", "Create Child Switch for Storm Program?", false)
+		getBoolInput("createRainbowSwitch", "Create Child Switch for Rainbow Program?", false)
+		getBoolInput("createPolarLightsSwitch", "Create Child Switch for Polar Lights Program?", false)
+		getBoolInput("createPoliceSwitch", "Create Child Switch for Police Program?", false)
+
+		input title: "\n\nAdvanced Settings",
+			description: "", 
+			displayDuringSetup: false, 
+			type: "paragraph", 
+			element: "paragraph"
+			
+		getBoolInput("assumeSuccess", "Send Color Related Events Immediately?", assumeSuccessSetting)
+		
+		input title: "",
+			description: "***BETA FEATURE***\n\nBy default the device waits until it receives confirmation of changes before creating the events which might cause the new mobile app and other integrations to report that the device is not responding.\n\nDisabling this setting will make the device create the events immediately and not request reports that it can use to verify the result which makes the UI respond a lot faster and cuts down on z-wave traffic, but the switch and level states shown in SmartThings might sometimes be wrong.  If that happens you can tap the 'Refresh' tile to update the states shown in SmartThings.\n\n", 
+			displayDuringSetup: false, 
+			type: "paragraph", 
+			element: "paragraph"
+		
+		input "commandDelay", "enum",
+			title: "Delay Between Z-Wave Commands:",
+			required: false,
+			displayDuringSetup: true,
+			defaultValue: "${commandDelaySetting}", 
+			options: setDefaultOption(commandDelayOptions, commandDelaySetting)
+		
+		input title: "", 
+			description: "When sending z-wave commands to the device the optimum delay to use between each command depends on the strength of your z-wave mesh so if you're having issues with performance or reliability you should try increasing or decreasing the 'Delay Between Z-Wave Commands' setting above.\n\n", 
+			displayDuringSetup: false, 
+			type: "paragraph", 
+			element: "paragraph"
+			
 		getBoolInput("debugOutput", "Enable Debug Logging?", true)
 	}
 }
 
 private getBoolInput(name, title, defaultVal) {
-	input "${name}", "bool", 
-		title: "${title}", 
-		defaultValue: defaultVal, 
-		required: false	
+	input "${name}", "bool",
+		title: "${title}",
+		defaultValue: defaultVal,
+		required: false
 }
 
 private getParamInput(param) {
 	input "configParam${param.num}", "enum",
 		title: "${param.name}:",
-		required: false,		
+		required: false,
 		displayDuringSetup: true,
 		defaultValue: "${param.value}",
 		options: param.options
 }
 
+private getCommandDelaySetting() {
+	return safeToInt(settings?.commandDelay, 100)
+}
+
+private getAssumeSuccessSetting() {
+	return settings?.assumeSuccess == false ? false : true
+}
+
 
 def installed() {
 	logDebug "installed()..."
-	
+
 	initialize()
 }
 
 
-def updated() {	
+def updated() {
 	logDebug "updated()..."
-	
-	if (!isDuplicateCommand(state.lastUpdated, 1000)) {	
+
+	if (!isDuplicateCommand(state.lastUpdated, 1000)) {
 		state.lastUpdated = new Date().time
-		
+
 		initialize()
-		
-		addRemoveChildSwitches()
-		
+
+		def cmds = []
 		if (state.isDeviceInitialized) {
+
+			addRemoveChildSwitches()
+
 			runIn(5, updateSyncStatus)
-			runIn(3, executeConfigureCmds)
+			if (pendingChanges > 0) {
+				cmds += getConfigureCmds()
+			}
 		}
 		else {
-			runIn(8, executeInitializeCmds)
+			runIn(10, initializeDevice)
 		}
+		return cmds ? response(defaultDelayBetween(cmds)) : []
 	}
 }
 
 private initialize() {
 	if (!device.currentValue("supportedButtonValues")) {
 		sendEvent(name: "supportedButtonValues", value:["pushed", "held", "pushed_2x", "pushed_3x"], displayed: false)
-		sendEvent(name: "numberOfButtons", value:4, displayed: false)	
+		sendEvent(name: "numberOfButtons", value:4, displayed: false)
 	}
-	
+
 	if (device.currentValue("activeProgram") == null) {
-		sendActiveProgramEvent(0)
+		sendEvent(name: "activeProgram", value: "0", displayed: false)
 	}
-	
+
 	if (device.currentValue("switch")) {
 		sendEvent(name: "switch", value: "on", displayed: false)
-		sendEvent(name: "colorSwitch", value: "on", displayed: false)
-		sendEvent(name: "whiteSwitch", value: "on", displayed: false)
 	}
-	
+
+	DIMMER_NAMES.each {
+		if (device.currentValue("${it}Switch")) {
+			sendEvent(name: "${it}Switch", value: "on", displayed: false)
+		}
+		if (device.currentValue("${it}Level")) {
+			sendEvent(name: "${it}Level", value: 100, displayed: false)
+		}
+	}
+
 	if (!device.currentValue("color")) {
 		sendEvent(name: "color", value: "#FFFFFF", displayed: false)
 		sendEvent(name: "hue", value: 0, displayed: false)
 		sendEvent(name: "saturation", value: 0, displayed: false)
 	}
 
-	def checkInterval = (6 * 60 * 60) + (5 * 60)	
+	def checkInterval = (6 * 60 * 60) + (5 * 60)
 	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
-	// sendEvent(name: "checkInterval", value: 1860, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID, offlinePingable: "0"])
-	
+
 	startHealthPollSchedule()
 }
 
 
 private addRemoveChildSwitches() {
-	if (settings.createColorSwitch) {
-		addChildSwitch("color")
-	}
-	else {
-		removeChildSwitch("color")
-	}
-	
-	if (settings.createWhiteSwitch) {
-		addChildSwitch("white")
-	}
-	else {
-		removeChildSwitch("white")
-	}
-}
+	if (settings) {
+		DIMMER_NAMES.each {
+			if (settings["create${it.capitalize()}Dimmer"]) {
+				addChildDimmer(it)
+			}
+			else {
+				removeChildDevice(it)
+			}
+		}
 
-private addChildSwitch(childType) {
-	def dni = getChildSwitchDNI(childType)
-	if (!findChildSwitch(dni)) {
-		logDebug "Creating Child ${childType.capitalize()} Switch"
-		
-		def child = addChildDevice(
-			"smartthings",
-			"Child Switch",
-			dni,
-			null, 
-			[
-				completedSetup: true,
-				isComponent: false,
-				label: "${device.displayName}-${childType.capitalize()}"
-			]
-		)
-		
-		if (child) {
-			child.sendEvent(name: "switch", value: device.currentValue("${childType}Switch"))
+		PRESET_PROGRAMS.each {			
+			if (settings["create${it.key.capitalize()}Switch"]) {
+				addChildProgramSwitch(it.key)
+			}
+			else {
+				removeChildDevice(it.key)
+			}
 		}
 	}
 }
 
-private removeChildSwitch(childType) {
-	def dni = getChildSwitchDNI(childType)
-	if (findChildSwitch(dni)) {
-		log.warn "Removing Child ${childType.capitalize()} Switch"
-		deleteChildDevice(dni)
+private addChildDimmer(childName) {
+	if (!findChildDevice(childName)) {
+		logDebug "Creating Child Dimmer for ${childName.capitalize()}"
+
+		try {
+			def child = addChildDevice(
+				"krlaframboise",
+				"Child Dimmer",
+				getChildDNI(childName),
+				null,
+				[
+					completedSetup: true,
+					isComponent: false,
+					label: "${device.displayName}-${childName.capitalize()}"
+				]
+			)
+
+			if (child) {
+				child.refresh()
+			}
+		}
+		catch (e) {
+			log.warn "Unable to create child device for '${childName}' because the 'Child Dimmer' device type handler has not been installed and published."
+		}
+	}
+}
+
+private addChildProgramSwitch(childName) {
+	if (!findChildDevice(childName)) {
+		logDebug "Creating Child Switch for ${childName.capitalize()} Program"
+
+		def child = addChildDevice(
+			"smartthings",
+			"Child Switch",
+			getChildDNI(childName),
+			null,
+			[
+				completedSetup: true,
+				isComponent: false,
+				label: "${device.displayName}-${childName.capitalize()} Program"
+			]
+		)
+
+		child?.sendEvent(name:"switch", value:"off", displayed: false)
+	}
+}
+
+private removeChildDevice(childName) {
+	def child = findChildDevice(childName)
+	if (child) {
+		log.warn "Removing ${child.displayName}} "
+		deleteChildDevice(child.deviceNetworkId)
 	}
 }
 
 
 def ping() {
 	logDebug "ping()..."
-	
+
 	if (!isDuplicateCommand(state.lastCheckinTime, 60000)) {
-		
+
 		healthPoll()
-		
+
 		// Restart the polling schedule in case that's the reason why it's gone too long without checking in and had to be pinged.
 		startHealthPollSchedule()
-	}	
+	}
 }
 
 private startHealthPollSchedule() {
@@ -342,51 +542,58 @@ private startHealthPollSchedule() {
 
 
 def healthPoll() {
-	logDebug "healthPoll()..."	
+	logDebug "healthPoll()..."
 	sendCommands([manufacturerSpecificGetCmd()])
 }
 
 
 def configure() {
 	logDebug "configure()..."
-			
+
+	state.syncAll = true
+
+	def cmds = []
 	if (!state.isDeviceInitialized) {
-		runIn(8, executeInitializeCmds)
+		runIn(10, initializeDevice)
 	}
 	else {
-		state.syncAll = true
 		runIn(2, updateSyncStatus)
-		executeConfigureCmds()
-	}	
-	return []
+		cmds += getConfigureCmds()
+	}
+	return defaultDelayBetween(cmds)
 }
 
 
-def executeInitializeCmds() {
-	state.isDeviceInitialized = true	
-	state.whiteEnabled = true
-	state.colorEnabled = true
-	
+def initializeDevice() {
+	addRemoveChildSwitches()
+
+	state.isDeviceInitialized = true
+
 	def cmds = [
-		versionGetCmd(),
-		switchColorRGBSetCmd([255, 255, 255]),
-		switchColorWhiteSetCmd(255),
-		switchMultilevelSetCmd(99, 0)
+		switchMultilevelSetCmd(100, 0),
+		switchColorSetCmd(activeRGBW)
 	]
-	
+
 	cmds += getRefreshCmds()
-	
-	sendCommands(cmds, 1000)
+
+	cmds += getConfigureCmds()
+
+	sendCommands(defaultDelayBetween(cmds))
 }
 
-
-def executeConfigureCmds() {
+private getConfigureCmds() {
 	def cmds = []
-	
-	configParams.each { 
+
+	if (state.syncAll) {
+		cmds << multiChannelAssociationRemoveCmd(1)
+		cmds << associationSetCmd(1)
+		cmds << associationSetCmd(2)
+	}
+
+	configParams.each {
 		if (it.options) {
 			def storedVal = getParamStoredValue(it.num)
-			if (state.syncAll || "${it.value}" != "${storedVal}") {
+			if (state.syncAll || it.value != storedVal) {
 				if (storedVal != null) {
 					logDebug "CHANGING ${it.name}(#${it.num}) from ${storedVal} to ${it.value}"
 					cmds << configSetCmd(it, it.value)
@@ -395,51 +602,27 @@ def executeConfigureCmds() {
 			}
 		}
 	}
-	
 	state.syncAll = false
-	
-	sendCommands(cmds, 1000)
-}
-
-private sendCommands(cmds, delay=100) {
-	def actions = []
-	cmds?.each {
-		actions << new physicalgraph.device.HubAction(it)
-	}
-	sendHubCommand(actions, delay)
-	return []
+	return cmds
 }
 
 
 def refresh() {
 	logDebug "refresh()..."
-	
+
 	updateSyncStatus()
-	
-	if (device.currentValue("activeProgram") != "0") {
-		sendActiveProgramEvent(0)
-	}
-	
-	def cmds = [
-		versionGetCmd(),
-		meterGetCmd(meterScalePower),
-		configGetCmd(presetProgramsParam)
-	]
-	
-	cmds += getRefreshCmds()
-	
-	return delayBetween(cmds, 1000)
-} 
+
+	return defaultDelayBetween(getRefreshCmds())
+}
 
 private getRefreshCmds() {
 	def cmds = [
-		basicGetCmd(),		
+		versionGetCmd(),
+		meterGetCmd(meterScalePower),
+		configGetCmd(presetProgramsParam),
 		switchMultilevelGetCmd()
 	]
-	
-	COLOR_COMPONENTS.each {
-		cmds << switchColorGetCmd(it.value)
-	}
+	cmds += switchColorGetChangedCmds()
 	return cmds
 }
 
@@ -450,252 +633,441 @@ def startRainbowProgram() { return startProgram(8) }
 def startPolarLightsProgram() { return startProgram(9) }
 def startPoliceProgram() { return startProgram(10) }
 
-private startProgram(program) {
+def startProgram(program) {
 	logDebug "startProgram($program)..."
 	
-	sendActiveProgramEvent(program)
+	def cmds = [
+		configSetCmd(presetProgramsParam, safeToInt(program))
+	]
 	
-	return delayBetween([
-		configSetCmd(presetProgramsParam, safeToInt(program)),
-		configGetCmd(presetProgramsParam)
-	], 2000)
+	if (assumeSuccessSetting) {	
+		handlePresetProgramParamReport(safeToInt(program))
+	}
+	else {
+		cmds << configGetCmd(presetProgramsParam)
+	}
+	return cmds
 }
 
 
 def stopProgram() {
 	logDebug "stopProgram()..."
-	
-	return delayBetween([
+
+	return defaultDelayBetween([
 		configSetCmd(presetProgramsParam, 0),
 		configGetCmd(presetProgramsParam)
-	], 2000)
-}
-
-
-void childOn(dni) {
-	logDebug "childOn(${dni})..."
-	def cmds = []
-	if ("${dni}".endsWith("COLOR")) {
-		cmds += colorOn()
-	}
-	else {
-		cmds += whiteOn()
-	}
-	sendCommands(cmds)
-}
-
-
-void childOff(dni) {
-	logDebug "childOff(${dni})..."
-	def cmds = []
-	if ("${dni}".endsWith("COLOR")) {
-		cmds += colorOff()
-	}
-	else {
-		cmds += whiteOff()
-	}
-	sendCommands(cmds)
-}
-
-
-def whiteOn() {
-	logDebug "whiteOn()..."	
-	
-	state.whiteEnabled = true
-	sendSwitchEvent("whiteSwitch", "on", "digital")
-	
-	def cmds = []
-	
-	if (device.currentValue("switch") == "off" && state.colorEnabled) {
-		state.colorEnabled = false
-		cmds << switchColorRGBSetCmd([0,0,0])
-		cmds << "delay 500"
-	}
-	
-	cmds << switchColorWhiteSetCmd(255)
-	
-	if (device.currentValue("switch") == "off") {
-		cmds << "delay 500"
-		cmds += on()
-	}	
-	return cmds
-}
-
-
-def whiteOff() {
-	logDebug "whiteOff()..."
-	
-	sendSwitchEvent("whiteSwitch", "off", "digital")
-	
-	def cmds = []	
-	if (state.colorEnabled) {
-		state.whiteEnabled = false
-		cmds << switchColorWhiteSetCmd(0)
-	}
-	else {
-		cmds += off()		
-	}
-	return cmds
-}
-
-
-def colorOn() {
-	logDebug "colorOn()..."
-	def data = [hex: device.currentValue("color")]
-	return getSetColorCmds(data)	
-}
-
-
-def colorOff() {
-	logDebug "colorOff()..."
-	
-	sendSwitchEvent("colorSwitch", "off", "digital")
-	
-	def cmds = []	
-	if (state.whiteEnabled) {
-		state.colorEnabled = false
-		cmds << switchColorRGBSetCmd([0, 0, 0])
-	}
-	else {
-		cmds += off()
-	}
-	return cmds
-}
-
-private sendSwitchEvent(name, value, type) {
-	def desc = "${name} is ${value} (${type})"
-	
-	logDebug "${desc}"
-	
-	if (device.currentValue(name) != value) {
-		sendEvent(name: name, value: value, type: type, descriptionText: "${device.displayName}: ${desc}")
-	}
-	
-	if (name != "switch") {
-		sendChildSwitchEvent(name, value, type)
-	}
-}
-
-private sendChildSwitchEvent(name, value, type) {
-	def childType = name.contains("color") ? "color" : "white"
-	def child = findChildSwitch(getChildSwitchDNI(childType))
-	if (child && child?.currentValue("switch") != value) {
-		child.sendEvent(name: "switch", value: value, type: type)
-	}
+	])
 }
 
 
 def on() {
-	logDebug "on()..."	
+	logDebug "on()..."
+
+	if (activePresetProgram) {
+		handlePresetProgramStopping()
+	}
 	
-	state.pendingSwitch = "on"
+	def cmds = []
+
+	def rgbw = activeRGBW
+	if (!rgbwHasValue(rgbw)) {
+		rgbw = lastRGBW
+		if (!rgbwHasValue(rgbw)) {
+			rgbw = defaultRGBW
+		}
+		cmds << switchColorSetCmd(rgbw)
 		
-	return delayBetween([
-		basicSetCmd(0xFF),
-		basicGetCmd()
-	], 500)
+		if (!assumeSuccessSetting) {
+			cmds += switchColorGetChangedCmds()
+		}
+	}
+
+	storeRGBW(rgbw)
+
+	cmds += getOnOffCmds(0xFF)
+	
+	if (assumeSuccessSetting) {
+		updateAllColorAttributes(rgbw, "on")		
+	}
+
+	return defaultDelayBetween(cmds)
 }
 
 
 def off() {
 	logDebug "off()..."
 	
-	state.pendingSwitch = "off"
-	
-	def rampRate = dimmerRampRateRemoteParam.value
-	def delayMs = !rampRate ? 1000 : ((rampRate + 2) * 1000)
-	
-	if (rampRate > 3) {
-		sendSwitchEvent("switch", "off", "digital")
+	if (activePresetProgram) {
+		handlePresetProgramStopping()
 	}
 	
+	if (assumeSuccessSetting) {
+		updateAllColorAttributes(activeRGBW, "off")
+	}
+	
+	return defaultDelayBetween(getOnOffCmds(0x00))
+}
+
+private getOnOffCmds(value) {
 	return [
-		basicSetCmd(0x00),
-		"delay ${delayMs}",
-		basicGetCmd()
+		basicSetCmd(value),
+		switchMultilevelGetCmd()
 	]
 }
 
 
 def setLevel(level) {
-	return setLevel(level, 0)
+	return setLevel(level, dimmerRampRateRemoteParam.value)
 }
 
 def setLevel(level, duration) {
 	logDebug "setLevel($level, $duration)..."
 
-	return delayBetween([
-		switchMultilevelSetCmd(level, 0),
-		switchMultilevelGetCmd()
-	], 500)
+	if (!safeToInt(level)) {
+		level = 1
+	}
+	
+	if (activePresetProgram) {
+		handlePresetProgramStopping()
+	}
+	
+	def cmds = []	
+	def rgbw = activeRGBW
+
+	if (deviceIsOff) {
+		if (!rgbwHasValue(rgbw)) {
+			rgbw = defaultRGBW
+			cmds << switchColorSetCmd(rgbw)
+			
+			if (!assumeSuccessSetting) {
+				cmds += switchColorGetChangedCmds()
+			}
+		}
+	}
+	
+	storeRGBW(rgbw)
+
+	cmds << switchMultilevelSetCmd(level, duration)
+	cmds << switchMultilevelGetCmd()
+	
+	if (assumeSuccessSetting) {
+		updateAllColorAttributes(rgbw, "on")		
+	}
+	
+	return defaultDelayBetween(cmds)
 }
 
 
 def setSaturation(percent) {
-	logDebug "setSaturation($percent)..."
-	
-	def data = [saturation: percent]
-	return getSetColorCmds(data)
+	setColor([saturation: percent])
 }
 
 
 def setHue(value) {
-	logDebug "setHue($value)..."
-	
-	def data = [hue: value]
-	return getSetColorCmds(data)
+	setColor([hue: value])
 }
 
 
-def setColor(value) {
-	logDebug "setColor($value)..."
-	
-	return getSetColorCmds(value)
-}
+def setColor(data) {
+	logDebug "setColor(${data})..."
 
-
-private getSetColorCmds(data) {	
 	def rgb
-	def hex
-	
-	if (data.hex) {		
-		rgb = data.hex.findAll(/[0-9a-fA-F]{2}/).collect { Integer.parseInt(it, 16) }
-		hex = data.hex
+
+	if (data.red != null && data.green != null && data.blue != null) {
+		rgb = [data.red, data.green, data.blue]
+	}
+	else if (data.hex) {
+		rgb = colorUtil.hexToRgb(data.hex)
 	}
 	else {
-		rgb = huesatToRGB(data.hue, data.saturation)		
-		hex = rgbToHex(rgb)
+		rgb = huesatToRGB(data.hue, data.saturation)
 	}
-	
-	def cmds = []
-	
+
 	if (rgb) {
-		state.colorEnabled = true
+		def rgbw = activeRGBW
+		rgbw.red = rgb[0]
+		rgbw.green = rgb[1]
+		rgbw.blue = rgb[2]
 		
-		sendSwitchEvent("colorSwitch", "on", "digital")		
-		sendEvent(getEventMap("color", hex))
-	
-		def hsv = rgbToHSV(rgb)	
-		sendEvent(getEventMap("hue", hsv.hue))
-		sendEvent(getEventMap("saturation", hsv.saturation))
-		
-		if (device.currentValue("switch") == "off" && state.whiteEnabled) {
-			state.whiteEnabled = false
-			cmds << switchColorWhiteSetCmd(0)
-			cmds << "delay 500"
-		}
-		
-		cmds << switchColorRGBSetCmd(rgb)
-		
-		if (device.currentValue("switch") == "off") {
-			cmds << "delay 500"
-			cmds += on()
-		}
+		sendCommands(defaultDelayBetween(getDimmerOnCmds("color", rgbw)))
 	}
 	else {
 		log.warn "Unable to get RGB from ${data}"
 	}
+}
+
+
+def setWhiteLevel(level) {
+	childSetLevel(getChildDNI("white"), level)
+}
+
+def setColorLevel(level) {
+	childSetLevel(getChildDNI("color"), level)
+}
+
+def setRedLevel(level) {
+	childSetLevel(getChildDNI("red"), level)
+}
+
+def setGreenLevel(level) {
+	childSetLevel(getChildDNI("green"), level)
+}
+
+def setBlueLevel(level) {
+	childSetLevel(getChildDNI("blue"), level)
+}
+
+void childSetLevel(childDNI, level, duration=0) {
+	logDebug "childSetLevel(${childDNI}, ${level}, ${duration})..."
+
+	if (!level) {
+		childOff(childDNI)
+	}
+	else {
+		def childName =  getChildName(childDNI)
+		if (childName) {
+			def rgbw = activeRGBW
+
+			if (childName != "color") {
+				rgbw["${childName}"] = levelToColor(level)
+			}
+			else {
+				def colorLevel = safeToLevel(device.currentValue("colorLevel"))
+				def scale = (level / colorLevel)
+
+				rgbw.red = safeToColor(rgbw.red * scale)
+				rgbw.green = safeToColor(rgbw.green * scale)
+				rgbw.blue = safeToColor(rgbw.blue * scale)
+			}
+
+			sendCommands(defaultDelayBetween(getDimmerOnCmds(childName, rgbw)))
+		}
+		else {
+			log.warn "Unknown Child: ${childDNI}"
+		}
+	}
+}
+
+
+def whiteOn() {
+	childOn(getChildDNI("white"))
+}
+
+def colorOn() {
+	childOn(getChildDNI("color"))
+}
+
+def redOn() {
+	childOn(getChildDNI("red"))
+}
+
+def greenOn() {
+	childOn(getChildDNI("green"))
+}
+
+def blueOn() {
+	childOn(getChildDNI("blue"))
+}
+
+void childOn(childDNI) {
+	logDebug "childOn(${childDNI})..."
+
+	def childName = getChildName(childDNI)
+	if (childName) {
+
+		def program = PRESET_PROGRAMS.find { it.key == childName }
+		if (program) {
+			sendCommands(startProgram(program.value))
+		}
+		else if (DIMMER_NAMES.find { it == childName }) {
+			def rgbw = activeRGBW
+			if (childName == "color") {
+				if (!rgbwHasColorValue(rgbw)) {
+					rgbw.red = getChildLastColor("red")
+					rgbw.green = getChildLastColor("green")
+					rgbw.blue = getChildLastColor("blue")
+				}
+			}
+			else {
+				if (!rgbw["${childName}"]) {
+					rgbw["${childName}"] = getChildLastColor(childName)
+				}
+			}
+			sendCommands(defaultDelayBetween(getDimmerOnCmds(childName, rgbw)))
+		}
+	}
+	else {
+		log.warn "Unknown Child: ${childDNI}"
+	}
+}
+
+private getDimmerOnCmds(childName, rgbw) {	
+	if (activePresetProgram) {
+		handlePresetProgramStopping()
+	}
+	
+	if (childName == "color") {
+		if (!rgbwHasColorValue(rgbw)) {
+			rgbw.red = 255
+			rgbw.green = 255
+			rgbw.blue = 255
+		}
+
+		if (deviceIsOff) {
+			// Device is off so only color channels should turn on.
+			state.lastWhite = rgbw.white
+			rgbw.white = 0
+		}
+	}
+	else {
+		if (!rgbw["${childName}"]) {
+			rgbw["${childName}"] = 255
+		}
+
+		if (deviceIsOff) {
+			// Device is off so only the specified channel should turn on.
+			rgbw.each {
+				if (it.key != childName) {
+					storeChildLastColor(childName, it.value)
+					it.value = 0
+				}
+			}
+		}
+	}
+
+	def cmds = [
+		switchColorSetCmd(rgbw)
+	]
+	
+	if (deviceIsOff) {
+		cmds += getOnOffCmds(0xFF)
+	}
+
+	if (assumeSuccessSetting) {
+		updateAllColorAttributes(rgbw, "on", childName)		
+	}
+	else {
+		cmds += switchColorGetChangedCmds(rgbw)
+	}	
 	return cmds
+}
+
+
+def whiteOff() {
+	childOff(getChildDNI("white"))
+}
+
+def colorOff() {
+	childOff(getChildDNI("color"))
+}
+
+def redOff() {
+	childOff(getChildDNI("red"))
+}
+
+def greenOff() {
+	childOff(getChildDNI("green"))
+}
+
+def blueOff() {
+	childOff(getChildDNI("blue"))
+}
+
+void childOff(childDNI) {
+	logDebug "childOff(${childDNI})..."
+
+	def childName = getChildName(childDNI)
+	if (childName) {
+
+		def cmds = []
+		if (DIMMER_NAMES.find { it == childName }) {
+			cmds += getDimmerOffCmds(childName)
+		}
+		else if (PRESET_PROGRAMS.find { it.key == childName }) {
+			cmds += stopProgram()
+		}
+
+		sendCommands(defaultDelayBetween(cmds))
+
+	}
+	else {
+		log.warn "Unknown Child: ${childDNI}"
+	}
+}
+
+private getDimmerOffCmds(childName) {
+	if (activePresetProgram) {
+		handlePresetProgramStopping()
+	}
+	
+	def rgbw = activeRGBW
+
+	if (childName == "color") {
+		rgbw.each {
+			if (it.key != "white") {
+				storeChildLastColor(it.key, it.value)
+				rgbw["${it.key}"] = 0
+			}
+		}
+	}
+	else if (childName == "white") {
+		storeChildLastColor(childName, rgbw.white)
+		rgbw.white = 0
+	}
+	else {
+		def lastValue = rgbw["${childName}"]
+
+		rgbw["${childName}"] = 0
+
+		if (rgbwHasColorValue(rgbw)) {
+			lastValue = 0
+		}
+		storeChildLastColor(childName, lastValue)
+	}
+
+	def cmds = []
+	if (rgbwHasValue(rgbw)) {
+		cmds << switchColorSetCmd(rgbw)
+		if (!assumeSuccessSetting) {
+			cmds += switchColorGetChangedCmds(rgbw)
+		}
+	}
+	else {
+		cmds += getOnOffCmds(0x00)
+	}
+	
+	if (assumeSuccessSetting) {
+		updateAllColorAttributes(rgbw, "off", childName)		
+	}	
+	return cmds
+}
+
+
+void childRefresh(childDNI) {
+	logDebug "childRefresh(${childDNI})..."
+
+	def childName = getChildName(childDNI)
+	if (childName) {
+		def cmds = []
+		if (childName != "color") {
+			def id = COLOR_COMPONENTS.find { it.key == childName }?.value
+			if (id != null) {
+				cmds << switchColorGetCmd(id)
+			}
+		}
+		else {
+			COLOR_COMPONENTS.findAll { it.key != "white" }.each {
+				cmds << switchColorGetCmd(it.value)
+			}
+		}
+
+		cmds << switchMultilevelGetCmd()
+
+		sendCommands(defaultDelayBetween(cmds))
+	}
+	else {
+		log.warn "Unknown Child: ${childDNI}"
+	}
 }
 
 
@@ -711,35 +1083,41 @@ private meterGetCmd(meterScale) {
 	return secureCmd(zwave.meterV3.meterGet(scale: meterScale))
 }
 
-private basicSetCmd(val, endpoint=null) {
-	return multiChannelCmdEncapCmd(zwave.basicV1.basicSet(value: val), endpoint)
+private basicSetCmd(val) {
+	return secureCmd(zwave.basicV1.basicSet(value: val))
 }
 
-private basicGetCmd(endpoint) {
-	return multiChannelCmdEncapCmd(zwave.basicV1.basicGet(), endpoint)
-}
-
-private switchMultilevelSetCmd(level, duration) {
-	def levelVal = validateRange(level, 99, 0, 99)
+private switchMultilevelSetCmd(level, duration=0) {
+	def levelVal = safeToLevel(level, 99)
 	def durationVal = validateRange(duration, 0, 0, 100)
-	
-	return secureCmd(zwave.switchMultilevelV3.switchMultilevelSet(dimmingDuration: durationVal, value: levelVal))
+
+	return secureCmd(zwave.switchMultilevelV2.switchMultilevelSet(dimmingDuration: durationVal, value: levelVal))
 }
 
 private switchMultilevelGetCmd() {
-	return secureCmd(zwave.switchMultilevelV3.switchMultilevelGet())
+	return secureCmd(zwave.switchMultilevelV2.switchMultilevelGet())
 }
 
-private switchColorRGBSetCmd(rgb) {
-	return secureCmd(zwave.switchColorV3.switchColorSet(red: rgb[0], green: rgb[1], blue: rgb[2]))
+private switchColorSetCmd(rgbw) {
+	storeRGBW(rgbw)
+
+	return secureCmd(zwave.switchColorV3.switchColorSet(red: safeToInt(rgbw.red), green:safeToInt(rgbw.green), blue:safeToInt(rgbw.blue), warmWhite:safeToInt(rgbw.white)))//, dimmingDuration: dimmerRampRateRemoteParam.value))
 }
 
-private switchColorWhiteSetCmd(value) {
-	return secureCmd(zwave.switchColorV3.switchColorSet(warmWhite: value))
+private switchColorGetChangedCmds(rgbw=[:]) {
+	def oldRGBW = activeRGBW
+
+	def cmds = []
+	COLOR_COMPONENTS.each {
+		if (rgbw["${it.key}"] != oldRGBW["${it.key}"]) {
+			cmds << switchColorGetCmd(it.value)
+		}
+	}
+	return cmds
 }
 
-private switchColorGetCmd(colorId) {	
-	return secureCmd(zwave.switchColorV3.switchColorGet(colorComponent: colorId))
+private switchColorGetCmd(colorComponentId) {
+	return secureCmd(zwave.switchColorV3.switchColorGet(colorComponentId: colorComponentId))
 }
 
 private configSetCmd(param, value) {
@@ -750,13 +1128,20 @@ private configGetCmd(param) {
 	return secureCmd(zwave.configurationV1.configurationGet(parameterNumber: param.num))
 }
 
-private multiChannelCmdEncapCmd(cmd, endpoint) {	
-	if (endpoint) {
-		return secureCmd(zwave.multiChannelV3.multiChannelCmdEncap(destinationEndPoint:safeToInt(endpoint)).encapsulate(cmd))
-	}
-	else {
-		return secureCmd(cmd)
-	}
+private associationSetCmd(group) {
+	return secureCmd(zwave.associationV2.associationSet(groupingIdentifier:group, nodeId:[zwaveHubNodeId]))
+}
+
+private associationRemoveCmd(group) {
+	return secureCmd(zwave.associationV2.associationRemove(groupingIdentifier:group))
+}
+
+private associationGetCmd(group) {
+	return secureCmd(zwave.associationV2.associationGet(groupingIdentifier:group))
+}
+
+private multiChannelAssociationRemoveCmd(group) {
+	return secureCmd(zwave.multiChannelAssociationV2.multiChannelAssociationRemove(groupingIdentifier:group, nodeId:[zwaveHubNodeId]))
 }
 
 private secureCmd(cmd) {
@@ -765,7 +1150,7 @@ private secureCmd(cmd) {
 	}
 	else {
 		return cmd.format()
-	}	
+	}
 }
 
 private isSecurityEnabled() {
@@ -776,6 +1161,25 @@ private isSecurityEnabled() {
 		return false
 	}
 }
+
+
+private defaultDelayBetween(cmds) {
+	return cmds ? delayBetween(cmds, commandDelaySetting) : []
+}
+
+private sendCommands(cmds) {
+	def actions = []
+
+	cmds?.each {
+		actions << new physicalgraph.device.HubAction(it)
+	}
+
+	if (actions) {
+		sendHubCommand(actions)
+	}
+	return []
+}
+
 
 private getConfigParams() {
 	return [
@@ -797,7 +1201,6 @@ private getConfigParams() {
 		switchModeParam,
 		dimmerRampRateLocalParam,
 		dimmerRampRateRemoteParam
-		// activeReportsParam,
 		// singleClickOnFrameParam,
 		// singleClickOffFrameParam,
 		// doubleClickOffFrameParam,
@@ -882,22 +1285,6 @@ private getDimmerRampRateRemoteParam() {
 	return getParam(152, "Dimmer Ramp Rate (remote control)", 2, 3, rampRateOptions)
 }
 
-private getActiveReportsParam() {  // *** NOT IN MANUAL ***
-	def options = [
-		1:"Root/EP1 Switch Color Report (RGBW)",
-		2:"Root/EP1 Central Scene Report",
-		4:"EP2 Switch Multilevel Report (Red)",
-		8:"EP3 Switch Multilevel Report (Green)",
-		16:"EP4 Switch Multilevel Report (Blue)",
-		32:"EP5 Switch Multilevel Report (White)",
-		64:"EP6 Sensor Multilevel Report  (analog input 1)",
-		128:"EP7 Sensor Multilevel Report  (analog input 2)",
-		256:"EP8 Sensor Multilevel Report  (analog input 3)",
-		512:"EP9 Sensor Multilevel Report  (analog input 4)"
-	]
-	return getParam(153, "Active Reports", 2, 1023, options)
-}
-
 private getSingleClickOnFrameParam() {
 	return getParam(154, "Single Click ON Trigger for Associated Devices", 4, 4294967295)//, [0-99/255 for each byte]
 }
@@ -914,33 +1301,33 @@ private getDoubleClickOffFrameParam() {
 
 private getPresetProgramsParam() {
 	// def options = [
-		// 0:"Disabled", 
-		// 6:"Fireplace", 
-		// 7:"Storm", 
-		// 8:"Rainbow", 
-		// 9:"Polar Lights", 
+		// 0:"Disabled",
+		// 6:"Fireplace",
+		// 7:"Storm",
+		// 8:"Rainbow",
+		// 9:"Polar Lights",
 		// 10:"Police"
 	// ]
-	return getParam(157, "Preset Programs", 1, 0) 
+	return getParam(157, "Preset Programs", 1, 0)
 }
 
 
 private getParam(num, name, size, defaultVal, options=null) {
-	def val = safeToInt((settings ? settings["configParam${num}"] : null), defaultVal) 
-	
+	def val = safeToInt((settings ? settings["configParam${num}"] : null), defaultVal)
+
 	def map = [num: num, name: name, size: size, value: val]
 	if (options) {
 		map.valueName = options?.find { k, v -> "${k}" == "${val}" }?.value
 		map.options = setDefaultOption(options, defaultVal)
 	}
-	
+
 	return map
 }
 
 private setDefaultOption(options, defaultVal) {
 	return options?.collect { k, v ->
 		if ("${k}" == "${defaultVal}") {
-			v = "${v} [DEFAULT]"		
+			v = "${v} [DEFAULT]"
 		}
 		["$k": "$v"]
 	}
@@ -952,7 +1339,7 @@ private getInputTypeOptions() {
 	return [
 		0:"Analog Sensor with No Pull-up",
 		1:"Analog Sensor with Pull-up",
-		2:"Momentary Switch", 
+		2:"Momentary Switch",
 		3:"Toggle Switch (any change)",
 		4:"Toggle Switch (up=on/down=off)"
 	]
@@ -975,19 +1362,19 @@ private getSceneControlOptions() {
 
 private getReportingFrequencyOptions() {
 	def options = [0:"Disabled"]
-	
+
 	options["30"] = "30 Seconds"
 	options["45"] = "45 Seconds"
 	options["60"] = "1 Minute"
-	
+
 	(2..15).each {
 		options["${it * 60}"] = "${it} Minutes"
 	}
-	
+
 	options["${30 * 60}"] = "30 Minutes"
 	options["${45 * 60}"] = "45 Minutes"
 	options["${60 * 60}"] = "1 Hour"
-	
+
 	(2..9).each {
 		options["${it * 60 * 60}"] = "${it} Hours"
 	}
@@ -996,50 +1383,59 @@ private getReportingFrequencyOptions() {
 
 private getRampRateOptions() {
 	def options = [
-		0:"Instant", 
+		0:"Instant",
 		1:"1 Second"
 	]
-	
+
 	(2..15).each {
 		options["${it}"] = "${it} Seconds"
 	}
-	
-	[30, 45]. each {
+
+	[30, 45, 60, 90, 120]. each {
 		options["${it}"] = "${it} Seconds"
 	}
-		
-	options["60"] = "1 Minute"
-	
-	(2..15).each {	// max 127 minutes
-		options["${127 + it}"] = "${it} Minutes"	
-	}	
+
+	// (2..15).each {	// max 127 minutes
+		// options["${127 + it}"] = "${it} Minutes"
+	// }
+	return options
+}
+
+private getCommandDelayOptions() {
+	def options = [50:"50ms"]	
+	(1..20).each {
+		options["${it * 100}"] = "${it * 100}ms"
+	}
 	return options
 }
 
 
-def parse(description) {	
+def parse(description) {
 	def result = null
-	
 	if (description != "updated") {
 		def cmd = zwave.parse(description, commandClassVersions)
 		if (cmd) {
-			result = zwaveEvent(cmd)			
-		} 
+			if (descriptionMatchesCommand(description, switchMultilevelReportCommand)) {
+				result = handleSwitchMultilevelReport(cmd, description)
+			}
+			else if (descriptionMatchesCommand(description, switchColorReportCommand)) {
+				result = handleSwitchColorReport(cmd, description)
+			}
+			else {
+				result = zwaveEvent(cmd)
+			}
+		}
 		else {
 			logDebug("Couldn't zwave.parse '$description'")
 		}
-	}
-	
-	if (!isDuplicateCommand(state.lastCheckinTime, (5 * 60 * 1000))) {
-		sendLastCheckinEvent()
 	}
 	return result
 }
 
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
-	def encapsulatedCmd = cmd.encapsulatedCommand(commandClassVersions)	
-	
+	def encapsulatedCmd = cmd.encapsulatedCommand(commandClassVersions)
+
 	def result = []
 	if (encapsulatedCmd) {
 		result += zwaveEvent(encapsulatedCmd)
@@ -1053,7 +1449,7 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 
 def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap cmd) {
 	def encapsulatedCommand = cmd.encapsulatedCommand(commandClassVersions)
-	
+
 	if (encapsulatedCommand) {
 		return zwaveEvent(encapsulatedCommand, cmd.sourceEndPoint)
 	}
@@ -1065,115 +1461,235 @@ def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap 
 
 
 def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerSpecificReport cmd) {
-	logTrace "Device Successfully Polled"	
+	logTrace "Device Successfully Polled"
 	return []
 }
 
 
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 	logTrace "VersionReport: $cmd"
-	
+
 	def version = "${cmd.applicationVersion}.${cmd.applicationSubVersion}"
-	sendEvent(getEventMap("firmwareVersion", version))
-	return []	
+	sendEventIfChanged("firmwareVersion", version)
+	return []
+}
+
+
+def zwaveEvent(physicalgraph.zwave.commands.switchcolorv3.SwitchColorSet cmd) {
+	logTrace "${cmd}"
+
+	def rgbw = [:]
+
+	COLOR_COMPONENTS.each { name, id ->
+		def value = cmd.colorComponents?.find { it.key == id }?.value
+		if (value != null) {
+			rgbw["${name}"] = value
+			state["${name}Value"] = value
+			sendChildEvent(name, "level", colorToLevel(value), "%")
+		}
+	}
+
+	if (rgbw) {
+		sendColorEvents(rgbw)
+
+		sendCommands([ switchMultilevelGetCmd() ])
+
+		if (rgbwHasValue(rgbw) && deviceIsOff) {
+			// The color was changed with an input switch, but that won't turn the device on so wait 3 seconds and turn it on if it's still off.
+			runIn(3, physicalOnBackup)
+		}
+	}
+	return []
+}
+
+def physicalOnBackup() {
+	if (deviceIsOff) {
+		log.warn "turning device on after physical change"
+		sendCommands(defaultDelayBetween(getOnOffCmds(0xFF)))
+	}
 }
 
 
 def zwaveEvent(physicalgraph.zwave.commands.switchcolorv3.SwitchColorReport cmd) {
-	logTrace "SwitchColorReport: $cmd"
+	logTrace "${cmd}"
+	// Ignoring because SmartThings didn't fully implement the Switch Color v3 command class so the DTH is manually parsing those commands to get the targetValue.
+	return []
+}
 
-	state["cc${cmd.colorComponentId}Value"] = cmd.value
+private handleSwitchColorReport(cmd, description) {
+	def targetValue = parsePayloadTargetValue(description, switchColorReportCommand, 2)
 
-	if ("${cmd.colorComponentId}" == "${COLOR_COMPONENTS.white}") {
-		def whiteEnabled = (cmd.value != 0)
-		state.whiteEnabled = whiteEnabled
-		
-		def whiteSwitchVal = (device.currentValue("switch") == "on" && whiteEnabled) ? "on" : "off"
-		sendSwitchEvent("whiteSwitch", whiteSwitchVal, "physical")
+	logTrace "${cmd}, targetValue: ${targetValue}"
+
+	if (targetValue == null) {
+		targetValue = cmd.value
 	}
-	else {
-		runIn(2, checkForColorComponentChanges)
+
+	def name = COLOR_COMPONENTS.find { it.value == cmd.colorComponentId }.key
+	if (name) {		
+		updateColorAttributes(name, targetValue)
+		runIn(2, sendColorEvents)
 	}
 	return []
 }
 
-def checkForColorComponentChanges() {
-	def rgb = [
-		state["cc${COLOR_COMPONENTS.red}Value"],
-		state["cc${COLOR_COMPONENTS.green}Value"],
-		state["cc${COLOR_COMPONENTS.blue}Value"]
-	]
+private updateAllColorAttributes(rgbw, switchValue, childName=null) {	
+	logTrace "updateAllColorAttributes($rgbw, $switchValue, $childName)..."
 	
-	logTrace "checkForColorComponentChanges: [colorEnabled: ${state.colorEnabled}, rgb: ${rgb}]"
-	
-	if (rgb[0] != null && rgb[1] != null && rgb[2] != null) {	
-		def colorEnabled = (rgb.find { it != 0 } != null)
-		
-		state.colorEnabled = colorEnabled
-
-		if (colorEnabled) {
-			def hsv = rgbToHSV(rgb)
-			def hex = rgbToHex(rgb)
-
-			sendEvent(getEventMap("color", hex))
-			sendEvent(getEventMap("hue", hsv.hue))
-			sendEvent(getEventMap("saturation", hsv.saturation))
-			
-			if (device.currentValue("switch") == "on" && device.currentValue("colorSwitch") == "off") {
-				sendSwitchEvent("colorSwitch", "on", "physical")
-			}
+	rgbw.each {
+		def colorSwitchValue
+		if (!childName || (childName == "color" && it.key != "white") || (childName == it.key)) {
+			colorSwitchValue = (switchValue == "on" && it.value) ? "on" : "off"
+			updateColorAttributes(it.key, it.value, colorSwitchValue)
 		}
 	}
-}
-
-
-def zwaveEvent(physicalgraph.zwave.commands.switchmultilevelv2.SwitchMultilevelReport cmd, endpoint=null) {
-	logTrace "SwitchMultilevelReport: ${cmd}" + (endpoint ? " - Endpoint ${endpoint}" : "")
 	
-	if (!endpoint) {
-		if (cmd.value) {
-			sendEvent(getEventMap("level", cmd.value, "%"))
-		}
-			
-		if (device.currentValue("switch") != (cmd.value ? "on" : "off")) {
-			handleSwitchReport(cmd.value)
+	if (!childName || childName != "white") {
+		if (switchValue == "off" && childName != "color" && rgbwHasColorValue(rgbw)) {
+			switchValue = ""  // Don't force switch state because R, G, or B was turned off, but other colors are still on.
 		}		
+		sendColorEvents(rgbw, switchValue)
 	}
+}
+
+private updateColorAttributes(name, colorValue, switchValue=null) {
+	sendChildEvent(name, "level", colorToLevel(colorValue), "%")
+		
+	state["${name}Value"] = colorValue
+	
+	if (!switchValue) {
+		switchValue = (deviceIsOff || !colorValue) ? "off" : "on"
+	}
+	
+	if (device.currentValue("${name}Switch") != switchValue) {
+		sendChildEvent(name, "switch", switchValue)
+	}
+}
+
+
+def sendColorEvents(rgbw=null, switchValue=null) {
+	logTrace "sendColorEvents(${rgbw})"
+
+	def isDigital = (rgbw = null)
+	rgbw = rgbw ?: activeRGBW
+
+	def rgb = rgbw.findAll { it.key != "white" }
+
+	def colorLevel = colorToLevel(rgb?.max { it.value }?.value)
+	if (colorLevel) {
+
+		def hsv = rgbToHSV(rgb.red, rgb.green, rgb.blue)
+		def hex = rgbToHex(rgb.red, rgb.green, rgb.blue)
+
+		sendEventIfChanged("color", hex)
+		sendEventIfChanged("hue", hsv.hue)
+		sendEventIfChanged("saturation", hsv.saturation)
+	}
+	
+	sendChildEvent("color", "level", colorLevel, "%")
+	
+	if (switchValue) {
+		sendChildEvent("color", "switch", (switchValue == "off" || !colorLevel) ? "off" : "on")
+	}
+
+	if (isDigital) {
+		def expectedRGBW = storedRGBW
+
+		def cmds = switchColorGetChangedCmds(expectedRGBW)
+		if (cmds) {
+			state.storedRGBW = [:]
+			sendCommands(defaultDelayBetween(cmds))
+		}
+	}
+
+	if (switchValue == null) {
+		syncChildSwitches(rgbw)
+	}
+}
+
+private syncChildSwitches(rgbw) {
+	def synced = true
+	
+	rgbw.each {
+		def expected = (deviceIsOff || !it.value) ? "off" : "on"
+		if (expected != device.currentValue("${it.key}Switch")) {
+			synced = false
+		}
+	}
+	
+	def expected = (deviceIsOff || !rgbwHasColorValue(rgbw)) ? "off" : "on"
+	if (device.currentValue("colorSwitch") != expected) {
+		synced = false
+	}
+
+	if (!synced) {
+		sendCommands([ switchMultilevelGetCmd() ])
+	}
+}
+
+
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
+	logTrace "BasicSet: ${cmd}"
+	// Ignoring these reports because SmartThings is automatically requesting them every 5 minutes.
 	return []
 }
 
 
-def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd, endpoint=null) {	
-	logTrace "BasicReport: $cmd" + (endpoint ? " - Endpoint ${endpoint}" : "")
+def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelReport cmd) {
+	logTrace "SensorMultilevelReport: ${cmd}"
+	return []
+}
 
-	if (!endpoint) {
-		handleSwitchReport(cmd.value)
+
+def zwaveEvent(physicalgraph.zwave.commands.switchmultilevelv3.SwitchMultilevelReport cmd) {
+	logTrace "${cmd}"
+	// Ignoring these reports because SmartThings doesn't support v4 of the Switch Multilevel command class so the DTH is manually parsing those commands to get the targetValue.
+	return []
+}
+
+private handleSwitchMultilevelReport(cmd, description) {
+	def targetValue = parsePayloadTargetValue(description, switchMultilevelReportCommand, 1)
+
+	logTrace "${cmd}, targetValue: ${targetValue}"
+
+	if (targetValue == null) {
+		targetValue = cmd.value
 	}
+
+	if (targetValue) {
+		sendEventIfChanged("level", targetValue, "%")
+	}
+
+	handleSwitchReport(targetValue)
+
 	return []
 }
 
 private handleSwitchReport(rawValue) {
 	def value = (rawValue ? "on" : "off")
-	def type = ((state.pendingSwitch == value) ? "digital" : "physical")
-	
-	sendSwitchEvent("switch", value, type)
-	
-	if (state.whiteEnabled || value == "off") {
-		sendSwitchEvent("whiteSwitch", value, type)
+
+	sendEventIfChanged("switch", value)
+
+	if (value == "off") {
+		DIMMER_NAMES.each {
+			sendChildEvent(it, "switch", "off")
+		}
 	}
-	if (state.colorEnabled || value == "off") {		
-		sendSwitchEvent("colorSwitch", value, type)
+	else {
+		def rgbw = activeRGBW
+		rgbw.each {
+			sendChildEvent(it.key, "switch", (it.value ? "on" : "off"))
+		}
+		sendChildEvent("color", "switch", (rgbwHasColorValue(rgbw) ? "on" : "off"))
 	}
-	
-	state.pendingSwitch = null
 }
 
 
 def zwaveEvent(physicalgraph.zwave.commands.centralscenev1.CentralSceneNotification cmd){
-	if (state.lastSequenceNumber != cmd.sequenceNumber) {		
+	if (state.lastSequenceNumber != cmd.sequenceNumber) {
 		state.lastSequenceNumber = cmd.sequenceNumber
-	
-		logTrace "${cmd}"
+
+		logTrace "CentralSceneNotification: ${cmd}"
 
 		def action
 		switch (cmd.keyAttributes){
@@ -1211,56 +1727,155 @@ private sendButtonEvent(buttonNumber, action, type) {
 
 
 def zwaveEvent(physicalgraph.zwave.commands.meterv3.MeterReport cmd) {
-	logTrace "MeterReport: $cmd"
-	
+	logTrace "MeterReport: ${cmd}"
+
 	def val = roundTwoPlaces(cmd.scaledMeterValue)
-		
+
 	if (cmd.scale == meterScalePower) {
-		sendEvent(getEventMap("power", val, "W"))
-	}	
+		sendEventIfChanged("power", val, "W")
+	}
 	return []
 }
 
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {
 	logTrace "ConfigurationReport: ${cmd}"
-	
+
 	if (cmd.parameterNumber == presetProgramsParam.num) {
-		if (device.currentValue("activeProgram") != "0") {
-			sendCommands(getRefreshCmds(), 2000)
-		}
-		sendActiveProgramEvent(cmd.scaledConfigurationValue)
+		handlePresetProgramParamReport(cmd.scaledConfigurationValue)
 	}
 	else {
-		updateSyncStatus("Syncing...")	
-	
+		updateSyncStatus("Syncing...")
+
 		runIn(5, updateSyncStatus)
-	
+
 		def param = configParams.find { it.num == cmd.parameterNumber }
 		if (param) {
+
+			if (param.num == switchModeParam.num) {
+				handleSwitchModeParamReport(cmd.scaledConfigurationValue)
+			}
+
 			state["configVal${param.num}"] = cmd.scaledConfigurationValue
-			logDebug "${param.name}(#${param.num}) = ${cmd.scaledConfigurationValue}"			
+
+			logDebug "${param.name}(#${param.num}) = ${cmd.scaledConfigurationValue}"
 		}
 		else {
 			logDebug "Unknown Parameter #${cmd.parameterNumber} = ${val}"
 		}
-	}	
+	}
 	return []
 }
 
-private sendActiveProgramEvent(program) {
-	sendEvent(getEventMap("activeProgram", "${program}"))
+private handlePresetProgramStopping() {	
+	if (assumeSuccessSetting) {
+		handlePresetProgramParamReport(0)
+	}
+	else {
+		sendCommands([
+			"delay 5000",
+			configGetCmd(presetProgramsParam)
+		])
+	}
+}
+
+private handlePresetProgramParamReport(value) {
+	def lastValue = activePresetProgram
+	
+	sendEventIfChanged("activeProgram", "${value}")
+
+	def cmds = [
+		"delay 3000"
+	]
+	
+	if (!value) {
+		PRESET_PROGRAMS.each {
+			sendPresetProgramSwitchEvent(it.value, "off")
+		}		
+		if (lastValue) {
+			cmds += switchColorGetChangedCmds()
+		}
+	}
+	else {
+		sendPresetProgramSwitchEvent(value, "on")		
+		if (lastValue) {
+			sendPresetProgramSwitchEvent(lastValue, "off")
+		}
+	}
+
+	if (value != lastValue) {
+		cmds << switchMultilevelGetCmd()
+	}
+	
+	sendCommands(cmds)
+}
+
+private sendPresetProgramSwitchEvent(program, switchValue) {	
+	def childName = PRESET_PROGRAMS.find { it.value == program }?.key	
+	if (childName) {
+		def child = findChildDevice(childName)	
+		if (child && child.currentValue("switch") != switchValue) {
+			logDebug "${child.displayName}: switch is ${switchValue}" 
+			child?.sendEvent(name: "switch", value: switchValue)
+		}
+	}
+}
+
+private handleSwitchModeParamReport(value) {
+	if (value != getParamStoredValue(switchModeParam.num)) {
+
+		// The state of the device gets messed up after changing this configuration parameter so set the colors back to their last value and turn the devic eon.
+
+		def cmds = [
+			"delay 3000",
+			switchColorSetCmd(activeRGBW)
+		]
+
+		cmds += getOnOffCmds(0xFF)
+
+		sendCommands(defaultDelayBetween(cmds))
+	}
 }
 
 
-def zwaveEvent(physicalgraph.zwave.Command cmd) {
-	log.warn "unhandled: $cmd"
+def zwaveEvent(physicalgraph.zwave.Command cmd, endpoint=null) {
+	log.warn "unhandled: $cmd" + ((endpoint != null) ? " (${endpoint})" : "")
 	return []
 }
 
 
-def updateSyncStatus(status=null) {	
-	if (status == null) {	
+private parsePayloadTargetValue(description, command, targetValueIndex) {
+	def targetValue = null
+	try {
+		if (description.contains("command: 9881")) {
+			description = description.replace("payload: 00 ${command}","payload:")
+		}
+
+		def payload = description.split(", ")?.find { it.startsWith("payload:") }?.replace("payload: ", "")?.split(" ")
+
+		if (payload?.size() > targetValueIndex) {
+			targetValue = Integer.parseInt(payload[targetValueIndex], 16)
+		}
+	}
+	catch (e) {
+		log.warn "Unable to parse targetValue from ${description}"
+	}
+	return targetValue
+}
+
+private descriptionMatchesCommand(description, command) {
+	def insecureCmd = "command: " + "${command}".replace(" ", "")
+	def secureCmd = "command: 9881, payload: 00 ${command}"
+	return "${description}".contains(insecureCmd) || "${description}".contains(secureCmd)
+}
+
+private getSwitchMultilevelReportCommand() { "26 03" }
+
+private getSwitchColorReportCommand() { "33 04" }
+
+
+def updateSyncStatus(status=null) {
+	if (status == null) {
 		def changes = getPendingChanges()
 		if (changes > 0) {
 			status = "${changes} Pending Change" + ((changes > 1) ? "s" : "")
@@ -1268,12 +1883,8 @@ def updateSyncStatus(status=null) {
 		else {
 			status = "Synced"
 		}
-		state.syncing = false
 	}
-	else if (device.currentValue("${syncStatus}") != "${status}") {
-		state.syncing = true
-	}
-	
+
 	sendEvent(name: "syncStatus", value: status, displayed: false)
 }
 
@@ -1282,17 +1893,92 @@ private getPendingChanges() {
 }
 
 private isConfigParamSynced(param) {
-	return (!param.options || "${param.value}" == "${getParamStoredValue(param.num)}")
+	return (!param.options || param.value == getParamStoredValue(param.num))
 }
 
 private getParamStoredValue(paramNum) {
-	return state["configVal${paramNum}"]
+	return safeToInt(state["configVal${paramNum}"], -1)
 }
 
 
-private validateLevel(val) {
-	return validateRange(val, device.currentValue("level"), 1, 99)
+private storeRGBW(rgbw) {
+	state.rgbw = rgbw
+	state.rgbwTime = new Date().time
 }
+
+private getStoredRGBW() {
+	def expiredCutoffMS = (10 * 1000) // 10 seconds
+	def rgbwTime = state.rgbwTime ?: 0
+	if ((new Date().time - rgbwTime) <= expiredCutoffMS) {
+		return state.rgbw
+	}
+	else {
+		return [:]
+	}
+}
+
+private getActiveRGBW() {
+	return [
+		red: safeToColor(state.redValue),
+		green: safeToColor(state.greenValue),
+		blue: safeToColor(state.blueValue),
+		white: safeToColor(state.whiteValue)
+	]
+}
+
+private getLastRGBW() {
+	return [
+		red: safeToColor(state.lastRed),
+		green: safeToColor(state.lastGreen),
+		blue: safeToColor(state.lastBlue),
+		white: safeToColor(state.lastWhite)
+	]
+}
+
+private getDefaultRGBW() {
+	return [ red: 255, green: 255, blue: 255, white: 255 ]
+}
+
+
+private rgbwHasValue(rgbw) {
+	return (rgbwHasColorValue(rgbw) || rgbw?.white)
+}
+
+private rgbwHasColorValue(rgbw) {
+	return (rgbw?.red || rgbw?.green || rgbw?.blue)
+}
+
+private colorToLevel(color) {
+	return safeToLevel((safeToInt(safeToColor(color)) / 255) * 100)
+}
+
+private levelToColor(level) {
+	return safeToColor((safeToLevel(level, 99) / 99) * 255)
+}
+
+private safeToColor(value) {
+	return validateRange(value, 0, 0, 255)
+}
+
+private safeToLevel(value, max=100) {
+	return validateRange(value, 100, 0, max)
+}
+
+private rgbToHex(red, green, blue) {
+	return colorUtil.rgbToHex(red as int, green as int, blue as int)
+}
+
+private rgbToHSV(red, green, blue) {
+	def hex = colorUtil.rgbToHex(red as int, green as int, blue as int)
+	def hsv = colorUtil.hexToHsv(hex)
+	return [hue: hsv[0], saturation: hsv[1], value: hsv[2]]
+}
+
+private huesatToRGB(hue, sat) {
+	def color = colorUtil.hsvToHex(Math.round(hue) as int, Math.round(sat) as int)
+	return colorUtil.hexToRgb(color)
+}
+
 
 private validateRange(val, defaultVal, lowVal, highVal) {
 	val = safeToInt(val, defaultVal)
@@ -1327,44 +2013,69 @@ private roundTwoPlaces(val) {
 	return Math.round(safeToDec(val) * 100) / 100
 }
 
-private getMeterScalePower() { 
-	return 2 
+private getMeterScalePower() {
+	return 2
 }
 
 
-private rgbToHex(red, green, blue) {
-	return colorUtil.rgbToHex(red as int, green as int, blue as int)
+private sendEventIfChanged(name, value, unit="") {
+	if (device.currentValue(name) != value) {
+		sendEvent(getEventMap(name, value, unit))
+	}
+	// else {
+		// logTrace "${name} is ${value}${unit}"
+	// }
 }
 
-private rgbToHSV(red, green, blue) {
-	def hex = colorUtil.rgbToHex(red as int, green as int, blue as int)
-	def hsv = colorUtil.hexToHsv(hex)
-	return [hue: hsv[0], saturation: hsv[1], value: hsv[2]]
-}
+private getEventMap(name, value, unit="") {
+	def desc = "${name} is ${value}${unit}"
 
-private huesatToRGB(hue, sat) {
-	def color = colorUtil.hsvToHex(Math.round(hue) as int, Math.round(sat) as int)
-	return colorUtil.hexToRgb(color)
-}
-
-
-private getEventMap(name, value, unit="") {	
 	def eventMap = [
 		name: name,
 		value: value,
-		descriptionText: getDescriptionText("${name} is ${value}${unit}")
+		descriptionText: "${device.displayName}: ${desc}"
 	]
-	
+
 	if (unit) {
 		eventMap.unit = unit
-	}	
+	}
+
+	logDebug "${desc}"
+
 	return eventMap
+}
+
+private sendChildEvent(childName, name, value, unit="") {
+	if (name in ["level", "switch"]) {
+		sendEventIfChanged("${childName}${name.capitalize()}", value, unit)
+	}
+
+	def child = findChildDevice(childName)
+	if (child) {
+		def evtMap = [
+			name: name,
+			value: value,
+			descriptionText: "${child.displayName}: ${name} is ${value}${unit}"
+		]
+
+		if (unit) {
+			evtMap.unit = unit
+		}
+
+		if (child.currentValue(name) != value) {
+			child.sendEvent(evtMap)
+			// logDebug "${evtMap.descriptionText}"
+		}
+		// else {
+			// logTrace "${evtMap.descriptionText}"
+		// }
+	}
 }
 
 
 private sendLastCheckinEvent() {
 	state.lastCheckinTime = new Date().time
-	logDebug "Device Checked In"	
+	logDebug "Device Checked In"
 	sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false)
 }
 
@@ -1375,27 +2086,53 @@ private convertToLocalTimeString(dt) {
 	}
 	else {
 		return "$dt"
-	}	
+	}
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
-	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
+	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time)
 }
 
 
-private getChildSwitchDNI(childType) {
-	return "${device.deviceNetworkId}-${childType.toUpperCase()}"
+private getDeviceIsOff() {
+	return (device.currentValue("switch") == "off")
 }
 
-private findChildSwitch(dni) {
-	return childDevices.find { it.deviceNetworkId == dni }
+private getActivePresetProgram() {
+	return safeToInt(device.currentValue("activeProgram"))
 }
 
 
-private getDescriptionText(msg) {
-	logDebug "${msg}"
-	return "${device.displayName}: ${msg}"
+private findChildDevice(childName) {
+	return childDevices?.find { "${it.deviceNetworkId}".endsWith("-${childName.toUpperCase()}") }
 }
+
+private getChildDNI(childName) {
+	return "${device.deviceNetworkId}-${childName.toUpperCase()}"
+}
+
+private getChildName(childDNI) {
+	def names = []
+	names += DIMMER_NAMES.collect { it }
+	names += PRESET_PROGRAMS.collect { it.key }
+
+	def name = ""
+	names.each {
+		if ("${childDNI}".endsWith("-${it.toUpperCase()}")) {
+			name = it
+		}
+	}
+	return name
+}
+
+private storeChildLastColor(childName, value) {
+	state["last${childName.capitalize()}"] = value
+}
+
+private getChildLastColor(childName) {
+	return safeToColor(state["last${childName.capitalize()}"])
+}
+
 
 private logDebug(msg) {
 	if (settings?.debugOutput != false) {
