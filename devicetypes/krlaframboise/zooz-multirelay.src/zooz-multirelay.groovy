@@ -2,10 +2,10 @@
  *  Zooz MultiRelay v1.0
  *  (Models: ZEN16)
  *
- *  Author: 
+ *  Author:
  *    Kevin LaFramboise (krlaframboise)
  *
- *	Documentation:
+ *	Documentation: https://community.smartthings.com/t/release-zooz-multirelay-zen16/181057
  *
  *  Changelog:
  *
@@ -25,35 +25,35 @@
  */
 metadata {
 	definition (
-		name: "Zooz MultiRelay", 
-		namespace: "krlaframboise", 
+		name: "Zooz MultiRelay",
+		namespace: "krlaframboise",
 		author: "Kevin LaFramboise",
 		vid:"generic-switch"
 	) {
 		capability "Actuator"
-		capability "Switch"		
+		capability "Switch"
 		capability "Outlet"
 		capability "Light"
 		capability "Configuration"
 		capability "Refresh"
 		capability "Health Check"
-		
-		attribute "firmwareVersion", "string"		
+
+		attribute "firmwareVersion", "string"
 		attribute "lastCheckIn", "string"
-		
+
 		(1..3).each {
 			attribute "relay${it}Switch", "string"
 			attribute "relay${it}Name", "string"
-			
+
 			command "relay${it}On"
 			command "relay${it}Off"
 		}
-		
+
 		fingerprint manufacturer: "027A", prod: "A000", model: "A00A", deviceJoinName: "Zooz MultiRelay"
 	}
 
 	simulator { }
-		
+
 	tiles(scale: 2) {
 		multiAttributeTile(name:"switch", type: "generic", width: 6, height: 4){
 			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
@@ -61,7 +61,7 @@ metadata {
 				attributeState "off", label: '${name}', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
 			}
 		}
-				
+
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
 			state "default", label:'Refresh', action: "refresh", icon:"st.secondary.refresh-icon"
 		}
@@ -70,11 +70,11 @@ metadata {
 		}
 		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:3, height: 1) {
 			state "firmwareVersion", label:'Firmware ${currentValue}'
-		}		
+		}
 		valueTile("syncStatus", "device.syncStatus", decoration:"flat", width:2, height: 2) {
 			state "syncStatus", label:'${currentValue}'
 		}
-		
+
 		valueTile("relay1Name", "device.relay1Name", decoration:"flat", width:5, height: 1) {
 			state "default", label:'${currentValue}'
 		}
@@ -82,7 +82,7 @@ metadata {
 			state "on", label:'ON', action:"relay1Off", backgroundColor: "#00a0dc"
 			state "off", label:'OFF', action:"relay1On"
 		}
-		
+
 		valueTile("relay2Name", "device.relay2Name", decoration:"flat", width:5, height: 1) {
 			state "default", label:'${currentValue}'
 		}
@@ -90,7 +90,7 @@ metadata {
 			state "on", label:'ON', action:"relay2Off", backgroundColor: "#00a0dc"
 			state "off", label:'OFF', action:"relay2On"
 		}
-		
+
 		valueTile("relay3Name", "device.relay3Name", decoration:"flat", width:5, height: 1) {
 			state "default", label:'${currentValue}'
 		}
@@ -98,22 +98,22 @@ metadata {
 			state "on", label:'ON', action:"relay3Off", backgroundColor: "#00a0dc"
 			state "off", label:'OFF', action:"relay3On"
 		}
-		
-				
+
+
 		main (["switch"])
 		details(["switch", "refresh", "syncStatus", "configure", "relay1Name", "relay1Switch", "relay2Name", "relay2Switch", "relay3Name", "relay3Switch", "firmwareVersion"])
 	}
-	
+
 	preferences {
-		
+
 		getBoolInput("createRelay1", "Create Child Switch for Relay 1", false)
 		getBoolInput("createRelay2", "Create Child Switch for Relay 2", false)
 		getBoolInput("createRelay3", "Create Child Switch for Relay 3", false)
-		
+
 		configParams.each {
 			getOptionsInput(it)
 		}
-		
+
 		getBoolInput("debugOutput", "Enable Debug Logging", true)
 	}
 }
@@ -129,28 +129,28 @@ private getOptionsInput(param) {
 }
 
 private getBoolInput(name, title, defaultVal) {
-	input "${name}", "bool", 
-		title: "${title}?", 
-		defaultValue: defaultVal, 
+	input "${name}", "bool",
+		title: "${title}?",
+		defaultValue: defaultVal,
 		required: false
 }
 
 
-def installed () { 
-	initialize()	
+def installed () {
+	initialize()
 }
 
-def updated() {	
+def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
 		state.lastUpdated = new Date().time
-		
+
 		initialize()
-		
+
 		refreshChildSwitches()
-		
+
 		def cmds = getConfigureCmds()
 		return cmds ? response(cmds) : []
-	}	
+	}
 }
 
 private initialize() {
@@ -162,7 +162,7 @@ private initialize() {
 		if (!device.currentValue("relay${it}Switch")) {
 			sendEvent(name: "relay${it}Switch", value: "off", displayed: false)
 			sendEvent(name: "relay${it}Name", value: "Relay ${it}", displayed: false)
-		}		
+		}
 	}
 
 	if (!device.currentValue("checkInterval")) {
@@ -171,24 +171,24 @@ private initialize() {
 	}
 
 	unschedule()
-	
+
 	runEvery3Hours(ping)
 }
 
 private refreshChildSwitches() {
-	if (settings) {		
+	if (settings) {
 		(1..3).each {
-			def child = findChildByEndpoint(it)			
+			def child = findChildByEndpoint(it)
 			if (child && !settings["createRelay${it}"]) {
 				log.warn "Removing ${child.displayName}} "
 				deleteChildDevice(child.deviceNetworkId)
 				child = null
 			}
 			else if (!child && settings["createRelay${it}"]) {
-				child = addChildSwitch(it)				
+				child = addChildSwitch(it)
 				child?.sendEvent(getEventMap("switch", device.currentValue("relay${it}Switch"), false))
 			}
-			
+
 			def relayName = child ? child.displayName : "Relay ${it}"
 			if (relayName != device.currentValue("relay${it}Name")) {
 				sendEvent(getEventMap("relay${it}Name", relayName, false))
@@ -197,16 +197,16 @@ private refreshChildSwitches() {
 	}
 }
 
-private addChildSwitch(endpoint) {	
+private addChildSwitch(endpoint) {
 	def name = "Relay ${endpoint}"
-	
+
 	logDebug "Creating Child Switch for ${name}"
-	
+
 	return addChildDevice(
-		"smartthings", 
-		"Child Switch", 
-		getChildDNI(endpoint), 
-		device.getHub().getId(), 
+		"smartthings",
+		"Child Switch",
+		getChildDNI(endpoint),
+		device.getHub().getId(),
 		[
 			completedSetup: true,
 			isComponent: false,
@@ -217,11 +217,11 @@ private addChildSwitch(endpoint) {
 		]
 	)
 }
-	
 
-def configure() {	
+
+def configure() {
 	runIn(10, updateSyncStatus)
-	
+
 	if (!pendingChanges) {
 		state.resyncAll = true
 	}
@@ -230,13 +230,13 @@ def configure() {
 }
 
 private getConfigureCmds() {
-	def cmds = []	
-	
+	def cmds = []
+
 	if (state.resyncAll || !device.currentValue("firmwareVersion")) {
 		cmds << versionGetCmd()
 	}
 
-	configParams.each { 
+	configParams.each {
 		def storedVal = getParamStoredValue(it.num)
 		if (state.resyncAll || "${storedVal}" != "${it.value}") {
 			if (state.configured) {
@@ -304,13 +304,13 @@ private executeChildOnOff(value, endpoint) {
 
 def refresh() {
 	logDebug "refresh()..."
-	
+
 	refreshChildSwitches()
-	
-	def cmds = []	
+
+	def cmds = []
 	(0..3).each {
 		cmds << basicGetCmd(it)
-	}	
+	}
 	sendCommands(delayBetween(cmds, 250))
 	return []
 }
@@ -364,7 +364,7 @@ private secureCmd(cmd) {
 	}
 	else {
 		return cmd.format()
-	}	
+	}
 }
 
 
@@ -391,19 +391,19 @@ private getCommandClassVersions() {
 }
 
 
-def parse(String description) {	
+def parse(String description) {
 	def result = []
 	try {
 		if (!"${description}".contains("command: 5E02")) {
 			def cmd = zwave.parse(description, commandClassVersions)
 			if (cmd) {
-				result += zwaveEvent(cmd)		
+				result += zwaveEvent(cmd)
 			}
 			else {
 				log.warn "Unable to parse: $description"
 			}
 		}
-			
+
 		if (!isDuplicateCommand(state.lastCheckInTime, 60000)) {
 			state.lastCheckInTime = new Date().time
 			sendEvent(getEventMap("lastCheckIn", convertToLocalTimeString(new Date()), false))
@@ -417,8 +417,8 @@ def parse(String description) {
 
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
-	def encapsulatedCmd = cmd.encapsulatedCommand(commandClassVersions)	
-	
+	def encapsulatedCmd = cmd.encapsulatedCommand(commandClassVersions)
+
 	def result = []
 	if (encapsulatedCmd) {
 		result += zwaveEvent(encapsulatedCmd)
@@ -432,7 +432,7 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 
 def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap cmd) {
 	def encapsulatedCommand = cmd.encapsulatedCommand(commandClassVersions)
-	
+
 	if (encapsulatedCommand) {
 		return zwaveEvent(encapsulatedCommand, cmd.sourceEndPoint)
 	}
@@ -445,37 +445,37 @@ def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap 
 
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 	logTrace "VersionReport: ${cmd}"
-	
+
 	def subVersion = String.format("%02d", cmd.applicationSubVersion)
 	def fullVersion = "${cmd.applicationVersion}.${subVersion}"
-	
-	if (fullVersion != device.currentValue("firmwareVersion")) {		
+
+	if (fullVersion != device.currentValue("firmwareVersion")) {
 		sendEvent(getEventMap("firmwareVersion", fullVersion))
 	}
-	return []	
-}
-
-
-def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {	
-	state.configured = true
-	
-	updateSyncStatus("Syncing...")
-	runIn(10, updateSyncStatus)
-	
-	def param = configParams.find { it.num == cmd.parameterNumber }
-	if (param) {	
-		logDebug "${param.name}(#${param.num}) = ${cmd.scaledConfigurationValue}"		
-		setParamStoredValue(param.num, cmd.scaledConfigurationValue)				
-	}
-	else {
-		logDebug "Unknown Parameter #${cmd.parameterNumber} = ${cmd.scaledConfigurationValue}"
-	}		
-	state.resyncAll = false	
 	return []
 }
 
-def updateSyncStatus(status=null) {	
-	if (status == null) {	
+
+def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {
+	state.configured = true
+
+	updateSyncStatus("Syncing...")
+	runIn(10, updateSyncStatus)
+
+	def param = configParams.find { it.num == cmd.parameterNumber }
+	if (param) {
+		logDebug "${param.name}(#${param.num}) = ${cmd.scaledConfigurationValue}"
+		setParamStoredValue(param.num, cmd.scaledConfigurationValue)
+	}
+	else {
+		logDebug "Unknown Parameter #${cmd.parameterNumber} = ${cmd.scaledConfigurationValue}"
+	}
+	state.resyncAll = false
+	return []
+}
+
+def updateSyncStatus(status=null) {
+	if (status == null) {
 		def changes = getPendingChanges()
 		if (changes > 0) {
 			status = "${changes} Pending Change" + ((changes > 1) ? "s" : "")
@@ -483,7 +483,7 @@ def updateSyncStatus(status=null) {
 		else {
 			status = "Synced"
 		}
-	}	
+	}
 	if (device.currentValue("syncStatus") != status) {
 		sendEvent(getEventMap("syncStatus", status, false))
 	}
@@ -507,30 +507,30 @@ private setParamStoredValue(paramNum, value) {
 
 
 def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd, endpoint=0) {
-	logTrace "SwitchBinaryReport: ${cmd}" + (endpoint ? " (Endpoint ${endpoint})" : "")	
-	// Using for ping	
+	logTrace "SwitchBinaryReport: ${cmd}" + (endpoint ? " (Endpoint ${endpoint})" : "")
+	// Using for ping
 	return []
 }
 
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd, endpoint=0) {
 	logTrace "BasicReport: ${cmd}" + (endpoint ? " (Endpoint ${endpoint})" : "")
-	
+
 	def value = (cmd.value == 0xFF) ? "on" : "off"
-		
+
 	if (endpoint) {
-		def child = findChildByEndpoint(endpoint)		
+		def child = findChildByEndpoint(endpoint)
 		if (child) {
 			def desc = "${child.displayName}: switch is ${value}"
-			logDebug "${desc}"			
+			logDebug "${desc}"
 			child.sendEvent(name: "switch", value: value, descriptionText: desc)
 		}
-		
+
 		sendEvent(getEventMap("relay${endpoint}Switch", value, !child))
 	}
 	else {
 		sendEvent(getEventMap("switch", value))
-	}	
+	}
 	return []
 }
 
@@ -563,8 +563,8 @@ private getConfigParams() {
 
 private getPowerFailureRecoveryParam() {
 	def options = [
-		0:"Turn All Relays Off", 
-		1:"Restore Relay States From Before Power Failure", 
+		0:"Turn All Relays Off",
+		1:"Restore Relay States From Before Power Failure",
 		2:"Turn All Relays On",
 		3:"Restore Relay 1 and Relay 2 States and Turn Relay 3 Off",
 		4:"Restore Relay 1 and Relay 2 States and Turn Relay 3 On"
@@ -586,8 +586,8 @@ private getRelay3TypeParam() {
 
 private getLedIndicatorModeParam() {
 	def options = [
-		0:"On when ALL Relays are Off", 1:"On when ANY Relay is On", 
-		2:"Always Off", 
+		0:"On when ALL Relays are Off", 1:"On when ANY Relay is On",
+		2:"Always Off",
 		3:"Always On"
 	]
 	return getParam(5, "LED Indicator Control", 1, 0, options)
@@ -630,21 +630,21 @@ private getRelay3ManualControlParam() {
 }
 
 private getParam(num, name, size, defaultVal, options=null) {
-	def val = safeToInt((settings ? settings["configParam${num}"] : null), defaultVal) 
-	
+	def val = safeToInt((settings ? settings["configParam${num}"] : null), defaultVal)
+
 	def map = [num: num, name: name, size: size, value: val]
 	if (options) {
 		map.valueName = options?.find { k, v -> "${k}" == "${val}" }?.value
 		map.options = setDefaultOption(options, defaultVal)
 	}
-	
+
 	return map
 }
 
 private setDefaultOption(options, defaultVal) {
 	return options?.collect { k, v ->
 		if ("${k}" == "${defaultVal}") {
-			v = "${v} [DEFAULT]"		
+			v = "${v} [DEFAULT]"
 		}
 		["$k": "$v"]
 	}
@@ -668,7 +668,7 @@ private getAutoOnOffOptions() {
 	return options
 }
 
-private getTimeOptionsRange(options, name, multiplier, range) {	
+private getTimeOptionsRange(options, name, multiplier, range) {
 	range?.each {
 		options["${(it * multiplier)}"] = "${it} ${name}${it == 1 ? '' : 's'}"
 	}
@@ -709,7 +709,7 @@ private findChildByDNI(dni) {
 }
 
 private getChildEndpoint(child) {
-	return child ? safeToInt(child.getDataValue("endpoint")) : 0	
+	return child ? safeToInt(child.getDataValue("endpoint")) : 0
 }
 
 private getChildDNI(endpoint) {
@@ -728,11 +728,11 @@ private convertToLocalTimeString(dt) {
 	}
 	else {
 		return "$dt"
-	}	
+	}
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
-	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
+	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time)
 }
 
 private logDebug(msg) {
