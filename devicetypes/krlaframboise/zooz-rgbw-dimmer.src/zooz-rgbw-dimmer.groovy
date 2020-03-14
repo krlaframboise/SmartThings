@@ -1,5 +1,5 @@
 /**
- *  Zooz RGBW Dimmer v1.1
+ *  Zooz RGBW Dimmer v1.1.1
  *  (Model: ZEN31)
  *
  *  Author:
@@ -9,6 +9,9 @@
  *
  *
  *  Changelog:
+ *
+ *    1.1.1 (03/13/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.1 (12/08/2019)
  *      - Complete rewrite of DTH.
@@ -1325,7 +1328,7 @@ private getParam(num, name, size, defaultVal, options=null) {
 }
 
 private setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"
 		}

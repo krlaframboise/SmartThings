@@ -1,5 +1,5 @@
 /**
- *  Zooz 4-in-1 Sensor v2.1
+ *  Zooz 4-in-1 Sensor v2.1.1
  *		(Model: ZSE40)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    2.1.1 (03/13/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    2.1 (02/20/2019)
  *    	- Changed illuminance and humidity to whole numbers because decimal values for those attributes completely crash the new mobile app.
@@ -126,7 +129,7 @@ metadata {
 			title: "Round values to how many decimal places?", 
 			defaultValue: 2, 
 			required: false,
-			options: [[0:"0"],[1:"1"],[2:"2"]]
+			options: ["0":"0", "1":"1", "2":"2"]
 		
 		getNumberInput("checkinInterval", "Minimum Check-in Interval [0-167]\n(0 = 10 Minutes [FOR TESTING ONLY])\n(1 = 1 Hour)\n(167 = 7 Days)", "0..167", checkinIntervalSetting)
 		getNumberInput("reportBatteryEvery", "Battery Reporting Interval [1-167]\n(1 = 1 Hour)\n(167 = 7 Days)\nThis setting can't be less than the Minimum Check-in Interval.", "1..167", batteryReportingIntervalSetting)
@@ -520,23 +523,23 @@ private getLedIndicatorModes() {
 
 private getPrimaryStatusOptions() {
 	return [
-		["motion":"Motion"],
-		["temperature":"Temperature"],
-		["humidity": "Relative Humidity"],
-		["pLight":"Light %"],
-		["lxLight":"Light Lux"]
+		"motion":"Motion",
+		"temperature":"Temperature",
+		"humidity": "Relative Humidity",
+		"pLight":"Light %",
+		"lxLight":"Light Lux"
 	]
 }
 
 private getSecondaryStatusOptions() {
 	return [
-		["none":"None"],
-		["motion":"Motion"],
-		["temperature":"Temperature"],
-		["humidity": "Relative Humidity"],
-		["pLight":"Light %"],
-		["lxLight":"Light Lux"],
-		["combined":"Combined Values"]
+		"none":"None",
+		"motion":"Motion",
+		"temperature":"Temperature",
+		"humidity": "Relative Humidity",
+		"pLight":"Light %",
+		"lxLight":"Light Lux",
+		"combined":"Combined Values"
 	]
 }
 

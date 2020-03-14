@@ -1,5 +1,5 @@
 /**
- *  Zooz S2 Multisiren v1.3
+ *  Zooz S2 Multisiren v1.3.1
  *  (Models: ZSE19)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *
  *
  *  Changelog:
+ *
+ *    1.3.1 (03/13/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.3 (08/07/2019)
  *      - Enhanced UI for new mobile app.
@@ -794,7 +797,7 @@ private getParam(num, name, size, defaultVal, options=null) {
 }
 
 private setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"		
 		}
@@ -950,5 +953,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	log.trace "$msg"
+	// log.trace "$msg"
 }

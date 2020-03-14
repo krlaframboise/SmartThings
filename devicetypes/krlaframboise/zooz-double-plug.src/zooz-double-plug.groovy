@@ -1,5 +1,5 @@
 /**
- *  Zooz Double Plug v1.2.2
+ *  Zooz Double Plug v1.2.3
  *  (Models: ZEN25)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *	Documentation:
  *
  *  Changelog:
+ *
+ *    1.2.3 (03/14/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.2.2 (02/03/2019)
  *      - Fixed unit on Power Threshold setting.
@@ -950,7 +953,7 @@ private getParam(num, name, size, defaultVal, options=null) {
 }
 
 private setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"		
 		}
@@ -969,7 +972,7 @@ private getOverloadOptions() {
 
 private getPowerReportingThresholdOptions() {
 	def options = [0:"Disabled"]
-	[1,2,3,4,5,10,25,50,75,100,150,200,250,300,400,500,750,1000,1250,1500,1750,2000,2500,3000,3500,4000,4500,5000,6000,7000,8000,9000,10000,12500,15000].each {
+	[1,2,3,4,5,10,25,50,75,100,150,200,250,300,400,500,750,1000,1250,1500,1750,2000,2500,3000,3500,4000,4500,5000].each {
 		options["${it}"] = "${it} W"
 	}
 	return options

@@ -1,5 +1,5 @@
 /**
- *  Zooz MultiRelay v1.1
+ *  Zooz MultiRelay v1.1.1
  *  (Models: ZEN16)
  *
  *  Author:
@@ -8,6 +8,9 @@
  *	Documentation: https://community.smartthings.com/t/release-zooz-multirelay-zen16/181057
  *
  *  Changelog:
+ *
+ *    1.1.1 (03/13/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.1 (02/06/2020)
  *      - Added Auto On/Off Unit Setting for Relay (FIRMWARE >= 1.01)
@@ -726,7 +729,7 @@ private getParam(num, name, size, defaultVal, options=null, range=null, firmware
 }
 
 private setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"
 		}

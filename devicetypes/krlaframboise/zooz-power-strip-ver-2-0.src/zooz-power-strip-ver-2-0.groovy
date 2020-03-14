@@ -1,16 +1,17 @@
 /**
- *  Zooz Power Strip VER 2.2
+ *  Zooz Power Strip VER 2.2.1
  *  (Models: ZEN20)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  Important Instructions: http://www.support.getzooz.com/kb/article/149-how-to-add-your-power-strip-ver-20-to-smartthings/
- *
  *	Documentation: https://community.smartthings.com/t/release-zooz-power-strip-ver-2-0/138231?u=krlaframboise
  *
  *
  *  Changelog:
+ *
+ *    2.2.1 (03/13/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    2.2 (08/25/2019)
  *      - Added new configuration parameters for firmware 2.2.
@@ -1065,7 +1066,7 @@ private getParam(num, name, size, defaultVal, options=null) {
 }
 
 private setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"		
 		}

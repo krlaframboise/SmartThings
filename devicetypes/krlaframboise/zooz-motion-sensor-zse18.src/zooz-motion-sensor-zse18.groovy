@@ -1,5 +1,5 @@
 /**
- *  Zooz Motion Sensor ZSE18 v1.0.5
+ *  Zooz Motion Sensor ZSE18 v1.0.6
  *  (Model: ZSE18)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.6 (03/14/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.0.5 (11/14/2018)
  *      - Fixed USB Battery icon.
@@ -528,8 +531,8 @@ private getSendBasicSetParam() {
 
 private getBasicSetValueParam() {
 	return getParam(15, "Basic Set Value", 1, 0, [
-		["0": "Active: 0xFF / Inactive: 0x00"], 
-		["1": "Active: 0x00 / Inactive: 0xFF"]
+		"0": "Active: 0xFF / Inactive: 0x00", 
+		"1": "Active: 0x00 / Inactive: 0xFF"
 	])
 }
 
@@ -550,7 +553,7 @@ private getLedParam() {
 }
 
 private getLowBatteryAlarmParam() {
-	return getParam(32, "Low Battery Level", 1, 10, [["10":"10%"],["25":"25%"],["50":"50%"]])
+	return getParam(32, "Low Battery Level", 1, 10, ["10":"10%","25":"25%","50":"50%"])
 }
 
 private getParam(num, name, size, defaultVal, options) {
@@ -558,14 +561,12 @@ private getParam(num, name, size, defaultVal, options) {
 	
 	def map = [num: num, name: name, size: size, defaultValue: defaultVal, value: val]
 	
-	map.options = options?.collect {
-		it.collect { k, v ->
-			if ("${k}" == "${defaultVal}") {
-				v = "${v} [DEFAULT]"		
-			}
-			["$k": "$v"]
+	map.options = options?.collectEntries { k, v ->
+		if ("${k}" == "${defaultVal}") {
+			v = "${v} [DEFAULT]"		
 		}
-	}.flatten()	
+		["$k": "$v"]
+	}	
 	
 	return map
 }
@@ -573,47 +574,47 @@ private getParam(num, name, size, defaultVal, options) {
 
 private getMotionSensitivityOptions() {	
 	def options = [
-		["0": "Disabled"],
-		["1": "1 (Least Sensitive)"]
+		"0": "Disabled",
+		"1": "1 (Least Sensitive)"
 	]
 	
 	(2..7).each {
-		options << ["${it}": "${it}"]
+		options["${it}"] = "${it}"
 	}
 	
-	options << ["8": "8 (Most Sensitive)"]	
+	options["8"] = "8 (Most Sensitive)"
 	return options
 }
 
 private getMotionClearedDelayOptions() {
 	[
-		["0": "0 Seconds"],
-		["1": "1 Seconds"],
-		["2": "2 Seconds"],
-		["3": "3 Seconds"],
-		["4": "4 Seconds"],
-		["5": "5 Seconds"],
-		["10": "10 Seconds"],		
-		["15": "15 Seconds"],
-		["30": "30 Seconds"],
-		["45":"45 Seconds"],
-		["60":"1 Minute"],  
-		["120":"2 Minutes"], 
-		["180":"3 Minutes"], 
-		["240":"4 Minutes"], 
-		["300":"5 Minutes"], 
-		["420":"7 Minutes"], 
-		["600":"10 Minutes"],
-		["900":"15 Minutes"],
-		["1800":"30 Minutes"],
-		["3600":"60 Minutes"]
+		"0": "0 Seconds",
+		"1": "1 Seconds",
+		"2": "2 Seconds",
+		"3": "3 Seconds",
+		"4": "4 Seconds",
+		"5": "5 Seconds",
+		"10": "10 Seconds",		
+		"15": "15 Seconds",
+		"30": "30 Seconds",
+		"45":"45 Seconds",
+		"60":"1 Minute",  
+		"120":"2 Minutes", 
+		"180":"3 Minutes", 
+		"240":"4 Minutes", 
+		"300":"5 Minutes", 
+		"420":"7 Minutes", 
+		"600":"10 Minutes",
+		"900":"15 Minutes",
+		"1800":"30 Minutes",
+		"3600":"60 Minutes"
 	]
 }
 
 private getEnabledDisabledOptions() {
 	[
-		["0": "Disabled"],
-		["1": "Enabled"]
+		"0": "Disabled",
+		"1": "Enabled"
 	]
 }
 

@@ -1,5 +1,5 @@
 /**
- *  Zooz Outdoor Motion Sensor 2.0  (FIRMWARE >= 2.0)
+ *  Zooz Outdoor Motion Sensor 2.0.1  (FIRMWARE >= 2.0)
  *    (Model: ZSE29)  
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *   
  *
  *  Changelog:
+ *
+ *    2.0.1 (03/13/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    2.0 (12/08/2019)
  *      - Initial Release 
@@ -523,7 +526,7 @@ private getParam(num, name, size, defaultVal, options=null) {
 }
 
 private setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"		
 		}
