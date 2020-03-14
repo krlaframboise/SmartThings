@@ -1,5 +1,5 @@
 /**
- *  Hank RGBW LED Bulb v1.0.1
+ *  Hank RGBW LED Bulb v1.0.2
  *  (Model: HKZW-RGB01)
  *
  *  Author: 
@@ -7,6 +7,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.2 (03/14/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.0.1 (06/05/2018)
  *      - Fixed Power Recovery setting and made other bug fixes.
@@ -92,10 +95,10 @@ metadata {
 			defaultValue: "1",
 			required: false,
 			options: [
-				["0": "Instant"],
-				["1": "Fast [DEFAULT]"],
-				["2": "Medium"],
-				["3": "Slow"]
+				"0": "Instant",
+				"1": "Fast [DEFAULT]",
+				"2": "Medium",
+				"3": "Slow"
 			]
 		
 		input "debugOutput", "bool", 
@@ -345,17 +348,17 @@ private getConfigParams() {
 
 private getBasicReportParam() {
 	return getParam(24, "Load Status Change Notification", 1, 1, [
-			["0": "Disabled"],
-			["1": "Send Basic Report"],
-			["2": "Send Basic Report for Phyiscal Reports"]
+			"0": "Disabled",
+			"1": "Send Basic Report",
+			"2": "Send Basic Report for Phyiscal Reports"
 		])
 }
 
 private getPowerRecoveryParam() {
 	return getParam(21, "Power Failure Recovery", 1, 1, [
-			["0": "Remember Last State"],
-			["1": "On"],
-			["2": "Off"]
+			"0": "Remember Last State",
+			"1": "On",
+			"2": "Off"
 		])
 }
 
@@ -370,14 +373,12 @@ private getParam(num, name, size, defaultVal, options) {
 		value: val
 	]
 	
-	map.options = options?.collect {
-		it.collect { k, v ->
-			if ("${k}" == "${defaultVal}") {
-				v = "${v} [DEFAULT]"		
-			}
-			["$k": "$v"]
+	map.options = options?.collectEntries { k, v ->
+		if ("${k}" == "${defaultVal}") {
+			v = "${v} [DEFAULT]"		
 		}
-	}.flatten()	
+		["$k": "$v"]
+	}
 	
 	return map
 }
