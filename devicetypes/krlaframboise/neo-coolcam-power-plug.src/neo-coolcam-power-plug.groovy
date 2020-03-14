@@ -1,5 +1,5 @@
 /**
- *  Neo Coolcam Power Plug v1.2.6
+ *  Neo Coolcam Power Plug v1.2.7
  *  (Models: NAS-WR02ZU, NAS-WR02ZE, NAS-WR01ZE)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.2.7 (03/14/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.2.6 (05/30/2019)
  *      - Added fingerprint for new US model and fixed model check.
@@ -702,7 +705,7 @@ private getParam(num, name, size, defaultVal, options, pref) {
 }
 
 private setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"		
 		}

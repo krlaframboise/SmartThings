@@ -1,5 +1,5 @@
 /**
- *  Neo Coolcam Light Switch 2CH v1.0
+ *  Neo Coolcam Light Switch 2CH v1.0.1
  *  (Models: NAS-SC02ZU-2 / NAS-SC02ZE-2)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.1 (03/14/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.0 (12/26/2018)
  *      - Initial Release
@@ -425,7 +428,7 @@ private getParam(num, name, size, defaultVal, options=null, range=null) {
 }
 
 private setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"		
 		}

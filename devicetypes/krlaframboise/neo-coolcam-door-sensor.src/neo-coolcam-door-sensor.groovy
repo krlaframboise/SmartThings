@@ -1,5 +1,5 @@
 /**
- *  Neo Coolcam Door Sensor v1.0
+ *  Neo Coolcam Door Sensor v1.0.1
  *  (Model: NAS-DS02ZU / NAS-DS02ZE)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation: https://community.smartthings.com/t/release-neo-coolcam-door-window-sensor/145827
  *
  *  Changelog:
+ *
+ *    1.0.1 (03/14/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.0 (12/10/2018)
  *      - Initial Release
@@ -444,7 +447,7 @@ private getParam(num, name, size, defaultVal, options=null, range=null) {
 }
 
 private setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"		
 		}

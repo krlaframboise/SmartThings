@@ -1,5 +1,5 @@
 /**
- *  Neo Coolcam Motion Sensor v1.0
+ *  Neo Coolcam Motion Sensor v1.0.1
  *  (Model: NAS-PD01ZU-T / NAS-PD01ZE-T)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation:  https://community.smartthings.com/t/release-neo-coolcam-motion-sensor-nas-pd01zu-t/143096?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.0.1 (03/14/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.0 (11/21/2018)
  *      - Initial Release
@@ -592,7 +595,7 @@ private getParam(num, name, size, defaultVal, options=null, range=null) {
 }
 
 private setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"		
 		}

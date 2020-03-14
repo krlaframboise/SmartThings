@@ -1,5 +1,5 @@
 /**
- *  Neo Coolcam Siren v1.0
+ *  Neo Coolcam Siren v1.0.1
  *  (Models: NAS-AB02ZU)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *
  *
  *  Changelog:
+ *
+ *    1.0.1 (03/14/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.0 (03/04/2019)
  *      - Initial Release
@@ -635,7 +638,7 @@ private getParam(num, name, size, defaultVal, options=null, pref=null) {
 }
 
 private setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"		
 		}
