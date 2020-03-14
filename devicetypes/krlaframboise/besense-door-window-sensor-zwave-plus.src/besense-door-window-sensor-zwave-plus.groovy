@@ -1,5 +1,5 @@
 /**
- *  BeSense Door/Window Sensor ZWave Plus v1.0.1
+ *  BeSense Door/Window Sensor ZWave Plus v1.0.2
  *  (Model: IM20)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.2 (03/14/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.0.1 (07/30/2018)
  *    	- Added support for new mobile app.
@@ -500,16 +503,13 @@ private getParam(num, name, size, defaultVal, options, firmware=null) {
 	def val = safeToInt((settings ? settings["configParam${num}"] : null), defaultVal) 
 	
 	def map = [num: num, name: name, size: size, defaultValue: defaultVal, value: val, firmware: firmware]
-	
-	
-	map.options = options?.collect {
-		it.collect { k, v ->
-			if ("${k}" == "${defaultVal}") {
-				v = "${v} [DEFAULT]"		
-			}
-			["$k": "$v"]
+		
+	map.options = options?.collectEntries { k, v ->
+		if ("${k}" == "${defaultVal}") {
+			v = "${v} [DEFAULT]"		
 		}
-	}.flatten()	
+		["$k": "$v"]
+	}
 	
 	return map
 }
@@ -519,26 +519,26 @@ private getParam(num, name, size, defaultVal, options, firmware=null) {
 
 private getEnabledDisabledOptions() {
 	[
-		["0": "Disabled"],
-		["1": "Enabled"]
+		"0": "Disabled",
+		"1": "Enabled"
 	]
 }
 
 private getBasicSetLevelOptions() {
 	def options = [
-		["-1": "ON (0xFF)"]
+		"-1": "ON (0xFF)"
 	]
 	
 	(1..10).each {
-		options << ["${it * 10}": "${it * 10}"]
+		options["${it * 10}"] = "${it * 10}"
 	}
 	return options
 }
 
 private getTimeOptions() {
-	def options = []
+	def options = [:]
 	(1..24).each {
-		options << ["${it}": "${it * 5} Seconds"]
+		options["${it}"] = "${it * 5} Seconds"
 	}
 	return options
 }
