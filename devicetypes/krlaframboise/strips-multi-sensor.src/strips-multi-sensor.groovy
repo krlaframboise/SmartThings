@@ -1,5 +1,5 @@
 /**
- *  Strips Multi-Sensor 1.0
+ *  Strips Multi-Sensor 1.0.1
  *  (Models: Strips Drip / Strips Comfort)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to Documentation: https://community.smartthings.com/t/release-strips-drip-strips-comfort/135276?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.0.1 (03/14/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.0 (08/31/2018)
  *      - Initial Release
@@ -338,19 +341,19 @@ private getDebugOutputSetting() {
 
 private getPrimaryStatusOptions() {
 	return [
-		["water":"Water"],
-		["temperature":"Temperature"],
-		["illuminance":"Light"]
+		"water":"Water",
+		"temperature":"Temperature",
+		"illuminance":"Light"
 	]
 }
 
 private getSecondaryStatusOptions() {
 	return [
-		["none":"None"],
-		["water":"Water"],
-		["temperature":"Temperature"],
-		["illuminance":"Light"],
-		["combined":"Combined Values"]
+		"none":"None",
+		"water":"Water",
+		"temperature":"Temperature",
+		"illuminance":"Light",
+		"combined":"Combined Values"
 	]
 }
 
@@ -407,8 +410,7 @@ private getParam(num, name, size, defaultVal, options=null, range=null) {
 	def val = safeToInt((settings ? settings["configParam${num}"] : null), defaultVal) 
 	
 	def map = [num: num, name: name, size: size, value: val]
-	if (options) {
-		map.valueName = options?.find { k, v -> "${k}" == "${val}" }?.value
+	if (options) {		
 		map.options = setDefaultOption(options, defaultVal)
 	}
 	if (range) map.range = range
@@ -417,7 +419,7 @@ private getParam(num, name, size, defaultVal, options=null, range=null) {
 }
 
 private setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"		
 		}

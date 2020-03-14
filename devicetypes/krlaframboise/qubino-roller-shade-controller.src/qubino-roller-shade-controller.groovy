@@ -1,11 +1,14 @@
 /**
- *  Qubino Roller Shade Controller v1.0
+ *  Qubino Roller Shade Controller v1.0.1
  *		(ZMNHOD3)
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.0.1 (03/14/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.0 (12/15/2018)
  *      - Initial Release
@@ -745,7 +748,7 @@ private getParam(num, name, size, defaultVal, options=null) {
 }
 
 private setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"		
 		}
@@ -939,5 +942,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	log.trace "$msg"
+	// log.trace "$msg"
 }
