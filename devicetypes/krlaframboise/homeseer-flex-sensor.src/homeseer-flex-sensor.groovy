@@ -1,5 +1,5 @@
 /**
- *  HomeSeer Flex Sensor v1.0
+ *  HomeSeer Flex Sensor v1.0.1
  *  (Model: HS-FS100+)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation: https://community.smartthings.com/t/release-homeseer-flex-sensor/157045
  *
  *  Changelog:
+ *
+ *    1.0.1 (03/14/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.0 (03/09/2019)
  *      - Initial Release
@@ -128,7 +131,7 @@ metadata {
 			title: "Attached Sensor Type:",
 			required: false,
 			defaultValue: "Light",
-			options: ["Light", "Water"]
+			options: ["Light":"Light", "Water":"Water"]
 		
 		input "events", "paragraph", 
 			title:"Button Pushed Events are Created for Light Changes",
@@ -624,7 +627,7 @@ private getParam(num, name, size, defaultVal, options, pref) {
 }
 
 private setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"		
 		}
