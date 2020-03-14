@@ -1,5 +1,5 @@
 /**
- *  Aeotec NanoMote One/Quad v1.0.1
+ *  Aeotec NanoMote One/Quad v1.0.2
  *  (Models: ZWA003-A/ZWA004-A)
  *
  *  Hank Scene Controller/Hank Four-Key Scene Controller
@@ -9,6 +9,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.0.2 (03/14/2020)
+ *      - Removed vid because it breaks the new mobile app.
  *
  *    1.0.1 (07/19/2019)
  *      - Added meta definitions for new mobile app. 
@@ -36,9 +39,7 @@ metadata {
 		name: "Aeotec NanoMote", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise",
-		ocfDeviceType: "x.com.st.d.remotecontroller",
-		mmnm: "SmartThings",
-		vid: "generic-button-4"
+		ocfDeviceType: "x.com.st.d.remotecontroller"
 	) {
 		capability "Sensor"
 		capability "Battery"

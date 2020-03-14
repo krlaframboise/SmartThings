@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell 6 v1.1.3
+ *  Aeotec Doorbell 6 v1.1.4
  *  (Model: ZW162-A)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.4 (03/14/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.1.3 (09/14/2019)
  *      - Added fingerprints for EU and AU models.
@@ -1671,7 +1674,7 @@ private getParam(num, name, size, defaultVal=null, options=null) {
 }
 
 private setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"		
 		}

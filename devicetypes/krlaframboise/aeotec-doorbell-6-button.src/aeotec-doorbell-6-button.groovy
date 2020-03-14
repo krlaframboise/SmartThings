@@ -1,10 +1,13 @@
 /**
- *  Aeotec Doorbell 6 Button (CHILD DEVICE) v1.2
+ *  Aeotec Doorbell 6 Button (CHILD DEVICE) v1.2.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.2.1 (03/14/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.2 (08/10/2019)
  *      - Added setVolume command, but using that command to change the volume won't change it in the settings.
@@ -222,7 +225,7 @@ def getEventMap(name, value, displayed=false, unit=null) {
 
 
 def setDefaultOption(options, defaultVal) {
-	return options?.collect { k, v ->
+	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
 			v = "${v} [DEFAULT]"		
 		}

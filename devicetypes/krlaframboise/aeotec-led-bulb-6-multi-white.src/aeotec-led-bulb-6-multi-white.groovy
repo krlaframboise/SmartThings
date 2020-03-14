@@ -1,5 +1,5 @@
 /**
- *  Aeotec LED Bulb 6 Multi-White v1.0
+ *  Aeotec LED Bulb 6 Multi-White v1.0.1
  *  (Model: ZWA001-A)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *  URL to documentation: 
  *
  *  Changelog:
+ *
+ *    1.0.1 (03/14/2020)
+ *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    1.0 (11/19/2018)
  *      - Initial Release
@@ -78,10 +81,10 @@
 			defaultValue: "1",
 			required: false,
 			options: [
-				["0": "Instant"],
-				["1": "Fast [DEFAULT]"],
-				["2": "Medium"],
-				["3": "Slow"]
+				"0": "Instant",
+				"1": "Fast [DEFAULT]",
+				"2": "Medium",
+				"3": "Slow"
 			]
 		
 		input "debugOutput", "bool", 
