@@ -1,5 +1,5 @@
 /**
- *  Zooz Outdoor Motion Sensor 2.0.1  (FIRMWARE >= 2.0)
+ *  Zooz Outdoor Motion Sensor 2.0.2  (FIRMWARE >= 2.0)
  *    (Model: ZSE29)  
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *   
  *
  *  Changelog:
+ *
+ *    2.0.2 (03/18/2020)
+ *      - Force state change on all battery events and make it request the battery every time it wakes up.
  *
  *    2.0.1 (03/13/2020)
  *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
@@ -150,9 +153,7 @@ def configure() {
 		cmds << versionGetCmd()
 	}
 		
-	if (canReportBattery()) {
-		cmds << batteryGetCmd()
-	}
+	cmds << batteryGetCmd()
 	
 	configParams.each { param ->		
 		def storedVal = getParamStoredValue(param.num)		
@@ -337,11 +338,6 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	return response(cmds)	
 }
 
-private canReportBattery() {
-	def reportEveryMS = (12 * 60 * 60 * 1000) // 12 Hours		
-	return (state.refreshAll || !state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) 
-}
-
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
@@ -350,10 +346,8 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 		val = 100
 	}	
 	
-	state.lastBatteryReport = new Date().time	
-	
 	logDebug "Battery is ${val}%"
-	sendEvent(name:"battery", value:val, unit:"%")
+	sendEvent(name:"battery", value:val, unit:"%", isStateChange: true)
 	return []
 }
 
