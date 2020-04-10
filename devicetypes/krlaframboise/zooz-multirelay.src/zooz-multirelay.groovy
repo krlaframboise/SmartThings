@@ -1,5 +1,5 @@
 /**
- *  Zooz MultiRelay v1.1.1
+ *  Zooz MultiRelay v1.1.2
  *  (Models: ZEN16)
  *
  *  Author:
@@ -8,6 +8,9 @@
  *	Documentation: https://community.smartthings.com/t/release-zooz-multirelay-zen16/181057
  *
  *  Changelog:
+ *
+ *    1.1.2 (04/10/2020)
+ *      - Fixed time out issue in new mobile app, but to apply the fix you need to manually delete the child devices and then save the settings of the parent so that it re-creates them.
  *
  *    1.1.1 (03/13/2020)
  *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
@@ -22,16 +25,22 @@
  *      - Initial Release
  *
  *
- *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- *  in compliance with the License. You may obtain a copy of the License at:
- *
+ *  Copyright 2020 Kevin LaFramboise (@krlaframboise)
+ *  
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  
  *      http://www.apache.org/licenses/LICENSE-2.0
+ *  
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  *
- *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
- *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
- *  for the specific language governing permissions and limitations under the License.
- *
- */
+*/
+ 
 metadata {
 	definition (
 		name: "Zooz MultiRelay",
@@ -218,27 +227,15 @@ private addChildSwitch(endpoint) {
 	def name = "Relay ${endpoint}"
 
 	logDebug "Creating Child Switch for ${name}"
-
-	try {
-		addChildSwitch("krlaframboise", name, endpoint)
-	}
-	catch (e) {
-		addChildSwitch("smartthings", name, endpoint)
-	}
-}
-
-private addChildSwitch(namespace, name, endpoint) {
+	
 	return addChildDevice(
-		namespace,
 		"Child Switch",
-		getChildDNI(endpoint),
-		device.getHub().getId(),
+		"${device.deviceNetworkId}:${endpoint}",
+		null,
 		[
 			completedSetup: true,
-			isComponent: false,
 			label: "${device.displayName}-${name}",
-			componentLabel: "${name}",
-			componentName: "${name}",
+			isComponent: false,
 			data: [endpoint: "${endpoint}"]
 		]
 	)
@@ -337,7 +334,7 @@ def childOff(dni) {
 	executeChildOnOff(0x00, getChildEndpoint(findChildByDNI(dni)))
 }
 
-private executeChildOnOff(value, endpoint) {
+void executeChildOnOff(value, endpoint) {
 	sendCommands([ switchBinarySetCmd(value, endpoint) ])
 }
 
@@ -772,10 +769,6 @@ private findChildByDNI(dni) {
 
 private getChildEndpoint(child) {
 	return child ? safeToInt(child.getDataValue("endpoint")) : 0
-}
-
-private getChildDNI(endpoint) {
-	return "${device.deviceNetworkId}-EP${endpoint}"
 }
 
 
