@@ -150,7 +150,21 @@ def pageGarageDoorMain() {
 		}
 
 		section("Garage Door Operating Delay") {
-			paragraph "The Operating Delay determines the amount of time it waits after changing the door control child device to OPENING/CLOSING before sending the on command to the Relay Switch."
+			paragraph "The Operating Delay determines the amount of time it waits after changing the garage door device to OPENING/CLOSING before sending the on command to the Relay Switch."
+
+			paragraph "This feature allows you to use the opening/closing statuses to trigger a siren to turn on before the door starts moving."
+
+			input "operatingDelay", "enum",
+				title: "Select Operating Delay:",
+				required: false,
+				defaultValue: "0",
+				options: operatingDelayOptions
+
+			paragraph ""
+		}
+		
+		section("Garage Door Operating Delay") {
+			paragraph "The Operating Delay determines the amount of time it waits after changing the garage door device to OPENING/CLOSING before sending the on command to the Relay Switch."
 
 			paragraph "This feature allows you to use the opening/closing statuses to trigger a siren to turn on before the door starts moving."
 
@@ -177,7 +191,7 @@ def pageGarageDoorMain() {
 def pageRemove() {
 	dynamicPage(name: "pageRemove", title: "", install: false, uninstall: true) {
 		section() {
-			paragraph "WARNING: You are about to remove the Zooz Garage Door Controller SmartApp and ALL of the Garage Door Opener devices it created.", required: true, state: null
+			paragraph "WARNING: You are about to remove the Zooz Garage Door Opener SmartApp and ALL of the Garage Door devices it created.", required: true, state: null
 		}
 	}
 }
@@ -222,7 +236,7 @@ void createChildGarageDoorOpener() {
 	try {
 		def child = addChildDevice(
 			"Zooz",
-			"Garage Door Device",
+			"Zooz Garage Door",
 			"${app.id}:0",
 			null,
 			[
@@ -235,7 +249,7 @@ void createChildGarageDoorOpener() {
 		checkDoorStatus()
 	}
 	catch (ex) {
-		log.error "Unable to create Garage Door Opener.  You must install and publish the Zooz Garage Door Opener Device Handler in order to use this SmartApp."
+		log.error "Unable to create Garage Door Opener.  You must install and publish the Zooz Garage Door Device Handler in order to use this SmartApp."
 	}
 }
 
@@ -362,7 +376,17 @@ void sendDoorEvents(value) {
 	doorOpener?.sendEvent(name: "door", value: value, isStateChange: true, descriptionText: "${doorOpener.displayName} door is ${value}")
 
 	if (value in ["open", "closed"]) {
-		doorOpener?.sendEvent(name: "contact", value: value, descriptionText: "${doorOpener.displayName} contact is ${value}", displayed: false)
+		if (doorOpener?.currentValue("contact") != value) {
+			doorOpener?.sendEvent(name: "contact", value: value, descriptionText: "${doorOpener.displayName} contact is ${value}", displayed: false)
+		}
+		if (doorOpener?.currentValue("switch") == "on") {
+			doorOpener?.sendEvent(name: "switch", value: "off", displayed: false)
+		}
+	}
+	else {
+		if (doorOpener?.currentValue("switch") == "off") {
+			doorOpener?.sendEvent(name: "switch", value: "on", displayed: false)
+		}
 	}
 }
 
