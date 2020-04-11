@@ -78,7 +78,7 @@ def pageParentMain() {
 
 		if (state.installed) {
 			section() {
-				href "pageRemove", title: "", description: "Remove All Garage Doors"
+				href "pageRemove", title: "Remove All Garage Doors", description: "", image:"https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/remove.png"
 			}
 		}
 
@@ -208,8 +208,6 @@ def updated() {
 }
 
 void initialize() {
-	logTrace "initialize()..."
-
 	if (!childDoorOpener) {
 		runIn(3, createChildGarageDoorOpener)
 	}
@@ -349,6 +347,12 @@ void checkDoorStatus() {
 	if (childDoorOpener?.currentValue("door") != contactStatus) {
 		sendDoorEvents(contactStatus)
 	}
+	
+	if (autoOffDelaySetting && (settings?.relaySwitch?.currentValue("switch") == "on")) {
+		// The switch is still on for some reason which will prevent the relay from triggering the door next time so turn it off.
+		logDebug "Turning off Relay Switch (backup)..."
+		settings?.relaySwitch?.off() 
+	}
 }
 
 
@@ -378,9 +382,6 @@ Integer getOperatingDurationSetting() {
 }
 
 Integer getOperatingDelaySetting() {
-	// Integer value = safeToInt((settings ? settings["operatingDelay"] : null), 0)
-	// if (value < 0) value = 0 // workaround for new android mobile app not displaying default value if it's 0.
-	// return value
 	return safeToInt((settings ? settings["operatingDelay"] : null), 0)
 }
 
