@@ -1,5 +1,5 @@
 /**
- *  Zooz MultiRelay v1.1.2
+ *  Zooz MultiRelay v1.2
  *  (Models: ZEN16)
  *
  *  Author:
@@ -8,6 +8,11 @@
  *	Documentation: https://community.smartthings.com/t/release-zooz-multirelay-zen16/181057
  *
  *  Changelog:
+ *
+ *    1.2 (04/15/2020)
+ *      - Added support for firmware 1.02
+ *      - Fixed default parameters for new mobile app.
+ *      - Changed new mobile app icon to switch
  *
  *    1.1.2 (04/10/2020)
  *      - Fixed time out issue in new mobile app, but to apply the fix you need to manually delete the child devices and then save the settings of the parent so that it re-creates them.
@@ -40,12 +45,34 @@
  *  limitations under the License.
  *
 */
+import groovy.transform.Field
+
+@Field static Map commandClassVersions = [
+	0x20: 1,	// Basic
+	0x25: 1,	// Switch Binary
+	0x55: 1,	// Transport Service
+	0x59: 1,	// AssociationGrpInfo
+	0x5A: 1,	// DeviceResetLocally
+	0x5E: 2,	// ZwaveplusInfo
+	0x60: 3,	// Multi Channel
+	0x6C: 1,	// Supervision
+	0x70: 2,	// Configuration
+	0x72: 2,	// ManufacturerSpecific
+	0x73: 1,	// Powerlevel
+	0x7A: 2,	// Firmware Update Md
+	0x85: 2,	// Association
+	0x86: 1,	// Version
+	0x8E: 2,	// Multi Channel Association
+	0x98: 1,	// Security 0
+	0x9F: 1		// Security 2
+]
  
 metadata {
 	definition (
 		name: "Zooz MultiRelay",
 		namespace: "krlaframboise",
 		author: "Kevin LaFramboise",
+		ocfDeviceType: "oic.d.switch",
 		vid:"generic-switch"
 	) {
 		capability "Actuator"
@@ -123,16 +150,15 @@ metadata {
 	}
 
 	preferences {
-
-		// getBoolInput("createRelay1", "Create Child Switch for Relay 1", true)
-		// getBoolInput("createRelay2", "Create Child Switch for Relay 2", true)
-		// getBoolInput("createRelay3", "Create Child Switch for Relay 3", true)
-
 		configParams.each {
 			getOptionsInput(it)
 		}
-
-		getBoolInput("debugOutput", "Enable Debug Logging", true)
+		
+		input "debugLogging", "enum",
+			title: "Logging:",
+			required: false,
+			defaultValue: "1",
+			options: ["0":"Disabled", "1":"Enabled [DEFAULT]"]					
 	}
 }
 
@@ -142,7 +168,7 @@ private getOptionsInput(param) {
 		input "configParam${param.num}", "enum",
 			title: "${param.name}:",
 			required: false,
-			defaultValue: param.value,
+			defaultValue: param.value?.toString(),
 			displayDuringSetup: true,
 			options: param.options
 	}
@@ -150,17 +176,10 @@ private getOptionsInput(param) {
 		input "configParam${param.num}", "number",
 			title: "${param.name}:",
 			required: false,
-			defaultValue: param.value,
+			defaultValue: param.value?.toString(),
 			displayDuringSetup: true,
 			range: param.range
 	}
-}
-
-private getBoolInput(name, title, defaultVal) {
-	input "${name}", "bool",
-		title: "${title}?",
-		defaultValue: defaultVal,
-		required: false
 }
 
 
@@ -229,6 +248,7 @@ private addChildSwitch(endpoint) {
 	logDebug "Creating Child Switch for ${name}"
 	
 	return addChildDevice(
+		"smartthings",
 		"Child Switch",
 		"${device.deviceNetworkId}:${endpoint}",
 		null,
@@ -289,7 +309,7 @@ def executeConfigureCmds() {
 
 def ping() {
 	logDebug "ping()..."
-	return sendCommands([ switchBinaryGetCmd() ])
+	return sendCommands([ versionGetCmd() ])
 }
 
 
@@ -402,29 +422,6 @@ private secureCmd(cmd) {
 	else {
 		return cmd.format()
 	}
-}
-
-
-private getCommandClassVersions() {
-	[
-		0x20: 1,	// Basic
-		0x25: 1,	// Switch Binary
-		0x55: 1,	// Transport Service
-		0x59: 1,	// AssociationGrpInfo
-		0x5A: 1,	// DeviceResetLocally
-		0x5E: 2,	// ZwaveplusInfo
-		0x60: 3,	// Multi Channel
-		0x6C: 1,	// Supervision
-		0x70: 2,	// Configuration
-		0x72: 2,	// ManufacturerSpecific
-		0x73: 1,	// Powerlevel
-		0x7A: 2,	// Firmware Update Md
-		0x85: 2,	// Association
-		0x86: 1,	// Version
-		0x8E: 2,	// Multi Channel Association
-		0x98: 1,	// Security 0
-		0x9F: 1		// Security 2
-	]
 }
 
 
@@ -548,16 +545,21 @@ private setParamStoredValue(paramNum, value) {
 
 
 def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd, endpoint=0) {
-	logTrace "SwitchBinaryReport: ${cmd}" + (endpoint ? " (Endpoint ${endpoint})" : "")
-	// Using for ping
+	logDebug "SwitchBinaryReport: ${cmd}" + (endpoint ? " (Endpoint ${endpoint})" : "")
+	
+	handleSwitchReport(cmd.value, endpoint)	
 	return []
 }
 
-
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd, endpoint=0) {
 	logTrace "BasicReport: ${cmd}" + (endpoint ? " (Endpoint ${endpoint})" : "")
+	
+	handleSwitchReport(cmd.value, endpoint)	
+	return []
+}
 
-	def value = (cmd.value == 0xFF) ? "on" : "off"
+private handleSwitchReport(rawValue, endpoint) {
+	def value = (rawValue == 0xFF) ? "on" : "off"
 
 	if (endpoint) {
 		def child = findChildByEndpoint(endpoint)
@@ -571,8 +573,7 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd, endpoint=0)
 	}
 	else {
 		sendEvent(getEventMap("switch", value))
-	}
-	return []
+	}	
 }
 
 
@@ -632,14 +633,16 @@ private getRelayTypeParam(num, relay) {
 	def options = [
 		0:"Momentary Switch",
 		1:"Toggle Switch",
-		2:"Toggle Switch (any change)"
+		2:"Toggle Switch (any change)",
+		3: "Garage Door (FIRMWARE >= 1.02)"
 	]
 	return getParam(num, "Switch Type for Relay ${relay}", 1, 2, options)
 }
 
 private getLedIndicatorModeParam() {
 	def options = [
-		0:"On when ALL Relays are Off", 1:"On when ANY Relay is On",
+		0:"On when ALL Relays are Off", 
+		1:"On when ANY Relay is On",
 		2:"Always Off",
 		3:"Always On"
 	]
@@ -714,7 +717,6 @@ private getParam(num, name, size, defaultVal, options=null, range=null, firmware
 
 	def map = [num: num, name: name, size: size, value: val]
 	if (options) {
-		map.valueName = options?.find { k, v -> "${k}" == "${val}" }?.value
 		map.options = setDefaultOption(options, defaultVal)
 	}
 
@@ -725,13 +727,13 @@ private getParam(num, name, size, defaultVal, options=null, range=null, firmware
 	return map
 }
 
-private setDefaultOption(options, defaultVal) {
-	return options?.collectEntries { k, v ->
-		if ("${k}" == "${defaultVal}") {
-			v = "${v} [DEFAULT]"
+private setDefaultOption(options, defaultVal) {	
+	options?.each {
+		if (it.key == defaultVal) {
+			it.value = "${it.value} [DEFAULT]"
 		}
-		["$k": "$v"]
-	}
+	}	
+	return options
 }
 
 
@@ -802,8 +804,8 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time)
 }
 
-private logDebug(msg) {
-	if (settings?.debugOutput != false) {
+void logDebug(msg) {
+	if (safeToInt(settings?.debugLogging, 1)) {
 		log.debug "$msg"
 	}
 }
