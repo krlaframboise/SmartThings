@@ -323,13 +323,22 @@ private getOptionsPageContent() {
 			defaultValue: "None",
 			submitOnChange: true,
 			required: false,
-			options: ["None", "Out of Space", "Events"]
+			options: ["None", "Out of Space", "Events", "Days", "Weekly", "Monthly", "Yearly"]
 		if (settings?.archiveType && !(settings?.archiveType in ["None", "Out of Space"])) {
-			input "archiveInterval", "number",
-				title: "Archive After How Many Events?",
-				defaultValue: 50000,
-				required: false,
-				range: "100..100000"
+			if(settings?.archiveType in ["Events"]) {
+				input "archiveInterval", "number",
+					title: "Archive After How Many Events?",
+					defaultValue: 50000,
+					required: false,
+					range: "100..100000"
+			}
+			if(settings?.archiveType in ["Days"]) {
+				input "archiveInterval", "number",
+					title: "Archive After How Many Days?",
+					defaultValue: 7,
+					required: false,
+					range: "1..365"
+			}
 		}
 	}
 	section("${getWebAppName()}") {		
