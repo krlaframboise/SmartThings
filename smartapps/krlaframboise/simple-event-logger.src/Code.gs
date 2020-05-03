@@ -7,6 +7,10 @@
  *  URL to documentation:
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
+ *  Google Sheets S documentation
+ *  https://developers.google.com/apps-script/reference/spreadsheet/embedded-line-chart-builder#addrangerange
+ *
+ *
  *  Changelog:
  *
  *    1.5 (02/19/2019)
@@ -61,12 +65,8 @@ function doPost(e) {
 		if (data) {	
 			var sheet = SpreadsheetApp.getActiveSheet();
 			
-			if (needToArchive(sheet, data.archiveOptions, data.events.length)) {
-				result = archiveSheet(sheet, result);
-			}
-			else {
-				result = logEvents(sheet, data, result);
-			}
+			// need to check for archive on each log line/entry to archive correctly
+			result = logEvents(sheet, data, result);
 			
 			result.freeSpace = calculateAvailableLogSpace(sheet);
 			sendPostback(data.postBackUrl, result);
@@ -78,11 +78,17 @@ function doPost(e) {
 
 var logEvents = function(sheet, data, result) {
 	try {
+
 		result.totalEventsLogged = sheet.getLastRow() - 1;
 
 		initializeHeaderRow(sheet, data.logDesc, data.logReporting)
 		
 		for (i=0; i < data.events.length; i++) {
+			
+			// need to check for archive on each entry to properly archive at the proper time
+			if (needToArchive(sheet, data.archiveOptions, data)) {
+				result = archiveSheet(sheet, result);
+			}
 			logEvent(sheet, data.logDesc, data.logReporting, data.events[i]);
 			result.eventsLogged++;
 		}
@@ -171,27 +177,44 @@ var sendPostback = function(url, result) {
 
 var getLogCapacity = function() { return 500000; }
 
-var needToArchive = function(sheet, archiveOptions, newEvents) {
+var needToArchive = function(sheet, archiveOptions, data) {
+	var newEvents = data.events.length;
+	var eventDate = data.events[i].time;
+	var sheetFirstDate = sheet.getRange(2, 1).value;
+	var sheetLastDate = sheet.getRange(sheet.getLastRow(), 1).value;
+	var daysSinceFirstLog = getDaysSince(eventDate, sheetFirstDate);
 	switch (archiveOptions.type) {
 		case "Out of Space":
 			return (archiveOptions.logIsFull || ((sheet.getMaxRows() + newEvents) >= (getLogCapacity() / sheet.getMaxColumns())));
 		case "Events":
 			return (archiveOptions.logIsFull || ((sheet.getLastRow() + newEvents) >= archiveOptions.interval));
-		// case "Days":
-			// return (getDaysSince(sheet.getRange(2, 1).value) >= archiveOptions.interval);
+		case "Days":
+			return (daysSinceFirstLog >= archiveOptions.interval);
+		case "Weekly":  // restart on Sunday
+			//getDay()
+			return (eventDate.getDay() != sheetLastDate.getDay() && getDaysSince(eventDate, sheetLastDate) > 7);
+		case "Monthly": // restart on 1st of month
+			//getMonth() //getDate()
+			return (eventDate.getMonth() != sheetLastDate.getMonth());		
+		case "Yearly": // restart on 1st of the year
+			return (eventDate.getYear() != sheetLastDate.getYear());
 		default:
 			return false;
 	}
 }
+var getDaysSinceNow = function(firstDt) {
+	var currentDT = new Date();
+	var currentDate = Date.UTC(currentDT.getFullYear(), currentDT.getMonth(), currentDT.getDate());
+	// just use Date.now() instead of currentDate;
+	return getDaysSince(currentDate, firstDt);
+}
 
-// var getDaysSince = function(firstDT) {
-	// var dayMS = 1000 * 60 * 60 * 24;
-	// var currentDT = new Date();
-	// var currentDate = Date.UTC(currentDT.getFullYear(), currentDT.getMonth(), currentDT.getDate());
-	// var firstDate = Date.UTC(firstDT.getFullYear(), firstDT.getMonth(), firstDT.getDate());
-	// var diffMS = Math.abs(currentDate - firstDate);
-	// return Math.floor(diffMS / dayMS); 	
-// }
+var getDaysSince = function(eventDate, firstDT) {
+	var firstDate = Date.UTC(firstDT.getFullYear(), firstDT.getMonth(), firstDT.getDate());
+	var diffMS = Math.abs(eventDate - firstDate);
+	var dayMS = 1000 * 60 * 60 * 24;
+	return Math.floor(diffMS / dayMS); 	
+}
 
 var archiveSheet = function(sheet, result) {	
 	try {
@@ -235,9 +258,9 @@ var getArchiveSheetName = function(name, sheet) {
 
 var getFormattedDate = function(dt) {
 	try {
-		var yyyy = dt.getFullYear().toString(); 
-		var mm = (dt.getMonth()+1).toString(); 
-		var dd = dt.getDate().toString(); 
+		var yyyy = dt.getFullYear().toString();
+		var mm = (dt.getMonth()+1).toString();
+		var dd = dt.getDate().toString();
 		return yyyy + "-" + (mm[1] ? mm : ("0" + mm[0])) + "-" + (dd[1] ? dd : ("0" + dd[0])); 
 	}
 	catch (ex) {
@@ -254,4 +277,6 @@ var clearSheet = function(sheet) {
 		sheet.deleteRows(3, (sheet.getMaxRows() - 2));
 	}
 	sheet.getRange(2, 1, 1, sheet.getLastColumn()).clearContent();
-}  
+}
+
+
