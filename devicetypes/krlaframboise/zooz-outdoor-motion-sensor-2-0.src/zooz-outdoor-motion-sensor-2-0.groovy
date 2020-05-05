@@ -429,7 +429,7 @@ private convertToLocalTimeString(dt) {
 
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
-	def encapCmd = cmd.encapsulatedCommand(getCommandClassVersions())
+	def encapCmd = cmd.encapsulatedCommand(commandClassVersions)
 
 	def result = []
 	if (encapCmd) {
