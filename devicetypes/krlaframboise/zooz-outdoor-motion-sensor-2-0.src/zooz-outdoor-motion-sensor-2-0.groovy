@@ -1,14 +1,20 @@
 /**
- *  Zooz Outdoor Motion Sensor 2.0.2  (FIRMWARE >= 2.0)
- *    (Model: ZSE29)  
+ *  Zooz Outdoor Motion Sensor 2.1  (FIRMWARE >= 2.0)
+ *    (Model: ZSE29)
  *
- *  Author: 
+ *  Author:
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:  
- *   
+ *  URL to documentation: https://community.smartthings.com/t/release-zooz-outdoor-motion-sensor-ver-2-0-zse29/180195
+ *
  *
  *  Changelog:
+ *
+ *    2.1 (05/04/2020)
+ *      - Added support for associations.
+ *      - Updated wake up instructions and made them also display on update.
+ *      - Changed icons to urls to get them to show in the Android classic app.
+ *      - Added icons for lux and battery
  *
  *    2.0.2 (03/18/2020)
  *      - Force state change on all battery events and make it request the battery every time it wakes up.
@@ -17,18 +23,47 @@
  *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
  *
  *    2.0 (12/08/2019)
- *      - Initial Release 
+ *      - Initial Release
  *
- *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- *  in compliance with the License. You may obtain a copy of the License at:
+ *
+ *  Copyright 2020 Kevin LaFramboise
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
  *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
- *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
- *  for the specific language governing permissions and limitations under the License.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  *
  */
+
+import groovy.transform.Field
+
+@Field static Map commandClassVersions = [
+	0x31: 5,	// Sensor Multilevel (v7)
+	0x59: 1,	// AssociationGrpInfo
+	0x55: 1,	// Transport Service
+	0x5A: 1,	// DeviceResetLocally
+	0x5E: 2,	// ZwaveplusInfo
+	0x6C: 1,	// Supervision
+	0x70: 2,	// Configuration
+	0x71: 3,	// Notification (4)
+	0x72: 2,	// ManufacturerSpecific
+	0x73: 1,	// Powerlevel
+	0x7A: 2,	// Firmware Update Md (3)
+	0x80: 1,	// Battery
+	0x84: 2,	// WakeUp
+	0x85: 2,	// Association
+	0x86: 1,	// Version (2)
+	0x98: 1,	// Security 0
+	0x9F: 1		// Security 2
+]
+
 metadata {
 	definition (name:"Zooz Outdoor Motion Sensor 2.0", namespace:"krlaframboise", author: "Kevin LaFramboise", ocfDeviceType: "x.com.st.d.sensor.motion", vid: "generic-motion-5") {
 		capability "Sensor"
@@ -43,56 +78,103 @@ metadata {
 		attribute "lastCheckIn", "string"
 		attribute "firmwareVersion", "string"
 		attribute "firmwareSupported", "string"
-		
+		attribute "associatedDeviceNetworkIds", "string"
+
 		fingerprint mfr: "027A", prod: "0001", model: "0005", deviceJoinName: "Zooz Outdoor Motion Sensor 2.0"
 	}
 
 	tiles(scale: 2) {
 		multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4){
 			tileAttribute ("device.motion", key: "PRIMARY_CONTROL") {
-				attributeState("inactive", label:'no motion', icon:"st.motion.motion.inactive", backgroundColor:"#cccccc")
-				attributeState("active", label:'motion', icon:"st.motion.motion.active", backgroundColor:"#00a0dc")
+				attributeState "inactive",
+					label:'NO MOTION',
+					icon:"${resourcesUrl}motion-inactive.png", backgroundColor:"#ffffff"
+				attributeState "active",
+					label:'MOTION',
+					icon:"${resourcesUrl}motion-inactive.png", backgroundColor:"#00a0dc"
 			}
 			tileAttribute ("device.tamper", key: "SECONDARY_CONTROL") {
 				attributeState("clear", label:'')
 				attributeState("detected", label:'TAMPERING')
 			}
 		}
-		valueTile("illuminance", "device.illuminance", inactiveLabel: false, width: 2, height: 2) {
-			state "illuminance", label: '${currentValue} lux', unit: ""
-		}				
-		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2) {
-			state "battery", label:'${currentValue}% Battery', unit:"%"
+
+		valueTile("illuminance", "device.illuminance", width: 2, height: 2){
+			state "default", label:'${currentValue} lux', icon: "${resourcesUrl}light.png"
 		}
-		standardTile("refresh", "command.refresh", width: 2, height: 2) {
-			state "default", label:"Refresh", action: "refresh", icon:"st.secondary.refresh-icon"
+
+		standardTile("battery", "device.battery", decoration: "flat", width: 2, height: 2) {
+			state "default", label:'${currentValue}%', icon: "${resourcesUrl}battery-default.png"
+			state "100", label:'${currentValue}%', icon: "${resourcesUrl}battery.png"
+			state "99", label:'${currentValue}%', icon: "${resourcesUrl}battery.png"
+			state "98", label:'${currentValue}%', icon: "${resourcesUrl}battery.png"
+			state "97", label:'${currentValue}%', icon: "${resourcesUrl}battery.png"
+			state "96", label:'${currentValue}%', icon: "${resourcesUrl}battery.png"
+			state "95", label:'${currentValue}%', icon: "${resourcesUrl}battery.png"
+			state "1", label:'${currentValue}%', icon: "${resourcesUrl}battery-low.png"
+			state "2", label:'${currentValue}%', icon: "${resourcesUrl}battery-low.png"
+			state "3", label:'${currentValue}%', icon: "${resourcesUrl}battery-low.png"
+			state "4", label:'${currentValue}%', icon: "${resourcesUrl}battery-low.png"
+			state "5", label:'${currentValue}%', icon: "${resourcesUrl}battery-low.png"
 		}
+
+		standardTile("refresh", "device.refresh", width: 2, height: 2, decoration: "flat") {
+			state "default", label: "Refresh", action: "refresh", icon:"${resourcesUrl}refresh.png"
+		}
+		
 		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:2, height: 2) {
 			state "firmwareVersion", label:'Firmware ${currentValue}'
 		}
+		
 		valueTile("firmwareSupported", "device.firmwareSupported", decoration:"flat", width:4, height: 2) {
 			state "yes", label:''
 			state "no", label:'This DTH only supports firmware 2.0 and above'
 		}
+
+		standardTile("assocLabel", "device.associatedDeviceNetworkIds", decoration: "flat", width: 3, height: 1) {
+			state "default", label:'Associated Device Network Ids:'
+			state "none", label:""
+		}
+
+		standardTile("assocDNIs", "device.associatedDeviceNetworkIds", decoration: "flat", width: 3, height: 1) {
+			state "default", label:'${currentValue}'
+			state "none", label:""
+		}
+
 		main("mainTile")
-		details(["mainTile", "illuminance", "battery", "refresh", "firmwareVersion", "firmwareSupported"])
+		details(["mainTile", "illuminance", "battery", "refresh", "firmwareVersion", "firmwareSupported", "assocLabel", "assocDNIs"])
 	}
-	
+
 	preferences {
-		
-		// getParamInput(group2BasicSetParam)
-		// getParamInput(motionEnabledParam)
+
+		getParamInput(motionEnabledParam)
 		getParamInput(motionSensitivityParam)
 		getParamInput(motionClearedDelayParam)
-		getParamInput(luxLevelTriggerParam)		
+		getParamInput(luxLevelTriggerParam)
 		getParamInput(luxReportingParam)
-				
+
 		getOptionsInput("checkInInterval", "Check In Interval:", checkInIntervalSetting, checkInIntervalOptions)
-		
-		input "debugOutput", "bool", 
-			title: "Enable debug logging?", 
-			defaultValue: true, 
-			displayDuringSetup: true, 
+
+		input "assocInstructions", "paragraph",
+			title: "Device Associations",
+			description: "Associations are an advance feature that allow you to establish direct communication between Z-Wave devices.  To make this motion sensor control another Z-Wave device, get that device's Device Network Id from the My Devices section of the IDE and enter the id below.  It supports up to 4 associations and you can use commas to separate the device network ids.",
+			required: false
+
+		input "assocDisclaimer", "paragraph",
+			title: "WARNING",
+			description: "If you add a device's Device Network ID to the list below and then remove that device from SmartThings, you MUST come back and remove it from the list below.  Failing to do this will substantially increase the number of z-wave messages being sent by this device and could affect the stability of your z-wave mesh.",
+			required: false
+
+		input "assocDNIs", "string",
+			title: "Enter Device Network IDs for Association: (Enter 0 to clear field in new iOS mobile app)",
+			required: false
+
+		getParamInput(group2BasicSetParam)
+
+		input "debugOutput", "bool",
+			title: "Enable debug logging?",
+			defaultValue: true,
+			displayDuringSetup: true,
 			required: false
 	}
 }
@@ -113,57 +195,72 @@ private getOptionsInput(name, title, defaultValue, options) {
 		options: setDefaultOption(options, defaultValue)
 }
 
+private getAssocDNIsSetting() {
+	def val = settings?.assocDNIs
+	return ((val && (val.trim() != "0")) ? val : "") // new iOS app has no way of clearing string input so workaround is to have users enter 0.
+}
+
+private getResourcesUrl() {
+	return "https://raw.githubusercontent.com/krlaframboise/Resources/master/Zooz/"
+}
+
 
 def installed() {
+	sendEvent(name: "tamper", value: "clear", displayed: false)
+	
 	state.refreshAll = true
 }
 
 
-def updated() {	
+def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
 		state.lastUpdated = new Date().time
 		logTrace "updated()"
-		
+
+		logForceWakeupMessage "The setting changes will be sent to the device the next time it wakes up."
+
 		if (state.checkInInterval != checkInIntervalSetting) {
 			refresh()
-		}		
+		}
 	}
 }
 
 
-def configure() {	
+def configure() {
 	logTrace "configure()"
 	def cmds = []
-	
+
 	if (!state.checkInInterval) {
 		// First time configuring so give it time for inclusion to finish.
-		cmds << "delay 2000"			
+		cmds << "delay 2000"
 	}
 	
 	if (state.refreshAll || state.checkInInterval != checkInIntervalSetting) {
 		cmds << wakeUpIntervalSetCmd(checkInIntervalSetting)
 		cmds << wakeUpIntervalGetCmd()
 	}
-	
+
 	if (state.refreshAll || !device.currentValue("illuminance")) {
 		cmds << sensorMultilevelGetCmd(lightSensorType)
 	}
-	
+
 	if (state.refreshAll || !device.currentValue("firmwareVersion")) {
 		cmds << versionGetCmd()
 	}
-		
+
 	cmds << batteryGetCmd()
-	
-	configParams.each { param ->		
-		def storedVal = getParamStoredValue(param.num)		
-		if (state.refreshAll || "${storedVal}" != "${param.value}") {			
+
+	configParams.each { param ->
+		def storedVal = getParamStoredValue(param.num)
+		if (state.refreshAll || "${storedVal}" != "${param.value}") {
 			logDebug "Changing ${param.name}(#${param.num}) from ${storedVal} to ${param.value}"
 			cmds << configSetCmd(param)
 			cmds << configGetCmd(param)
 		}
 	}
-	
+
+	cmds += configureAssocs()
+
 	state.refreshAll = false
 	return cmds ? delayBetween(cmds, 1000) : []
 }
@@ -177,16 +274,61 @@ private getParamStoredValue(paramNum) {
 }
 
 
-// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
-def ping() {
-	logDebug "ping()"	
+private configureAssocs() {
+	def cmds = []
+
+	if (!device.currentValue("associatedDeviceNetworkIds")) {
+		sendEvent(name: "associatedDeviceNetworkIds", value: "none", displayed: false)
+	}
+
+	def stateNodeIds = (state.assocNodeIds ?: [])
+	def settingNodeIds = assocDNIsSettingNodeIds
+
+	def newNodeIds = settingNodeIds.findAll { !(it in stateNodeIds)  }
+	if (newNodeIds) {
+		cmds << associationSetCmd(newNodeIds)
+	}
+
+	def oldNodeIds = stateNodeIds.findAll { !(it in settingNodeIds)  }
+	if (oldNodeIds) {
+		cmds << associationRemoveCmd(oldNodeIds)
+	}
+
+	if (cmds || state.pendingRefresh) {
+		cmds << associationGetCmd()
+	}
+
+	return cmds
+}
+
+private getAssocDNIsSettingNodeIds() {
+	def nodeIds = convertHexListToIntList(assocDNIsSetting?.split(","))
+
+	if (assocDNIsSetting && !nodeIds) {
+		log.warn "'${assocDNIsSetting}' is not a valid value for the 'Device Network Ids for Association' setting.  All z-wave devices have a 2 character Device Network Id and if you're entering more than 1, use commas to separate them."
+	}
+	else if (nodeIds?.size() >  4) {
+		log.warn "The 'Device Network Ids for Association' setting contains more than 4 Ids so only the first 4 will be associated."
+	}
+
+	return nodeIds
 }
 
 
-def refresh() {	
-	log.warn "The settings will be sent to the device the next time it wakes up.  You can force the device to wake up immediately by removing the battery for a few seconds and then putting it back in."
+// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
+def ping() {
+	logDebug "ping()"
+}
+
+
+def refresh() {
+	logForceWakeupMessage "The next time the device wakes up, all settings will be sent to it and the sensor data will be requested."
 	state.refreshAll = true
 	return []
+}
+
+private logForceWakeupMessage(msg) {
+	log.warn "${msg}  You can force the device to wake up immediately by pressing the tamper switch 3 times."
 }
 
 
@@ -206,6 +348,18 @@ private versionGetCmd() {
 	return secureCmd(zwave.versionV1.versionGet())
 }
 
+private associationSetCmd(nodes) {
+	return secureCmd(zwave.associationV2.associationSet(groupingIdentifier: 2, nodeId: nodes))
+}
+
+private associationRemoveCmd(nodes) {
+	return secureCmd(zwave.associationV2.associationRemove(groupingIdentifier: 2, nodeId: nodes))
+}
+
+private associationGetCmd() {
+	return secureCmd(zwave.associationV2.associationGet(groupingIdentifier: 2))
+}
+
 private batteryGetCmd() {
 	return secureCmd(zwave.batteryV1.batteryGet())
 }
@@ -219,7 +373,7 @@ private configGetCmd(param) {
 }
 
 private configSetCmd(param) {
-	return secureCmd(zwave.configurationV2.configurationSet(parameterNumber: param.num, size: param.size, scaledConfigurationValue: param.value))	
+	return secureCmd(zwave.configurationV2.configurationSet(parameterNumber: param.num, size: param.size, scaledConfigurationValue: param.value))
 }
 
 private secureCmd(cmd) {
@@ -228,38 +382,15 @@ private secureCmd(cmd) {
 	}
 	else {
 		return cmd.format()
-	}	
+	}
 }
 
 
-private getCommandClassVersions() {
-	[
-		0x31: 5,	// Sensor Multilevel (v7)
-		0x59: 1,	// AssociationGrpInfo
-		0x55: 1,	// Transport Service
-		0x5A: 1,	// DeviceResetLocally
-		0x5E: 2,	// ZwaveplusInfo
-		0x6C: 1,	// Supervision
-		0x70: 2,	// Configuration
-		0x71: 3,	// Notification (4)
-		0x72: 2,	// ManufacturerSpecific
-		0x73: 1,	// Powerlevel
-		0x7A: 2,	// Firmware Update Md (3)
-		0x80: 1,	// Battery
-		0x84: 2,  // WakeUp
-		0x85: 2,	// Association
-		0x86: 1,	// Version (2)
-		0x98: 1,	// Security 0
-		0x9F: 1		// Security 2
-	]
-}
-
-
-def parse(String description) {	
-	def result = []	
+def parse(String description) {
+	def result = []
 	try {
 		sendLastCheckInEvent()
-		
+
 		def cmd = zwave.parse(description, commandClassVersions)
 		if (cmd) {
 			result += zwaveEvent(cmd)
@@ -274,9 +405,9 @@ def parse(String description) {
 	return result
 }
 
-private sendLastCheckInEvent() {	
+private sendLastCheckInEvent() {
 	if (!isDuplicateCommand(state.lastCheckIn, 60000)) {
-		state.lastCheckIn = new Date().time		
+		state.lastCheckIn = new Date().time
 		sendEvent(name: "lastCheckIn", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
 	}
 }
@@ -289,7 +420,7 @@ private convertToLocalTimeString(dt) {
 		}
 		else {
 			return "$dt"
-		}	
+		}
 	}
 	catch (e) {
 		return "$dt"
@@ -299,13 +430,13 @@ private convertToLocalTimeString(dt) {
 
 def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
 	def encapCmd = cmd.encapsulatedCommand(getCommandClassVersions())
-		
+
 	def result = []
 	if (encapCmd) {
 		result += zwaveEvent(encapCmd)
 	}
 	else {
-		log.warn "Unable to extract encapsulated cmd from $cmd"		
+		log.warn "Unable to extract encapsulated cmd from $cmd"
 	}
 	return result
 }
@@ -313,14 +444,14 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd) {
 	logTrace "WakeUpIntervalReport: $cmd"
-	
+
 	state.checkInInterval = cmd.seconds
-	
+
 	// Set the Health Check interval so that it can be skipped twice plus 5 minutes.
 	def checkInterval = ((cmd.seconds * 2) + (5 * 60))
-	
+
 	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
-	
+
 	return []
 }
 
@@ -328,24 +459,24 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd) {
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 {
 	logDebug "Device Woke Up"
-	
-	def cmds = configure()		
+
+	def cmds = configure()
 	if (cmds) {
 		cmds << "delay 1000"
 	}
 	cmds << wakeUpNoMoreInfoCmd()
-	
-	return response(cmds)	
+
+	return response(cmds)
 }
 
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
-	
+
 	if (val > 100) {
 		val = 100
-	}	
-	
+	}
+
 	logDebug "Battery is ${val}%"
 	sendEvent(name:"battery", value:val, unit:"%", isStateChange: true)
 	return []
@@ -354,37 +485,53 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 	logTrace "VersionReport: ${cmd}"
-	
+
 	def version = "${cmd.applicationVersion}.${cmd.applicationSubVersion}"
 	def supported = (safeToDec(version) >= 2.0 ? "yes" : "no")
-	
+
 	if (version != device.currentValue("firmwareVersion")) {
 		logDebug "Firmware: ${version}"
-		sendEvent(name: "firmwareVersion", value: version, displayed:false)		
+		sendEvent(name: "firmwareVersion", value: version, displayed:false)
 		sendEvent(name:"firmwareSupported", value: supported, displayed:false)
 	}
-	
+
 	if (supported == "no") {
 		log.warn "This DTH was written for the Zooz Outdoor Motion Sensor 2.0, but your device has firmware ${version} so you need to use the DTH for the old model:https://community.smartthings.com/t/release-zooz-outdoor-motion-sensor-zse29/142893"
 	}
-	return []	
+	return []
+}
+
+
+def zwaveEvent(physicalgraph.zwave.commands.associationv2.AssociationReport cmd) {
+	logDebug "AssociationReport: ${cmd}"
+
+
+	if (cmd.groupingIdentifier == 2) {
+		state.assocNodeIds = cmd.nodeId
+
+		def dnis = convertIntListToHexList(cmd.nodeId)?.join(", ") ?: "none"
+		if (device.currentValue("associatedDeviceNetworkIds") != dnis) {
+			sendEvent(name: "associatedDeviceNetworkIds", value: dnis, displayed: false)
+		}
+	}
+	return []
 }
 
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
 	logTrace "BasicSet: $cmd"
-	
+
 	return []
 }
 
 
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelReport cmd) {
 	logTrace "SensorMultilevelReport: ${cmd}"
-	
+
 	def val = cmd.scaledSensorValue
 	switch (cmd.sensorType) {
 		case lightSensorType:
-			sendEvent(name:"illuminance", value:cmd.scaledSensorValue, unit:"lux", isStateChange: true)			
+			sendEvent(name:"illuminance", value:cmd.scaledSensorValue, unit:"lux", isStateChange: true)
 			break
 		default:
 			logDebug "Unknown Sensor Type: ${cmd.sensorType}"
@@ -395,17 +542,17 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelR
 
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
 	logTrace "NotificationReport: $cmd"
-	
+
 	if (cmd.notificationType == 7) {
 		switch (cmd.event) {
 			case 3:
 				sendTamperEventMap("detected")
 				break
 			case 8:
-				sendMotionEventMap("active")				
+				sendMotionEventMap("active")
 				break
 			case 0:
-				if (cmd.eventParametersLength && cmd.eventParameter[0] == 8) { 
+				if (cmd.eventParametersLength && cmd.eventParameter[0] == 8) {
 					sendMotionEventMap("inactive")
 				}
 				else {
@@ -414,8 +561,8 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 				break
 			default:
 				logTrace "Unknown Notification Event: ${cmd.event}"
-		}		
-	}	
+		}
+	}
 	else if (cmd.notificationType == 8 && cmd.event == 1) {
 		logDebug "Device Powered On"
 		def cmds = configure()
@@ -423,7 +570,7 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 	}
 	else {
 		logTrace "Unknown Notification Type: ${cmd.notificationType}"
-	}	
+	}
 	return []
 }
 
@@ -438,19 +585,19 @@ private sendMotionEventMap(val) {
 }
 
 
-def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {	
+def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {
 	logTrace "ConfigurationReport ${cmd}"
-	
+
 	def param = configParams.find { it.num == cmd.parameterNumber }
-	if (param) {	
+	if (param) {
 		def val = cmd.scaledConfigurationValue
-		
+
 		logDebug "${param.name}(#${param.num}) = ${val}"
 		setParamStoredValue(param.num, val)
 	}
 	else {
 		logDebug "Parameter #${cmd.parameterNumber} = ${cmd.scaledConfigurationValue}"
-	}		
+	}
 	return []
 }
 
@@ -473,7 +620,7 @@ private getCheckInIntervalSetting() {
 // Configuration Parameters
 private getConfigParams() {
 	[
-		// group2BasicSetParam,
+		group2BasicSetParam,
 		motionEnabledParam,
 		motionSensitivityParam,
 		luxLevelTriggerParam,
@@ -483,10 +630,10 @@ private getConfigParams() {
 }
 
 private getGroup2BasicSetParam() {
-	return getParam(1, "Group 2 Basic Set Value", 1, 99, [0:"Off", 25:"25%", 50:"50%", 75:"75%", 99:"100%"])
+	return getParam(1, "Association Basic Set Value", 1, 99, [0:"Off", 10:"10%", 20:"20%", 30:"30%", 40:"40%", 50:"50%", 60:"60%", 70:"70%", 80:"80%", 90:"90%", 99:"100%", 255:"On"])
 }
 
-private getMotionEnabledParam() {	
+private getMotionEnabledParam() {
 	return getParam(2, "Motion Enabled", 1, 1, [0:"Disabled", 1:"Enabled"])
 }
 
@@ -515,14 +662,14 @@ private getParam(num, name, size, defaultVal, options=null) {
 		map.valueName = options?.find { k, v -> "${k}" == "${val}" }?.value
 		map.options = setDefaultOption(options, defaultVal)
 	}
-		
+
 	return map
 }
 
 private setDefaultOption(options, defaultVal) {
 	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
-			v = "${v} [DEFAULT]"		
+			v = "${v} [DEFAULT]"
 		}
 		["$k": "$v"]
 	}
@@ -533,33 +680,33 @@ private setDefaultOption(options, defaultVal) {
 
 private getMotionSensitivityOptions() {
 	def options = [1:"Least Sensitive"]
-		
+
 	(2..9).each {
 		options["${it}"] = "${it}"
-	}	
+	}
 	options["10"] = "Most Sensitive"
-	return options	
+	return options
 }
 
 private getLuxLevelTriggerOptions() {
 	def options = [
-		0:"Set Manually by Lux Knob", 
+		0:"Set Manually by Lux Knob",
 		1:"Ignore Lux and Always Report Motion",
 		10:"10 lux"
 	]
 	(1..36).each {
 		options["${it * 25}"] = "${it * 25} lux"
-	}	
+	}
 	return options
 }
 
 private getMotionClearedDelayOptions() {
 	def options = [0:"Set Manually on Knob"]
-	
+
 	(5..30).each {
 		options["${it}"] = "${it} Seconds"
 	}
-	
+
 	options["45"] = "45 Seconds"
 	options["60"] = "1 Minute"
 	options["75"] = "1 Minute 15 Seconds"
@@ -567,31 +714,31 @@ private getMotionClearedDelayOptions() {
 	options["105"] = "1 Minute 45 Seconds"
 	options["120"] = "2 Minutes"
 	options["150"] = "2 Minutes 30 Seconds"
-	
+
 	[180,240,300,360,420,480,540,600,660,720].each {
 		options["${it}"] = "${it / 60} Minutes"
-	}	
-	return options	
+	}
+	return options
 }
 
 private getLuxReportingOptions() {
 	def options = [1:"1 Minute"]
-	
+
 	(2..15).each {
 		options["${it}"] = "${it} Minutes"
 	}
-	
+
 	options["30"] = "30 Minutes"
 	options["45"] = "45 Minutes"
 	options["60"] = "1 Hour"
-	
+
 	(2..23).each {
 		options["${it * 60}"] = "${it} Hours"
 	}
-	
-	options["1440"] = "1 Day"	
-	
-	return options	
+
+	options["1440"] = "1 Day"
+
+	return options
 }
 
 private getCheckInIntervalOptions() {
@@ -615,6 +762,27 @@ private getFirmwareVersion() {
 	return safeToDec(device?.currentValue("firmwareVersion"))
 }
 
+private convertIntListToHexList(intList) {
+	def hexList = []
+	intList?.each {
+		hexList.add(Integer.toHexString(it).padLeft(2, "0").toUpperCase())
+	}
+	return hexList
+}
+
+private convertHexListToIntList(String[] hexList) {
+	def intList = []
+
+	hexList?.each {
+		try {
+			it = it.trim()
+			intList.add(Integer.parseInt(it, 16))
+		}
+		catch (e) { }
+	}
+	return intList
+}
+
 private safeToInt(val, defaultVal=0) {
 	return "${val}"?.isInteger() ? "${val}".toInteger() : defaultVal
 }
@@ -624,7 +792,7 @@ private safeToDec(val, defaultVal=0) {
 }
 
 private isDuplicateCommand(lastExecuted, allowedMil) {
-	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
+	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time)
 }
 
 private logDebug(msg) {
