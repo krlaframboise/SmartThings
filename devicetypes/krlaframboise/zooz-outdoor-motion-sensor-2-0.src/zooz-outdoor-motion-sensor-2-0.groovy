@@ -630,7 +630,7 @@ private getConfigParams() {
 }
 
 private getGroup2BasicSetParam() {
-	return getParam(1, "Association Basic Set Value", 1, 99, [0:"Off", 10:"10%", 20:"20%", 30:"30%", 40:"40%", 50:"50%", 60:"60%", 70:"70%", 80:"80%", 90:"90%", 99:"100%", 255:"On"])
+	return getParam(1, "Association Basic Set Value", 1, 99, [0:"Off", 10:"10%", 20:"20%", 30:"30%", 40:"40%", 50:"50%", 60:"60%", 70:"70%", 80:"80%", 90:"90%", 99:"100%"])
 }
 
 private getMotionEnabledParam() {
