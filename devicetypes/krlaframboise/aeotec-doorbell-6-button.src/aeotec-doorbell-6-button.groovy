@@ -1,7 +1,7 @@
 /**
  *  Aeotec Doorbell 6 Button (CHILD DEVICE) v1.2.2
  *
- *  Author: 
+ *  Author:
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
@@ -31,12 +31,14 @@
  */
 metadata {
 	definition (
-		name: "Aeotec Doorbell 6 Button", 
-		namespace: "krlaframboise", 
+		name: "Aeotec Doorbell 6 Button",
+		namespace: "krlaframboise",
 		author: "Kevin LaFramboise",
 		ocfDeviceType: "oic.d.switch",
 		vid:"generic-switch"
-		// ocfDeviceType: "x.com.st.d.remotecontroller"
+		// ocfDeviceType: "x.com.st.d.remotecontroller",
+        // vid:"generic-button"
+
 	) {
 		capability "Actuator"
 		capability "Sensor"
@@ -44,66 +46,66 @@ metadata {
 		capability "Battery"
 		capability "Switch"
 		capability "Refresh"
-		
+
 		attribute "firmwareVersion", "string"
 		attribute "lastPushed", "string"
-		
+
 		command "setVolume"
 	}
-	
-	simulator { }	
+
+	simulator { }
 
 	tiles(scale: 2) {
 		multiAttributeTile(name:"switch", type: "generic", width: 6, height: 4, canChangeIcon: false){
 			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
 				attributeState "on", label: '${name}', action: "switch.off", icon: "st.unknown.zwave.remote-controller", backgroundColor: "#00a0dc"
 				attributeState "off", label: '${name}', action: "switch.on", icon: "st.unknown.zwave.remote-controller", backgroundColor: "#ffffff"
-			}			
+			}
 			tileAttribute ("device.lastPushed", key: "SECONDARY_CONTROL") {
 				attributeState "lastPushed", label:'Last Pushed: ${currentValue}'
 			}
-		}		
-		
+		}
+
 		standardTile("on", "device.switch", width: 2, height: 2) {
 			state "default", label:'On', action: "switch.on"
 		}
-		
+
 		standardTile("off", "device.switch", width: 2, height: 2) {
 			state "default", label:'Off', action: "switch.off"
 		}
-		
+
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {
 			state "default", label:'Refresh', action: "refresh", icon:"st.secondary.refresh-icon"
 		}
-		
+
 		valueTile("battery", "device.battery", inactiveLabel: false, decoration: "flat", width: 3, height: 1) {
 			state "battery", label:'${currentValue}% Battery', unit:"%"
 		}
-		
+
 		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:3, height: 1) {
 			state "firmwareVersion", label:'Firmware ${currentValue}'
 		}
-		
+
 		main("switch")
 		details(["switch", "on", "off", "refresh", "battery", "firmwareVersion"])
 	}
-	
-	preferences { 	
+
+	preferences {
 		getOptionsInput("tone", "Sound", defaultTone, setDefaultOption(toneOptions, defaultTone))
-		
+
 		getOptionsInput("volume", "Volume", defaultVolume, setDefaultOption(volumeOptions, defaultVolume))
-		
+
 		getOptionsInput("lightEffect", "Light Effect", defaultLightEffect, setDefaultOption(lightEffectOptions, defaultLightEffect))
-		
+
 		getOptionsInput("repeat", "Repeat", defaultRepeat, setDefaultOption(getRepeatOptions(false), defaultRepeat))
 
 		getOptionsInput("repeatDelay", "Repeat Delay", defaultRepeatDelay, setDefaultOption(repeatDelayOptions, defaultRepeatDelay))
-		
+
 		getOptionsInput("toneIntercept", "Tone Intercept Length", defaultToneIntercept, setDefaultOption(toneInterceptOptions, defaultToneIntercept))
-		
-		input "debugOutput", "bool", 
-			title: "Enable Debug Logging?", 
-			defaultValue: true, 
+
+		input "debugOutput", "bool",
+			title: "Enable Debug Logging?",
+			defaultValue: true,
 			required: false
 	}
 }
@@ -119,7 +121,7 @@ private getOptionsInput(name, title, defaultVal, options) {
 
 
 private getVolumeSetting() {
-	return safeToInt(settings?.volume, defaultVolume)	
+	return safeToInt(settings?.volume, defaultVolume)
 }
 
 private getToneSetting() {
@@ -150,18 +152,18 @@ private getDefaultRepeatDelay() { return 0 }
 private getDefaultToneIntercept() { return 0 }
 
 
-def installed() { 
+def installed() {
 	logDebug "installed()..."
-	
+
 	initialize()
 }
 
 
-def updated() {	
+def updated() {
 	logDebug "updated()..."
-	
+
 	initialize()
-	
+
 	parent?.childUpdated(buttonNumber, getGroupSettings(volumeSetting))
 }
 
@@ -169,29 +171,29 @@ private initialize() {
 	if (!device.currentValue("numberOfButtons")) {
 		sendEvent(getEventMap("numberOfButtons", 1))
 	}
-	
+
 	if (!device.currentValue("supportedButtonValues")) {
 		sendEvent(getEventMap("supportedButtonValues", ["pushed"].encodeAsJSON()))
-	}	
-	
+	}
+
 	if (!device.currentValue("button")) {
 		def evt = getEventMap("button", "pushed")
 		evt.data = [buttonNumber: buttonNumber]
 		sendEvent(evt)
 	}
-	
+
 	if (!device.currentValue("switch")) {
 		sendEvent(getEventMap("switch", "off"))
 	}
 }
 
-def setVolume(volume) {	
+def setVolume(volume) {
 	logDebug "setVolume(${volume})..."
-	
+
 	parent?.childUpdated(buttonNumber, getGroupSettings(validateVolume(volume)))
 }
 
-private getGroupSettings(volume) {	
+private getGroupSettings(volume) {
 	[
 		"tone": toneSetting,
 		"volume": volume,
@@ -219,7 +221,7 @@ def refresh() {
 
 def on() {
 	logDebug "on()..."
-	parent?.childOn(buttonNumber)	
+	parent?.childOn(buttonNumber)
 }
 
 
@@ -229,7 +231,7 @@ def off() {
 }
 
 
-def getEventMap(name, value, displayed=false, unit=null) {	
+def getEventMap(name, value, displayed=false, unit=null) {
 	def eventMap = [
 		name: name,
 		value: value,
@@ -237,12 +239,12 @@ def getEventMap(name, value, displayed=false, unit=null) {
 		isStateChange: true,
 		descriptionText: "${device.displayName} - ${name} ${value}"
 	]
-	
+
 	if (unit) {
 		eventMap.unit = unit
 		eventMap.descriptionText = "${eventMap.descriptionText}${unit}"
-	}	
-	
+	}
+
 	if (displayed) {
 		logDebug "${eventMap.descriptionText}"
 	}
@@ -253,7 +255,7 @@ def getEventMap(name, value, displayed=false, unit=null) {
 def setDefaultOption(options, defaultVal) {
 	return options?.collectEntries { k, v ->
 		if ("${k}" == "${defaultVal}") {
-			v = "${v} [DEFAULT]"		
+			v = "${v} [DEFAULT]"
 		}
 		["$k": "$v"]
 	}
@@ -261,22 +263,22 @@ def setDefaultOption(options, defaultVal) {
 
 
 private getVolumeOptions() {
-	def options = ["0":"Mute", "1":"1%"]	
+	def options = ["0":"Mute", "1":"1%"]
 
 	(1..20).each {
 		options["${it * 5}"] = "${it * 5}%"
 	}
-	
+
 	return options
 }
 
 def getToneOptions() {
 	def options = [:]
-	
+
 	(1..30).each {
 		options["${it}"] = "Tone #${it}"
 	}
-	
+
 	return options
 }
 
@@ -293,7 +295,7 @@ def getLightEffectOptions() {
 }
 
 def getRepeatOptions(includeUnlimited) {
-	def options = [:]	
+	def options = [:]
 	if (includeUnlimited) {
 		options["0"] = "Unlimited"
 	}
