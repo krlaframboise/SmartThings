@@ -1,10 +1,13 @@
 /**
- *  Aeotec Doorbell 6 Button (CHILD DEVICE) v1.2.1
+ *  Aeotec Doorbell 6 Button (CHILD DEVICE) v1.2.2
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.2.2 (05/09/2020)
+ *      - Implemented button capability for new mobile app.
  *
  *    1.2.1 (03/14/2020)
  *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
@@ -33,6 +36,7 @@ metadata {
 		author: "Kevin LaFramboise",
 		ocfDeviceType: "oic.d.switch",
 		vid:"generic-switch"
+		// ocfDeviceType: "x.com.st.d.remotecontroller"
 	) {
 		capability "Actuator"
 		capability "Sensor"
@@ -148,15 +152,37 @@ private getDefaultToneIntercept() { return 0 }
 
 def installed() { 
 	logDebug "installed()..."
-	sendEvent(getEventMap("numberOfButtons", 1))
-	sendEvent(getEventMap("switch", "off"))
+	
+	initialize()
 }
 
 
 def updated() {	
 	logDebug "updated()..."
 	
+	initialize()
+	
 	parent?.childUpdated(buttonNumber, getGroupSettings(volumeSetting))
+}
+
+private initialize() {
+	if (!device.currentValue("numberOfButtons")) {
+		sendEvent(getEventMap("numberOfButtons", 1))
+	}
+	
+	if (!device.currentValue("supportedButtonValues")) {
+		sendEvent(getEventMap("supportedButtonValues", ["pushed"].encodeAsJSON()))
+	}	
+	
+	if (!device.currentValue("button")) {
+		def evt = getEventMap("button", "pushed")
+		evt.data = [buttonNumber: buttonNumber]
+		sendEvent(evt)
+	}
+	
+	if (!device.currentValue("switch")) {
+		sendEvent(getEventMap("switch", "off"))
+	}
 }
 
 def setVolume(volume) {	
