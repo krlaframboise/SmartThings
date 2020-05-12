@@ -1,5 +1,5 @@
 /**
- *  Dome Mouser v1.1.3
+ *  Dome Mouser v1.1.1
  *  (Model: DMMZ1)
  *
  *  Author: 
@@ -9,12 +9,6 @@
  *    
  *
  *  Changelog:
- *
- *    1.1.3 (08/15/2018)
- *      - Added support for new mobile app.
- *
- *    1.1.2 (12/25/2017)
- *      - Implemented new ST color Scheme.
  *
  *    1.1.1 (04/08/2017)
  *      - Changed source of icons.
@@ -40,8 +34,7 @@ metadata {
 	definition (
 		name: "Dome Mouser", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise",
-		vid: "generic-motion"
+		author: "Kevin LaFramboise"
 	) {
 		capability "Sensor"
 		capability "Motion Sensor"
@@ -96,11 +89,11 @@ metadata {
 				attributeState "armed", 
 					label:'Armed', 
 					icon:"https://s3-us-west-2.amazonaws.com/dome-manuals/SmartThings/mouse.png", 
-					backgroundColor:"#00a0dc"
+					backgroundColor:"#79b821"
 				attributeState "tripped", 
 					label:'Tripped', 
 					icon:"https://s3-us-west-2.amazonaws.com/dome-manuals/SmartThings/rip.png", 
-					backgroundColor:"#e86d13"
+					backgroundColor:"#bc2323"
 			}
 			tileAttribute ("device.status", key: "SECONDARY_CONTROL") {
 				attributeState "disarmed", 
@@ -108,10 +101,10 @@ metadata {
 					backgroundColor:"#ffffff"
 				attributeState "armed", 
 					label:'\"Contact Closed\"', 
-					backgroundColor:"#00a0dc"
+					backgroundColor:"#79b821"
 				attributeState "tripped", 
 					label:'\"Motion Active\"',
-					backgroundColor:"#e86d13"
+					backgroundColor:"#bc2323"
 			}
 		}	
 		

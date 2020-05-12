@@ -1,5 +1,5 @@
 /**
- *  Zooz Power Strip v1.0.5
+ *  Zooz Power Strip v1.0.4
  *     (Model: ZEN20)
  *  
  *  Capabilities:
@@ -11,9 +11,6 @@
  *  URL to documentation:  https://community.smartthings.com/t/release-zooz-power-strip/68860?u=krlaframboise
  *
  *  Changelog:
- *
- *  1.0.5 (10/30/2018)
- *    - Added support for new mobile app.
  *
  *  1.0.4 (03/11/2016)
  *    - Adjusted health check to allow it to skip a checkin before going offline.
@@ -42,7 +39,7 @@
  *
  */
 metadata {
-	definition (name: "Zooz Power Strip", namespace: "krlaframboise", author: "Kevin LaFramboise", vid:"generic-switch") {
+	definition (name: "Zooz Power Strip", namespace: "krlaframboise", author: "Kevin LaFramboise") {
 		capability "Configuration"
 		capability "Actuator"
 		capability "Switch"

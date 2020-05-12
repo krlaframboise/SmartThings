@@ -10,9 +10,6 @@
  *
  *  Changelog:
  *
- *    1.0.1 (12/25/2017)
- *      - Implemented ST new color scheme.
- *
  *    1.0 (06/10/2017)
  *      - Initial Release 
  *
@@ -63,11 +60,11 @@ metadata {
 	}
 
 	tiles(scale: 2) {
-		multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4){
+		multiAttributeTile(name:"mainTile", type: "generic", width: 6, height: 4, canChangeIcon: true){
 			tileAttribute ("device.motion", key: "PRIMARY_CONTROL") {
-				attributeState("active", label:'motion', icon:"st.motion.motion.active", backgroundColor:"#00a0dc")
-				attributeState("inactive", label:'no motion', icon:"st.motion.motion.inactive", backgroundColor:"#cccccc")
-			}
+				attributeState "active", label:'motion', icon:"st.motion.motion.active", backgroundColor:"#00a0dc"
+				attributeState "inactive", label:'no motion', icon:"st.motion.motion.inactive", backgroundColor:"#ffffff"
+			}			
 		}
 		valueTile("battery", "device.battery", decoration: "flat", width: 2, height: 2) {
 			state "battery", label:'${currentValue}% battery', unit:"%"

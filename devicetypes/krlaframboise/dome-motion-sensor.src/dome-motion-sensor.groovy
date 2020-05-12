@@ -1,5 +1,5 @@
 /**
- *  Dome Motion Sensor v1.2.1
+ *  Dome Motion Sensor v1.1.3
  *  (Model: DMMS1)
  *
  *  Author: 
@@ -9,12 +9,6 @@
  *    
  *
  *  Changelog:
- *
- *    1.2.1 (08/15/2018)
- *    	- Added support for new mobile app.
- *
- *    1.1.4 (12/25/2017)
- *    	- Implemented new ST color scheme.
  *
  *    1.1.3 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -45,8 +39,7 @@ metadata {
 	definition (
 		name: "Dome Motion Sensor", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise",
-		vid: "generic-motion-4"
+		author: "Kevin LaFramboise"
 	) {
 		capability "Sensor"
 		capability "Motion Sensor"
@@ -78,12 +71,6 @@ metadata {
 			required: false,
 			displayDuringSetup: true,
 			options: motionClearedDelayOptions.collect { it.name }
-		input "motionRetrigger", "enum",
-			title: "Motion Retrigger Interval:",
-			defaultValue: motionRetriggerSetting,
-			required: false,
-			displayDuringSetup: true,
-			options: motionRetriggerOptions.collect { it.name }
 		input "motionSensitivity", "enum",
 			title: "Motion Detection Sensitivity:",
 			defaultValue: motionSensitivitySetting,
@@ -126,11 +113,11 @@ metadata {
 				attributeState "inactive", 
 					label:'No Motion', 
 					icon:"st.motion.motion.inactive", 
-					backgroundColor:"#cccccc"
+					backgroundColor:"#ffffff"
 				attributeState "active", 
 					label:'Motion', 
 					icon:"st.motion.motion.active", 
-					backgroundColor:"#00a0dc"
+					backgroundColor:"#53a7c0"
 			}			
 			tileAttribute ("device.illuminance", key: "SECONDARY_CONTROL") {
 				attributeState "illuminance", 
@@ -161,20 +148,21 @@ def updated() {
 	// This method always gets called twice when preferences are saved.
 	if (!isDuplicateCommand(state.lastUpdated, 3000)) {		
 		state.lastUpdated = new Date().time
-		logTrace("updated()")
+		logTrace "updated()"
 
 		logForceWakeupMessage "The configuration will be updated the next time the device wakes up."
+		state.pendingChanges = true
 	}		
 }
 
 // Initializes the device state when paired and updates the device's configuration.
 def configure() {
-	logTrace("configure()")
+	logTrace "configure()"
 	def cmds = []
-	def refreshAll = (!state.isConfigured || !settings?.ledEnabled)
+	def refreshAll = (!state.isConfigured || state.pendingRefresh || !settings?.ledEnabled)
 	
 	if (!state.isConfigured) {
-		logTrace("Waiting 1 second because this is the first time being configured")
+		logTrace "Waiting 1 second because this is the first time being configured"		
 		sendEvent(getEventMap("motion", "inactive", false))
 		sendEvent(getEventMap("illuminance", 0, false, null, "lx"))
 		cmds << "delay 1000"
@@ -183,21 +171,25 @@ def configure() {
 	configData.sort { it.paramNum }.each { 
 		cmds += updateConfigVal(it.paramNum, it.size, it.value, refreshAll)	
 	}
-		
-	if (refreshAll || (checkinIntervalSettingMinutes * 60) != state.checkinInterval) {
-		cmds << wakeUpIntervalSetCmd(checkinIntervalSettingMinutes)
-		cmds << wakeUpIntervalGetCmd()
+	
+	if (!cmds) {
+		state.pendingChanges = false
 	}
 	
-	if (cmds) {
-		logDebug("Sending configuration to device.")
-	}
-		
-	if (state.pendingRefresh || canReportBattery()) {
+	if (refreshAll || canReportBattery()) {
 		cmds << batteryGetCmd()
 	}
 	
-	return cmds ? delayBetween(cmds, 1000) : []
+	initializeCheckin()
+	cmds << wakeUpIntervalSetCmd(checkinIntervalSettingMinutes)
+		
+	if (cmds) {
+		logDebug "Sending configuration to device."
+		return delayBetween(cmds, 1000)
+	}
+	else {
+		return cmds
+	}	
 }
 
 private updateConfigVal(paramNum, paramSize, val, refreshAll) {
@@ -205,7 +197,6 @@ private updateConfigVal(paramNum, paramSize, val, refreshAll) {
 	def configVal = state["configVal${paramNum}"]
 	
 	if (refreshAll || (configVal != val)) {
-		logDebug "#${paramNum}: changing ${configVal} to ${val}"
 		result << configSetCmd(paramNum, paramSize, val)
 		result << configGetCmd(paramNum)
 	}	
@@ -219,27 +210,19 @@ private initializeCheckin() {
 	sendEvent(name: "checkInterval", value: checkInterval, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 }
 
-// // Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
+// Required for HealthCheck Capability, but doesn't actually do anything because this device sleeps.
 def ping() {
-	logDebug("ping()")
+	logDebug "ping()"	
 }
 
 // Forces the configuration to be resent to the device the next time it wakes up.
 def refresh() {	
-	if (state.pendingRefresh) {
-		logForceWakeupMessage "All settings will be sent to the device the next time it wakes up."
-		configData.each {
-			state."configVal${it.paramNum}" = null
-		}
-	}
-	else {
-		logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."
-		state.pendingRefresh = true
-	}
+	logForceWakeupMessage "The sensor data will be refreshed the next time the device wakes up."
+	state.pendingRefresh = true
 }
 
 private logForceWakeupMessage(msg) {
-	logDebug("${msg}  You can force the device to wake up immediately by pressing the connect button once.")
+	logDebug "${msg}  You can force the device to wake up immediately by pressing the connect button once."
 }
 
 // Processes messages received from device.
@@ -253,7 +236,7 @@ def parse(String description) {
 		result += zwaveEvent(cmd)
 	}
 	else {
-		logDebug("Unable to parse description: $description")
+		logDebug "Unable to parse description: $description"
 	}
 	return result
 }
@@ -261,54 +244,62 @@ def parse(String description) {
 // Updates devices configuration, requests battery report, and/or creates last checkin event.
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 {
-	logTrace("WakeUpNotification: $cmd")
+	logTrace "WakeUpNotification: $cmd"
 	def result = []
 	
-	result += configure()
-		
+	if (state.pendingChanges != false) {
+		result += configure()
+	}
+	else if (state.pendingRefresh || canReportBattery()) {
+		result << batteryGetCmd()
+	}
+	else {
+		logTrace "Skipping battery check because it was already checked within the last ${batteryReportingIntervalSetting}."
+	}
+	
 	if (result) {
 		result << "delay 2000"
 	}
+	result << wakeUpNoMoreInfoCmd()
 	
-	result << wakeUpNoMoreInfoCmd()	
-	return response(result)
+	return sendResponse(result)
 }
 
-def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd) {
-	logTrace("WakeUpIntervalReport: $cmd")
-	state.checkinInterval = cmd.seconds
-	initializeCheckin()
-	return [ ]
+private sendResponse(cmds) {
+	def actions = []
+	cmds?.each { cmd ->
+		actions << new physicalgraph.device.HubAction(cmd)
+	}	
+	sendHubCommand(actions)
+	return []
 }
 
 // Creates the event for the battery level.
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
-	logTrace("BatteryReport: $cmd")
-	state.pendingRefresh = false
-	
+	logTrace "BatteryReport: $cmd"
 	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
 	if (val > 100) {
 		val = 100
 	}
 	state.lastBatteryReport = new Date().time	
-	logDebug("Battery ${val}%")
+	logDebug "Battery ${val}%"
 	[
 		createEvent(getEventMap("battery", val, null, null, "%"))
 	]
 }	
 
 // Stores the configuration values so that it only updates them when they've changed or a refresh was requested.
-def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {	
-	// logTrace("ConfigurationReport $cmd")	
+def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {	
 	def name = configData.find { it.paramNum == cmd.parameterNumber }?.name
 	if (name) {	
-		def val = convertToScaledValue(cmd.configurationValue, cmd.size)
-		logDebug("${name}(#${cmd.parameterNumber}) = ${val}")
+		def val = hexToInt(cmd.configurationValue, cmd.size)
+	
+		logDebug "${name} = ${val}"
 	
 		state."configVal${cmd.parameterNumber}" = val
 	}
 	else {
-		logDebug("Parameter ${cmd.parameterNumber}: ${cmd.configurationValue}")
+		logDebug "Parameter ${cmd.parameterNumber}: ${cmd.configurationValue}"
 	}
 	state.isConfigured = true
 	state.pendingRefresh = false	
@@ -318,20 +309,20 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport 
 // Creates motion events.
 def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
 	def result = []	
-	// logTrace("NotificationReport: $cmd")
+	// logTrace "NotificationReport: $cmd"
 	
 	if (cmd.notificationType == 0x07) {
 		switch (cmd.event) {
 			case 0x00:
-				logDebug("Motion Inactive")
+				logDebug "Motion Inactive"				
 				result << createEvent(getEventMap("motion", "inactive"))
 				break
 			case 0x08:
-				logDebug("Motion Active")
+				logDebug "Motion Active"
 				result << createEvent(getEventMap("motion", "active"))
 				break
 			default:
-				logDebug("Unknown Notification Event: ${cmd}")
+				logDebug "Unknown Notification Event: ${cmd}"
 		}
 	}
 	return result
@@ -339,10 +330,8 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 
 // Creates illuminance events.
 def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelReport cmd) {
-	state.pendingRefresh = false
-	
 	def result = []	
-	logTrace("SensorMultilevelReport $cmd")
+	logTrace "SensorMultilevelReport $cmd"
 	if (cmd.sensorType == 3) {
 		result << createEvent(getEventMap("illuminance", cmd.scaledSensorValue, null, null, "lx"))
 	}
@@ -354,13 +343,13 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelR
 
 // Ignoring event because motion events are being handled by notification report.
 def zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
-	// logTrace("SensorBinaryReport: $cmd")
+	// logTrace "SensorBinaryReport: $cmd"
 	return []
 }
 
 // Logs unexpected events from the device.
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
-	logDebug("Unhandled Command: $cmd")
+	logDebug "Unhandled Command: $cmd"
 	return []
 }
 
@@ -379,15 +368,14 @@ private getEventMap(name, value, displayed=null, desc=null, unit=null) {
 	if (unit) {
 		eventMap.unit = unit
 	}	
-	// logTrace("Creating Event: ${eventMap}")
+	logTrace "Creating Event: ${eventMap}"
 	return eventMap
 }
 
-private wakeUpIntervalGetCmd() {
-	return zwave.wakeUpV2.wakeUpIntervalGet().format()
-}
-
-private wakeUpIntervalSetCmd(minutesVal) {		
+private wakeUpIntervalSetCmd(minutesVal) {
+	state.checkinIntervalMinutes = minutesVal
+	logTrace "wakeUpIntervalSetCmd(${minutesVal})"
+	
 	return zwave.wakeUpV2.wakeUpIntervalSet(seconds:(minutesVal * 60), nodeid:zwaveHubNodeId).format()
 }
 
@@ -399,12 +387,16 @@ private batteryGetCmd() {
 	return zwave.batteryV1.batteryGet().format()
 }
 
+private sensorMultilevelGetCmd(sensorType) {
+	return secureCmd(zwave.sensorMultilevelV5.sensorMultilevelGet(scale: 2, sensorType: sensorType))
+}
+
 private configGetCmd(paramNum) {
-	return zwave.configurationV2.configurationGet(parameterNumber: paramNum).format()
+	return zwave.configurationV1.configurationGet(parameterNumber: paramNum).format()
 }
 
 private configSetCmd(paramNum, size, val) {
-	return zwave.configurationV2.configurationSet(parameterNumber: paramNum, size: size, configurationValue: convertFromScaledValue(val, size)).format()
+	return zwave.configurationV1.configurationSet(parameterNumber: paramNum, size: size, scaledConfigurationValue: val).format()
 }
 
 
@@ -415,7 +407,7 @@ private getCommandClassVersions() {
 		0x59: 1,  // AssociationGrpInfo
 		0x5A: 1,  // DeviceResetLocally
 		0x5E: 2,  // ZwaveplusInfo
-		0x70: 2,  // Configuration
+		0x70: 1,  // Configuration
 		0x71: 3,  // Notification v4
 		0x72: 2,  // ManufacturerSpecific
 		0x73: 1,  // Powerlevel
@@ -450,10 +442,6 @@ private getMotionClearedDelaySetting() {
 	return settings?.motionClearedDelay ?: findDefaultOptionName(motionClearedDelayOptions)
 }
 
-private getMotionRetriggerSetting() {
-	return settings?.motionRetrigger ?: findDefaultOptionName(motionRetriggerOptions)
-}
-
 private getLightReportingSetting() {
 	return settings?.lightReporting ?: findDefaultOptionName(lightReportingOptions)
 }
@@ -480,7 +468,6 @@ private getConfigData() {
 	return [
 		[paramNum: 1, name: "Motion Sensitivity", value: convertOptionSettingToInt(motionSensitivityOptions, motionSensitivitySetting), size: 1],
 		[paramNum: 2, name: "Motion Cleared Delay", value: convertOptionSettingToInt(motionClearedDelayOptions, motionClearedDelaySetting), size: 2],
-		[paramNum: 6, name: "Motion Retrigger Interval", value: convertOptionSettingToInt(motionRetriggerOptions, motionRetriggerSetting), size: 1],
 		[paramNum: 7, name: "Light Reporting Interval", value: convertOptionSettingToInt(lightReportingOptions, lightReportingSetting), size: 2],
 		[paramNum: 9, name: "Light Sensitivity", value: convertOptionSettingToInt(lightSensitivityOptions, lightSensitivitySetting), size: 1],
 		[paramNum: 10, name: "LED Enabled", value: convertOptionSettingToInt(ledEnabledOptions, ledEnabledSetting), size: 1],
@@ -488,14 +475,11 @@ private getConfigData() {
 }
 
 private getMotionSensitivityOptions() {
-	return getSensitivityOptions(28, 8, 255, 10)
+	return getSensitivityOptions(18, 8, 127, 5)	
 }
-
 private getLightSensitivityOptions() {
-	// Dome: max value documented as 255, but is really 100.
 	return getSensitivityOptions(49, 1, 100, 4)	
 }
-
 private getSensitivityOptions(defaultVal, minVal, maxVal, interval) {	
 	def options = []
 
@@ -548,19 +532,6 @@ private getMotionClearedDelayOptions() {
 	]
 }
 
-private getMotionRetriggerOptions() {
-	def result = []
-
-	result << [name: "1 Second", value: 1]
-	
-	(2..7).each {
-		result << [name: "${it} Seconds", value: it]
-	}
-	
-	result << [name: formatDefaultOptionName("8 Seconds"), value: 8]
-	return result
-}
-
 private getLedEnabledOptions() {
 	[
 		[name: "Disabled", value: 0],
@@ -609,21 +580,12 @@ private safeToDec(val, defaultVal=-1) {
 	return "${val}"?.isBigDecimal() ? "${val}".toBigDecimal() : defaultVal
 }
 
-private convertToScaledValue(val, size) {
+private hexToInt(hex, size) {
 	if (size == 2) {
-		return val[1] + (val[0] * 0x100)
+		return hex[1] + (hex[0] * 0x100)
 	}
 	else {
-		return val[0]
-	}
-}
-
-private convertFromScaledValue(val, size) {
-	if (size == 2) {
-		return [(byte) ((val >> 8) & 0xff),(byte) (val & 0xff)]
-	}
-	else {
-		return [val]
+		return hex[0]
 	}
 }
 

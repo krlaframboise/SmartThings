@@ -7,10 +7,6 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 
 <hr />
 
-<p><strong>I'm posting this code on GitHub so that anyone can use it, but this is a private repository so pull requests will be ignored.  If you find a problem or want something added, please post a message on the corresponding topic in the SmartThings forum.</strong></p>
-
-<hr />
-
 <ul>
 	<li><p><a href="#smartapps">SmartApps</a></p>
 		<ul>
@@ -23,78 +19,43 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <ul>
 	<li><p><a href="#device-type-handlers">Device Type Handlers</a></p>
 		<ul>
-			<li><a href="#aeotec-doorbell">Aeotec Doorbell GEN5</a></li>
-			<li><a href="#aeotec-doorbell-6">Aeotec Doorbell 6</a></li>
-			<li><a href="#aeotec-led-bulb-6-multi-white">Aeotec LED Bulb 6 Multi-White</a></li>
-			<li><a href="#aeotec-nanomote">Aeotec NanoMote One</a></li>
-			<li><a href="#aeotec-nanomote">Aeotec NanoMote Quad</a></li>
-			<li><a href="#aeon-labs-multifunction-siren">Aeotec Siren GEN5</a></li>
-			<li><a href="#aeotec-siren-6">Aeotec Siren 6</a></li>
-			<li><a href="#aeotec-trisensor">Aeotec TriSensor</a></li>
-			<li><a href="#besense-motion-sensor-zwave-plus">BeSense 360 Ceiling Sensor</a></li>
-			<li><a href="#besense-doorwindow-sensor-zwave-plus">BeSense Door/Window Sensor</a></li>
-			<li><a href="#besense-motion-sensor-zwave-plus">BeSense PIR Wall Sensor</a></li>
+			<li><a href="#aeon-labs-aeotec-doorbell">Aeon Labs Aeotec Doorbell</a></li>
+			<li><a href="#aeon-labs-multifunction-siren">Aeon Labs Multifunction Siren</a></li>
+			<li><a href="#alarm-switch">Alarm Switch</a></li>
 			<li><a href="#dome-door-sensor">Dome Door Sensor</a></li>
 			<li><a href="#dome-doorwindow-sensor-pro">Dome Door/Window Sensor Pro</a></li>
 			<li><a href="#dome-leak-sensor">Dome Leak Sensor</a></li>
 			<li><a href="#dome-motion-sensor">Dome Motion Sensor</a></li>
-			<li><a href="#dome-mouser">Dome Mouser</a></li>
+			<li><a href="#dome-mouser">Dome Mouser</a></li>			
 			<li><a href="#dome-on-off-plug">Dome On Off Plug</a></li>
 			<li><a href="#dome-siren">Dome Siren</a></li>
-			<li><a href="#dome-water-shut-off">Dome Water Shut-Off</a></li>
+			<li><a href="#dome-water-shut-off">Dome Water Shut-Off</a></li>			
 			<li><a href="#ecolink-motion-sensor">Ecolink Motion Sensor</a></li>
-			<li><a href="#ecolink-wireless-switch">Ecolink Motorized Double Rocker Switch</a></li>
-			<li><a href="#ecolink-wireless-switch">Ecolink Motorized Double Toggle Switch</a></li>
-			<li><a href="#ecolink-wireless-switch">Ecolink Motorized Rocker Switch</a></li>
-			<li><a href="#ecolink-wireless-switch">Ecolink Motorized Toggle Switch</a></li>
-			<li><a href="#ecolink-siren">Ecolink Siren</a></li>
-			<li><a href="#eva-logik-in-wall-smart-dimmer">EVA LOGIK In-Wall Smart Dimmer</a></li>
-			<li><a href="#eva-logik-in-wall-smart-switch">EVA LOGIK In-Wall Smart Switch</a></li>			
 			<li><a href="#everspring-motion-detector">Everspring Motion Detector</a></li>
 			<li><a href="#everspring-temperaturehumidity-detector">Everspring Temperature/Humidity Detector</a></li>
-			<li><a href="#fibaro-doorwindow-sensor-2">Fibaro Door/Window Sensor 2</a></li>
 			<li><a href="#fibaro-motion-sensor-zw5">Fibaro Motion Sensor ZW5</a></li>
 			<li><a href="#fibaro-swipe">Fibaro Swipe</a></li>
+			<li><a href="#forcible-mobile-presence">Forcible Mobile Presence</a></li>
 			<li><a href="#gocontrollinear-doorwindow-sensor">GoControl/Linear Door/Window Sensor</a></li>
 			<li><a href="#gocontrollinear-multifunction-contact-sensor">GoControl/Linear Multifunction Contact Sensor</a></li>
 			<li><a href="#gocontrollinear-motion-sensor">GoControl/Linear Motion Sensor</a></li>
 			<li><a href="#gocontrollinear-multifunction-siren">GoControl/Linear/Vision Multifunction Siren</a></li>
-			<li><a href="#aeotec-nanomote">Hank Scene Controller</a></li>
-			<li><a href="#aeotec-nanomote">Hank Four-Key Scene Controller</a></li>
-			<li><a href="#hank-rgbw-led-bulb">Hank RGBW LED Bulb</a></li>
 			<li><a href="#leaksmart-water-valve">LeakSmart Water Valve</a></li>
-			<li><a href="#eva-logik-in-wall-smart-dimmer">MINOSTON In-Wall Smart Dimmer</a></li>
-			<li><a href="#eva-logik-in-wall-smart-switch">MINOSTON In-Wall Smart Switch</a></li>			
+			<li><a href="#zoozmonoprice-4-in-1-multisensor">Monoprice 4-in-1 Motion Sensor with Temperature, Humidity, and Light Sensors</a></li>
 			<li><a href="#visionmonoprice-shock-sensor">Monoprice Shock Sensor</a></li>
 			<li><a href="#monoprice-z-wave-plus-doorwindow-sensor">Monoprice Z-Wave Plus Door/Window Sensor</a></li>
-			<li><a href="#neo-coolcam-door-sensor">Neo Coolcam Door Sensor</a></li>
-			<li><a href="#neo-coolcam-light-switch-2ch">Neo Coolcam Light Switch 2CH</a></li>
-			<li><a href="#neo-coolcam-motion-sensor">Neo Coolcam Motion Sensor</a></li>
-			<li><a href="#neo-coolcam-power-plug">Neo Coolcam Power Plug</a></li>
-			<li><a href="#neo-coolcam-siren">Neo Coolcam Siren</a></li>
-			<li><a href="#qubino-roller-shade-controller">Qubino Shutter Module</a></li>
+			<li><a href="#polling-cree-bulb">Polling Cree Bulb</a></li>
+			<li><a href="#polling-ge-link-bulb">Polling GE Link Bulb</a></li>
 			<li><a href="#remotec-zxt-310-ir-extender">Remotec ZXT-310 IR Extender</a></li>
-			<li><a href="#strips-multi-sensor">Strips Comfort by Sensative</a></li>
-			<li><a href="#strips-multi-sensor">Strips Drip by Sensative</a></li>
-			<li><a href="#vision-recessed-door-sensor">Vision Recessed Door Sensor</a></li>
+			<li><a href="#thingshield-timer">ThingShield Timer</a></li>
 			<li><a href="#visionmonoprice-shock-sensor">Vision Shock Sensor</a></li>
 			<li><a href="#wireless-smoke-detector-sensor">Wireless Smoke Detector Sensor</a></li>
 			<li><a href="#zipato-multisound-siren">Zipato Multisound Siren</a></li>
-			<li><a href="#zooz-4-in-1-sensor">Zooz 4-in-1 Sensor</a></li>
-			<li><a href="#zooz-double-plug">Zooz Double Plug</a></li>			
-			<li><a href="#zooz-motion-sensor-zse18">Zooz Motion Sensor ZSE18</a></li>
-			<li><a href="#zooz-multirelay">Zooz MultiRelay</a></li>
-			<li><a href="#zooz-multisiren">Zooz Multisiren</a></li>
-			<li><a href="#zooz-outdoor-motion-sensor">Zooz Outdoor Motion Sensor</a></li>
-			<li><a href="#zooz-outdoor-motion-sensor-ver-20">Zooz Outdoor Motion Sensor VER 2.0</a></li>
+			<li><a href="#zoozmonoprice-4-in-1-multisensor">Zooz 4-in-1 Multisensor</a></li>
 			<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Smart Plug</a></li>
-			<li><a href="#zooz-power-strip-ver-20">Zooz Power Strip VER 2.0</a></li>
 			<li><a href="#zooz-power-strip">Zooz Power Strip</a></li>
 			<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Power Switch</a></li>
-			<li><a href="#zooz-rgbw-dimmer">Zooz RGBW Dimmer</a></li>
 			<li><a href="#zooz-smart-chime">Zooz Smart Chime</a></li>
-			<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Smart Plug</a></li>
-			<li><a href="#zooz-smart-plug-ver-20">Zooz Smart Plug VER 2.0</a></li>
 			<li><a href="#zooz-water-sensor">Zooz Water Sensor</a></li>
 		</ul>
 	</li>
@@ -148,6 +109,17 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 
 <h2>Device Type Handlers</h2>
 
+<h3>Aeon Labs Aeotec Doorbell</h3>
+
+<ul>
+<li>DTH for the Aeon Labs Aeotec Doorbell that allows you to use the device as a Switch, Alarm, Tone Generator, Music Player, and Audio Notification. Implements custom commands to allow you to play tracks by track number and change the volume on the fly.<br /></li>
+
+<li><a href="https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/aeotec-doorbell.src">View Aeon Labs Aeotec Doorbell - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
 <h3>Aeon Labs Multifunction Siren</h3>
 
 <ul>
@@ -158,92 +130,12 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 
 <hr />
 
-<h3>Aeotec Doorbell</h3>
-
+<h3>Alarm Switch</h3>
 <ul>
-<li>DTH for the Aeon Labs Aeotec Doorbell that allows you to use the device as a Switch, Alarm, Tone Generator, Music Player, and Audio Notification. Implements custom commands to allow you to play tracks by track number and change the volume on the fly.<br /></li>
-
-<li><a href="https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/aeotec-doorbell.src">View Aeotec Doorbell - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Aeotec Doorbell 6</h3>
-
-<ul>
-<li>This is a device handler for the Aeotec Doorbell 6 (ZW162-A)</li>
-<li><a href="https://community.smartthings.com/t/release-aeotec-doorbell-6/165030">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/aeotec-doorbell-6.src/aeotec-doorbell-6.groovy">View Aeotec Doorbell 6 - Device Handler Code</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/aeotec-doorbell-6-button.src/aeotec-doorbell-6-button.groovy">View Aeotec Doorbell 6 Button - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Aeotec LED Bulb 6 Multi-White</h3>
-
-<ul>
-<li>This is a device handler for the Aeotec LED Bulb 6 Multi-White (ZWA001-A)</li>
-<li><a href="https://community.smartthings.com/t/release-aeotec-led-bulb-6-multi-white/142910?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/aeotec-led-bulb-6-multi-white.src/aeotec-led-bulb-6-multi-white.groovy">View Aeotec LED Bulb 6 Multi-White - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Aeotec NanoMote</h3>
-
-<ul>
-<li>This is a device handler for:
-<ul><li>Aeotec NanoMote One (ZWA003-A)</li>
-<li>Aeotec NanoMote Quad (ZWA004-A)</li>
-<li>Hank Scene Controller (HKZW-SCN01)</li>
-<li>Hank Four-Key Scene Controller (HKZW-SCN04)</li></ul></li>
-<li><a href="https://community.smartthings.com/t/release-aeotec-nanomote-one-quad-hank-one-four-button-scene-controller/127563">View Documentation in SmartThings Forum</a><br /></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/aeotec-nanomote.src/aeotec-nanomote.groovy">View Aeotec NanoMote - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Aeotec Siren 6</h3>
-
-<ul>
-<li>This is a device handler for the Aeotec Siren 6 (ZW164-A)</li>
-<li><a href="https://community.smartthings.com/t/release-aeotec-siren-6/164654">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/aeotec-siren-6.src/aeotec-siren-6.groovy">View Aeotec Siren 6 - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Aeotec TriSensor</h3>
-
-<ul>
-<li>This is a device handler for the Aeotec TriSensor (ZWA005-A)</li>
-<li><a href="https://community.smartthings.com/t/release-aeotec-trisensor/140556?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/aeotec-trisensor.src/aeotec-trisensor.groovy">View Aeotec TriSensor - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>BeSense Motion Sensor ZWave Plus</h3>
-
-<ul>
-<li>This is a device handler for:
-<ul><li>BeSense 360 Ceiling Sensor (IX32)</li>
-<li>BeSense PIR Wall Sensor (IX30)</li></ul></li>
-<li>Supports all functionality that the devices offer</li>
-<!--<li><a href="">View Documentation in SmartThings Forum</a></li>-->
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/besense-motion-sensor-zwave-plus.src/besense-motion-sensor-zwave-plus.groovy">View BeSense Motion Sensor ZWave Plus - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>BeSense Door/Window Sensor ZWave Plus</h3>
-
-<ul>
-<li>This is the official device handler for the BeSense Door/Window Sensor (IM20)</li>
-<li>Supports all functionality that the device offers</li>
-<!--<li><a href="">View Documentation in SmartThings Forum</a></li>-->
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/besense-door-window-sensor-zwave-plus.src/besense-door-window-sensor-zwave-plus.groovy">View BeSense Door/Window Sensor ZWave Plus - Device Handler Code</a></li>
+<li>Allows you to use any device that supports the Switch Capability as an alarm device.<br /></li>
+<li>You can set it to automatically turn off after a specified amount of time.<br /></li>
+<li>You can choose which alarm event should be raised when the alarm is activiated (strobe, siren, strobe & siren).</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/alarm-switch.src">View Alarm Switch - Device Handler Code</a></li>
 </ul>
 
 <hr />
@@ -341,53 +233,6 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/ecolink-motion-sensor.src/ecolink-motion-sensor.groovy">View Ecolink Motion Sensor - Device Handler Code</a></li>
 </ul>
 
-<hr />
-<h3>Ecolink Wireless Switch</h3>
-<ul>
-<li>This is a device handler for:<ul>
-<li>Ecolink Motorized Double Rocker Switch (DDLS2-ZWAVE5)</li>
-<li>Ecolink Motorized Double Toggle Switch (DTLS2-ZWAVE5)</li>
-<li>Ecolink Motorized Rocker Switch (DLS-ZWAVE5)</li>
-<li>Ecolink Motorized Toggle Switch (TLS-ZWAVE5)</li>
-</ul></li>
-<li>Reports Switch, Battery, and allows you to change the wakeup interval.</li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/ecolink-wireless-switch.src/ecolink-wireless-switch.groovy">View Ecolink Wireless Switch - Device Handler Code</a></li>
-</ul>
-
-<hr />
-<h3>Ecolink Siren</h3>
-<ul>
-<li>This is a device handler for the Ecolink Siren (SC-ZWAVE5-ECO)</li>
-<li>The device is fully functional if selected as switch:
- <ul><li>Switch On: Siren On</li>
- <li>Switch Off: Turns Everything Off</li>
- <li>Set Level 10%: Chime/Beep</li>
- <li>Set Level 20%: Entry/Continuous Tone</li>
- <li>Set Level 30%: Exit/Repeating Beep</li>
- </ul></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/ecolink-siren.src/ecolink-siren.groovy">View Ecolink Siren - Device Handler Code</a></li>
-</ul>
-
-
-<hr />
-<h3>EVA LOGIK In-Wall Smart Dimmer</h3>
-<ul>
-<li>This is a device handler for:
-<ul><li>EVA LOGIK In-Wall Smart Dimmer (ZW31)</li>
-<li>MINOSTON In-Wall Smart Dimmer (MS11Z)</li></ul></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/eva-logik-in-wall-smart-switch.src/eva-logik-in-wall-smart-dimmer.groovy">View EVA LOGIK In-Wall Smart Dimmer - Device Handler Code (COMING SOON)</a></li>
-</ul>
-
-
-<hr />
-<h3>EVA LOGIK In-Wall Smart Switch</h3>
-<ul>
-<li>This is a device handler for:
-<ul><li>EVA LOGIK In-Wall Smart Switch (ZW30)</li>
-<li>MINOSTON In-Wall Smart Switch (MS10Z)</li></ul></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/eva-logik-in-wall-smart-switch.src/eva-logik-in-wall-smart-switch.groovy">View EVA LOGIK In-Wall Smart Switch - Device Handler Code</a></li>
-</ul>
-
 
 <hr />
 <h3>Everspring Motion Detector</h3>
@@ -413,15 +258,6 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 
 
 <hr />
-<h3>Fibaro Door/Window Sensor 2</h3>
-<ul>
-<li>This is a device handler for the Fibaro Door/Window Sensor 2(FGDW-002)</li>
-<li>Reports Contact, Temperature, and Tamper</li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/fibaro-door-window-sensor-2.src/fibaro-door-window-sensor-2.groovy">View Fibaro Door/Window Sensor 2 - Device Handler Code</a></li>
-</ul>
-
-
-<hr />
 <h3>Fibaro Motion Sensor ZW5</h3>
 <ul>
 <li>This is a device handler for the Fibaro Motion Sensor ZW5 (FGMS-001)</li>
@@ -443,6 +279,16 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li>Double gestures can be disabled.</li>
 <li><a href="https://community.smartthings.com/t/release-fibaro-swipe/88073?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/fibaro-swipe-gesture-controller.src/fibaro-swipe-gesture-controller.groovy">View Fibaro Swipe - Device Handler Code</a></li>
+</ul>
+
+
+<hr />
+<h3>Forcible Mobile Presence</h3>
+<ul>
+<li>Adds the buttons "Arrive" and "Depart" to the normal "Mobile Presence" DTH so you can force the presence state.</li>
+<li>The default DTH doesn't appear to run locally so I'm unaware of any downsides to using this one.</li>
+<li>Those buttons can really come in handy if you're locked out of your house or your alarm won't disarm because your phone gets stuck on "not present".</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/forcible-mobile-presence.src/forcible-mobile-presence.groovy">View Forcible Mobile Presence - Device Handler Code</a></li>
 </ul>
 
 <hr />
@@ -499,16 +345,6 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
-<h3>Hank RGBW LED Bulb</h3>
-
-<ul>
-<li>This is a DTH for the Hank RGBW LED Bulb (Model: HKZW-RGB01)<br /></li>
-<li><a href="https://community.smartthings.com/t/release-hank-rgbw-led-bulb/127560">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/hank-rgbw-led-bulb.src/hank-rgbw-led-bulb.groovy">View Hank RGBW LED Bulb - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
 <h3>LeakSmart Water Valve</h3>
 
 <ul>
@@ -534,62 +370,22 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
-<h3>Neo Coolcam Door Sensor</h3>
-
+<h3>Polling Cree Bulb</h3>
 <ul>
-<li>This is a device handler for the Neo Coolcam Door Sensor (NAS-DS02ZU / NAS-DS02ZE)</li>
-<li><a href="https://community.smartthings.com/t/release-neo-coolcam-door-window-sensor/145827">View Documentation in SmartThings Forum</a><br /></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/neo-coolcam-door-sensor.src/neo-coolcam-door-sensor.groovy">View Neo Coolcam Door Sensor - Device Handler Code</a></li>
+<li>DTH for the Cree Connect Bulb that fixes the problem with the official Cree Bulb DTH where it doesn't remember the last level it was set to when it's turned on.<br /></li>
+<li>It also reports at a regular interval so it can be monitored to ensure it doesn't drop offline.<br /></li>
+<li>Allows you to control the dim rate.</li>
+<li>I find this version to work a lot better than the default Cree Bulb DTH and since the default version doesn't run locally, there's really no downside to using my version.</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/polling-cree-bulb.src">View Polling Cree Bulb - Device Handler Code</a></li>
 </ul>
 
 <hr />
 
-<h3>Neo Coolcam Light Switch 2CH</h3>
-
+<h3>Polling GE Link Bulb</h3>
 <ul>
-<li>This is a device handler for the Neo Coolcam Light Switch 2CH (NAS-SC02ZU-2 / NAS-SC02ZE-2)</li>
-<li><a href="https://community.smartthings.com/t/release-neo-coolcam-light-switch-2ch/147756?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/neo-coolcam-light-switch-2ch.src/neo-coolcam-light-switch-2ch.groovy">View Neo Coolcam Light Switch 2CH - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Neo Coolcam Motion Sensor</h3>
-
-<ul>
-<li>This is a device handler for the Neo Coolcam Motion Sensor (NAS-PD01ZU-T / NAS-PD01ZE-T)</li>
-<li><a href="https://community.smartthings.com/t/release-neo-coolcam-motion-sensor-nas-pd01zu-t/143096?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/neo-coolcam-motion-sensor.src/neo-coolcam-motion-sensor.groovy">View Neo Coolcam Motion Sensor - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Neo Coolcam Power Plug</h3>
-
-<ul>
-<li>This is a device handler for the Neo Coolcam Power Plug (NAS-WR02ZU, NAS-WR02ZE)</li>
-<li><a href="https://community.smartthings.com/t/release-neo-coolcam-power-plug/144274?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/neo-coolcam-power-plug.src/neo-coolcam-power-plug.groovy">View Neo Coolcam Power Plug - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Neo Coolcam Siren</h3>
-
-<ul>
-<li>This is a device handler for the Neo Coolcam Siren (NAS-AB02ZU)</li>
-<li><a href="https://community.smartthings.com/t/release-neo-coolcam-siren/156537?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/neo-coolcam-siren.src/neo-coolcam-siren.groovy">View Neo Coolcam Siren - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Qubino Roller Shade Controller</h3>
-
-<ul>
-<li>This is a device handler for the Qubino DC Shutter Module (ZMNHOD3)</li>
-<li><a href="https://community.smartthings.com/t/motorized-roller-shades-project/146502?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/qubino-roller-shade-controller.src/qubino-roller-shade-controller.groovy">View Qubino Roller Shade Controller - Device Handler Code</a></li>
+<li>DTH for the GE Link Bulb that reports at regular intervals so you can monitor it to ensure that it hasn't dropped offline.</li>
+<li>The default GE Link Bull DTH responds to poll requests and runs locally so instead of using this one, you might be better off sticking with the default and using a SmartApp like pollster or my Simple Device Viewer to poll it a couple of times a day to make sure it's still online.</li> 
+<li><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/polling-ge-link-bulb.src">View Polling GE Link Bulb - Device Handler Code</a></li>
 </ul>
 
 <hr />
@@ -611,24 +407,13 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
-<h3>Strips Multi-Sensor</h3>
+<h3>ThingShield Timer</h3>
 
 <ul>
-<li>This is a device handler for the Strips Comfort by Sensative and Strips Drip by Sensative<br /></li>
-<li>Allows you to change the primary and secondary tiles</li>
-<li>Supports configuration parameters</li>
-<li>Reports Light, Temperature, and Water for both devices</li>
-<li><a href="https://community.smartthings.com/t/release-strips-drip-strips-comfort/135276?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/strips-multi-sensor.src/strips-multi-sensor.groovy">View Strips Multi-Sensor - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Vision Recessed Door Sensor</h3>
-
-<ul>
-<li>This is a device handler for the Vision Recessed Door Sensor (ZD2105US-5).<br /></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/vision-recessed-door-sensor.src/vision-recessed-door-sensor.groovy">View Vision Recessed Door Sensor - Device Handler Code</a></li>
+<li>Allows you to use an external timing source, like the Arduino Uno, with the Arduino ThingShield to push a momentary switch at regular intervals.<br /> </li>
+<li>It can also be used for scheduling in SmartApps so that you don't have to rely on SmartThings Scheduler.  You basically tell it to push a certain button number in a certain amount of time and then subscribe to its button pushed event and in the event handler method, you check to see if the button number pushed was the one you scheduled.<br /> </li>
+<li>I created this because of all the problems SmartThings had with their scheduler, but the new version of their scheduler has been stable for a while so it's probably no longer needed.</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/tree/master/devicetypes/krlaframboise/thingshield-timer.src">View ThingShield Timer - Device Handler Code</a></li>
 </ul>
 
 <hr />
@@ -667,107 +452,19 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
-<h3>Zooz 4-in-1 Sensor</h3>
+<h3>Zooz/Monoprice 4-in-1 Multisensor</h3>
 
 <ul>
-<li>This is a device handler for the Zooz 4-in-1 Sensor (ZSE40).</li>
+<li>This is a device handler for the Zooz 4-in-1 Multisensor (ZSE40).</li>
+<li>It's also a device handler for the Monoprice 4-in-1 Motion Sensor with Temperature, Humidity, and Light Sensors (P/N 15902)</li>
 <li><strong>After updating the settings, pressing the button on the bottom with a paperclip will automatically apply them.</strong></li>
-<li>If you want to force all the values to refresh, tap the refresh button and then press the button on the bottom with a paperclip.</li>
+<li>If you want to force all the values to refresh, tap the refresh button and then press the button on the bottom with a paperclip.</li> 
 <li>The device wakes up every 6 hours by default, but there's a setting for <em>Minimum Check-in Interval (Hours)</em> which accepts the range 1 to 167.</li>
 <li>There's also a setting for <em>Battery Reporting Interval (Hours)</em> which accepts the same range of values.</li>
 <li>When the cover of the device is opened, it raises the "tamper" event with the value "detected".</li>
 <li>The setting <em>Automatically Clear Tamper</em> allows you to choose whether it raises the tamper clear event when the device cover is closed or if you have to press the "Refresh" button to clear it.<br></li>
-<li><a href="https://community.smartthings.com/t/release-zooz-4-in-1-sensor/82989?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-4-in-1-sensor.src/zooz-4-in-1-sensor.groovy">View Zooz 4-in-1 Sensor - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Zooz Double Plug</h3>
-
-<ul>
-<li>This is a device handler for the Zooz Double Plug (ZEN25)</li>
-<li><a href="https://community.smartthings.com/t/release-zooz-double-plug/151104?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-double-plug.src/zooz-double-plug.groovy">View Zooz Double Plug - Device Handler Code</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-double-plug-outlet.src/zooz-double-plug-outlet.groovy">View Zooz Double Plug Outlet - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Zooz Motion Sensor ZSE18</h3>
-
-<ul>
-<li>This is a device handler for the Zooz Motion Sensor (ZSE18)<br /></li>
-<li>Reports Motion, Acceleration, and Battery</li>
-<li><a href="https://community.smartthings.com/t/release-zooz-motion-sensor-zse18/129743?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
-<li><a id="ZoozMotionSensorZSE" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-motion-sensor-zse18.src/zooz-motion-sensor-zse18.groovy">View Zooz Motion Sensor ZSE18 - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Zooz MultiRelay</h3>
-
-<ul>
-<li>This is a device handler for the Zooz MultiRelay (ZEN16)<br /></li>
-<li><a href="https://community.smartthings.com/t/release-zooz-multirelay-zen16/181057?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-multirelay.src/zooz-multirelay.groovy">View Zooz MultiRelay - Device Handler Code</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/child-switch.src/child-switch.groovy">View Child Switch - Device Handler Code (OPTIONAL)</a></li>
-</ul>
-
-<hr />
-
-<h3>Zooz Multisiren</h3>
-
-<ul>
-<li>This is a device handler for the Zooz Multisiren (ZSE19)<br /></li>
-<li><a href="https://community.smartthings.com/t/release-zooz-s2-multisiren-zse19/142891?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-s2-multisiren.src/zooz-s2-multisiren.groovy">View Zooz Multisiren - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Zooz Outdoor Motion Sensor</h3>
-
-<ul>
-<li>This is a device handler for the Zooz Outdoor Motion Sensor (ZSE29)<br /></li>
-<li>Reports Motion, Battery, and Tamper</li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-outdoor-motion-sensor.src/zooz-outdoor-motion-sensor.groovy">View Zooz Outdoor Motion Sensor - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Zooz Outdoor Motion Sensor VER 2.0</h3>
-
-<ul>
-<li>This is a device handler for the Zooz Outdoor Motion Sensor VER 2.0(ZSE29)<br /></li>
-<li>Reports Illuminance, Motion, Battery, and Tamper</li>
-<li>Supports Configuration Parameters</li>
-<li><a href="https://community.smartthings.com/t/release-zooz-outdoor-motion-sensor-ver-2-0-zse29/180195?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-outdoor-motion-sensor-2-0.src/zooz-outdoor-motion-sensor-2-0.groovy">View Zooz Outdoor Motion Sensor VER 2.0 - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
-<h3>Zooz Power Strip VER 2.0</h3>
-
-<ul>
-<li>This is a device handler for the Zooz Power Strip VER 2.0 (ZEN20).<br /></li>
-<li>A device is created for the Power Strip and each Outlet<br></li>
-<li>Power Strip reports combined power/energy<br></li>
-<li>Outlets report power/energy<br></li>
-<li>A Component Switch is created for each USB Port and they report ON when devices plugged into them are using power. The USB Ports can not be controlled and will not appear in your device list, but they will appear in Smart Apps<br></li>
-<li>Keeps history of low and high power values<br></li>
-<li>The Power Switch device can turn on/off all outlets at the same time or you can choose a delay to use between them.<br></li>
-<li>Enable/Disable Manual Operation<br></li>
-<li>Power recovery options<br></li>
-<li>LED options<br></li>
-<li>Auto on/off intervals for each Outlet<br></li>
-<li>Power and Energy reporting intervals<br></li>
-<li>Power reporting threshold<br></li>
-<li><a href="https://community.smartthings.com/t/release-zooz-power-strip-ver-2-0/138231?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-strip-ver-2-0.src/zooz-power-strip-ver-2-0.groovy">View Zooz Power Strip VER 2.0 - Power Strip Device Handler Code</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-strip-outlet-ver-2-0.src/zooz-power-strip-outlet-ver-2-0.groovy">View Zooz Power Strip VER 2.0 - Outlet Device Handler Code</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-power-strip-usb-ver-2-0.src/zooz-power-strip-usb-ver-2-0.groovy">View Zooz Power Strip VER 2.0 - USB Port Device Handler Code</a></li>
+<li><a href="https://community.smartthings.com/t/release-zooz-4-in-1-multisensor/82989?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-monoprice-4-in-1-multisensor.src/zooz-monoprice-4-in-1-multisensor.groovy">View Zooz/Monoprice 4-in-1 Multisensor - Device Handler Code</a></li>
 </ul>
 
 <hr />
@@ -775,7 +472,7 @@ Supports the Tamper Alert Capability.<br /></li>
 <h3>Zooz Power Strip</h3>
 
 <ul>
-<li>This is a device handler for the OLD Discontinued version of the Zooz Z-Wave Power Strip (ZEN20).<br /></li>
+<li>This is a device handler for the Zooz Z-Wave Power Strip (ZEN20).<br /></li>
 <li>The 5 outlets can be controlled separately using the custom commands ch1On, ch1Off, ch2On, ch2Off, etc.  This requires the use of a SmartApp that supports custom commands, like CoRE.</li>
 <li>Creates Digital events when turned on/off from SmartApp and Physical events when the buttons on the power strip are pushed.</li>
 <li>The Main Switch Behavior setting for each outlet determines how it responds to the switch.on/switch.off commands.<br>
@@ -810,17 +507,6 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
-<h3>Zooz RGBW Dimmer</h3>
-
-<ul>
-<li>This is a device handler for the Zooz RGBW Dimmer (ZEN31)<br /></li>
-<li><a href="https://community.smartthings.com/t/release-zooz-rgbw-dimmer-zen31/178616?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-rgbw-dimmer.src/zooz-rgbw-dimmer.groovy">View Zooz RGBW Dimmer - Device Handler Code</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/child-dimmer.src/child-dimmer.groovy">View Child Dimmer - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
 <h3>Zooz Smart Chime</h3>
 
 <ul>
@@ -836,20 +522,11 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
-<h3>Zooz Smart Plug VER 2.0</h3>
-
-<ul>
-<li>This is a device handler for the Zooz Smart Plug VER 2.0 (ZEN06)</li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-smart-plug.src/zooz-smart-plug.groovy">View Zooz Smart Plug VER 2.0 - Device Handler Code</a></li>
-</ul>
-
-<hr />
-
 <h3>Zooz Water Sensor</h3>
 
 <ul>
 <li>This is a device handler for the Zooz Water Sensor (ZSE30).<br /></li>
-<li>Red LED and optional audible alarm when water is detected.</li>
+<li>Red LED and optional audbile alarm when water is detected.</li>
 <li>Specify the first alarm beep duration, reminder beep duration, interval between beeps, and the total length of time it should send reminders.</li>
 <li><a href="https://community.smartthings.com/t/release-zooz-water-sensor/78223?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a id="ZoozWaterSensor" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-water-sensor.src/zooz-water-sensor.groovy">View Zooz Water Sensor - Device Handler Code</a></li>

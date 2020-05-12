@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.2.3
+ *  Dome Siren v1.2.1
  *  (Model: DMS01)
  *
  *  Author: 
@@ -9,12 +9,6 @@
  *    
  *
  *  Changelog:
- *
- *    1.2.3 (08/15/2018)
- *    	- Added support for new mobile app.
- *
- *    1.2.2 (12/07/2017)
- *    	- Fixed beeping during delayed alarm because SmartThings broke something during a recent update.
  *
  *    1.2.1 (12/02/2017)
  *    	- Fixed bug with siren play until depleted setting.
@@ -58,8 +52,7 @@ metadata {
 	definition (
 		name: "Dome Siren", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise",
-		vid: "generic-siren"
+		author: "Kevin LaFramboise"
 	) {
 		capability "Actuator"
 		capability "Alarm"
@@ -478,7 +471,7 @@ def beep() {
 	if (state.pendingSiren) {	
 		return [
 			indicatorSetCmd(beepSound),
-			"delay 2500",
+			"delay 1000",
 			indicatorGetCmd()
 		]
 	}
@@ -710,7 +703,7 @@ def zwaveEvent(physicalgraph.zwave.commands.indicatorv1.IndicatorReport cmd) {
 	if (state.pendingSiren) {
 		if (((state.sirenStartTime - beepDelayMS) > new Date().time) && (sirenDelayBeepSetting == "On")){
 			def result = []
-			// result << "delay ${beepDelayMS}"
+			result << "delay ${beepDelayMS}"
 			result += beep()
 			return sendResponse(result)
 		}

@@ -1,5 +1,5 @@
 /**
- *  Simple Zone Monitor v0.0.18 [ALPHA]
+ *  Simple Zone Monitor v0.0.16j [ALPHA]
  *
  *  Author: 
  *    Kevin LaFramboise (@krlaframboise)
@@ -15,12 +15,6 @@
  *
  *
  *  Changelog:
- *
- *    0.0.18 (04/16/2020)
- *      - Made it only keep the last 100 statuses to prevent it from reaching the max state.
- *
- *    0.0.17 (12/25/2016)
- *      - Fixed bug that caused audio notifications to play multiple times if devices were selected more than once from the devices screen.
  *
  *    0.0.16 (10/08/2016)
  *      - Added Ignored Activity feature.
@@ -550,10 +544,6 @@ private addStatusHistory(status, details) {
 	logDebug("${status?.name}: ${details}")
 	
 	state.statusHistory.add(0, [statusChanged: new Date(), status: status, details: details])
-	
-	if (state.statusHistory.size() > 50) {
-		state.statusHistory.remove(state.statusHistory.size() - 1)
-	}
 	
 	def notificationStatusId = (settings["sharedStatusNotificationsEnabled"] ? "all" : status?.id)
 	
@@ -2041,7 +2031,6 @@ private handleEventNotifications(notificationType, evt) {
 }
 
 def handleNotifications(notificationType, notificationStatusId, eventMsg, zoneMsg="") {		
-
 	getStatusTypeSettings(getStatusNotificationTypeData(notificationType, notificationStatusId)).each {
 		def msg = ""
 		if (it?.prefName?.contains("Custom")) {
@@ -2068,7 +2057,6 @@ def handleNotifications(notificationType, notificationStatusId, eventMsg, zoneMs
 			}
 			else if (it.isDevice) {
 				def devices = findDevices(getNotificationDeviceTypes(), settings["${it.prefName}"])
-						
 				if (devices) {
 					if (it.prefName.contains("Speak")) {						
 						logTrace "Executing speak($msg) on: ${settings[it.prefName]}"
@@ -2115,15 +2103,9 @@ private storeNotification(notificationType, zone, evt, eventMsg, zoneMsg) {
 	]
 	if (notificationType == "Security") {
 		state.securityAlerts.add(0, data)
-		if (state.securityAlerts.size() > 50) {
-			state.securityAlerts.remove(state.securityAlerts.size() - 1)
-		}
 	}
 	else {		
 		state.safetyAlerts.add(0, data)
-		if (state.safetyAlerts.size() > 50) {
-			state.safetyAlerts.remove(state.safetyAlerts.size() - 1)
-		}
 	}
 	sendLocationEvent(name: "SimpleZoneMonitorAlert", value: "${notificationType}", isStateChange: true, descriptionText: "${eventMsg}")	
 }
@@ -2139,9 +2121,6 @@ private addIgnoredActivity(zone, evt, reason) {
 		reason: reason
 	]
 	state.ignoredActivity.add(0, data)	
-	if (state.ignoredActivity.size() > 50) {
-		state.ignoredActivity.remove(state.ignoredActivity.size() - 1)
-	}
 }
 
 private handlePushFeedNotification(notificationSetting, msg) {
@@ -2446,8 +2425,8 @@ private findDevices(deviceTypes, deviceNameList) {
 				devices << device
 			}
 		}
-	}	
-	return devices.unique { it.displayName }
+	}
+	return devices
 }
 
 private getDevices(deviceTypes) {

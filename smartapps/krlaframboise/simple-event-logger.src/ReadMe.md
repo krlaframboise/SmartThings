@@ -1,4 +1,4 @@
-<h1 id="simple-event-logger">Simple Event Logger - v1.4.1</h1>
+<h1 id="simple-event-logger">Simple Event Logger - v1.1.0</h1>
 <p>By Kevin LaFramboise (krlaframboise)</p>
 
 <p><img align="right" src="https://raw.githubusercontent.com/krlaframboise/Resources/master/simple-event-logger/app-SimpleEventLogger@3x.png" alt="Simple Event Logger Logo" />The Simple Event Logger is a fully customizable SmartApp that allows you to accurately log all device activity to a Google Sheets Spreadsheet.  Each event is stored on a separate row so that you have their exact time and details.</p>
@@ -75,7 +75,7 @@
 <li>Click "Review Permissions" button on the "Authorization Required" popup.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-auth.png?raw=true" /><br><br></li>
 <li>Click the "Allow" button on the permissions screen popup.<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-allow.png?raw=true" /><br><br></li>
 <li>Copy the "Current Web App Url" and click "OK".<br><img src="https://github.com/krlaframboise/Resources/blob/master/simple-event-logger/sheets-url.png?raw=true" /><br><br></li>
-<li>Log out of Google and navigate to the Web App Url you copied<br><ul><li>You should see a message that starts with "Version: ".  If you get an error message, make sure the url starts like "https://script.google.com/macros/s/".  With new deployments Google often adds extra characters between "/macros/" and "s/" which need to be removed prior to copying the url.</li><li><li><b>Don't copy the url from this page</b> because it's NOT the same as the url you previously copied from the Script Editor Publish screen.</li></ul><br><br></li>
+<li>Log out of Google and navigate to the Web App Url you copied<br><ul><li>You should see a message that starts with "Version: " which indicates that the Web App has been configured properly.</li><li><b>Don't copy the url from this page</b> because it's NOT the same as the url you previously copied from the Script Editor Publish screen.</li><li>The url that's needed for the SmartApp starts with "https://script.google.com/macros/s/".</li></ul><br><br></li>
 <li>That completes the Google Sheets installation, but you should paste the Web App Url somewhere that you can access from your mobile device because you'll need to paste it into the SmartApp's settings.<br><br></li>
 </ol>
 
