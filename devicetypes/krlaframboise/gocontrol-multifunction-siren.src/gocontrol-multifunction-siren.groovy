@@ -1,5 +1,5 @@
 /**
- *  GoControl Multifunction Siren v 1.8.2
+ *  GoControl Multifunction Siren v 1.8.3
  *
  *  Devices:
  *    GoControl/Linear (Model#: WA105DBZ-1 / ZM1601US-3)
@@ -24,6 +24,9 @@
  *      https://community.smartthings.com/t/release-gocontrol-linear-multifunction-siren/47024?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.8.3 (11/01/2018)
+ *   		- Added support for new mobile app.
  *
  *    1.8.2 (07/23/2017)
  *   		- Added legacy fingerprint support for security cc check. 
@@ -122,7 +125,7 @@
  *  for the specific language governing permissions and limitations under the License.
  */
 metadata {
-	definition (name: "GoControl Multifunction Siren", namespace: "krlaframboise", author: "Kevin LaFramboise") {
+	definition (name: "GoControl Multifunction Siren", namespace: "krlaframboise", author: "Kevin LaFramboise", vid:"generic-siren") {
 		capability "Actuator"
 		capability "Alarm"
 		capability "Battery"
@@ -151,6 +154,8 @@ metadata {
 		fingerprint mfr: "014F", prod: "2005", model: "0503" //Linear/GoControl Battery Only
 		
 		fingerprint mfr: "014F", prod: "2009", model: "0903" //Linear/GoControl Powered (no battery reporting)
+        
+        fingerprint mfr: "0109", prod: "2005", model: "0518", deviceJoinName: "Vision Outdoor Siren" //AU
 		
 		fingerprint deviceId: "0x1000", inClusters: "0x25,0x70,0x72,0x86"
 		fingerprint deviceId: "0x1005", inClusters: "0x25,0x5E,0x72,0x80,0x86"

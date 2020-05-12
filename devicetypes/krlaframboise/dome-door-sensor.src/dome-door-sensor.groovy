@@ -1,5 +1,5 @@
 /**
- *  Dome Door Sensor v1.1.4
+ *  Dome Door Sensor v1.1.6
  *  (Model: DMWD1)
  *
  *  Author: 
@@ -9,6 +9,12 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.6 (08/15/2018)
+ *      - Added support for new mobile app.
+ *
+ *    1.1.5 (12/25/2017)
+ *      - Implemented ST Color Scheme
  *
  *    1.1.4 (04/20/2017)
  *      - Added workaround for ST Health Check bug.
@@ -37,7 +43,8 @@ metadata {
 	definition (
 		name: "Dome Door Sensor", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		vid: "generic-contact"
 	) {
 		capability "Sensor"
 		capability "Contact Sensor"
@@ -76,17 +83,11 @@ metadata {
 	}
 
 	tiles(scale: 2) {
-		multiAttributeTile(name:"contact", type: "generic", width: 6, height: 4, canChangeIcon: true){
+		multiAttributeTile(name:"contact", type: "generic", width: 6, height: 4){
 			tileAttribute ("device.contact", key: "PRIMARY_CONTROL") {
-				attributeState "open", 
-					label:'open', 
-					icon:"st.contact.contact.open", 
-					backgroundColor:"#ffa81e"
-				attributeState "closed", 
-					label:'closed', 
-					icon:"st.contact.contact.closed", 
-					backgroundColor:"#79b821"
-			}			
+				attributeState("open", label:'${name}', icon:"st.contact.contact.open", backgroundColor:"#e86d13")
+				attributeState("closed", label:'${name}', icon:"st.contact.contact.closed", backgroundColor:"#00a0dc")
+			}
 		}	
 		
 		standardTile("refresh", "device.refresh", width: 2, height: 2) {

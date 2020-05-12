@@ -1,5 +1,5 @@
 /**
- *  Dome On Off Plug v1.0.1
+ *  Dome On Off Plug v1.0.3
  *  (Model: DMOF1)
  *
  *  Author: 
@@ -9,6 +9,12 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.2 (08/15/2018)
+ *    	- Added support for new mobile app.
+ *
+ *    1.0.2 (12/25/2017)
+ *    	- Implemented ST new color scheme.
  *
  *    1.0.1 (04/23/2017)
  *    	- SmartThings broke parse method response handling so switched to sendhubaction.
@@ -31,7 +37,8 @@ metadata {
 	definition (
 		name: "Dome On Off Plug", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		vid: "generic-switch-power-energy"
 	) {
 		capability "Actuator"
 		capability "Sensor"
@@ -157,12 +164,12 @@ metadata {
 					label:'On', 
 					action: "switch.off",
 					icon:"st.switches.switch.on", 
-					backgroundColor:"#79b821"
+					backgroundColor:"#00a0dc"
 				attributeState "overload", 
 					label:'Overload', 
 					action: "switch.off",
 					icon:"st.switches.switch.off", 
-					backgroundColor:"#bc2323"					
+					backgroundColor:"#e86d13"					
 			}
 			tileAttribute ("device.acceleration", key: "SECONDARY_CONTROL") {
 				attributeState "inactive", 
@@ -170,7 +177,7 @@ metadata {
 					backgroundColor:"#ffffff"
 				attributeState "active", 
 					label:'Attached Device is Active',
-					backgroundColor:"#79b821"
+					backgroundColor:"#00a0dc"
 			}
 		}	
 	

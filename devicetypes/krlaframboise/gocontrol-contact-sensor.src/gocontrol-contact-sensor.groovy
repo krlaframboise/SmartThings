@@ -1,5 +1,5 @@
 /**
- *  GoControl Contact Sensor v1.10.2
+ *  GoControl Contact Sensor v1.10.3
  *  (WADWAZ-1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    https://community.smartthings.com/t/release-gocontrol-door-window-sensor-motion-sensor-and-siren-dth/50728?u=krlaframboise
  *
  *  Changelog:
+ *
+ *    1.10.3 (10/15/2018)
+ *    	- Added support for new mobile app.
  *
  *    1.10.2 (09/10/2017)
  *    	- Removed old style fingerprint to eliminate conflicts with other generic sensors.
@@ -78,7 +81,8 @@ metadata {
 	definition (
 		name: "GoControl Contact Sensor", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		vid:"generic-contact"
 	) {
 		capability "Sensor"
 		capability "Configuration"

@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - SmartApp v 1.4.1
+ *  Simple Event Logger - SmartApp v 1.5
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,9 @@
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
+ *
+ *    1.5 (02/19/2019)
+ *      -  Replaced obsolete javascript code in Groovy Script.
  *
  *    1.4.1 (10/22/2017)
  *      -  The Google Script does NOT need to be updated.
@@ -88,8 +91,8 @@ preferences {
 	page(name: "createTokenPage")
 }
 
-def version() { return "01.04.01" }
-def gsVersion() { return "01.03.00" }
+def version() { return "01.05.00" }
+def gsVersion() { return "01.05.00" }
 
 def mainPage() {
 	dynamicPage(name:"mainPage", uninstall:true, install:true) {

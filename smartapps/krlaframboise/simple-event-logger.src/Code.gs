@@ -1,5 +1,5 @@
 /**
- *  Simple Event Logger - Google Script Code v 1.3
+ *  Simple Event Logger - Google Script Code v 1.5
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
@@ -8,6 +8,9 @@
  *    https://github.com/krlaframboise/SmartThings/tree/master/smartapps/krlaframboise/simple-event-logger.src#simple-event-logger
  *
  *  Changelog:
+ *
+ *    1.5 (02/19/2019)
+ *      -  Replaced obsolete javascript code.
  *
  *    1.3 (02/26/2017)
  *      -  Fixed archive issue when invalid or missing date in first column.
@@ -41,7 +44,7 @@
  *
  */
    
-var getVersion = function() { return "01.03.00"; }
+var getVersion = function() { return "01.05.00"; }
  
 function doGet(e) {
 	var output = "Version " + getVersion()
@@ -79,11 +82,11 @@ var logEvents = function(sheet, data, result) {
 
 		initializeHeaderRow(sheet, data.logDesc, data.logReporting)
 		
-		for each (event in data.events) {
-			logEvent(sheet, data.logDesc, data.logReporting, event);
+		for (i=0; i < data.events.length; i++) {
+			logEvent(sheet, data.logDesc, data.logReporting, data.events[i]);
 			result.eventsLogged++;
 		}
-		
+				
 		if (data.deleteExtraColumns) {
 			deleteExtraColumns(sheet);
 		}

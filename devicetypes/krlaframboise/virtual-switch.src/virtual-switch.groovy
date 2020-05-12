@@ -1,10 +1,13 @@
 /**
- *  Virtual Switch - v 1.0
+ *  Virtual Switch - v 1.0.1
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.0.1 (10/30/2018)
+ *      - Added support for new mobile app.
  *
  *    1.0.0 (01/14/2017)
  *      - Initial Release
@@ -20,7 +23,7 @@
  *
  */
 metadata {	
-	definition (name: "Virtual Switch", namespace: "krlaframboise", author: "Kevin LaFramboise") {
+	definition (name: "Virtual Switch", namespace: "krlaframboise", author: "Kevin LaFramboise", vid:"generic-switch") {
 		capability "Actuator"
 		capability "Switch"
 	}
