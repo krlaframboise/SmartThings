@@ -1,5 +1,5 @@
 /**
- *  EVA LOGIK In-Wall Smart Switch v1.0
+ *  EVA LOGIK In-Wall Smart Switch v1.0.1
  *
  *  	Models: Eva Logik (ZW30) / MINOSTON (MS10Z)
  *
@@ -10,20 +10,25 @@
  *
  *  Changelog:
  *
- *    1.0 (03/02/2020)
+ *    1.0.1 (04/21/2020)
  *      - Initial Release
  *
  *
- *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- *  in compliance with the License. You may obtain a copy of the License at:
+ *  Copyright 2020 Kevin LaFramboise
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
  *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
- *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
- *  for the specific language governing permissions and limitations under the License.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  *
- */
+*/
 
 import groovy.json.JsonOutput
 import groovy.transform.Field
@@ -48,19 +53,19 @@ import groovy.transform.Field
 	0x9F: 1		// Security S2
 ]
 
-@Field static Map paddleControlOptions = [0:"Normal [DEFAULT]", 1:"Reverse", 2:"Toggle"]
+@Field static Map paddleControlOptions = [0:"Normal", 1:"Reverse", 2:"Toggle"]
 @Field static Integer reversePaddle = 1
 @Field static Integer togglePaddle = 2
 
-@Field static Map ledModeOptions = [0:"On When On [DEFAULT]", 1:"Off When On", 2:"Always Off", 3:"Always On"]
+@Field static Map ledModeOptions = [0:"On When On", 1:"Off When On", 2:"Always Off", 3:"Always On"]
 
-@Field static Map associationReportsOptions = [0:"None", 1:"Physical [DEFAULT]", 2:"3-way", 3:"3-way and Physical", 4:"Digital", 5:"Digital and Physical", 6:"Digital and 3-way", 7:"Digital, Physical, and 3-way", 8:"Timer", 9:"Timer and Physical", 10:"Timer and 3-way", 11:"Timer, 3-Way, and Physical", 12:"Timer and Digital", 13:"Timer, Digital, and Physical", 14:"Timer, Digital, and 3-way", 15:"All"]
+@Field static Map associationReportsOptions = [0:"None", 1:"Physical", 2:"3-way", 3:"3-way and Physical", 4:"Digital", 5:"Digital and Physical", 6:"Digital and 3-way", 7:"Digital, Physical, and 3-way", 8:"Timer", 9:"Timer and Physical", 10:"Timer and 3-way", 11:"Timer, 3-Way, and Physical", 12:"Timer and Digital", 13:"Timer, Digital, and Physical", 14:"Timer, Digital, and 3-way", 15:"All"]
 
-@Field static Map autoOnOffIntervalOptions = [0:"Disabled [DEFAULT]", 1:"1 Minute", 2:"2 Minutes", 3:"3 Minutes", 4:"4 Minutes", 5:"5 Minutes", 6:"6 Minutes", 7:"7 Minutes", 8:"8 Minutes", 9:"9 Minutes", 10:"10 Minutes", 15:"15 Minutes", 20:"20 Minutes", 25:"25 Minutes", 30:"30 Minutes", 45:"45 Minutes", 60:"1 Hour", 120:"2 Hours", 180:"3 Hours", 240:"4 Hours", 300:"5 Hours", 360:"6 Hours", 420:"7 Hours", 480:"8 Hours", 540:"9 Hours", 600:"10 Hours", 720:"12 Hours", 1080:"18 Hours", 1440:"1 Day", 2880:"2 Days", 4320:"3 Days", 5760:"4 Days", 7200:"5 Days", 8640:"6 Days", 10080:"1 Week", 20160:"2 Weeks", 30240:"3 Weeks", 40320:"4 Weeks", 50400:"5 Weeks", 60480:"6 Weeks"]
+@Field static Map autoOnOffIntervalOptions = [0:"Disabled", 1:"1 Minute", 2:"2 Minutes", 3:"3 Minutes", 4:"4 Minutes", 5:"5 Minutes", 6:"6 Minutes", 7:"7 Minutes", 8:"8 Minutes", 9:"9 Minutes", 10:"10 Minutes", 15:"15 Minutes", 20:"20 Minutes", 25:"25 Minutes", 30:"30 Minutes", 45:"45 Minutes", 60:"1 Hour", 120:"2 Hours", 180:"3 Hours", 240:"4 Hours", 300:"5 Hours", 360:"6 Hours", 420:"7 Hours", 480:"8 Hours", 540:"9 Hours", 600:"10 Hours", 720:"12 Hours", 1080:"18 Hours", 1440:"1 Day", 2880:"2 Days", 4320:"3 Days", 5760:"4 Days", 7200:"5 Days", 8640:"6 Days", 10080:"1 Week", 20160:"2 Weeks", 30240:"3 Weeks", 40320:"4 Weeks", 50400:"5 Weeks", 60480:"6 Weeks"]
 
-@Field static Map powerFailureRecoveryOptions = [0:"Turn Off [DEFAULT]", 1:"Turn On", 2:"Restore Last State"]
+@Field static Map powerFailureRecoveryOptions = [0:"Turn Off", 1:"Turn On", 2:"Restore Last State"]
 
-@Field static Map noYesOptions = [0:"No", 1:"Yes [DEFAULT]"]
+@Field static Map noYesOptions = [0:"No", 1:"Yes"]
 
 metadata {
 	definition (
@@ -114,21 +119,21 @@ metadata {
 
 	preferences {
 		configParams.each {
-			createEnumInput("configParam${it.num}", "${it.name}:", it.options)
+			createEnumInput("configParam${it.num}", "${it.name}:", it.value, it.options)
 		}
 
-		createEnumInput("createButton", "Create Button for Paddles?", noYesOptions)
+		createEnumInput("createButton", "Create Button for Paddles?", 1, setDefaultOption(noYesOptions, 1))
 
-		createEnumInput("debugOutput", "Enable Debug Logging?", noYesOptions)
+		createEnumInput("debugOutput", "Enable Debug Logging?", 1, setDefaultOption(noYesOptions, 1))
 	}
 }
 
-private createEnumInput(name, title, options) {
+private createEnumInput(name, title, defaultVal, options) {
 	input name, "enum",
 		title: title,
 		required: false,
-		defaultValue: options.find { it.value.contains("[DEFAULT]") }?.value ?: "",
-		options: options.values()
+		defaultValue: defaultVal.toString(),
+		options: options
 }
 
 
@@ -148,9 +153,9 @@ def updated() {
 		
 		logDebug "updated()..."
 						
-		state.debugLoggingEnabled = (getEnumSettingValue("debugOutput", noYesOptions, 1) == 1)
-		state.createButtonEnabled = (getEnumSettingValue("createButton", noYesOptions, 1) == 1)
-		
+		state.debugLoggingEnabled = (safeToInt(settings?.debugOutput) != 0)
+		state.createButtonEnabled = (safeToInt(settings?.createButton) != 0)
+	
 		initialize()
 		
 		runIn(5, executeConfigureCmds, [overwrite: true])
@@ -567,24 +572,23 @@ private getPowerFailureRecoveryParam() {
 }
 
 private getParam(num, name, size, defaultVal, options) {
-	def param = [
-		num: num,
-		name: name,
-		size: size,
-		options: options
-	]
-	param.value = getEnumSettingValue("configParam${num}", param.options, defaultVal)
-	return param
+	def val = safeToInt((settings ? settings["configParam${num}"] : null), defaultVal)
+
+	def map = [num: num, name: name, size: size, value: val]
+	if (options) {
+		map.options = setDefaultOption(options, defaultVal)
+	}
+	
+	return map
 }
 
-
-private getChildByName(name) {
-	def dni = getChildDNI(name)
-	return childDevices?.find { "${it.deviceNetworkId}" == "${dni}" }
-}
-
-private getChildDNI(name) {
-	return "${device.deviceNetworkId}-${name?.toUpperCase()}"
+private setDefaultOption(options, defaultVal) {
+	return options?.collectEntries { k, v ->
+		if ("${k}" == "${defaultVal}") {
+			v = "${v} [DEFAULT]"
+		}
+		["$k": "$v"]
+	}
 }
 
 
@@ -602,19 +606,6 @@ private sendEventIfNew(name, value, displayed=true, type=null) {
 	}
 	else {
 		logTrace(desc)
-	}
-}
-
-
-private getEnumSettingValue(name, options, defaultVal) {
-	def rawVal = settings ? settings["${name}"] : null
-	def index = safeToInt(rawVal, null)
-	if (index != null) {
-		// bug with new mobile app storing index for enum settings
-		return safeToInt(options.keySet()[index], defaultVal)
-	}
-	else {
-		return safeToInt(options.find { "${it.value}" == "${rawVal}" }?.key, defaultVal)
 	}
 }
 
