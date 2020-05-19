@@ -1,5 +1,5 @@
 /**
- *  Zooz S2 Multisiren v1.3.1
+ *  Zooz S2 Multisiren v1.3.2
  *  (Models: ZSE19)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *
  *
  *  Changelog:
+ *
+ *    1.3.2 (05/18/2020)
+ *      - Fixed bug with health check interval.
  *
  *    1.3.1 (03/13/2020)
  *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
@@ -634,7 +637,7 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport 
 }
 
 private updateHealthCheckInterval(minutes) {
-	def minReportingInterval = calculateMinimumReportingInterval()
+	def minReportingInterval = (((reportingIntervalParam.value < 60) ? 60 : reportingIntervalParam.value) * 60)
 	
 	if (state.minReportingInterval != minReportingInterval) {
 		state.minReportingInterval = minReportingInterval
@@ -647,15 +650,6 @@ private updateHealthCheckInterval(minutes) {
 		
 		sendEvent(eventMap)
 	}	
-}
-
-private calculateMinimumReportingInterval() {
-	if (reportingIntervalParam.value < (30 * 60)) {
-		return (30 * 60)
-	}
-	else {
-		return reportingIntervalParam.value
-	}
 }
 
 def updateSyncStatus(status=null) {	
