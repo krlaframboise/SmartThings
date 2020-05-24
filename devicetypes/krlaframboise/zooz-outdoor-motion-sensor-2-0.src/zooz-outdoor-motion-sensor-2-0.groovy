@@ -1,5 +1,5 @@
 /**
- *  Zooz Outdoor Motion Sensor 2.1  (FIRMWARE >= 2.0)
+ *  Zooz Outdoor Motion Sensor 2.2  (FIRMWARE >= 2.0)
  *    (Model: ZSE29)
  *
  *  Author:
@@ -9,6 +9,10 @@
  *
  *
  *  Changelog:
+ *
+ *    2.2 (05/24/2020)
+ *      - Add lifeline association during configure if it hasn't already been added.
+ *      - Added syncStatus tile.
  *
  *    2.1 (05/04/2020)
  *      - Added support for associations.
@@ -76,6 +80,7 @@ metadata {
 		capability "Health Check"
 
 		attribute "lastCheckIn", "string"
+		attribute "syncStatus", "string"
 		attribute "firmwareVersion", "string"
 		attribute "firmwareSupported", "string"
 		attribute "associatedDeviceNetworkIds", "string"
@@ -121,11 +126,15 @@ metadata {
 		standardTile("refresh", "device.refresh", width: 2, height: 2, decoration: "flat") {
 			state "default", label: "Refresh", action: "refresh", icon:"${resourcesUrl}refresh.png"
 		}
-		
-		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:2, height: 2) {
+
+		valueTile("syncStatus", "device.syncStatus", inactiveLabel: false, decoration: "flat", width: 3, height: 1) {
+			state "syncStatus", label:'${currentValue}'
+		}
+
+		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:3, height: 1) {
 			state "firmwareVersion", label:'Firmware ${currentValue}'
 		}
-		
+
 		valueTile("firmwareSupported", "device.firmwareSupported", decoration:"flat", width:4, height: 2) {
 			state "yes", label:''
 			state "no", label:'This DTH only supports firmware 2.0 and above'
@@ -142,7 +151,7 @@ metadata {
 		}
 
 		main("mainTile")
-		details(["mainTile", "illuminance", "battery", "refresh", "firmwareVersion", "firmwareSupported", "assocLabel", "assocDNIs"])
+		details(["mainTile", "illuminance", "battery", "refresh", "syncStatus", "firmwareVersion", "assocLabel", "assocDNIs", "firmwareSupported"])
 	}
 
 	preferences {
@@ -207,35 +216,41 @@ private getResourcesUrl() {
 
 def installed() {
 	sendEvent(name: "tamper", value: "clear", displayed: false)
-	
-	state.refreshAll = true
+
+	state.syncAll = true
 }
 
 
 def updated() {
-	if (!isDuplicateCommand(state.lastUpdated, 3000)) {
+	if (!isDuplicateCommand(state.lastUpdated, 1000)) {
 		state.lastUpdated = new Date().time
-		logTrace "updated()"
+		logDebug "updated()"
 
 		logForceWakeupMessage "The setting changes will be sent to the device the next time it wakes up."
 
-		if (state.checkInInterval != checkInIntervalSetting) {
-			refresh()
-		}
+		refreshSyncStatus()
 	}
 }
 
 
 def configure() {
-	logTrace "configure()"
+	logDebug "configure()"
+
+	def cmds = getConfigureCmds()
+	return (cmds ? delayBetween(cmds, 500) : [])
+}
+
+private getConfigureCmds() {
 	def cmds = []
+
+	runIn(4, refreshSyncStatus)
 
 	if (!state.checkInInterval) {
 		// First time configuring so give it time for inclusion to finish.
 		cmds << "delay 2000"
 	}
-	
-	if (state.refreshAll || state.checkInInterval != checkInIntervalSetting) {
+
+	if (state.syncAll || state.checkInInterval != checkInIntervalSetting) {
 		cmds << wakeUpIntervalSetCmd(checkInIntervalSetting)
 		cmds << wakeUpIntervalGetCmd()
 	}
@@ -252,17 +267,18 @@ def configure() {
 
 	configParams.each { param ->
 		def storedVal = getParamStoredValue(param.num)
-		if (state.refreshAll || "${storedVal}" != "${param.value}") {
+		if (state.syncAll || "${storedVal}" != "${param.value}") {
 			logDebug "Changing ${param.name}(#${param.num}) from ${storedVal} to ${param.value}"
 			cmds << configSetCmd(param)
 			cmds << configGetCmd(param)
 		}
 	}
 
-	cmds += configureAssocs()
+	cmds += getConfigureAssocsCmds()
 
+	state.syncAll = false
 	state.refreshAll = false
-	return cmds ? delayBetween(cmds, 1000) : []
+	return cmds
 }
 
 private firmwareSupportsParam(param) {
@@ -274,32 +290,37 @@ private getParamStoredValue(paramNum) {
 }
 
 
-private configureAssocs() {
+private getConfigureAssocsCmds() {
 	def cmds = []
 
 	if (!device.currentValue("associatedDeviceNetworkIds")) {
-		sendEvent(name: "associatedDeviceNetworkIds", value: "none", displayed: false)
+		sendEventIfNew("associatedDeviceNetworkIds", "none", false)
 	}
 
-	def stateNodeIds = (state.assocNodeIds ?: [])
 	def settingNodeIds = assocDNIsSettingNodeIds
 
-	def newNodeIds = settingNodeIds.findAll { !(it in stateNodeIds)  }
+	def newNodeIds = settingNodeIds?.findAll { !(it in state.assocNodeIds) }
 	if (newNodeIds) {
-		cmds << associationSetCmd(newNodeIds)
+		cmds << associationSetCmd(2, newNodeIds)
 	}
 
-	def oldNodeIds = stateNodeIds.findAll { !(it in settingNodeIds)  }
+	def oldNodeIds = state.assocNodeIds?.findAll { !(it in settingNodeIds) }
 	if (oldNodeIds) {
-		cmds << associationRemoveCmd(oldNodeIds)
+		cmds << associationRemoveCmd(2, oldNodeIds)
 	}
 
-	if (cmds || state.pendingRefresh) {
-		cmds << associationGetCmd()
+	if (cmds || state.syncAll) {
+		cmds << associationGetCmd(2)
+	}
+
+	if (!state.group1Assoc || state.syncAll) {
+		cmds << associationSetCmd(1, [zwaveHubNodeId])
+		cmds << associationGetCmd(1)
 	}
 
 	return cmds
 }
+
 
 private getAssocDNIsSettingNodeIds() {
 	def nodeIds = convertHexListToIntList(assocDNIsSetting?.split(","))
@@ -321,9 +342,20 @@ def ping() {
 }
 
 
-def refresh() {
-	logForceWakeupMessage "The next time the device wakes up, all settings will be sent to it and the sensor data will be requested."
+def refresh() {	
+	logDebug "refresh()..."
+	
 	state.refreshAll = true
+	if (!pendingChanges) {
+		logForceWakeupMessage "The next time the device wakes up, all settings will be sent to it and the sensor data will be requested."
+		state.syncAll = true
+	}
+	else {
+		logForceWakeupMessage "The next time the device wakes up, the sensor data will be requested."
+	}
+
+	refreshSyncStatus()
+	
 	return []
 }
 
@@ -348,16 +380,16 @@ private versionGetCmd() {
 	return secureCmd(zwave.versionV1.versionGet())
 }
 
-private associationSetCmd(nodes) {
-	return secureCmd(zwave.associationV2.associationSet(groupingIdentifier: 2, nodeId: nodes))
+private associationSetCmd(group, nodes) {
+	return secureCmd(zwave.associationV2.associationSet(groupingIdentifier: group, nodeId: nodes))
 }
 
-private associationRemoveCmd(nodes) {
-	return secureCmd(zwave.associationV2.associationRemove(groupingIdentifier: 2, nodeId: nodes))
+private associationRemoveCmd(group, nodes) {
+	return secureCmd(zwave.associationV2.associationRemove(groupingIdentifier: group, nodeId: nodes))
 }
 
-private associationGetCmd() {
-	return secureCmd(zwave.associationV2.associationGet(groupingIdentifier: 2))
+private associationGetCmd(group) {
+	return secureCmd(zwave.associationV2.associationGet(groupingIdentifier: group))
 }
 
 private batteryGetCmd() {
@@ -445,6 +477,9 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd) {
 	logTrace "WakeUpIntervalReport: $cmd"
 
+	updateSyncingStatus()
+	runIn(4, refreshSyncStatus)
+
 	state.checkInInterval = cmd.seconds
 
 	// Set the Health Check interval so that it can be skipped twice plus 5 minutes.
@@ -456,13 +491,13 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd) {
 }
 
 
-def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
-{
-	logDebug "Device Woke Up"
-
-	def cmds = configure()
+def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
+	logDebug "Device Woke Up..."
+	
+	def cmds = getConfigureCmds()
 	if (cmds) {
-		cmds << "delay 1000"
+		cmds = delayBetween(cmds, 500)
+		cmds << "delay 1500"
 	}
 	cmds << wakeUpNoMoreInfoCmd()
 
@@ -505,14 +540,17 @@ def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 def zwaveEvent(physicalgraph.zwave.commands.associationv2.AssociationReport cmd) {
 	logDebug "AssociationReport: ${cmd}"
 
+	updateSyncingStatus()
+	runIn(4, refreshSyncStatus)
 
-	if (cmd.groupingIdentifier == 2) {
+	if (cmd.groupingIdentifier == 1) {
+		state.group1Assoc = (cmd.nodeId == [zwaveHubNodeId]) ? true : false
+	}
+	else if (cmd.groupingIdentifier == 2) {
 		state.assocNodeIds = cmd.nodeId
 
 		def dnis = convertIntListToHexList(cmd.nodeId)?.join(", ") ?: "none"
-		if (device.currentValue("associatedDeviceNetworkIds") != dnis) {
-			sendEvent(name: "associatedDeviceNetworkIds", value: dnis, displayed: false)
-		}
+		sendEventIfNew("associatedDeviceNetworkIds", dnis, false)
 	}
 	return []
 }
@@ -588,6 +626,9 @@ private sendMotionEventMap(val) {
 def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {
 	logTrace "ConfigurationReport ${cmd}"
 
+	updateSyncingStatus()
+	runIn(4, refreshSyncStatus)
+
 	def param = configParams.find { it.num == cmd.parameterNumber }
 	if (param) {
 		def val = cmd.scaledConfigurationValue
@@ -609,6 +650,29 @@ private setParamStoredValue(paramNum, value) {
 def zwaveEvent(physicalgraph.zwave.Command cmd) {
 	logDebug "Unknown Command: $cmd"
 	return []
+}
+
+
+private updateSyncingStatus() {
+	sendEventIfNew("syncStatus", "Syncing...", false)
+}
+
+def refreshSyncStatus() {
+	def changes = pendingChanges
+	sendEventIfNew("syncStatus", (changes ?  "${changes} Pending Changes" : "Synced"), false)
+}
+
+private getPendingChanges() {
+	def pendingParams = configParams.count { "${it.value}" != "${getParamStoredValue(it.num)}" }
+	def pendingAssocs = getConfigureAssocsCmds()?.size() ?: 0
+	def pendingCheckInInterval = (state.checkInInterval == checkInIntervalSetting) ? 0 : 1
+	return (pendingParams + pendingAssocs + pendingCheckInInterval)
+}
+
+private sendEventIfNew(name, value, displayed=false) {
+	if (device.currentValue("${name}") != value) {
+		sendEvent(name: name, value: value, displayed: displayed)
+	}
 }
 
 
