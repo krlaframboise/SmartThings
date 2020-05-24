@@ -1,5 +1,5 @@
 /**
- *  Zooz 4-in-1 Sensor v2.1.1
+ *  Zooz 4-in-1 Sensor v2.2
  *		(Model: ZSE40)
  *
  *  Author: 
@@ -9,6 +9,11 @@
  *    
  *
  *  Changelog:
+ *
+ *    2.2 (05/24/2020)
+ *      - Added lifeline association check and add the association if it wasn't automatically added during inclusion.
+ *      - Added support for motion clear time 15-255 seconds in firmware > 17.9 and renamed setting to "Motion Clear Delay" because that's what it really is.
+ *      - Implemented motion events for notification reports in case users aren't receiving both BasicSet and NotificationReports, but left it commented to avoid duplicate events for most users.
  *
  *    2.1.1 (03/13/2020)
  *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
@@ -284,9 +289,15 @@ private checkForPendingChanges() {
 			changes += 1
 		}
 	}
+	
 	if (checkinIntervalChanged) {
 		changes += 1
 	}
+	
+	if (!state.linelineAssoc) {
+		changes += 1
+	}
+	
 	if (changes != getAttrValue("pendingChanges")) {
 		sendEvent(createEventMap("pendingChanges", changes, "", false))
 	}
@@ -344,8 +355,16 @@ def configure() {
 	def cmds = []		
 	if (!getAttrValue("firmwareVersion")) {
 		sendMotionEvents(0xFF)
-		cmds << "delay 2000"
+		cmds << "delay 1000"
 		cmds << versionGetCmd()
+	}
+	
+	if (!state.linelineAssoc) {
+		if (state.linelineAssoc != null) {
+			logDebug "Adding missing lineline association..."
+			cmds << lifelineAssociationSetCmd()
+		}
+		cmds << lifelineAssociationGetCmd()
 	}
 	
 	if (state.pendingRefresh != false || state.refreshAll || !allAttributesHaveValues()) {
@@ -427,11 +446,11 @@ private ledIndicatorModeMatchesFirmware(val) {
 }
 
 private motionTimeMatchesFirmware(val) {
-	if (firmwareVersion < firmwareV3 || (val >= 15 && val <= 60)) {
+	if ((firmwareVersion < firmwareV3) || (val >= 15 && ((val <= 60) || firmwareVersion > firmwareV3))) {
 		return true
 	}
 	else {
-		log.warn "${val} Seconds is not a valid Motion Time for Firmware ${firmwareV3}."
+		log.warn "${val} Seconds is not a valid Motion Time for Firmware ${firmwareVersion}."
 		return false
 	}
 }
@@ -587,7 +606,7 @@ private getLightTriggerParam() {
 }
 
 private getMotionTimeParam() {	
-	return createConfigParamMap(5, "Motion Retrigger Time [1-255 or 15-60]\n(1 Minute - 255 Minutes [FIRMWARE ${firmwareV1} & ${firmwareV2}])\n(15 Seconds - 60 Seconds [FIRMWARE ${firmwareV3}])", 1, "motionTime", "1..255", 15)
+	return createConfigParamMap(5, "Motion Clear Delay [1-255 or 15-60]\n(1 Minute - 255 Minutes [FIRMWARE ${firmwareV1} & ${firmwareV2}])\n(15 Seconds - 60 Seconds [FIRMWARE ${firmwareV3}])", 1, "motionTime", "1..255", 15)
 }
 
 private getMotionSensitivityParam() {
@@ -620,14 +639,19 @@ private createConfigParamMap(num, name, size, prefName, range, val) {
 def parse(String description) {
 	def result = []
 	
-	sendLastCheckinEvent()
-	
-	def cmd = zwave.parse(description, commandClassVersions)
-	if (cmd) {
-		result += zwaveEvent(cmd)
+	try {
+		sendLastCheckinEvent()
+		
+		def cmd = zwave.parse(description, commandClassVersions)
+		if (cmd) {
+			result += zwaveEvent(cmd)
+		}
+		else {
+			logDebug "Unable to parse description: $description"
+		}
 	}
-	else {
-		logDebug "Unable to parse description: $description"
+	catch (ex) {
+		log.warn "Parse Error: $ex"
 	}
 	return result
 }
@@ -648,7 +672,7 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 private getCommandClassVersions() {
 	[
 		0x20: 1,  // Basic
-		0x31: 5,	// Sensor Multilevel (v7)
+		0x31: 5,  // Sensor Multilevel (v7)
 		0x59: 1,  // AssociationGrpInfo
 		0x5A: 1,  // DeviceResetLocally
 		0x5E: 2,  // ZwaveplusInfo
@@ -660,8 +684,8 @@ private getCommandClassVersions() {
 		0x80: 1,  // Battery
 		0x84: 2,  // WakeUp
 		0x85: 2,  // Association
-		0x86: 1,	// Version (2)
-		0x98: 1		// Security
+		0x86: 1,  // Version (2)
+		0x98: 1   // Security
 	]
 }
 
@@ -694,8 +718,8 @@ private createCheckIntervalEvent(seconds) {
 	return createEvent(eventMap)
 }
 
+
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
-	logTrace "WakeUpNotification: $cmd"
 	def cmds = []
 	
 	logDebug "Device Woke Up"
@@ -731,6 +755,7 @@ private canReportBattery() {
 	return (!state.lastBatteryReport || ((new Date().time) - state.lastBatteryReport > reportEveryMS)) 
 }
 
+
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	def val = (cmd.batteryLevel == 0xFF ? 1 : cmd.batteryLevel)
 	if (val > 100) {
@@ -745,10 +770,12 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	]
 }	
 
+
 def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerSpecificReport cmd) {
 	logTrace "ManufacturerSpecificReport: ${cmd}"
 	return []
 }
+
 
 def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 	logTrace "VersionReport: ${cmd}"
@@ -762,6 +789,21 @@ def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 	}
 	return result 
 }
+
+
+def zwaveEvent(physicalgraph.zwave.commands.associationv2.AssociationReport cmd) {
+	logTrace "AssociationReport: ${cmd}"
+	
+	sendUpdatingEvent()
+	
+	if (cmd.groupingIdentifier == 1) {
+		state.linelineAssoc = (cmd.nodeId == [zwaveHubNodeId]) ? true : false
+	}
+	
+	runIn(5, finalizeConfiguration)
+	return []
+}
+
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {	
 	logTrace "ConfigurationReport: ${cmd}"
@@ -804,6 +846,7 @@ def finalizeConfiguration() {
 	return []
 }
 
+
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	logTrace "BasicReport: $cmd"	
 	if (state.refreshAll || !device.currentValue("motion")) {
@@ -811,6 +854,7 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	}
 	return []
 }
+
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd) {
 	logTrace "BasicSet: $cmd"	
@@ -838,8 +882,11 @@ def zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cm
 	if (cmd.notificationType == 7) {
 		if (cmd.eventParameter[0] == 3 || cmd.event == 3) {		
 			result += handleTamperEvent(cmd.v1AlarmLevel)
+		}		
+		else if (cmd.eventParameter[0] == 8 || cmd.event == 8) {			
+			// sendMotionEvents(cmd.v1AlarmLevel)
 		}
-	}
+	}	
 	return result
 }
 
@@ -1133,6 +1180,14 @@ private batteryGetCmd() {
 
 private versionGetCmd() {
 	return secureCmd(zwave.versionV1.versionGet())
+}
+
+private lifelineAssociationSetCmd() {
+	return secureCmd(zwave.associationV2.associationSet(groupingIdentifier: 1, nodeId: [zwaveHubNodeId]))
+}
+
+private lifelineAssociationGetCmd() {
+	return secureCmd(zwave.associationV2.associationGet(groupingIdentifier: 1))
 }
 
 private sensorMultilevelGetCmd(sensorType) {
