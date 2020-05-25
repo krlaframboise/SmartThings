@@ -314,7 +314,10 @@ private getConfigureAssocsCmds() {
 	}
 
 	if (!state.group1Assoc || state.syncAll) {
-		cmds << associationSetCmd(1, [zwaveHubNodeId])
+		if (state.group1Assoc == false) {
+			logDebug "Adding missing lifeline association..."
+			cmds << associationSetCmd(1, [zwaveHubNodeId])
+		}
 		cmds << associationGetCmd(1)
 	}
 
@@ -538,15 +541,19 @@ def zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 
 
 def zwaveEvent(physicalgraph.zwave.commands.associationv2.AssociationReport cmd) {
-	logDebug "AssociationReport: ${cmd}"
+	logTrace "${cmd}"
 
 	updateSyncingStatus()
 	runIn(4, refreshSyncStatus)
 
 	if (cmd.groupingIdentifier == 1) {
-		state.group1Assoc = (cmd.nodeId == [zwaveHubNodeId]) ? true : false
+		logDebug "Lifeline Association: ${cmd.nodeId}"
+		
+		state.group1Assoc = (cmd.nodeId == [zwaveHubNodeId]) ? true : false		
 	}
 	else if (cmd.groupingIdentifier == 2) {
+		logDebug "Group 2 Association: ${cmd.nodeId}"
+		
 		state.assocNodeIds = cmd.nodeId
 
 		def dnis = convertIntListToHexList(cmd.nodeId)?.join(", ") ?: "none"
