@@ -1,5 +1,5 @@
 /**
- *  Hank RGBW LED Bulb v1.0.2
+ *  Hank RGBW LED Bulb v1.1
  *  (Model: HKZW-RGB01)
  *
  *  Author: 
@@ -7,6 +7,10 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1 (06/05/2020)
+ *      - Switched to color util functions.
+ *      - Added ocfDeviceType and vid for new mobile app support.
  *
  *    1.0.2 (03/14/2020)
  *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
@@ -30,7 +34,7 @@
  */
 
 metadata {
-	definition (name: "Hank RGBW LED Bulb", namespace: "krlaframboise", author: "Kevin LaFramboise") {
+	definition (name: "Hank RGBW LED Bulb", namespace: "krlaframboise", author: "Kevin LaFramboise", ocfDeviceType: "oic.d.light", vid: "generic-rgbw-color-bulb") {
 		capability "Actuator"
 		capability "Sensor"
 		capability "Switch Level"
@@ -231,7 +235,7 @@ def setHue(value) {
 
 def setColor(value) {
 	logDebug "setColor($value)..."
-  def result = []
+	def result = []
 	def rgb
 	def hue
 	def saturation
@@ -246,12 +250,14 @@ def setColor(value) {
 	}
 	else {
 		hue = value.hue != null ? value.hue : device.currentValue("hue")
-    saturation = value.saturation != null ? value.saturation : device.currentValue("saturation")
     
-		if (hue == null) hue = 13
-    if (saturation == null) saturation = 13
+		saturation = value.saturation != null ? value.saturation : device.currentValue("saturation")
+    
+		if (hue == null) hue = 13    
+		if (saturation == null) saturation = 13
         
 		rgb = huesatToRGB(hue, saturation)
+		value.hex = rgbToHex(rgb)
 	}
 	
 	if (hue != null) {
@@ -268,6 +274,7 @@ def setColor(value) {
 	    	
 	return [switchColorSetCmd(rgb[0], rgb[1], rgb[2], 0, 0)]
 }
+
 
 def setColorTemperature(temperature) {
 	logDebug "setColorTemperature($temperature)..."
@@ -476,43 +483,19 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 }
 
 
-
-private rgbToHSV(red, green, blue) {
-    float r = red / 255f
-    float g = green / 255f
-    float b = blue / 255f
-    float max = [r, g, b].max()
-    float delta = max - [r, g, b].min()
-    def hue = 13
-    def saturation = 0
-    if (max && delta) {
-        saturation = 100 * delta / max
-        if (r == max) {
-            hue = ((g - b) / delta) * 100 / 6
-        } else if (g == max) {
-            hue = (2 + (b - r) / delta) * 100 / 6
-        } else {
-            hue = (4 + (r - g) / delta) * 100 / 6
-        }
-    }
-    [hue: hue, saturation: saturation, value: max * 100]
+private rgbToHex(red, green, blue) {
+	return colorUtil.rgbToHex(red as int, green as int, blue as int)
 }
 
-private huesatToRGB(float hue, float sat) {
-    while(hue >= 100) hue -= 100
-    int h = (int)(hue / 100 * 6)
-    float f = hue / 100 * 6 - h
-    int p = Math.round(255 * (1 - (sat / 100)))
-    int q = Math.round(255 * (1 - (sat / 100) * f))
-    int t = Math.round(255 * (1 - (sat / 100) * (1 - f)))
-    switch (h) {
-        case 0: return [255, t, p]
-        case 1: return [q, 255, p]
-        case 2: return [p, 255, t]
-        case 3: return [p, q, 255]
-        case 4: return [t, p, 255]
-        case 5: return [255, p, q]
-    }
+private rgbToHSV(red, green, blue) {
+	def hex = colorUtil.rgbToHex(red as int, green as int, blue as int)
+	def hsv = colorUtil.hexToHsv(hex)
+	return [hue: hsv[0], saturation: hsv[1], value: hsv[2]]
+}
+
+private huesatToRGB(hue, sat) {
+	def color = colorUtil.hsvToHex(Math.round(hue) as int, Math.round(sat) as int)
+	return colorUtil.hexToRgb(color)
 }
 
 private validateRange(val, defaultVal, lowVal, highVal) {
