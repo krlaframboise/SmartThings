@@ -1,5 +1,5 @@
 /**
- *  EVA LOGIK In-Wall Smart Switch v1.0.1
+ *  EVA LOGIK In-Wall Smart Switch v1.0.2
  *
  *  	Models: Eva Logik (ZW30) / MINOSTON (MS10Z)
  *
@@ -9,6 +9,9 @@
  *	Documentation:
  *
  *  Changelog:
+ *
+ *    1.0.2 (06/05/2020)
+ *      - Swapped first 2 options of LED Control preference
  *
  *    1.0.1 (04/21/2020)
  *      - Initial Release
@@ -57,7 +60,7 @@ import groovy.transform.Field
 @Field static Integer reversePaddle = 1
 @Field static Integer togglePaddle = 2
 
-@Field static Map ledModeOptions = [0:"On When On", 1:"Off When On", 2:"Always Off", 3:"Always On"]
+@Field static Map ledModeOptions = [0:"Off When On", 1:"On When On", 2:"Always Off", 3:"Always On"]
 
 @Field static Map associationReportsOptions = [0:"None", 1:"Physical", 2:"3-way", 3:"3-way and Physical", 4:"Digital", 5:"Digital and Physical", 6:"Digital and 3-way", 7:"Digital, Physical, and 3-way", 8:"Timer", 9:"Timer and Physical", 10:"Timer and 3-way", 11:"Timer, 3-Way, and Physical", 12:"Timer and Digital", 13:"Timer, Digital, and Physical", 14:"Timer, Digital, and 3-way", 15:"All"]
 
