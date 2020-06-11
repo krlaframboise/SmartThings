@@ -1,5 +1,5 @@
 /**
- *  EVA LOGIK In-Wall Smart Dimmer v1.0.1
+ *  EVA LOGIK In-Wall Smart Dimmer v1.0.2
  *
  *  	Models: Eva Logik (ZW31) / MINOSTON (MS11Z)
  *
@@ -9,6 +9,9 @@
  *	Documentation:
  *
  *  Changelog:
+ *
+ *    1.0.2 (06/10/2020)
+ *      - Changed dimming duration options to 1-10 seconds.
  *
  *    1.0.1 (06/05/2020)
  *      - Swapped first 2 options of LED Control preference
@@ -72,7 +75,7 @@ import groovy.transform.Field
 
 @Field static Map noYesOptions = [0:"No", 1:"Yes"]
 
-@Field static Map dimmingDurationOptions = [0:"Instant", 1:"1 Second", 2:"2 Seconds", 3:"3 Seconds", 4:"4 Seconds", 5:"5 Seconds", 6:"6 Seconds", 7:"7 Seconds", 8:"8 Seconds", 9:"9 Seconds", 10:"10 Seconds", 15:"15 Seconds", 20:"20 Seconds", 25:"25 Seconds", 30:"30 Seconds"]
+@Field static Map dimmingDurationOptions = [1:"1 Second", 2:"2 Seconds", 3:"3 Seconds", 4:"4 Seconds", 5:"5 Seconds", 6:"6 Seconds", 7:"7 Seconds", 8:"8 Seconds", 9:"9 Seconds", 10:"10 Seconds"]
 
 @Field static Map brightnessOptions = [0:"Disabled", 1:"1%", 5:"5%", 10:"10%", 15:"15%", 20:"20%", 25:"25%", 30:"30%", 35:"35%", 40:"40%", 45:"45%", 50:"50%", 55:"55%",60:"60%", 65:"65%", 70:"70%", 75:"75%", 80:"80%", 85:"85%", 90:"90%", 95:"95%", 99:"99%"]
 
@@ -97,7 +100,7 @@ metadata {
 		attribute "lastCheckIn", "string"
 		attribute "syncStatus", "string"
 		
-		fingerprint mfr: "0312", prod: "A000", model: "A006", deviceJoinName: "Eva Logik In-Wall Smart Dimmer" // ZW31
+		fingerprint mfr: "0312", prod: "AA00", model: "A002", deviceJoinName: "Eva Logik In-Wall Smart Dimmer" // ZW31
 		
 		fingerprint mfr: "0312", prod: "FF00", model: "FF04", deviceJoinName: "Minoston In-Wall Smart Dimmer" // MS11Z
 	}
