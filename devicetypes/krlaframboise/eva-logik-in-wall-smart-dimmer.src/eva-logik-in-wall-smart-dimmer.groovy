@@ -1,5 +1,5 @@
 /**
- *  EVA LOGIK In-Wall Smart Dimmer v1.0.2
+ *  EVA LOGIK In-Wall Smart Dimmer v1.0.3
  *
  *  	Models: Eva Logik (ZW31) / MINOSTON (MS11Z)
  *
@@ -9,6 +9,9 @@
  *	Documentation:
  *
  *  Changelog:
+ *
+ *    1.0.3 (06/12/2020)
+ *      - Fixed Eva Logik fingerprint
  *
  *    1.0.2 (06/10/2020)
  *      - Changed dimming duration options to 1-10 seconds.
@@ -100,7 +103,7 @@ metadata {
 		attribute "lastCheckIn", "string"
 		attribute "syncStatus", "string"
 		
-		fingerprint mfr: "0312", prod: "AA00", model: "A002", deviceJoinName: "Eva Logik In-Wall Smart Dimmer" // ZW31
+		fingerprint mfr: "0312", prod: "AA00", model: "AA02", deviceJoinName: "Eva Logik In-Wall Smart Dimmer" // ZW31
 		
 		fingerprint mfr: "0312", prod: "FF00", model: "FF04", deviceJoinName: "Minoston In-Wall Smart Dimmer" // MS11Z
 	}
