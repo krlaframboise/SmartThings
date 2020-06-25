@@ -11,6 +11,10 @@
  *
  *  Changelog:
  *
+ *    1.2.4 (06/24/2020) Murali Kesavan / k7fame
+ *      - Updated device type (ocfDeviceType) on the definition for appropriate icon
+ *	- Added version() method
+ *
  *    1.2.3 (08/15/2018)
  *      - Added support for new mobile app.
  *
@@ -48,8 +52,8 @@
 		name: "Dome Water Shut-Off", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise",
-		vid: "generic-valve"
-	) {
+		ocfDeviceType: "oic.d.watervalve") {
+		
 		capability "Actuator"
 		capability "Sensor"
 		capability "Valve"
@@ -150,6 +154,10 @@
 		main "status"
 		details(["status", "openValve", "closeValve", "refresh"])
 	}
+}
+
+def version(){
+	return "1.2.4"
 }
 
 // Refreshes the valve status and sets the health check expected interval.
