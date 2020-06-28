@@ -315,7 +315,7 @@
 <ul><li>EVA LOGIK In-Wall Smart Dimmer (ZW31)</li>
 <li>MINOSTON In-Wall Smart Dimmer (MS11Z)</li></ul></li>
 <li><a href="https://community.smartthings.com/t/release-eva-logik-zw31-minoston-ms11z-in-wall-dimmer/198305">View Documentation in SmartThings Forum</a></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/eva-logik-in-wall-smart-switch.src/eva-logik-in-wall-smart-dimmer.groovy">View EVA LOGIK In-Wall Smart Dimmer - Device Handler Code (COMING SOON)</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/eva-logik-in-wall-smart-dimmer.src/eva-logik-in-wall-smart-dimmer.groovy">View EVA LOGIK In-Wall Smart Dimmer - Device Handler Code</a></li>
 </ul>
 
 
