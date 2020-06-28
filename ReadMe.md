@@ -82,6 +82,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="#zipato-multisound-siren">Zipato Multisound Siren</a></li>
 			<li><a href="#zooz-4-in-1-sensor">Zooz 4-in-1 Sensor</a></li>
 			<li><a href="#zooz-double-plug">Zooz Double Plug</a></li>			
+			<li><a href="#zooz-double-switch">Zooz Double Switch</a></li>			
 			<li><a href="#zooz-motion-sensor-zse18">Zooz Motion Sensor ZSE18</a></li>
 			<li><a href="#zooz-multirelay">Zooz MultiRelay</a></li>
 			<li><a href="#zooz-multisiren">Zooz Multisiren</a></li>
@@ -375,6 +376,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li>This is a device handler for:
 <ul><li>EVA LOGIK In-Wall Smart Dimmer (ZW31)</li>
 <li>MINOSTON In-Wall Smart Dimmer (MS11Z)</li></ul></li>
+<li><a href="https://community.smartthings.com/t/release-eva-logik-zw31-minoston-ms11z-in-wall-dimmer/198305">View Documentation in SmartThings Forum</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/eva-logik-in-wall-smart-switch.src/eva-logik-in-wall-smart-dimmer.groovy">View EVA LOGIK In-Wall Smart Dimmer - Device Handler Code (COMING SOON)</a></li>
 </ul>
 
@@ -385,6 +387,7 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 <li>This is a device handler for:
 <ul><li>EVA LOGIK In-Wall Smart Switch (ZW30)</li>
 <li>MINOSTON In-Wall Smart Switch (MS10Z)</li></ul></li>
+<li><a href="https://community.smartthings.com/t/release-eva-logik-zw30-minoston-ms10z-in-wall-switch/198306">View Documentation in SmartThings Forum</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/eva-logik-in-wall-smart-switch.src/eva-logik-in-wall-smart-switch.groovy">View EVA LOGIK In-Wall Smart Switch - Device Handler Code</a></li>
 </ul>
 
@@ -690,6 +693,15 @@ Supports the Tamper Alert Capability.<br /></li>
 <li><a href="https://community.smartthings.com/t/release-zooz-double-plug/151104?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-double-plug.src/zooz-double-plug.groovy">View Zooz Double Plug - Device Handler Code</a></li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-double-plug-outlet.src/zooz-double-plug-outlet.groovy">View Zooz Double Plug Outlet - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Zooz Double Switch</h3>
+
+<ul>
+<li>This is a device handler for the Zooz Double Switch (ZEN30)</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-double-switch.src/zooz-double-switch.groovy">View Zooz Double Switch - Device Handler Code</a></li>
 </ul>
 
 <hr />
