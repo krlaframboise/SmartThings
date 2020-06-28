@@ -6,7 +6,7 @@
  *  Author:
  *    Kevin LaFramboise (krlaframboise)
  *
- *	Documentation:
+ *	Documentation: https://community.smartthings.com/t/release-eva-logik-zw30-minoston-ms10z-in-wall-switch/198306
  *
  *  Changelog:
  *

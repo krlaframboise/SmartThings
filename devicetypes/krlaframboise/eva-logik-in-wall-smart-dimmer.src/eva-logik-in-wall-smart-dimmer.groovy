@@ -6,7 +6,7 @@
  *  Author:
  *    Kevin LaFramboise (krlaframboise)
  *
- *	Documentation:
+ *	Documentation: https://community.smartthings.com/t/release-eva-logik-zw31-minoston-ms11z-in-wall-dimmer/198305
  *
  *  Changelog:
  *
