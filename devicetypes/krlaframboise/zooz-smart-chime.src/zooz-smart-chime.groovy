@@ -1,5 +1,5 @@
 /**
- *  Zooz Smart Chime v1.2.3
+ *  Zooz Smart Chime v1.3
  *  (Model: ZSE33)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.3 (07/30/2018)
+ *    	- Added support for new mobile app.
  *
  *    1.2.3 (07/21/2017)
  *    	- Made Switch On command temporarily toggle the switch attribute to on when Switch On Sound setting is set to 0 to see if it fixes the problem some users are having with playing chimes using setLevle in Routines.
@@ -43,7 +46,8 @@ metadata {
 	definition (
 		name: "Zooz Smart Chime", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		vid:"generic-dimmer"
 	) {
 		capability "Actuator"
 		capability "Alarm"

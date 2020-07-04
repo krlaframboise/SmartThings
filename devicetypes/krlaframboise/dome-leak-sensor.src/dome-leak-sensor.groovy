@@ -1,5 +1,5 @@
 /**
- *  Dome Leak Sensor v1.1.2
+ *  Dome Leak Sensor v1.1.4
  *  (Model: DMWS1)
  *
  *  Author: 
@@ -9,6 +9,12 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.1.4 (08/15/2018)
+ *      - Added support for new mobile app.
+ *
+ *    1.1.3 (12/25/2017)
+ *      - Implemented new ST color scheme.
  *
  *    1.1.2 (04/20/2017)
  *      - Added workaround for ST Health Check bug.
@@ -35,7 +41,8 @@ metadata {
 	definition (
 		name: "Dome Leak Sensor", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		vid: "generic-leak"
 	) {
 		capability "Sensor"
 		capability "Water Sensor"
@@ -112,7 +119,7 @@ metadata {
 				attributeState "wet", 
 					label:'Wet', 
 					icon:"st.alarm.water.wet", 
-					backgroundColor:"#53a7c0"				
+					backgroundColor:"#00a0dc"
 			}			
 		}	
 		

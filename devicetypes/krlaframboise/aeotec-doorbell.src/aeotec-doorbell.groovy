@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell v 1.14.1
+ *  Aeotec Doorbell v 1.14.2
  *      (Aeon Labs Doorbell - Model:ZW056-A)
  *
  *  (https://community.smartthings.com/t/release-aeon-labs-aeotec-doorbell/39166/16?u=krlaframboise)
@@ -144,7 +144,8 @@ metadata {
 		command "playRepeatTrack"
 		command "playRepeatTrackAtVolume"
 		command "playSoundAndTrack"
-		command "playTrackAtVolume"		
+		command "playTrackAtVolume"
+		command "playText"
 
 		fingerprint mfr: "0086", prod: "0104", model: "0038"
 	}

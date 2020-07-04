@@ -1,5 +1,5 @@
 /**
- *  Dome Door/Window Sensor Pro v1.0.1
+ *  Dome Door/Window Sensor Pro v1.0.2
  *  (Model: DMDP1)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.2 (08/15/2018)
+ *      - Added basic support for new mobile app.
  *
  *    1.0.1 (08/05/2017)
  *      - Bug fix for Pending Changes status.
@@ -30,7 +33,8 @@ metadata {
 	definition (
 		name: "Dome Door/Window Sensor Pro", 
 		namespace: "krlaframboise", 
-		author: "Kevin LaFramboise"
+		author: "Kevin LaFramboise",
+		vid: "generic-contact"
 	) {
 		capability "Battery"
 		capability "Configuration"
