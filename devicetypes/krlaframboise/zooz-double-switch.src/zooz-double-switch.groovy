@@ -1,10 +1,13 @@
 /**
- *  Zooz Double Switch v1.0
+ *  Zooz Double Switch v1.0.1
  *  	(Model: ZEN30)
  *
  *	Documentation:
  *
  *  Changelog:
+ *
+ *    1.0.1 (08/10/2020)
+ *      - Added ST workaround for S2 Supervision bug with MultiChannel Devices.
  *
  *    1.0 (06/23/2020)
  *      - Initial Release
@@ -433,6 +436,16 @@ String convertToLocalTimeString(dt) {
 
 
 void zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap cmd) {
+	// Workaround that was added to all SmartThings Multichannel DTHs.
+	if (cmd.commandClass == 0x6C && cmd.parameter.size >= 4) { // Supervision encapsulated Message
+		// Supervision header is 4 bytes long, two bytes dropped here are the latter two bytes of the supervision header
+		cmd.parameter = cmd.parameter.drop(2)
+		// Updated Command Class/Command now with the remaining bytes
+		cmd.commandClass = cmd.parameter[0]
+		cmd.command = cmd.parameter[1]
+		cmd.parameter = cmd.parameter.drop(2)
+	}
+	
 	def encapsulatedCommand = cmd.encapsulatedCommand(commandClassVersions)	
 	if (encapsulatedCommand) {
 		zwaveEvent(encapsulatedCommand, cmd.sourceEndPoint)
