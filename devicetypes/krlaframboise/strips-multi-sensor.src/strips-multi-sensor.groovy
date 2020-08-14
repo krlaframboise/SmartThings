@@ -402,7 +402,7 @@ private getLeakageLevelParam() {
 }
 
 private getLeakageAlarmIntervalParam() {
-	return getParam(14, "Leakage Alarm Interval", 1, 1, moistureIntervalOptions)
+	return getParam(14, "Leakage Alarm Interval", 1, 0, moistureIntervalOptions)
 }
 
 
