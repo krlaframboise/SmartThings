@@ -1,5 +1,5 @@
 /**
- *  Zooz Double Plug v1.2.4
+ *  Zooz Double Plug v1.2.5
  *  (Models: ZEN25)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *	Documentation:
  *
  *  Changelog:
+ *
+ *    1.2.5 (08/16/2020)
+ *      - Removed componentLabel and componentName from child outlet devices which fixes the timeout issue in the new mobile app.
  *
  *    1.2.4 (08/10/2020)
  *      - Added ST workaround for S2 Supervision bug with MultiChannel Devices.
@@ -266,9 +269,7 @@ private addChildOutlet(dni, endPoint) {
 		[
 			completedSetup: true,
 			isComponent: false,
-			label: "${device.displayName}-${name}",
-			componentLabel: "${name}",
-			componentName: "${name}"
+			label: "${device.displayName}-${name}"
 		]
 	)
 }

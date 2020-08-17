@@ -1,5 +1,5 @@
 /**
- *  Zooz Power Strip VER 2.2.2
+ *  Zooz Power Strip VER 2.2.3
  *  (Models: ZEN20)
  *
  *  Author: 
@@ -10,7 +10,10 @@
  *
  *  Changelog:
  *
- *    1.2.2 (08/10/2020)
+ *    2.2.3 (08/16/2020)
+ *      - Removed componentLabel and componentName from child outlet devices which fixes the timeout issue in the new mobile app.
+ *
+ *    2.2.2 (08/10/2020)
  *      - Added ST workaround for S2 Supervision bug with MultiChannel Devices.
  *
  *    2.2.1 (03/13/2020)
@@ -321,9 +324,7 @@ private addChildOutlet(dni, endPoint) {
 		[
 			completedSetup: true,
 			isComponent: false,
-			label: "${device.displayName}-CH${endPoint}",
-			componentLabel: "CH ${endPoint}",
-			componentName: "CH${endPoint}"
+			label: "${device.displayName}-CH${endPoint}"
 		]
 	)
 }
