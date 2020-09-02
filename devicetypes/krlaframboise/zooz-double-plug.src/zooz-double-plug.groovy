@@ -1,5 +1,5 @@
 /**
- *  Zooz Double Plug v1.2.3
+ *  Zooz Double Plug v1.2.5
  *  (Models: ZEN25)
  *
  *  Author: 
@@ -8,6 +8,12 @@
  *	Documentation:
  *
  *  Changelog:
+ *
+ *    1.2.5 (08/16/2020)
+ *      - Removed componentLabel and componentName from child outlet devices which fixes the timeout issue in the new mobile app.
+ *
+ *    1.2.4 (08/10/2020)
+ *      - Added ST workaround for S2 Supervision bug with MultiChannel Devices.
  *
  *    1.2.3 (03/14/2020)
  *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
@@ -263,9 +269,7 @@ private addChildOutlet(dni, endPoint) {
 		[
 			completedSetup: true,
 			isComponent: false,
-			label: "${device.displayName}-${name}",
-			componentLabel: "${name}",
-			componentName: "${name}"
+			label: "${device.displayName}-${name}"
 		]
 	)
 }
@@ -613,7 +617,17 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 
 
 def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap cmd) {
-	def encapsulatedCommand = cmd.encapsulatedCommand([0x31: 3])
+	// Workaround that was added to all SmartThings Multichannel DTHs.
+	if (cmd.commandClass == 0x6C && cmd.parameter.size >= 4) { // Supervision encapsulated Message
+		// Supervision header is 4 bytes long, two bytes dropped here are the latter two bytes of the supervision header
+		cmd.parameter = cmd.parameter.drop(2)
+		// Updated Command Class/Command now with the remaining bytes
+		cmd.commandClass = cmd.parameter[0]
+		cmd.command = cmd.parameter[1]
+		cmd.parameter = cmd.parameter.drop(2)
+	}
+	
+	def encapsulatedCommand = cmd.encapsulatedCommand(commandClassVersions)
 	
 	if (encapsulatedCommand) {
 		return zwaveEvent(encapsulatedCommand, cmd.sourceEndPoint)

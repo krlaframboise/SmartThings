@@ -1,10 +1,14 @@
 /*
- *  Zooz Garage Door Opener v1.0.1	(SmartApp)
+ *  Zooz Garage Door Opener v1.1	(SmartApp)
  *
  *
  * WARNING: Using a homemade garage door opener can be dangerous so use this code at your own risk.
  *
  *  Changelog:
+ *
+ *    1.1 (08/10/2020)
+ *      - Added optional virtual lock device that can be used by Alexa to control the garage door using a password.
+ *      - Added SMS/Push Notifications for when door fails to open and/or close.
  *
  *    1.0.1 (04/16/2020)
  *      - Prevent error caused by the contact sensor or switch triggering the door opening/closing routine when the door device doesn't exist.
@@ -39,6 +43,7 @@ import groovy.transform.Field
 @Field static Map operatingDelayOptions = [0:"Disabled [DEFAULT]", 1:"1 Second", 2:"2 Seconds", 3:"3 Seconds", 4:"4 Seconds", 5:"5 Seconds", 6:"6 Seconds", 7:"7 Seconds", 8:"8 Seconds", 9:"9 Seconds", 10:"10 Seconds", 11:"11 Seconds", 12:"12 Seconds", 13:"13 Seconds", 14:"14 Seconds", 15:"15 Seconds", 16:"16 Seconds", 17:"17 Seconds", 18:"18 Seconds", 19:"19 Seconds", 20:"20 Seconds", 21:"21 Seconds", 22:"22 Seconds", 23:"23 Seconds", 24:"24 Seconds", 25:"25 Seconds", 26:"26 Seconds", 27:"27 Seconds", 28:"28 Seconds", 29:"29 Seconds", 30:"30 Seconds"]
 
 @Field static Map enabledOptions = [0:"Disabled", 1:"Enabled [DEFAULT]"]
+@Field static Map noYesOptions = [0:"No [DEFAULT]", 1:"Yes"]
 
 definition(
 	name: "Zooz Garage Door Opener${parent ? ' - Door' : ''}",
@@ -166,17 +171,41 @@ def pageGarageDoorMain() {
 
 			paragraph ""
 		}
-		
-		section("Garage Door Operating Delay") {
-			paragraph "The Operating Delay determines the amount of time it waits after changing the garage door device to OPENING/CLOSING before sending the on command to the Relay Switch."
 
-			paragraph "This feature allows you to use the opening/closing statuses to trigger a siren to turn on before the door starts moving."
+		section("Notifications") {
+			paragraph "Send notifications when door fails to open and/or close."
 
-			input "operatingDelay", "enum",
-				title: "Select Operating Delay:",
+			input "failedOpenPush", "enum",
+				title: "Send Failed Open Push Notification?",
 				required: false,
-				defaultValue: "0",
-				options: operatingDelayOptions
+				defaultValue: 0,
+				options: noYesOptions
+
+			input "failedOpenPhone", "phone",
+				title: "Failed Open SMS Phone Number:",
+				required: false
+
+			input "failedClosePush", "enum",
+				title: "Send Failed Close Push Notification?",
+				required: false,
+				defaultValue: 0,
+				options: noYesOptions
+
+			input "failedClosePhone", "phone",
+				title: "Failed Close SMS Phone Number:",
+				required: false
+
+			paragraph ""
+		}
+
+		section("Virtual Lock") {
+			paragraph "Amazon Alexa supports creating a password to control locks so enabling this setting creates a lock device that can be used to control the door and the locked/unlocked status will be synced with the door device's closed/open status."
+
+			input "createLock", "enum",
+				title: "Create Virtual Lock?",
+				required: false,
+				defaultValue: 0,
+				options: noYesOptions
 
 			paragraph ""
 		}
@@ -229,6 +258,16 @@ void initialize() {
 	if (!childDoorOpener) {
 		runIn(3, createChildGarageDoorOpener)
 	}
+
+	def lock = childLock
+	if (createLockSetting && !lock) {
+		lock = createChildLock()
+		sendLockEvent(childDoorOpener?.currentContact)
+	}
+	else if (!createLockSetting && lock) {
+		deleteChildDevice(lock.deviceNetworkId)
+	}
+
 	subscribe(settings?.relaySwitch, "switch.on", relaySwitchOnEventHandler)
 	subscribe(settings?.contactSensor, "contact", contactEventHandler)
 }
@@ -254,6 +293,29 @@ void createChildGarageDoorOpener() {
 	}
 	catch (ex) {
 		log.error "Unable to create Garage Door Opener.  You must install and publish the Zooz Garage Door Device Handler in order to use this SmartApp."
+	}
+}
+
+
+void createChildLock() {
+	def name = "${app.label}"
+	logDebug "Creating ${name} Lock"
+
+	try {
+		def child = addChildDevice(
+			"Zooz",
+			"Zooz Garage Door Lock",
+			"${app.id}:1",
+			null,
+			[
+				completedSetup: true,
+				label: "${name} Lock",
+				isComponent: false
+			]
+		)
+	}
+	catch (ex) {
+		log.error "Unable to create Garage Door Lock.  You must install and publish the Zooz Garage Door Lock Device Handler in order to use the lock feature."
 	}
 }
 
@@ -332,7 +394,7 @@ void turnOffRelaySwitch() {
 
 void contactEventHandler(evt) {
 	logDebug "Contact sensor changed to ${evt.value}"
-	
+
 	def door = childDoorOpener
 	String doorStatus = door?.currentValue("door")
 
@@ -370,7 +432,7 @@ void checkDoorStatus() {
 	if (door?.currentValue("door") != contactStatus) {
 		sendDoorEvents(door, contactStatus)
 	}
-	
+
 	if (autoOffDelaySetting && (settings?.relaySwitch?.currentValue("switch") == "on")) {
 		// The switch is still on for some reason which will prevent the relay from triggering the door next time so turn it off.
 		logDebug "Turning off Relay Switch (backup)..."
@@ -381,15 +443,23 @@ void checkDoorStatus() {
 
 void sendDoorEvents(door, value) {
 	if (door) {
+		String expectedValue = getExpectedDoorValue(door?.currentValue("door"))
+		
 		door.sendEvent(name: "door", value: value, isStateChange: true, descriptionText: "${door.displayName} door is ${value}")
 
 		if (value in ["open", "closed"]) {
 			if (door.currentValue("contact") != value) {
 				door.sendEvent(name: "contact", value: value, descriptionText: "${door.displayName} contact is ${value}", displayed: false)
+				sendLockEvent(value)
 			}
+			
 			if (door.currentValue("switch") == "on") {
 				door.sendEvent(name: "switch", value: "off", displayed: false)
 			}
+		
+			if (expectedValue != null && expectedValue != value) {
+				sendFailedNotification(door, expectedValue)
+			}						
 		}
 		else {
 			if (door.currentValue("switch") == "off") {
@@ -399,12 +469,59 @@ void sendDoorEvents(door, value) {
 	}
 }
 
-
-def getChildDoorOpener() {
-	def children = childDevices
-	return children ? children[0] : null
+String getExpectedDoorValue(String oldValue) {
+	if (oldValue == "opening") {
+		return "open"
+	}
+	else if (oldValue == "closing") {
+		return "closed"
+	}
+	else {
+		return null
+	}
 }
 
+void sendLockEvent(contactValue) {
+	if (createLockSetting && (contactValue in ["open", "closed"])) {
+		def lock = childLock
+		String lockValue = (contactValue == "open" ? "unlocked" : "locked")
+		if (lockValue != lock.currentLock) {
+			lock?.sendEvent(name: "lock", value: lockValue)
+		}
+	}
+}
+
+void sendFailedNotification(door, String expectedValue) {
+	String failedStatus = (expectedValue == "open") ? "Open" : "Close"
+	String msg = "${door?.displayName} Failed to ${failedStatus}"
+
+	boolean push = ((expectedValue == "open") ? safeToInt(settings?.failedOpenPush, 0) : safeToInt(settings?.failedClosePush, 0) == 1)
+	
+	def phone = (expectedValue == "open") ? settings?.failedOpenPhone : settings?.failedClosePhone
+		
+	if (phone || push) {
+		logDebug "Sending Notification: ${msg}"
+		
+		sendNotificationEvent(msg)
+		
+		if (phone) {
+			sendSmsMessage(phone, msg)
+		}
+		
+		if (push) {
+			sendPushMessage(msg)
+		}
+	}
+}
+
+
+def getChildDoorOpener() {
+	return childDevices?.find { it.deviceNetworkId?.endsWith(":0") }
+}
+
+def getChildLock() {
+	return childDevices?.find { it.deviceNetworkId?.endsWith(":1") }
+}
 
 Integer getAutoOffDelaySetting() {
 	return safeToInt((settings ? settings["autoOffDelay"] : null), 2)
@@ -416,6 +533,10 @@ Integer getOperatingDurationSetting() {
 
 Integer getOperatingDelaySetting() {
 	return safeToInt((settings ? settings["operatingDelay"] : null), 0)
+}
+
+boolean getCreateLockSetting() {
+	return (safeToInt(settings?.createLock) == 1)
 }
 
 
