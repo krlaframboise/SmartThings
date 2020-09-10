@@ -758,13 +758,13 @@ Map getThreeWaySwitchTypeParam() {
 }
 
 Map getRelayBehaviorParam() {
-	return getParam(20, "Relay Behavior", 1, 0, relayBehaviorOptions)
+	return getParam(21, "Relay Behavior", 1, 0, relayBehaviorOptions)
 }
 
 Map getNightLightParam() {
 	Map options = [0:"Disabled [DEFAULT]"]
 	options += brightnessOptions
-	return getParam(21, "Night Light", 1, 0, options)
+	return getParam(22, "Night Light", 1, 0, options)
 }
 
 Map getParam(Integer num, String name, Integer size, Integer defaultVal, Map options) {
