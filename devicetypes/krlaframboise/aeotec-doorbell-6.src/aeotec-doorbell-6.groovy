@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell 6 v1.3
+ *  Aeotec Doorbell 6 v1.3.1
  *  (Model: ZW162-A)
  *
  *  Author: 
@@ -10,8 +10,9 @@
  *
  *  Changelog:
  *
- *    1.3 (09/13/2020)
+ *    1.3.1 (09/13/2020)
  *      - Removed vid which makes it fully supported in the new mobile app.
+ *      - Made setLevel temporarily change the level to prevent network errors.
  *
  *    1.2 (05/09/2020)
  *      - *** POSSIBLE BREAKING CHANGES - TEST AFTER UPDATING ***
@@ -561,7 +562,13 @@ def playText(message, volume=null) {
 
 
 def setLevel(level, duration=null) {
+	sendEvent(name:"level", value:level)
+	runIn(2, resetLevel)
 	playSound(level)
+}
+
+def resetLevel() {
+	sendEvent(name:"level", value:0)
 }
 
 

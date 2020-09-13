@@ -1,5 +1,5 @@
 /**
- *  Aeotec Siren 6 v1.2
+ *  Aeotec Siren 6 v1.2.1
  *  (Model: ZW164-A)
  *
  *  Author: 
@@ -10,8 +10,9 @@
  *
  *  Changelog:
  *
- *    1.2 (09/13/2020)
+ *    1.2.1 (09/13/2020)
  *      - Removed vid which makes it fully supported in the new mobile app.
+ *      - Made setLevel temporarily change the level to prevent network errors.
  *
  *    1.1.5 (03/14/2020)
  *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
@@ -462,7 +463,13 @@ def playText(message, volume=null) {
 
 
 def setLevel(level, duration=null) {
+	sendEvent(name:"level", value:level)
+	runIn(2, resetLevel)
 	playSound(level)
+}
+
+def resetLevel() {
+	sendEvent(name:"level", value:0)
 }
 
 
