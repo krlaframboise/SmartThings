@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.2.3
+ *  Dome Siren v1.3
  *  (Model: DMS01)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.3 (09/13/2020)
+ *      - Replaced vid with ocfDeviceType which makes it fully supported in the new mobile app.
  *
  *    1.2.3 (08/15/2018)
  *    	- Added support for new mobile app.
@@ -59,7 +62,7 @@ metadata {
 		name: "Dome Siren", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise",
-		vid: "generic-siren"
+		ocfDeviceType: "x.com.st.d.siren"
 	) {
 		capability "Actuator"
 		capability "Alarm"

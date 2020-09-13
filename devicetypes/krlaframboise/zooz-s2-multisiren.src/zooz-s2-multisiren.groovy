@@ -1,5 +1,5 @@
 /**
- *  Zooz S2 Multisiren v1.4
+ *  Zooz S2 Multisiren v1.5
  *  (Models: ZSE19)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *
  *
  *  Changelog:
+ *
+ *    1.5 (09/13/2020)
+ *      - Removed vid which makes it fully supported in the new mobile app.
  *
  *    1.4 (05/24/2020)
  *      - Added lifeline association check and add the association if it wasn't automatically added during inclusion.
@@ -49,8 +52,7 @@ metadata {
 		name: "Zooz S2 Multisiren", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise",
-		ocfDeviceType: "x.com.st.d.siren", 
-		vid: "generic-siren-11"
+		ocfDeviceType: "x.com.st.d.siren"
 	) {
 		capability "Actuator"
 		capability "Sensor"

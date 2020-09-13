@@ -1,5 +1,5 @@
 /**
- *  Aeotec Doorbell 6 v1.2
+ *  Aeotec Doorbell 6 v1.3
  *  (Model: ZW162-A)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.3 (09/13/2020)
+ *      - Removed vid which makes it fully supported in the new mobile app.
  *
  *    1.2 (05/09/2020)
  *      - *** POSSIBLE BREAKING CHANGES - TEST AFTER UPDATING ***
@@ -61,8 +64,7 @@ metadata {
 		name: "Aeotec Doorbell 6", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise",
-		ocfDeviceType: "x.com.st.d.siren",
-		vid:"generic-siren"
+		ocfDeviceType: "x.com.st.d.siren"
 	) {
 		capability "Actuator"
 		capability "Alarm"

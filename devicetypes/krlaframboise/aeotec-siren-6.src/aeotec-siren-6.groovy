@@ -1,5 +1,5 @@
 /**
- *  Aeotec Siren 6 v1.1.5
+ *  Aeotec Siren 6 v1.2
  *  (Model: ZW164-A)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.2 (09/13/2020)
+ *      - Removed vid which makes it fully supported in the new mobile app.
  *
  *    1.1.5 (03/14/2020)
  *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
@@ -59,8 +62,7 @@ metadata {
 		name: "Aeotec Siren 6", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise",
-		ocfDeviceType: "x.com.st.d.siren",
-		vid:"generic-siren"
+		ocfDeviceType: "x.com.st.d.siren"
 	) {
 		capability "Actuator"
 		capability "Alarm"

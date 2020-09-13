@@ -1,5 +1,5 @@
 /**
- *  Neo Coolcam Siren v1.0.1
+ *  Neo Coolcam Siren v1.1
  *  (Models: NAS-AB02ZU)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *
  *
  *  Changelog:
+ *
+ *    1.1 (09/13/2020)
+ *      - Removed vid which makes it fully supported in the new mobile app.
  *
  *    1.0.1 (03/14/2020)
  *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
@@ -32,8 +35,7 @@ metadata {
 		name: "Neo Coolcam Siren", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise",
-		ocfDeviceType: "x.com.st.d.siren",
-		vid:"generic-siren"
+		ocfDeviceType: "x.com.st.d.siren"
 	) {
 		capability "Actuator"
 		capability "Sensor"

@@ -1,10 +1,13 @@
 /**
- *  Aeotec Doorbell 6 Button (CHILD DEVICE) v1.2.2
+ *  Aeotec Doorbell 6 Button (CHILD DEVICE) v1.3
  *
  *  Author:
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.3 (09/13/2020)
+ *      - Changed ocfDeviceType to remotecontroller which adds the button action to the device details screen and lets you choose the button pressed event from the Automattions action list.
  *
  *    1.2.2 (05/09/2020)
  *      - Implemented button capability for new mobile app.
@@ -33,11 +36,8 @@ metadata {
 	definition (
 		name: "Aeotec Doorbell 6 Button",
 		namespace: "krlaframboise",
-		author: "Kevin LaFramboise",
-		ocfDeviceType: "oic.d.switch",
-		vid:"generic-switch"
-		// ocfDeviceType: "x.com.st.d.remotecontroller",
-        // vid:"generic-button"
+		author: "Kevin LaFramboise",		
+		ocfDeviceType: "x.com.st.d.remotecontroller"
 
 	) {
 		capability "Actuator"
