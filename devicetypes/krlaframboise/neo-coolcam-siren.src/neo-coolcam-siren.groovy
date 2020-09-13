@@ -1,5 +1,5 @@
 /**
- *  Neo Coolcam Siren v1.1
+ *  Neo Coolcam Siren v1.1.1
  *  (Models: NAS-AB02ZU)
  *
  *  Author: 
@@ -10,8 +10,9 @@
  *
  *  Changelog:
  *
- *    1.1 (09/13/2020)
+ *    1.1.1 (09/13/2020)
  *      - Removed vid which makes it fully supported in the new mobile app.
+ *      - Made on and setLevel send level event to prevent network error message.
  *
  *    1.0.1 (03/14/2020)
  *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
@@ -195,7 +196,7 @@ private configureCmds() {
 	
 	if (!device.currentValue("switch")) {
 		sendEvent(getEventMap("switch", "off"))
-		sendEvent(getEventMap("level", 0))
+		resetLevel()
 		sendEvent(getEventMap("alarm", "off"))
 		sendEvent(getEventMap("primaryStatus", "off"))
 	}
@@ -235,6 +236,9 @@ def on() {
 		return both()
 	}
 	else {
+		sendEvent(name: "switch", value:"on")
+		runIn(2, resetSwitch)
+		
 		def sound = safeToInt(settings?.switchOnAction, 0)
 		if (sound) {
 			return playSound(sound)
@@ -245,12 +249,23 @@ def on() {
 	}
 }
 
+def resetSwitch() {
+	sendEvent(name: "switch", value:"off")
+}
+
 
 def setLevel(level, duration=null) {	
 	if ("${level}" != "0") {
+		sendEvent(name: "level", value: level, unit: "%")
+		runIn(2, resetLevel)
+		
 		logDebug "setLevel(${level})..."	
 		playSound(extractSoundFromLevel(level))
 	}
+}
+
+def resetLevel() {
+	sendEvent(name: "level", value: 0, unit: "%")
 }
 
 private extractSoundFromLevel(level) {
@@ -321,6 +336,10 @@ def both() {
 
 def off() {
 	logDebug "off()..."	
+	
+	if (settings?.switchOnAction != "on") {
+		resetSwitch()
+	}
 	
 	runIn(5, fixAlarmOffState)
 	

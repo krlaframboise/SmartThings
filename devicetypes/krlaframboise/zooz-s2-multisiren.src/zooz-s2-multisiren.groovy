@@ -1,5 +1,5 @@
 /**
- *  Zooz S2 Multisiren v1.5
+ *  Zooz S2 Multisiren v1.5.1
  *  (Models: ZSE19)
  *
  *  Author: 
@@ -10,8 +10,10 @@
  *
  *  Changelog:
  *
- *    1.5 (09/13/2020)
+ *    1.5.1 (09/13/2020)
  *      - Removed vid which makes it fully supported in the new mobile app.
+ *      - Create switch on/off events when "switch on action" setting is not turn on alarm to prevent network errors.
+ *      - Create temporary level event in setLevel to prevent network errors.
  *
  *    1.4 (05/24/2020)
  *      - Added lifeline association check and add the association if it wasn't automatically added during inclusion.
@@ -227,7 +229,7 @@ def configure() {
 	
 	if (!device.currentValue("switch")) {
 		sendEvent(getEventMap("switch", "off"))
-		sendEvent(getEventMap("level", 0))
+		resetLevel()
 		sendEvent(getEventMap("alarm", "off"))
 		sendEvent(getEventMap("primaryStatus", "off"))
 	}
@@ -265,6 +267,9 @@ def on() {
 		return both()
 	}
 	else {
+		sendEvent(name: "switch", value:"on")
+		runIn(2, resetSwitch)
+		
 		def sound = safeToInt(settings?.switchOnAction, 0)
 		if (sound) {
 			return playSound(sound)
@@ -273,6 +278,10 @@ def on() {
 			log.warn "Ignoring 'on' command because the Switch On Action setting is set to 'Do Nothing'"
 		}
 	}
+}
+
+def resetSwitch() {
+	sendEvent(name: "switch", value:"off")
 }
 
 
@@ -366,8 +375,15 @@ def playText(message, volume=null) {
 
 
 def setLevel(level, duration=null) {
+	sendEvent(name: "level", value: level, unit: "%")
+	runIn(2, resetLevel)
+		
 	logDebug "setLevel(${level})..."	
 	playSound(level)
+}
+
+def resetLevel() {
+	sendEvent(name: "level", value: 0, unit: "%")
 }
 
 
@@ -418,6 +434,11 @@ def both() {
 
 def off() {
 	logDebug "off()..."	
+	
+	if (settings?.switchOnAction != "on") {
+		resetSwitch()
+	}
+	
 	return delayBetween([
 		switchBinarySetCmd(0),
 		configSetCmd(playSoundParam, 0)
