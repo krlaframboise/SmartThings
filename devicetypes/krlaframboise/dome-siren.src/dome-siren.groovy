@@ -1,5 +1,5 @@
 /**
- *  Dome Siren v1.3
+ *  Dome Siren v1.3.1
  *  (Model: DMS01)
  *
  *  Author: 
@@ -10,8 +10,10 @@
  *
  *  Changelog:
  *
- *    1.3 (09/13/2020)
+ *    1.3.1 (09/13/2020)
  *      - Replaced vid with ocfDeviceType which makes it fully supported in the new mobile app.
+ *      - Added support for selecting device as a dimmer and playing the sound based on the levels 1-10.
+ *      - Added "Switch On Action" setting that determines what happens when the "on" command is executed.  This has to be set to "Do Nothing" if you want to be able to play chimes by using the device as a dimmer.
  *
  *    1.2.3 (08/15/2018)
  *    	- Added support for new mobile app.
@@ -74,6 +76,7 @@ metadata {
 		capability "Audio Notification"
 		capability "Music Player"
 		capability "Switch"
+		capability "Switch Level"	
 		capability "Health Check"
 		
 		attribute "lastCheckin", "string"
@@ -169,6 +172,11 @@ metadata {
 			required: false,
 			displayDuringSetup: true,
 			options: checkinIntervalOptions.collect { it.name }
+		input "switchOnAction", "enum",
+			title: "Switch On Action",
+			defaultValue: "on",
+			required: false,
+			options: switchOnActionOptions
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -293,6 +301,7 @@ def updated() {
 			}
 		}
 		else {
+			resetLevel()
 			// Skip first time updating because it calls the configure method while it's already running.
 			state.firstUpdate = false
 		}
@@ -368,7 +377,7 @@ def configure() {
 	configData.sort { it.paramNum }.each { 
 		cmds += updateConfigVal(it.paramNum, it.value, refreshAll)	
 	}
-			
+					
 	if (refreshAll) {
 		cmds << switchBinaryGetCmd()
 	}
@@ -464,15 +473,44 @@ def off() {
 	logDebug "Turning Off()"
 	state.pendingSiren = false
 	state.sirenStartTime = false
+	
+	if (settings?.switchOnAction != null && settings?.switchOnAction != "on") {
+		resetSwitch()
+	}
+	
 	return sirenToggleCmds(0x00)
 }
 
 // Commands that turn the device on.
-def play() { return on() }
-def on() {	
-	logDebug "Playing Default Chime"	
-	return both()
+def play() { 
+	return beep() 
 }
+
+
+def on() {	
+	logDebug "on()..."
+	
+	if (settings?.switchOnAction == null || settings?.switchOnAction == "on") {
+		return both()
+	}
+	else {
+		sendEvent(name: "switch", value:"on")
+		runIn(2, resetSwitch)
+		
+		def sound = safeToInt(settings?.switchOnAction, 0)
+		if (sound) {
+			return startChime(level)
+		}	
+		else {
+			log.warn "Ignoring 'on' command because the Switch On Action setting is set to 'Do Nothing'"
+		}
+	}	
+}
+
+def resetSwitch() {
+	sendEvent(name: "switch", value:"off")
+}
+
 
 // Plays beep sound specified in settings.
 def beep() {
@@ -489,6 +527,26 @@ def beep() {
 		return startChime(beepSound)
 	}
 }
+
+
+def setLevel(level, duration=null) {
+	if (level != device.currentValue("level")) {
+		sendEvent(name: "level", value: level, unit: "%")
+		runIn(3, resetLevel)
+		
+		logDebug "setLevel($level)..."
+		return startChime(level)
+	}
+	else {
+		logDebug "Ignoring duplicate setLevel($level)"
+		resetLevel()
+	}
+}
+
+def resetLevel() {
+	sendEvent(name: "level", value: 0, unit: "%")
+}
+
 
 // Plays the sound by name.
 def bell1() { playText("bell1") }
@@ -959,6 +1017,20 @@ private validateSound(sound, defaultVal) {
 	}
 	return val
 }
+
+
+private getSwitchOnActionOptions() {
+	def options = [
+		"0":"Do Nothing",
+		"on": "Turn On Siren [DEFAULT]"	
+	]
+	
+	(1..10).each {
+		options["${it}"] = "Play Sound #${it}"
+	}	
+	return options
+}
+
 
 private getSoundMessages() {
 	[
