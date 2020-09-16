@@ -1,5 +1,5 @@
 /**
- *  Zooz MultiRelay v1.3
+ *  Zooz MultiRelay v1.3.1
  *  (Models: ZEN16)
  *
  *  Author:
@@ -8,6 +8,9 @@
  *	Documentation: https://community.smartthings.com/t/release-zooz-multirelay-zen16/181057
  *
  *  Changelog:
+ *
+ *    1.3.1 (09/16/2020)
+ *      - Added option 2 for config params 12, 13, and 14.
  *
  *    1.3 (09/02/2020)
  *      - Added support for firmware 1.03
@@ -701,7 +704,7 @@ private getRelay3ManualControlParam() {
 	return getRelayManualControlParam(14, 3)
 }
 private getRelayManualControlParam(num, relay) {
-	return getParam(num, "Enable/Disable Manual Control for Relay ${relay}", 1, 1, [0:"Disabled", 1:"Enabled"])
+	return getParam(num, "Manual Control for Relay ${relay}", 1, 1, [0:"Switch Control Disabled (no reports sent to the hub)", 1:"Switch Control Enabled", 2:"Switch Control Disabled (sends on/off reports to the hub)"])
 }
 
 
