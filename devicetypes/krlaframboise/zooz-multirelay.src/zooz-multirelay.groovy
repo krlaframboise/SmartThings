@@ -10,7 +10,7 @@
  *  Changelog:
  *
  *    1.3.1 (09/16/2020)
- *      - Added option 2 for config params 12, 13, and 14.
+ *      - Added option 2 for config params 12, 13, and 14. (FIRMWARE >= 1.02)
  *
  *    1.3 (09/02/2020)
  *      - Added support for firmware 1.03
@@ -657,7 +657,7 @@ private getRelayTypeParam(num, relay) {
 		0:"Momentary Switch",
 		1:"Toggle Switch",
 		2:"Toggle Switch (any change)",
-		3: "Garage Door (FIRMWARE >= 1.02)"
+		3:"Garage Door (FIRMWARE >= 1.02)"
 	]
 	return getParam(num, "Switch Type for Relay ${relay}", 1, 2, options)
 }
@@ -704,7 +704,12 @@ private getRelay3ManualControlParam() {
 	return getRelayManualControlParam(14, 3)
 }
 private getRelayManualControlParam(num, relay) {
-	return getParam(num, "Manual Control for Relay ${relay}", 1, 1, [0:"Switch Control Disabled (no reports sent to the hub)", 1:"Switch Control Enabled", 2:"Switch Control Disabled (sends on/off reports to the hub)"])
+	def options = [
+		0:"Disabled", 
+		1:"Enabled", 
+		2:"Disabled with On/Off Reporting (FIRMWARE >= 1.02)"
+	]
+	return getParam(num, "Manual Control for Relay ${relay}", 1, 1, options)
 }
 
 
