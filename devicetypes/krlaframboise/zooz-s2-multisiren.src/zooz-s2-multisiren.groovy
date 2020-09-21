@@ -1,5 +1,5 @@
 /**
- *  Zooz S2 Multisiren v1.5.2
+ *  Zooz S2 Multisiren v1.6
  *  (Models: ZSE19)
  *
  *  Author:
@@ -10,7 +10,7 @@
  *
  *  Changelog:
  *
- *    1.5.2 (09/20/2020)  ***POSSIBLE BREAKING CHANGES***
+ *    1.6 (09/20/2020)  ***POSSIBLE BREAKING CHANGES***
  *      - I'm not sure what will happen to existing Automations that are using the on or off command in the "Then" section.
  *      - Created custom vid to remove all the extra stuff from new mobile app's device view and Automation.
  *
