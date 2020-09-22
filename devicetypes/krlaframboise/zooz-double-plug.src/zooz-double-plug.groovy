@@ -1,5 +1,5 @@
 /**
- *  Zooz Double Plug v1.2.5
+ *  Zooz Double Plug v1.3
  *  (Models: ZEN25)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *	Documentation:
  *
  *  Changelog:
+ *
+ *    1.3 (09/21/2020)
+ *      - Create child device for USB Port using the USB Port Child DTH.
  *
  *    1.2.5 (08/16/2020)
  *      - Removed componentLabel and componentName from child outlet devices which fixes the timeout issue in the new mobile app.
@@ -243,16 +246,27 @@ def createChildDevices() {
 		if (!findChildByEndPoint(endPoint)) {			
 			def dni = "${getChildDeviceNetworkId(endPoint)}"
 			
-			addChildOutlet(dni, endPoint)
-			childUpdated(dni)
-			
-			sendCommands(childReset(dni))
+			try {
+				addChildOutlet(dni, endPoint)
+				childUpdated(dni)
+				
+				sendCommands(childReset(dni))
+			}
+			catch (e) {
+				log.error "Unable to create child devices for outlets because the 'Zooz Double Plug Outlet' DTH is not installed"
+			}
 		}
 	}
 	
 	def dni = "${getChildDeviceNetworkId(3)}"
 	if (!findChildByDeviceNetworkId(dni)) {	
-		addChildUSB("smartthings", "Virtual Switch", dni)
+		try {
+			addChildUSB("krlaframboise", "Child USB Port-3", dni)	
+		}
+		catch (e) {
+			log.warn "The 'Child USB Port' DTH is not installed so using 'Virtual Switch' instead"
+			addChildUSB("smartthings", "Virtual Switch", dni)	
+		}
 		sendCommands([switchBinaryGetCmd(3)])
 	}	
 }
@@ -283,10 +297,8 @@ private addChildUSB(namespace, deviceType, dni) {
 		device.getHub().getId(), 
 		[
 			completedSetup: true,
-			isComponent: true,
-			label: "${device.displayName}-USB",
-			componentName: "USB",
-			componentLabel: "USB (READ-ONLY)"
+			isComponent: false,
+			label: "${device.displayName}-USB"
 		]
 	)
 }
@@ -1034,7 +1046,13 @@ private executeSendEvent(child, evt) {
 				evt.descriptionText = evt.descriptionText.replace(device.displayName, child.displayName)
 				logDebug "${evt.descriptionText}"
 			}
-			child.sendEvent(evt)						
+			child.sendEvent(evt)
+
+			if ((evt.name == "switch") && (child.deviceNetworkId.endsWith("USB"))) {
+				evt.name = "usbPort"
+				child.sendEvent(evt)
+			}
+			
 		}
 		else {
 			logDebug "${evt.descriptionText}"
