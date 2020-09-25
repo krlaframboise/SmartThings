@@ -1,5 +1,5 @@
 /**
- *  Neo Coolcam Light Switch 2CH v1.0.1
+ *  Neo Coolcam Light Switch 2CH v1.0.2
  *  (Models: NAS-SC02ZU-2 / NAS-SC02ZE-2)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    1.0.2 (09/25/2020)
+ *      - Added ST workaround for S2 Supervision bug with MultiChannel Devices.
  *
  *    1.0.1 (03/14/2020)
  *      - Fixed bug with enum settings that was caused by a change ST made in the new mobile app.
@@ -296,8 +299,18 @@ def parse(String description) {
 
 
 def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap cmd) {
-	def encapsulatedCommand = cmd.encapsulatedCommand([0x31: 3])
+	// Workaround that was added to all SmartThings Multichannel DTHs.
+	if (cmd.commandClass == 0x6C && cmd.parameter.size >= 4) { // Supervision encapsulated Message
+		// Supervision header is 4 bytes long, two bytes dropped here are the latter two bytes of the supervision header
+		cmd.parameter = cmd.parameter.drop(2)
+		// Updated Command Class/Command now with the remaining bytes
+		cmd.commandClass = cmd.parameter[0]
+		cmd.command = cmd.parameter[1]
+		cmd.parameter = cmd.parameter.drop(2)
+	}
 	
+	def encapsulatedCommand = cmd.encapsulatedCommand(commandClassVersions)
+
 	if (encapsulatedCommand) {
 		return zwaveEvent(encapsulatedCommand, cmd.sourceEndPoint)
 	}
