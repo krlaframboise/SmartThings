@@ -1,5 +1,5 @@
 /**
- *  Aeotec NanoMote One/Quad v1.0.2
+ *  Aeotec NanoMote One/Quad v1.1
  *  (Models: ZWA003-A/ZWA004-A)
  *
  *  Hank Scene Controller/Hank Four-Key Scene Controller
@@ -9,6 +9,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.1 (09/26/2020)
+ *      - Implemented single button child devices for buttons 2-4, but didn't remove those buttons from the parent device for backwards compability.
  *
  *    1.0.2 (03/14/2020)
  *      - Removed vid because it breaks the new mobile app.
@@ -109,6 +112,11 @@ def updated() {
 	}		
 }
 
+private isDuplicateCommand(lastExecuted, allowedMil) {
+	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
+}
+
+
 private initialize() {
 	if (!device.currentValue("numberOfButtons")) {
 		sendEvent(name:"numberOfButtons", value:4, displayed: false)	
@@ -116,13 +124,48 @@ private initialize() {
 	if (!device.currentValue("supportedButtonValues")) {
 		sendEvent(name: "supportedButtonValues", value: ["pushed", "held", "double"].encodeAsJSON(), displayed: false)
 	}
+	
+	createChildButtons()
 }
 
-
-private isDuplicateCommand(lastExecuted, allowedMil) {
-	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time) 
+private createChildButtons() {	
+	if (device.currentValue("numberOfButtons") == 4) {
+		def children = childDevices
+		
+		(2..4).each { btnNum ->
+			if (!children?.find { it.getDataValue("btnNum") == btnNum.toString() }) {
+				addChildButton(btnNum)				
+			}
+		}		
+	}
 }
 
+private addChildButton(btnNum) {	
+	logDebug "Creating child for button ${btnNum}"
+	
+	try {
+		def child = addChildDevice(
+			"smartthings",
+			"Child Button",
+			"${device.deviceNetworkId}-Button${btnNum}", 
+			device.getHub().getId(), 
+			[
+				completedSetup: true,
+				isComponent: false,
+				label: "${device.displayName}-${btnNum}"
+			]
+		)
+		child?.sendEvent(name:"supportedButtonValues", value:["pushed", "held", "double"].encodeAsJSON(), displayed:false)
+		
+		child?.sendEvent(name:"numberOfButtons", value:1, displayed:false)
+
+		sendChildButtonEvent(child, "pushed")
+	}
+	catch (e) {
+		log.warn "Unable to create child device for button ${btnNum}"
+	}
+}
+	
 
 def configure() {
 	logDebug "configure()"
@@ -231,18 +274,23 @@ def zwaveEvent(physicalgraph.zwave.commands.centralscenev1.CentralSceneNotificat
 		
 		if (action) {
 			sendButtonEvent(btn, action)
+			if (btn > 1) {
+				sendChildButtonEvent(childDevices.find { it.getDataValue("btnNum") == btn.toString() }, action)
+			}
 		}
 	}
 	return []
 }
 
 private sendButtonEvent(btn, action) {
-	logDebug "Button ${btn} ${action}" + (action == "double" ? " (released)" : "")
+	if (btn == 1) {
+		logDebug "Button ${btn} ${action}" + (action == "double" ? " (released)" : "")
+	}
 	
 	def lastAction = (device.currentValue("numberOfButtons") == 1) ? "${action}" : "${action} ${btn}"
 
 	sendEvent(name:"lastAction", value: "${lastAction}".toUpperCase(), displayed: false)
-	
+		
 	sendEvent(
 		name: "button", 
 		value: "${action}", 
@@ -250,6 +298,20 @@ private sendButtonEvent(btn, action) {
 		data: [buttonNumber: btn],
 		displayed: true,
 		isStateChange: true)
+}
+
+private sendChildButtonEvent(child, action) {
+	if (child) {
+		logDebug "${child.displayName} ${action}" + (action == "double" ? " (released)" : "")
+		
+		child.sendEvent(
+			name: "button",
+			value: action,
+			descriptionText: "${child.displayName} Pushed",
+			data: [buttonNumber: 1],
+			displayed: true,
+			isStateChange: true)
+	}
 }
 
 
@@ -336,6 +398,11 @@ private getCommandClassVersions() {
 		// Security S2
 		// Supervision
 	]
+}
+
+
+private getChildByBtnNum(btnNum) {
+	return childDevices?.find { it.getDataValue("btnNum") == btnNum.toString() }
 }
 
 
