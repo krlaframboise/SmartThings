@@ -1,5 +1,5 @@
 /**
- *  Zooz Power Strip VER 2.0 (v2.2.4)
+ *  Zooz Power Strip VER 2.0 (v2.2.5)
  *  (Models: ZEN20)
  *
  *  Author: 
@@ -9,6 +9,10 @@
  *
  *
  *  Changelog:
+ *
+ *    2.2.5 (09/27/2020)
+ *      - Added support for Refresh command of USB port.
+ *      - Increase default reporting intervals to improve reliability of on/off states
  *
  *    2.2.4 (09/26/2020)
  *      - Create child devices for USB Ports using the USB Port Child DTH.
@@ -516,10 +520,11 @@ def refresh() {
 	childDevices.each {
 		def dni = it.deviceNetworkId
 		def endPoint = getEndPoint(dni)		
-		if (!isUsbEndPoint(endPoint)) {
-			cmds << "delay 250"
-			cmds += getRefreshCmds(dni)
+		
+		cmds << "delay 250"
+		cmds += getRefreshCmds(dni)
 			
+		if (!isUsbEndPoint(endPoint)) {
 			if (!device.currentValue("ch${endPoint}Name")) {
 				childUpdated(dni)
 			}
@@ -535,11 +540,18 @@ def childRefresh(dni) {
 
 private getRefreshCmds(dni=null) {
 	def endPoint = getEndPoint(dni)
-	delayBetween([ 
-		switchBinaryGetCmd(endPoint),
-		meterGetCmd(meterEnergy, endPoint),
-		meterGetCmd(meterPower, endPoint)
-	], 250)
+	def cmds = [	
+		switchBinaryGetCmd(endPoint)
+	]
+	
+	if (!isUsbEndPoint(endPoint)) {
+		cmds += [ 
+			meterGetCmd(meterEnergy, endPoint),
+			meterGetCmd(meterPower, endPoint)
+		]	
+	}
+	
+	return delayBetween(cmds, 250)
 }
 
 
@@ -1002,7 +1014,7 @@ private getPowerReportingFrequencyParam() {
 }
 
 private getEnergyReportingFrequencyParam() {
-	return getParam(4, "Energy Reporting Frequency", 4, 300, frequencyOptions) 
+	return getParam(4, "Energy Reporting Frequency", 4, 3600, frequencyOptions) 
 }
 
 private getOverloadProtectionParam() {

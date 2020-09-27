@@ -1,7 +1,11 @@
 /*
- *  Child USB Port v1.0
+ *  Child USB Port v1.0.1
  *
  *  Changelog:
+ *
+ *    1.0.1 (09/27/2020)
+ *      - Changed ocfDeviceType to fix active/inactive icon on the dashboard
+ *      - Added Refresh Capability because quick on/off states don't always get reported.
  *
  *    1.0 (09/21/2020)
  *      - Initial Release
@@ -28,11 +32,12 @@ metadata {
 		name: "Child USB Port", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise",
-		ocfDeviceType: "oic.d.switch",
+		ocfDeviceType: "oic.d.sensor",
         mnmn: "SmartThingsCommunity",
-		vid: "6be2cfc6-6f75-36c1-b81e-baebb049890c"
+		vid: "5fe17cd8-ba77-381f-b292-4e70ecd726aa"
 	) {
 		capability "Switch"
+		capability "Refresh"
 		capability "platemusic11009.usbPort"		
 	}
 	
@@ -44,9 +49,12 @@ metadata {
 				attributeState "on", label: '${name}', backgroundColor: "#00a0dc"
 				attributeState "off", label: '${name}', backgroundColor: "#ffffff"
 			}
+		}				
+		standardTile("refresh", "device.refresh", width: 2, height: 2) {
+			state "default", label:'Refresh', action: "refresh", icon:"st.secondary.refresh-icon"
 		}
 		main(["usbPort"])
-		details(["usbPort"])
+		details(["usbPort", "refresh"])
 	}
 	
 	preferences { }
@@ -68,4 +76,8 @@ def on() {
 
 def off() {
 	log.debug "The USB Port can't be controlled."
+}
+
+def refresh() {
+	parent.childRefresh(device.deviceNetworkId)	
 }
