@@ -1,5 +1,5 @@
 /**
- *  Aeotec NanoMote One/Quad v1.1
+ *  Aeotec NanoMote One/Quad v1.1.1
  *  (Models: ZWA003-A/ZWA004-A)
  *
  *  Hank Scene Controller/Hank Four-Key Scene Controller
@@ -10,8 +10,9 @@
  *
  *  Changelog:
  *
- *    1.1 (09/26/2020)
+ *    1.1.1 (09/26/2020)
  *      - Implemented single button child devices for buttons 2-4, but didn't remove those buttons from the parent device for backwards compability.
+ *      - YOU MUST INSTALL MY CHILD BUTTON DTH
  *
  *    1.0.2 (03/14/2020)
  *      - Removed vid because it breaks the new mobile app.
@@ -64,7 +65,11 @@ metadata {
 	
 	simulator { }
 	
-	preferences {
+	preferences {		
+		input "backwardsCompatible", "bool", 
+			title: "Create events on parent device for buttons 2-4?", 
+			defaultValue: false, 
+			required: false
 		input "debugOutput", "bool", 
 			title: "Enable debug logging?", 
 			defaultValue: true, 
@@ -96,6 +101,8 @@ metadata {
 
 def installed() {
 	state.pendingRefresh = true
+	state.newInstall = true
+	
 	initialize()
 }
 
@@ -125,10 +132,10 @@ private initialize() {
 		sendEvent(name: "supportedButtonValues", value: ["pushed", "held", "double"].encodeAsJSON(), displayed: false)
 	}
 	
-	createChildButtons()
+	runIn(5, createChildButtons)
 }
 
-private createChildButtons() {	
+def createChildButtons() {	
 	if (device.currentValue("numberOfButtons") == 4) {
 		def children = childDevices
 		
@@ -145,24 +152,21 @@ private addChildButton(btnNum) {
 	
 	try {
 		def child = addChildDevice(
-			"smartthings",
+			"krlaframboise",
 			"Child Button",
 			"${device.deviceNetworkId}-Button${btnNum}", 
 			device.getHub().getId(), 
 			[
 				completedSetup: true,
 				isComponent: false,
-				label: "${device.displayName}-${btnNum}"
+				label: "${device.displayName}-${btnNum}",
+				data: [btnNum: btnNum.toString()]
 			]
 		)
-		child?.sendEvent(name:"supportedButtonValues", value:["pushed", "held", "double"].encodeAsJSON(), displayed:false)
-		
-		child?.sendEvent(name:"numberOfButtons", value:1, displayed:false)
-
-		sendChildButtonEvent(child, "pushed")
+		child?.sendEvent(name:"supportedButtonValues", value:["pushed", "held", "double"].encodeAsJSON(), displayed:false)		
 	}
 	catch (e) {
-		log.warn "Unable to create child device for button ${btnNum}"
+		log.warn "You must have the krlaframboise Child Button DTH installed in order to use the child button devices"
 	}
 }
 	
@@ -273,7 +277,10 @@ def zwaveEvent(physicalgraph.zwave.commands.centralscenev1.CentralSceneNotificat
 		}
 		
 		if (action) {
-			sendButtonEvent(btn, action)
+			if ((btn == 1) || (settings?.backwardsCompatible == true) || (!state.newInstall && (settings?.backwardsCompatible != false))) {
+				sendButtonEvent(btn, action)
+			}
+			
 			if (btn > 1) {
 				sendChildButtonEvent(childDevices.find { it.getDataValue("btnNum") == btn.toString() }, action)
 			}
@@ -444,5 +451,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	 // log.trace "$msg"
+  // log.trace "$msg"
 }
