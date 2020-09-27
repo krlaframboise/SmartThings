@@ -1,5 +1,5 @@
 /**
- *  Zooz Power Strip VER 2.2.3
+ *  Zooz Power Strip VER 2.0 (v2.2.4)
  *  (Models: ZEN20)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *
  *
  *  Changelog:
+ *
+ *    2.2.4 (09/26/2020)
+ *      - Create child devices for USB Ports using the USB Port Child DTH.
  *
  *    2.2.3 (08/16/2020)
  *      - Removed componentLabel and componentName from child outlet devices which fixes the timeout issue in the new mobile app.
@@ -247,7 +250,7 @@ private getOptionsInput(param) {
 	input "configParam${param.num}", "enum",
 		title: "${param.name}:",
 		required: false,
-		defaultValue: "${param.value}",
+		defaultValue: param.value.toString(),
 		displayDuringSetup: true,
 		options: param.options
 }
@@ -306,7 +309,14 @@ def createChildDevices() {
 		(6..7).each { endPoint ->		
 			def dni = "${getChildDeviceNetworkId(endPoint)}"		
 			if (!findChildByDeviceNetworkId(dni)) {	
-				addChildUSB("smartthings", "Virtual Switch", dni, endPoint)
+				try {
+					addChildUSB("krlaframboise", "Child USB Port", dni, endPoint)	
+				}
+				catch (e) {
+					log.warn "The 'Child USB Port' DTH is not installed so using 'Virtual Switch' instead"
+					addChildUSB("smartthings", "Virtual Switch", dni, endPoint)	
+				}
+			
 				cmds << switchBinaryGetCmd(endPoint)
 			}
 		}
@@ -336,13 +346,11 @@ private addChildUSB(namespace, deviceType, dni, endPoint) {
 		namespace,
 		deviceType,
 		dni, 
-		null, 
+		device.getHub().getId(), 
 		[
 			completedSetup: true,
-			isComponent: true,
-			label: "${device.displayName}-USB${usb}",
-			componentName: "USB${usb}",
-			componentLabel: "USB ${usb} (READ-ONLY)"
+			isComponent: false,
+			label: "${device.displayName}-USB${usb}"
 		]
 	)
 }
@@ -1177,6 +1185,11 @@ private executeSendEvent(child, evt) {
 				logDebug "${evt.descriptionText}"
 			}
 			child.sendEvent(evt)						
+			
+			if ((evt.name == "switch") && (child.deviceNetworkId.endsWith("USB1") || child.deviceNetworkId.endsWith("USB2"))) {
+				evt.name = "usbPort"
+				child.sendEvent(evt)
+			}
 		}
 		else {
 			sendEvent(evt)
