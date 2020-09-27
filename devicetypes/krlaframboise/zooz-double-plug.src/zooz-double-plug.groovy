@@ -1,5 +1,5 @@
 /**
- *  Zooz Double Plug v1.3
+ *  Zooz Double Plug v1.3.1
  *  (Models: ZEN25)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *	Documentation:
  *
  *  Changelog:
+ *
+ *    1.3.1 (09/26/2020)
+ *      - Previous version replaced the child component device with a regular child, but it didn't use the new child usb port handler so this version corrects that.
  *
  *    1.3 (09/21/2020)
  *      - Create child device for USB Port using the USB Port Child DTH.
@@ -261,7 +264,7 @@ def createChildDevices() {
 	def dni = "${getChildDeviceNetworkId(3)}"
 	if (!findChildByDeviceNetworkId(dni)) {	
 		try {
-			addChildUSB("krlaframboise", "Child USB Port-3", dni)	
+			addChildUSB("krlaframboise", "Child USB Port", dni)	
 		}
 		catch (e) {
 			log.warn "The 'Child USB Port' DTH is not installed so using 'Virtual Switch' instead"
