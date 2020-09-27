@@ -83,6 +83,10 @@
 		<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Smart Plug</a></li>
 		<li><a href="#zooz-smart-plug-ver-20">Zooz Smart Plug VER 2.0</a></li>
 		<li><a href="#zooz-water-sensor">Zooz Water Sensor</a></li>
+		<li><a href="#zooz-zen21-onoff-switch-ver-40">Zooz ZEN21 On/Off Switch VER. 4.0</a></li>
+		<li><a href="#zooz-zen22-dimmer-ver-40">Zooz ZEN22 Dimmer VER. 4.0</a></li>
+		<li><a href="#zooz-zen26-s2-onoff-switch-ver-30">Zooz ZEN26 S2 On/Off Switch VER. 3.0</a></li>
+		<li><a href="#zooz-zen27-s2-dimmer-ver-30">Zooz ZEN27 S2 Dimmer VER. 3.0</a></li>
 </ul>
 
 <hr />
@@ -803,4 +807,56 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>Specify the first alarm beep duration, reminder beep duration, interval between beeps, and the total length of time it should send reminders.</li>
 <li><a href="https://community.smartthings.com/t/release-zooz-water-sensor/78223?u=krlaframboise">View Documentation in SmartThings Forum</a></li>
 <li><a id="ZoozWaterSensor" href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-water-sensor.src/zooz-water-sensor.groovy">View Zooz Water Sensor - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Zooz ZEN21 On/Off Switch VER. 4.0</h3>
+
+<ul>
+<li>This is a device handler for the Zooz On/Off Switch VER 4.0 (ZEN21)<br /></li>
+<li>Minimum supported firmware is 3.04</li>
+<li>Supports all configuration parameters</li>
+<li>Supports creating device associations</li>
+<li>Supports button events down, down_hold, down_released, down_2x, down_4x, down_5x, up, up_hold, up_released, up_2x, up_4x, up_5x</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen21-on-off-switch-ver-4-0.src/zooz-zen21-on-off-switch-ver-4-0.groovy">View  - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Zooz ZEN22 Dimmer VER. 4.0</h3>
+
+<ul>
+<li>This is a device handler for the Zooz Dimmer VER. 4.0 (ZEN22)<br /></li>
+<li>Minimum supported firmware is 3.07</li>
+<li>Supports all configuration parameters</li>
+<li>Supports creating device associations</li>
+<li>Supports button events down, down_hold, down_released, down_2x, down_4x, down_5x, up, up_hold, up_released, up_2x, up_4x, up_5x</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen22-dimmer-ver-4-0.src/zooz-zen22-dimmer-ver-4-0.groovy">View  - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Zooz ZEN26 S2 On/Off Switch VER. 3.0</h3>
+
+<ul>
+<li>This is a device handler for the Zooz S2 On/Off Switch VER. 3.0 (ZEN26)<br /></li>
+<li>Minimum supported firmware is 2.03</li>
+<li>Supports all configuration parameters</li>
+<li>Supports creating device associations</li>
+<li>Supports button events down, down_hold, down_released, down_2x, down_4x, down_5x, up, up_hold, up_released, up_2x, up_4x, up_5x</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen26-s2-on-off-switch-ver-3-0.src/zooz-zen26-s2-on-off-switch-ver-3-0.groovy">View  - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Zooz ZEN27 S2 Dimmer VER. 3.0</h3>
+
+<ul>
+<li>This is a device handler for the Zooz S2 Dimmer VER. 3.0 (ZEN27)<br /></li>
+<li>Minimum supported firmware is 2.08</li>
+<li>Supports all configuration parameters</li>
+<li>Supports creating device associations</li>
+<li>Supports button events down, down_hold, down_released, down_2x, down_4x, down_5x, up, up_hold, up_released, up_2x, up_4x, up_5x</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen27-s2-dimmer-ver-3-0.src/zooz-zen27-s2-dimmer-ver-3-0.groovy">View  - Device Handler Code</a></li>
 </ul>
