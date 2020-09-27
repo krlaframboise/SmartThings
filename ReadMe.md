@@ -97,10 +97,10 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Smart Plug</a></li>
 			<li><a href="#zooz-smart-plug-ver-20">Zooz Smart Plug VER 2.0</a></li>
 			<li><a href="#zooz-water-sensor">Zooz Water Sensor</a></li>
-			<li><a href="#zooz-zen21-on-off-switch-ver-4-0">Zooz ZEN21 On/Off Switch VER. 4.0</a></li>
-			<li><a href="#zooz-zen22-dimmer-ver-4-0">Zooz ZEN22 Dimmer VER. 4.0</a></li>
-			<li><a href="#zooz-zen26-s2-on-off-switch-ver-3-0">Zooz ZEN26 S2 On/Off Switch VER. 3.0</a></li>
-			<li><a href="#zooz-zen27-s2-dimmer-ver-3-0">Zooz ZEN27 S2 Dimmer VER. 3.0</a></li>
+			<li><a href="#zooz-zen21-onoff-switch-ver-40">Zooz ZEN21 On/Off Switch VER. 4.0</a></li>
+			<li><a href="#zooz-zen22-dimmer-ver-40">Zooz ZEN22 Dimmer VER. 4.0</a></li>
+			<li><a href="#zooz-zen26-s2-onoff-switch-ver-30">Zooz ZEN26 S2 On/Off Switch VER. 3.0</a></li>
+			<li><a href="#zooz-zen27-s2-dimmer-ver-30">Zooz ZEN27 S2 Dimmer VER. 3.0</a></li>
 		</ul>
 	</li>
 </ul>
