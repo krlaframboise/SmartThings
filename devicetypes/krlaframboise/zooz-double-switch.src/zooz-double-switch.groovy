@@ -1,10 +1,13 @@
 /**
- *  Zooz Double Switch v1.0.1
+ *  Zooz Double Switch v1.0.2
  *  	(Model: ZEN30)
  *
  *	Documentation:
  *
  *  Changelog:
+ *
+ *    1.0.2 (10/15/2020)
+ *      - Changed icon from dimmer to light.
  *
  *    1.0.1 (08/10/2020)
  *      - Added ST workaround for S2 Supervision bug with MultiChannel Devices.
@@ -87,7 +90,7 @@ metadata {
 		name: "Zooz Double Switch",
 		namespace: "krlaframboise",
 		author: "Kevin LaFramboise",
-		ocfDeviceType: "oic.d.switch"
+		ocfDeviceType: "oic.d.light"
 	) {
 		capability "Actuator"
 		capability "Sensor"
