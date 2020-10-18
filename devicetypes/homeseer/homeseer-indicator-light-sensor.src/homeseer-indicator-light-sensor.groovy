@@ -130,10 +130,6 @@
 		if (!device.currentValue("alarm")) {
 			sendEvent(name: "alarm", value: "off")
 		}
-
-		if (!device.currentValue("numberOfButtons")) {
-			sendEvent(name: "numberOfButtons", value: 1)		
-		}
 		
 		if (!device.currentValue("indicatorLight")) {
 			state.refreshStatus = true
@@ -142,6 +138,14 @@
 		
 		if (!device.currentValue("supportedButtonValues")) {
 			sendEvent(name: "supportedButtonValues", value: JsonOutput.toJson(["pushed", "pushed_2x", "pushed_3x"]), displayed:false)
+		}
+
+		if (!device.currentValue("numberOfButtons")) {
+			sendEvent(name: "numberOfButtons", value: 1)		
+		}
+		
+		if (!device.currentValue("button")) {
+			sendEvent(name: "button", value: "pushed", data:[buttonNumber: 1])
 		}
 
 		if (device.currentValue("battery") == null) {
