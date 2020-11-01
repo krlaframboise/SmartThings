@@ -1,5 +1,5 @@
 /**
- *  Alarm Switch v1.2
+ *  Alarm Switch v1.3
  *
  *  Capabilities:
  *    Switch, Alarm, Polling
@@ -16,6 +16,9 @@
  *    Kevin LaFramboise (krlaframboise)
  *
  *  Changelog:
+ *
+ *    1.3 (02/21/2020)
+ *      - Implemented health check capability
  *
  *    1.2 (05/21/2016)
  *      - Fixed bug in polling feature.
@@ -35,13 +38,14 @@
  *
  */
 metadata {
-	definition (name: "Alarm Switch", namespace: "krlaframboise", author: "Kevin LaFramboise") {
+	definition (name: "Alarm Switch", namespace: "krlaframboise", author: "Kevin LaFramboise",ocfDeviceType: "oic.d.switch",vid:"generic-switch") {
 		capability "Actuator"
-    capability "Alarm"
-		capability "Switch"
-		capability "Polling"
+		capability "Alarm"
+		capability "Switch"		
+		capability "Outlet"
+		capability "Health Check"		
 		
-		attribute "lastPoll", "number"
+		attribute "lastCheckIn", "number"
 
 		fingerprint inClusters: "0x20,0x25,0x86,0x80,0x85,0x72,0x71"
 	}
@@ -64,9 +68,8 @@ metadata {
 			required: false,
 			options: ["Siren and Strobe", "Siren Only", "Strobe Only"]
 		input "debugOutput", "bool", 
-			title: "Enable debug logging?", 
-			defaultValue: false, 
-			displayDuringSetup: true, 
+			title: "Enable Debug Logging", 
+			defaultValue: true, 
 			required: false
 	}
 	
@@ -94,17 +97,21 @@ metadata {
 	}
 }
 
-def poll() {
-	def minimumPollMinutes = 30
-	def lastPoll = device.currentValue("lastPoll")
-	if ((new Date().time - lastPoll) > (minimumPollMinutes * 60 * 1000)) {
-		logDebug "Poll: Refreshing because lastPoll was more than ${minimumPollMinutes} minutes ago."
-		return zwave.versionV1.versionGet().format()
-	}
-	else {
-		logDebug "Poll: Skipped because lastPoll was within ${minimumPollMinutes} minutes"
-	}
+def updated() {			
+	logDebug "updated()..."
+	
+	// Device-Watch simply pings if no device events received for checkInterval duration of 32min = 2 * 15min + 2min lag time
+	sendEvent(name: "checkInterval", value: ((6 * 60 * 60) + (60 * 2)), displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+	
+	unschedule()
+	runEvery3Hours(ping)
 }
+
+def ping() {
+	logDebug "Pinging device because it has not checked in"
+	return zwave.versionV1.versionGet().format()
+}
+
 
 def strobe() {
 	on()
@@ -120,25 +127,30 @@ def siren() {
 
 def on() {
 	logDebug "Turning On"
-	def request = [
+	
+	def cmds = delayBetween([
 		zwave.basicV1.basicSet(value: 0xFF).format(),
 		zwave.basicV1.basicGet().format()
-	]
+	], 100)
 	
 	if (settings.alarmDuration) {
 		logDebug "Alarm will automatically turn off in ${settings.alarmDuration} seconds."
-		request << "delay ${settings.alarmDuration * 1000}"
-		request += off()
+		cmds << "delay ${settings.alarmDuration * 1000}"
+		
+		cmds += delayBetween([
+			zwave.basicV1.basicSet(value: 0x00).format(),
+			zwave.basicV1.basicGet().format()
+		], 100)		
 	}
-	return request
+	return cmds
 }
 
 def off() {
 	logDebug "Turning Off"
-	[
+	delayBetween([
 		zwave.basicV1.basicSet(value: 0x00).format(),
 		zwave.basicV1.basicGet().format()
-	]
+	], 100)
 }
 
 def parse(String description) {
@@ -147,7 +159,7 @@ def parse(String description) {
 	if (cmd) {
 		result += zwaveEvent(cmd)
 	}
-	result << createEvent(name: "lastPoll",value: new Date().time, isStateChange: true, displayed: false)
+	result << createEvent(name: "lastCheckIn",value: new Date().time, isStateChange: true, displayed: false)
 	return result
 }
 
@@ -191,16 +203,7 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 }
 
 private logDebug(msg) {
-	if (validateBool(settings.debugLoggingEnabled, false)) {
-		log.debug "${device.displayName}: $msg"
-	}
-}
-
-private validateBool(value, defaultValue) {
-	if (value == null) {
-		return defaultValue
-	}
-	else {
-		return value
+	if (settings?.debugOutput || settings?.debugOutput == null) {
+		log.debug "$msg"
 	}
 }

@@ -121,7 +121,7 @@
  *
  */
 metadata {
-	definition (name: "Aeotec Doorbell", namespace: "krlaframboise", author: "Kevin LaFramboise") {
+	definition (name: "Aeotec Doorbell", namespace: "krlaframboise", author: "Kevin LaFramboise",ocfDeviceType: "x.com.st.d.remotecontroller",mmnm: "SmartThings") {
 		capability "Actuator"
 		capability "Configuration"
 		capability "Switch"
@@ -279,6 +279,11 @@ def updated() {
 		if (device.currentValue("numberOfButtons") != 1) {
 			sendEvent(name: "numberOfButtons", value: 1, displayed: false)
 		}
+        
+        
+	if (!device.currentValue("supportedButtonValues")) {
+		sendEvent(name: "supportedButtonValues", value: ["pushed"].encodeAsJSON(), displayed: false)
+	}
 				
 		def cmds = []
 		if (!state.isConfigured) {

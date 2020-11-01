@@ -265,6 +265,10 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 	def result = []
 	
 	result += configure()
+	
+	result << associationGetCmd(0)
+	result << associationGetCmd(1)
+	result << associationGetCmd(2)
 		
 	if (result) {
 		result << "delay 2000"
@@ -344,6 +348,7 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelR
 	def result = []	
 	logTrace("SensorMultilevelReport $cmd")
 	if (cmd.sensorType == 3) {
+		logDebug "Light is ${cmd.scaledSensorValue}lx"
 		result << createEvent(getEventMap("illuminance", cmd.scaledSensorValue, null, null, "lx"))
 	}
 	
@@ -371,7 +376,7 @@ private getEventMap(name, value, displayed=null, desc=null, unit=null) {
 		name: name,
 		value: value,
 		displayed: displayed,
-		isStateChange: isStateChange
+		isStateChange: true
 	]
 	if (desc) {
 		eventMap.descriptionText = desc
@@ -397,6 +402,14 @@ private wakeUpNoMoreInfoCmd() {
 
 private batteryGetCmd() {
 	return zwave.batteryV1.batteryGet().format()
+}
+
+private associationSetCmd(group) {
+	return zwave.associationV2.associationSet(groupingIdentifier:group, nodeId:[zwaveHubNodeId]).format()
+}
+
+private associationGetCmd(group) {
+	return zwave.associationV2.associationGet(groupingIdentifier:group).format()
 }
 
 private configGetCmd(paramNum) {
@@ -654,5 +667,5 @@ private logDebug(msg) {
 }
 
 private logTrace(msg) {
-	// log.trace "$msg"
+	 log.trace "$msg"
 }

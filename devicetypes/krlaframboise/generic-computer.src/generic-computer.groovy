@@ -74,34 +74,34 @@ metadata {
 	}
 		
 	tiles(scale: 2) {	
-    multiAttributeTile(name: "mediaMulti", type:"mediaPlayer", width:6, height:4, canChangeIcon: true) {
-        tileAttribute("device.status", key: "PRIMARY_CONTROL") {
-            attributeState("paused", label:"Paused",)
-            attributeState("playing", label:"Playing")
-            attributeState("stopped", label:"Stopped")
-        }
-        tileAttribute("device.status", key: "MEDIA_STATUS") {
-            attributeState("paused", label:"Paused", action:"music Player.play", nextState: "playing")
-            attributeState("playing", label:"Playing", action:"music Player.pause", nextState: "paused")
-            attributeState("stopped", label:"Stopped", action:"music Player.play", nextState: "playing")
-        }
-        tileAttribute("device.status", key: "PREVIOUS_TRACK") {
-            attributeState("status", action:"music Player.previousTrack", defaultState: true)
-        }
-        tileAttribute("device.status", key: "NEXT_TRACK") {
-            attributeState("status", action:"music Player.nextTrack", defaultState: true)
-        }
-        tileAttribute ("device.level", key: "SLIDER_CONTROL") {
-            attributeState("level", action:"music Player.setLevel")
-        }
-        tileAttribute ("device.mute", key: "MEDIA_MUTED") {
-            attributeState("unmuted", action:"music Player.mute", nextState: "muted")
-            attributeState("muted", action:"music Player.unmute", nextState: "unmuted")
-        }
-        tileAttribute("device.trackDescription", key: "MARQUEE") {
-            attributeState("trackDescription", label:"${currentValue}", defaultState: true)
-        }
-    }
+    // multiAttributeTile(name: "mediaMulti", type:"mediaPlayer", width:6, height:4, canChangeIcon: true) {
+        // tileAttribute("device.status", key: "PRIMARY_CONTROL") {
+            // attributeState("paused", label:"Paused",)
+            // attributeState("playing", label:"Playing")
+            // attributeState("stopped", label:"Stopped")
+        // }
+        // tileAttribute("device.status", key: "MEDIA_STATUS") {
+            // attributeState("paused", label:"Paused", action:"music Player.play", nextState: "playing")
+            // attributeState("playing", label:"Playing", action:"music Player.pause", nextState: "paused")
+            // attributeState("stopped", label:"Stopped", action:"music Player.play", nextState: "playing")
+        // }
+        // tileAttribute("device.status", key: "PREVIOUS_TRACK") {
+            // attributeState("status", action:"music Player.previousTrack", defaultState: true)
+        // }
+        // tileAttribute("device.status", key: "NEXT_TRACK") {
+            // attributeState("status", action:"music Player.nextTrack", defaultState: true)
+        // }
+        // tileAttribute ("device.level", key: "SLIDER_CONTROL") {
+            // attributeState("level", action:"music Player.setLevel")
+        // }
+        // tileAttribute ("device.mute", key: "MEDIA_MUTED") {
+            // attributeState("unmuted", action:"music Player.mute", nextState: "muted")
+            // attributeState("muted", action:"music Player.unmute", nextState: "unmuted")
+        // }
+        // tileAttribute("device.trackDescription", key: "MARQUEE") {
+            // attributeState("trackDescription", label:"${currentValue}", defaultState: true)
+        // }
+    // }
 		standardTile("switch", "device.switch", width: 2, height: 2) {
 				state "off", label: '${currentValue}', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff"
 				state "on", label: '${currentValue}', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#79b821"
@@ -134,8 +134,8 @@ metadata {
 			state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
 		}
 				
-		main "mediaMulti"
-		details(["mediaMulti","switch","comcast","pandora","netflix","hulu","vudu","energy","power","refresh","reset"])
+		main "switch"
+		details(["switch","comcast","pandora","netflix","hulu","vudu","energy","power","refresh","reset"])
 	}
 }
 
