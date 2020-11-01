@@ -680,7 +680,6 @@ def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport 
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {	
-log.warn "${device.displayName} - $cmd"
 	def result = []
 	def forceEvent = false
 	
