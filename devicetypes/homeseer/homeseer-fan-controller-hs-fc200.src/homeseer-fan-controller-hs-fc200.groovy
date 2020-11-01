@@ -1,5 +1,5 @@
 /*
- *  HomeSeer Wall Dimmer HS-FC200+ (v1.0)
+ *  HomeSeer Fan Controller HS-FC200+ (v1.0)
  *
  *  Changelog:
  *
