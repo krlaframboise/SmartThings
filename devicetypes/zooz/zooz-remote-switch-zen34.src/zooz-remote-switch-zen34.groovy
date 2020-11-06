@@ -64,6 +64,7 @@ metadata {
 		namespace:"Zooz", 
 		author: "Kevin LaFramboise (krlaframboise)", 
 		ocfDeviceType: "x.com.st.d.remotecontroller",
+		mnmn: "SmartThingsCommunity",
 		vid: "954e5fd3-f282-3f6a-b286-f5dd392fd295"
 	) {
 		capability "Sensor"
