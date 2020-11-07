@@ -1,7 +1,10 @@
 /*
- *  Zooz Remote Switch ZEN34 	v1.0
+ *  Zooz Remote Switch ZEN34 	v1.0.1
  *
  *  Changelog:
+ *
+ *    1.0.1 (11/07/2020)
+ *      - Fixed issue with SmartThings converting string attributes into dates if they start or end with specific numbers like 34.
  *
  *    1.0 (11/06/2020)
  *      - Initial Release
@@ -277,9 +280,8 @@ def refresh() {
 	
 	refreshSyncStatus()
 	state.refreshAll = true
-
-	logForceWakeupMessage "The next time the device wakes up, the sensor data will be requested."
 	
+	logForceWakeupMessage "The next time the device wakes up, the sensor data will be requested."
 	return []
 }
 
@@ -464,6 +466,9 @@ void zwaveEvent(physicalgraph.zwave.commands.associationv2.AssociationReport cmd
 		state["${name}NodeIds"] = cmd.nodeId
 
 		def dnis = convertIntListToHexList(cmd.nodeId)?.join(", ") ?: ""				
+		if (dnis) {
+			dnis = "[${dnis}]" // wrapping it with brackets prevents ST from attempting to convert the value into a date.
+		}
 		sendEventIfNew(name, dnis, false)
 	}
 }
@@ -576,7 +581,7 @@ void setParamStoredValue(Integer paramNum, Integer value) {
 
 void refreshSyncStatus() {
 	int changes = pendingChanges
-	sendEventIfNew("syncStatus", (changes ?  "${changes} Pending Change(s)\nTap Up x 7" : "Synced"), false)
+	sendEventIfNew("syncStatus", (changes ?  "${changes} Pending Change(s)<br>Tap Up x 7" : "Synced"), false)
 }
 
 
