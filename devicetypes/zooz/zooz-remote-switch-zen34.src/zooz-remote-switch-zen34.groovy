@@ -1,7 +1,10 @@
 /*
- *  Zooz Remote Switch ZEN34 	v1.0.1
+ *  Zooz Remote Switch ZEN34 	v1.0.2
  *
  *  Changelog:
+ *
+ *    1.0.2 (11/11/2020)
+ *      - Fixed setting labels
  *
  *    1.0.1 (11/07/2020)
  *      - Fixed issue with SmartThings converting string attributes into dates if they start or end with specific numbers like 34.
@@ -97,7 +100,7 @@ metadata {
 	
 		input "assocInstructions", "paragraph",
 			title: "Device Associations",
-			description: "Associations are an advance feature that allow you to establish direct communication between Z-Wave devices.  To make this motion sensor control another Z-Wave device, get that device's Device Network Id from the My Devices section of the IDE and enter the id below.  Group 2 and Group 3 supports up to 10 associations and you can use commas to separate the device network ids.",
+			description: "Associations are an advance feature that allow you to establish direct communication between Z-Wave devices.  To make this remote control another Z-Wave device, get that device's Device Network Id from the My Devices section of the IDE and enter the id in one of the settings below.  Group 2 and Group 3 supports up to 5 associations and you can use commas to separate the device network ids.",
 			required: false
 
 		input "assocDisclaimer", "paragraph",
