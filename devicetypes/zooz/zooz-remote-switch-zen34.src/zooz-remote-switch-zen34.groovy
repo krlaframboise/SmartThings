@@ -1,7 +1,10 @@
 /*
- *  Zooz Remote Switch ZEN34 	v1.0.2
+ *  Zooz Remote Switch ZEN34 	v1.0.3
  *
  *  Changelog:
+ *
+ *    1.0.3 (11/14/2020)
+ *      - Fixed wake up interval
  *
  *    1.0.2 (11/11/2020)
  *      - Fixed setting labels
@@ -53,11 +56,13 @@ import groovy.transform.Field
 	0x9F: 1		// Security 2
 ]
 
-@Field static int wakeUpInterval = 12180
+@Field static int wakeUpInterval = 43200
 
 @Field static Map ledModeOptions = [0:"LED always off", 1:"LED on when button is pressed [DEFAULT]", 2:"LED always on in specified upper paddle color", 3:"LED always on in specified lower paddle color"]
 
-@Field static Map ledColorOptions = [0:"White", 1:"Blue", 2:"Green", 3:"Red", 4:"Magenta", 5:"Yellow", 6:"Cyan"]
+@Field static Map upperLedColorOptions = [0:"White", 1:"Blue [DEFAULT]", 2:"Green", 3:"Red", 4:"Magenta", 5:"Yellow", 6:"Cyan"]
+
+@Field static Map lowerLedColorOptions = [0:"White [DEFAULT]", 1:"Blue", 2:"Green", 3:"Red", 4:"Magenta", 5:"Yellow", 6:"Cyan"]
 
 @Field static Map associationGroups = [2:"associationGroupTwo", 3:"associationGroupThree"]
 
@@ -100,7 +105,7 @@ metadata {
 	
 		input "assocInstructions", "paragraph",
 			title: "Device Associations",
-			description: "Associations are an advance feature that allow you to establish direct communication between Z-Wave devices.  To make this remote control another Z-Wave device, get that device's Device Network Id from the My Devices section of the IDE and enter the id in one of the settings below.  Group 2 and Group 3 supports up to 5 associations and you can use commas to separate the device network ids.",
+			description: "Associations are an advance feature that allow you to establish direct communication between Z-Wave devices.  To make this remote control another Z-Wave device, get that device's Device Network Id from the My Devices section of the IDE and enter the id in one of the settings below.  Group 2 and Group 3 supports up to 10 associations and you can use commas to separate the device network ids.",
 			required: false
 
 		input "assocDisclaimer", "paragraph",
@@ -555,21 +560,17 @@ Map getLedModeParam() {
 }
 
 Map getUpperPaddleLedColorParam() {
-	return getParam(2, "Upper Paddled LED Indicator Color", 1, 1,  setDefaultOption(ledColorOptions, 1))
+	return getParam(2, "Upper Paddled LED Indicator Color", 1, 1, upperLedColorOptions)
 }
 
 Map getLowerPaddleLedColorParam() {
-	return getParam(3, "Lower Paddle LED Indicator Color", 1, 0, setDefaultOption(ledColorOptions, 0))
+	return getParam(3, "Lower Paddle LED Indicator Color", 1, 0, lowerLedColorOptions)
 }
 
 Map getParam(Integer num, String name, Integer size, Integer defaultVal, Map options) {
 	Integer val = safeToInt((settings ? settings["configParam${num}"] : null), defaultVal)
 
 	return [num: num, name: name, size: size, value: val, options: options]
-}
-
-Map setDefaultOption(Map options, int defaultVal) {
-	return options.collectEntries { (it.key == defaultVal) ? [it.key, "${it.value} [DEFAULT]"] : it }
 }
 
 
