@@ -955,7 +955,7 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 }
 
 private isFirmwareVersion2() {
-	return safeToDec(device.currentValue("firmwareVersion")) >= 1.3
+	return safeToDec(device.currentValue("firmwareVersion")) >= 1.03
 }
 
 private logDebug(msg) {
