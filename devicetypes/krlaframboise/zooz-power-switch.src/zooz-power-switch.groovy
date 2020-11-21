@@ -1,5 +1,5 @@
 /**
- *  Zooz Power Switch v2.3
+ *  Zooz Power Switch v2.3.1
  *  (Models: ZEN15)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    2.3.1 (11/20/2020)
+ *      - Made refresh command request firmware and fixed version bug.
  *
  *    2.3 (11/11/2020)
  *      - *** BREAKING CHANGE*** - Split the "Disable On/Off Hub Control" setting into a setting for each.  If you had the old setting enabled you'll need to manually enable both of the new settings.
@@ -89,11 +92,9 @@ metadata {
 
 		attribute "lastCheckin", "string"
 		attribute "history", "string"
-		// attribute "current", "number"
 		attribute "energyTime", "number"
 		attribute "energyCost", "string"
 		attribute "energyDuration", "string"
-		// attribute "firmwareVersion", "string"
 
 		["power", "voltage", "amperage"].each {
 			attribute "${it}Low", "number"
@@ -323,7 +324,8 @@ def refresh() {
 		meterGetCmd(meterEnergy),
 		meterGetCmd(meterPower),
 		meterGetCmd(meterVoltage),
-		meterGetCmd(meterAmperage)
+		meterGetCmd(meterAmperage),
+		versionGetCmd()
 	], 1000)
 }
 
@@ -955,7 +957,7 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 }
 
 private isFirmwareVersion2() {
-	return safeToDec(device.currentValue("firmwareVersion")) >= 1.3
+	return safeToDec(device.currentValue("firmwareVersion")) >= 1.03
 }
 
 private logDebug(msg) {
