@@ -1,5 +1,5 @@
 /**
- *  Zooz Power Switch v2.3.1
+ *  Zooz Power Switch v2.3.2
  *  (Models: ZEN15)
  *
  *  Author: 
@@ -9,6 +9,9 @@
  *    
  *
  *  Changelog:
+ *
+ *    2.3.2 (01/10/2021)
+ *      - Fixed ocfDeviceType
  *
  *    2.3.1 (11/20/2020)
  *      - Made refresh command request firmware and fixed version bug.
@@ -70,7 +73,7 @@ metadata {
 		name: "Zooz Power Switch", 
 		namespace: "krlaframboise", 
 		author: "Kevin LaFramboise", 
-		ocfDeviceType: "oic.d.switch",
+		ocfDeviceType: "oic.d.smartplug",
 		mnmn: "SmartThingsCommunity",
 		vid: "bbe9473d-ee71-3964-89ea-6d6c7fea5ac7"
 	) {
