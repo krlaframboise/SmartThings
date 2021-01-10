@@ -1,7 +1,11 @@
 /*
- *  Zooz Remote Switch ZEN34 	v1.0.3
+ *  Zooz Remote Switch ZEN34 	v1.1
  *
  *  Changelog:
+ *
+ *    1.1 (01/10/2021)
+ *      - Added new fingerprint
+ *      - Changed the way associations are implemented so that it assumes the associations were successfully saved when the device isn't joined with S2 security.
  *
  *    1.0.3 (11/14/2020)
  *      - Fixed wake up interval
@@ -16,7 +20,7 @@
  *      - Initial Release
  *
  *
- *  Copyright 2020 Zooz
+ *  Copyright 2021 Zooz
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -52,6 +56,7 @@ import groovy.transform.Field
 	0x84: 2,	// WakeUp
 	0x85: 2,	// Association
 	0x86: 1,	// Version (2)
+	0x87: 1,	// Indicator
 	0x8E: 2,	// MultiChannelAssociation (3)
 	0x9F: 1		// Security 2
 ]
@@ -93,6 +98,7 @@ metadata {
 
 		fingerprint mfr: "0312", prod: "0004", model: "F001", deviceJoinName: "Zooz Remote Switch"
 		fingerprint mfr: "027A", prod: "0004", model: "F001", deviceJoinName: "Zooz Remote Switch"
+		fingerprint mfr: "027A", prod: "7000", model: "F001", deviceJoinName: "Zooz Remote Switch"		
 	}
 
 	simulator { }
@@ -164,7 +170,7 @@ void initialize() {
 	state.debugLoggingEnabled = (safeToInt(settings?.debugOutput, 1) != 0)
 	
 	if (!device.currentValue("supportedButtonValues")) {
-		sendEvent(name:"supportedButtonValues", value: ["down","down_hold","down_2x","down_3x","down_4x","down_5x","up","up_hold","up_2x","up_3x","up_4x","up_5x"].encodeAsJSON(), displayed:false)
+		sendEvent(name:"supportedButtonValues", value: ["down","down_hold","down_2x","down_3x","down_4x","down_5x","up","up_hold","up_2x","up_3x","up_4x","up_5x","down_released","up_released"].encodeAsJSON(), displayed:false)
 	}
 
 	if (!device.currentValue("numberOfButtons")) {
@@ -232,8 +238,10 @@ List<String> getConfigureCmds() {
 }
 
 
-private getConfigureAssocsCmds() {
+private getConfigureAssocsCmds(boolean countOnly=false) {
 	List<String> cmds = []
+	
+	boolean failedS2 = failedS2Inclusion
 	
 	associationGroups.each { group, name ->
 		boolean changes = false
@@ -243,21 +251,31 @@ private getConfigureAssocsCmds() {
 		
 		def newNodeIds = settingNodeIds?.findAll { !(it in stateNodeIds) }
 		if (newNodeIds) {
-			logDebug "Adding Nodes ${newNodeIds} to Association Group ${group}"
+			if (!countOnly) {
+				logDebug "Adding Nodes ${newNodeIds} to Association Group ${group}"
+			}
+			
 			cmds << associationSetCmd(group, newNodeIds)
 			changes = true
 		}
 
 		def oldNodeIds = stateNodeIds?.findAll { !(it in settingNodeIds) }
 		if (oldNodeIds) {
-			logDebug "Removing Nodes ${oldNodeIds} from Association Group ${group}"
+			if (!countOnly) {
+				logDebug "Removing Nodes ${oldNodeIds} from Association Group ${group}"
+			}
 			cmds << associationRemoveCmd(group, oldNodeIds)
 			changes = true
 		}
-
-		if (changes || state.refreshAll) {
+		
+		if (!countOnly && !failedS2 && (changes || state.refreshAll)) {
 			cmds << associationGetCmd(group)
 		}
+	}
+	
+	if (!countOnly && failedS2 && cmds) {
+		// The handler doesn't get association reports for 700 series devices when not joined with S2 so requesting manufacturer report as a way to confirm the device is responding and if it responds then it assumes the association changes were successful.
+		cmds << manufacturerSpecificGetCmd()
 	}
 	return cmds
 }
@@ -334,6 +352,10 @@ String versionGetCmd() {
 	return secureCmd(zwave.versionV1.versionGet())
 }
 
+String manufacturerSpecificGetCmd() {
+	return secureCmd(zwave.manufacturerSpecificV2.manufacturerSpecificGet())
+}
+
 String batteryGetCmd() {
 	return secureCmd(zwave.batteryV1.batteryGet())
 }
@@ -376,6 +398,10 @@ String secureRawCmd(String cmd) {
 
 boolean getJoinedSecure() {
 	return zwaveInfo?.zw?.contains("s") || ("0x98" in device.rawDescription?.split(" "))
+}
+
+boolean getFailedS2Inclusion() {
+	return (device?.getDataValue("networkSecurityLevel") == "ZWAVE_S2_FAILED")
 }
 
 
@@ -433,6 +459,9 @@ void zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd) 
 void zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
 	logDebug "Device Woke Up..."
 	
+	runIn(3, refreshSyncStatus)
+	state.hasWokenUp = true
+	
 	def cmds = getConfigureCmds()
 	if (cmds) {
 		cmds << "delay 1000"
@@ -465,15 +494,31 @@ void zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport
 void zwaveEvent(physicalgraph.zwave.commands.associationv2.AssociationReport cmd) {
 	logTrace "$cmd"
 	
+	logDebug "Group ${cmd.groupingIdentifier} Association: ${cmd.nodeId}"
+	saveGroupAssociations(cmd.groupingIdentifier, cmd.nodeId)	
+}
+
+void zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerSpecificReport cmd) {
+	logTrace "$cmd"
+	
+	// The handler doesn't get association reports for 700 series devices when not joined with S2 so this report was requested to confirm the device is responding and saved based on the assumption that they were applied.
+	
+	associationGroups.each { group, name ->
+		String assocSetting = settings["group${group}AssocDNIs"] ?: ""	
+		saveGroupAssociations(group, convertHexListToIntList(assocSetting?.split(",")))
+	}
+}
+
+void saveGroupAssociations(groupId, nodeIds) {
+	logTrace "saveGroupAssociations(${groupId}, ${nodeIds})"
+	
 	runIn(3, refreshSyncStatus)
 	
-	logDebug "Group ${cmd.groupingIdentifier} Association: ${cmd.nodeId}"
-	
-	String name = associationGroups.get(safeToInt(cmd.groupingIdentifier))
+	String name = associationGroups.get(safeToInt(groupId))
 	if (name) {		
-		state["${name}NodeIds"] = cmd.nodeId
+		state["${name}NodeIds"] = nodeIds
 
-		def dnis = convertIntListToHexList(cmd.nodeId)?.join(", ") ?: ""				
+		def dnis = convertIntListToHexList(nodeIds)?.join(", ") ?: ""				
 		if (dnis) {
 			dnis = "[${dnis}]" // wrapping it with brackets prevents ST from attempting to convert the value into a date.
 		}
@@ -530,6 +575,12 @@ void zwaveEvent(physicalgraph.zwave.commands.centralscenev1.CentralSceneNotifica
 
 		if (btnVal) {
 			sendButtonEvent(btnVal)
+		}
+		
+		if (!state.hasWokenUp) {
+			// device hasn't been put to sleep after inclusion and is draining the battery so put it to sleep.
+			state.hasWokenUp = true
+			sendCommands([wakeUpNoMoreInfoCmd()])
 		}
 	}
 }
@@ -592,7 +643,7 @@ void refreshSyncStatus() {
 int getPendingChanges() {
 	int configChanges = safeToInt(configParams.count { it.value != getParamStoredValue(it.num) })
 	int pendingWakeUpInterval = (state.wakeUpInterval != wakeUpInterval ? 1 : 0)
-	int pendingAssocs = (getConfigureAssocsCmds()?.size() ? 1 : 0)
+	int pendingAssocs = getConfigureAssocsCmds(true)?.size()
 		
 	return (configChanges + pendingWakeUpInterval + pendingAssocs)
 }
@@ -660,5 +711,5 @@ void logDebug(String msg) {
 
 
 void logTrace(String msg) {
-	 // log.trace(msg)
+	// log.trace(msg)
 }
