@@ -1,5 +1,5 @@
 /**
- *  Zooz Double Plug v1.3.2
+ *  Zooz Double Plug v1.4
  *  (Models: ZEN25)
  *
  *  Author: 
@@ -8,6 +8,9 @@
  *	Documentation:
  *
  *  Changelog:
+ *
+ *    1.4 (01/14/2021)
+ *      - Added support for 2.0 firmware.
  *
  *    1.3.2 (09/27/2020)
  *      - Added support for Refresh command of USB port.
@@ -45,7 +48,7 @@
  *
  *
  *
- *  Copyright 2020 Kevin LaFramboise
+ *  Copyright 2021 Kevin LaFramboise
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -909,7 +912,7 @@ private getConfigParams() {
 		powerReportingFrequencyParam,
 		energyReportingFrequencyParam,
 		voltageReportingFrequencyParam,
-		ampsReportingFrequencyParam,		
+		ampsReportingFrequencyParam,
 		leftAutoOffEnabledParam,
 		leftAutoOffIntervalParam,
 		rightAutoOffEnabledParam,
@@ -917,7 +920,8 @@ private getConfigParams() {
 		leftAutoOnEnabledParam,
 		leftAutoOnIntervalParam,
 		rightAutoOnEnabledParam,
-		rightAutoOnIntervalParam
+		rightAutoOnIntervalParam,
+		energyUsbReportsParam
 	]
 }
 
@@ -987,6 +991,10 @@ private getManualControlParam() {
 
 private getLedIndicatorModeParam() {
 	return getParam(17, "LED Indicator Mode", 1, 1, [0:"Always On", 1:"On When Switch On", 2:"LED On for 5 Seconds", 3:"LED Always Off"])
+}
+
+private getEnergyUsbReportsParam() {
+	return getParam(18, "Enable/Disable Energy and USB Reports [FIRMWARE >= 2.0]", 1, 0, [0:"Both Reports Enabled [DEFAULT]", 1:"Both Reports Disabled", 2:"Energy Reports Disabled for Left Outlet", 3:"Energy Reports Disabled for Right Outlet", 4:"USB Reports Disabled"])
 }
 
 private getParam(num, name, size, defaultVal, options=null) {
