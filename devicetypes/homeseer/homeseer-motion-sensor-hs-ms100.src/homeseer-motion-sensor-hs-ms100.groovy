@@ -1,7 +1,10 @@
 /*
- *  HomeSeer Motion Sensor HS-MS100+ (v1.0)
+ *  HomeSeer Motion Sensor HS-MS100+ (v1.0.1)
  *
  *  Changelog:
+ *
+ *    1.0.1 (01/20/2021)
+ *      - Made it send commands on save when on batteries instead of only sending when it receives the wake up notification.
  *
  *    1.0 (01/17/2021)
  *      - Initial Release
@@ -66,7 +69,7 @@ metadata {
 
 		attribute "lastCheckIn", "string"
 
-		fingerprint mfr:"000C", prod:"0201", model:"0009", deviceJoinName: "HomeSeer Motion Sensor HS-MS100+"
+		fingerprint mfr:"000C", prod:"0201", model:"0009", deviceJoinName: "HomeSeer Motion Sensor"
 	}
 
 	simulator { }
@@ -104,12 +107,12 @@ def updated() {
 		initialize()
 
 		def cmds = []
-		if (device.currentValue("powerSource") == "dc") {
+		// if (device.currentValue("powerSource") == "dc") {
 			cmds += getConfigureCmds()
-		}
-		else {
-			logForceWakeupMessage()
-		}
+		// }
+		// else {
+			// logForceWakeupMessage()
+		// }
 
 		return cmds ? response(delayBetween(cmds, 500)) : []
 	}
@@ -146,15 +149,15 @@ private initialize() {
 def configure() {
 	logDebug "configure()..."
 
-	if (!state.batteryInclusion) {
+	// if (!state.batteryInclusion) {
 		def cmds = getConfigureCmds()
 		if (cmds) {
 			sendCommands(delayBetween(cmds, 500))
 		}
-	}
-	else {
-		logForceWakeupMessage()
-	}
+	// }
+	// else {
+		// logForceWakeupMessage()
+	// }
 	return []
 }
 
