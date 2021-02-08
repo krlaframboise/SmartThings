@@ -1,13 +1,16 @@
 /*
- *  Zooz ZEN77 700 S2 Dimmer VER. 1.0
+ *  Zooz ZEN77 700 S2 Dimmer VER. 1.0.1
  *
  *  Changelog:
+ *
+ *    1.0.1 (02/07/2021)
+ *      - Added patch workaround to presentation for supportedButtonValues support in Automations.
  *
  *    1.0 (12/31/2020)
  *      - Initial Release
  *
  *
- *  Copyright 2020 Zooz
+ *  Copyright 2021 Zooz
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -65,7 +68,7 @@ metadata {
 		author: "Kevin LaFramboise (@krlaframboise)",
 		ocfDeviceType: "oic.d.switch",
 		mnmn: "SmartThingsCommunity",
-		vid: "87d2b744-649a-3465-b701-cdb92575373a"
+		vid: "2e8169fa-0834-3c7d-a8c4-2744421503b1"
 	) {
 		capability "Actuator"
 		capability "Sensor"

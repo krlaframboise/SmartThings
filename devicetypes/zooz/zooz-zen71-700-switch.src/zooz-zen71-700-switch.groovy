@@ -1,13 +1,16 @@
 /*
- *  Zooz ZEN71 700 Switch VER. 1.0
+ *  Zooz ZEN71 700 Switch VER. 1.0.1
  *
  *  Changelog:
+ *
+ *    1.0.1 (02/07/2021)
+ *      - Added patch workaround to presentation for supportedButtonValues support in Automations.
  *
  *    1.0 (12/31/2020)
  *      - Initial Release
  *
  *
- *  Copyright 2020 Zooz
+ *  Copyright 2021 Zooz
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -61,7 +64,7 @@ metadata {
 		author: "Kevin LaFramboise (@krlaframboise)",
 		ocfDeviceType: "oic.d.switch",
 		mnmn: "SmartThingsCommunity",
-		vid: "4aea41e7-f884-3451-9605-eda6d88a7ad3"
+		vid: "2dd64fd2-480a-378b-8df2-bc59f865fa13"
 	) {
 		capability "Actuator"
 		capability "Sensor"

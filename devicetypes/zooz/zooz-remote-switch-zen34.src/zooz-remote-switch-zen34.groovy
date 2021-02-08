@@ -1,7 +1,10 @@
 /*
- *  Zooz Remote Switch ZEN34 	v1.1
+ *  Zooz Remote Switch ZEN34 	v1.1.1
  *
  *  Changelog:
+ *
+ *    1.1.1 (02/07/2021)
+ *      - Added patch workaround to presentation for supportedButtonValues support in Automations.
  *
  *    1.1 (01/10/2021)
  *      - Added new fingerprint
@@ -81,7 +84,7 @@ metadata {
 		author: "Kevin LaFramboise (krlaframboise)", 
 		ocfDeviceType: "x.com.st.d.remotecontroller",
 		mnmn: "SmartThingsCommunity",
-		vid: "954e5fd3-f282-3f6a-b286-f5dd392fd295"
+		vid: "b947e8dc-5268-32ca-a952-73ed6109ad69"
 	) {
 		capability "Sensor"
 		capability "Battery"

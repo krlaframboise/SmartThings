@@ -1,14 +1,19 @@
 /*
- *  Zooz ZEN26 S2 On/Off Switch VER. 3.0 
+ *  Zooz ZEN26 S2 On/Off Switch VER. 3.0.1
  *  	(Model: ZEN26 - MINIMUM FIRMWARE 2.03)
  *
  *  Changelog:
+ *
+ *    3.0.1 (02/07/2021)
+ *      - Created presentation with patch workaround for supportedButtonValues support in Automations.
+ *      - Added button actions up_3x and down_3x
+ *      - Removed tiles
  *
  *    3.0 (09/16/2020)
  *      - Initial Release
  *
  *
- *  Copyright 2020 Zooz
+ *  Copyright 2021 Zooz
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -67,7 +72,9 @@ metadata {
 		name: "Zooz ZEN26 S2 On/Off Switch VER. 3.0",
 		namespace: "Zooz",
 		author: "Kevin LaFramboise (@krlaframboise)",
-		ocfDeviceType: "oic.d.switch"
+		ocfDeviceType: "oic.d.switch",
+		vid: "c78d1728-51dd-3580-af97-6b2c09f93113",
+		mnmn: "SmartThingsCommunity"
 	) {
 		capability "Actuator"
 		capability "Sensor"
@@ -77,52 +84,16 @@ metadata {
 		capability "Refresh"
 		capability "Health Check"
 		capability "Button"
+		capability "platemusic11009.firmware"
+		capability "platemusic11009.syncStatus"
 
-		attribute "firmwareVersion", "string"
 		attribute "lastCheckIn", "string"
-		attribute "syncStatus", "string"
 		attribute "associatedDeviceNetworkIds", "string"
 
 		fingerprint mfr:"027A", prod:"A000", model: "A001", deviceJoinName:"Zooz S2 On/Off Switch"
 	}
 
 	simulator { }
-
-	tiles(scale: 2) {
-		multiAttributeTile(name:"switch", type: "lighting", width: 6, height: 4, canChangeIcon: true){
-			tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
-				attributeState "on", label:'${name}', action:"switch.off", icon:"st.Lighting.light13", backgroundColor:"#00a0dc", nextState:"turningOff"
-				attributeState "off", label:'${name}', action:"switch.on", icon:"st.Lighting.light13", backgroundColor:"#ffffff", nextState:"turningOn"
-				attributeState "turningOn", label:'TURNING ON', action:"switch.off", icon:"st.lights.philips.hue-single", backgroundColor:"#00a0dc", nextState:"turningOff"
-				attributeState "turningOff", label:'TURNING OFF', action:"switch.on", icon:"st.lights.philips.hue-single", backgroundColor:"#ffffff", nextState:"turningOn"
-			}
-		}
-		standardTile("refresh", "device.refresh", width: 2, height: 2) {
-			state "refresh", label:'Refresh', action: "refresh"
-		}
-		valueTile("syncStatus", "device.syncStatus", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
-			state "syncStatus", label:'${currentValue}'
-		}
-		standardTile("sync", "device.configure", width: 2, height: 2) {
-			state "default", label: 'Sync', action: "configure"
-		}
-		valueTile("firmwareVersion", "device.firmwareVersion", decoration:"flat", width:3, height: 1) {
-			state "firmwareVersion", label:'Firmware ${currentValue}'
-		}
-
-		standardTile("assocLabel", "device.associatedDeviceNetworkIds", decoration: "flat", width: 3, height: 1) {
-			state "default", label:'Associated Device Network Ids:'
-			state "none", label:""
-		}
-
-		standardTile("assocDNIs", "device.associatedDeviceNetworkIds", decoration: "flat", width: 3, height: 1) {
-			state "default", label:'${currentValue}'
-			state "none", label:""
-		}
-
-		main "switch"
-		details(["switch", "refresh", "syncStatus", "sync", "firmwareVersion", "assocLabel", "assocDNIs"])
-	}
 
 	preferences {
 		configParams.each { param ->
@@ -165,6 +136,8 @@ String getAssocDNIsSetting() {
 
 def installed() {
 	logDebug "installed()..."
+	
+	initialize()
 
 	if (state.debugLoggingEnabled == null) {
 		state.debugLoggingEnabled = true
@@ -197,8 +170,10 @@ void initialize() {
 		sendEvent(checkIntervalEvt)
 	}
 
-	if (!device.currentValue("supportedButtonValues")) {
-		sendEvent(name:"supportedButtonValues", value:JsonOutput.toJson(["down","down_hold","down_released","down_2x","down_4x","down_5x","up","up_hold","up_released","up_2x","up_4x","up_5x"]), displayed:false)
+	def btnValues = JsonOutput.toJson(["down","down_hold","down_released","down_2x","down_3x","down_4x","down_5x","up","up_hold","up_released","up_2x","up_3x", "up_4x","up_5x"])
+	if (device.currentValue("supportedButtonValues") != btnValues) {
+		log.warn "saving supported button actions"
+		sendEvent(name:"supportedButtonValues", value: btnValues, displayed:false)
 	}
 
 	if (!device.currentValue("numberOfButtons")) {
@@ -207,6 +182,10 @@ void initialize() {
 
 	if (!device.currentValue("button")) {
 		sendButtonEvent("pushed")
+	}
+	
+	if (!device.currentValue("switch")) {
+		sendEvent(name: "switch", value: "off")
 	}
 }
 
@@ -519,7 +498,7 @@ void zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
 	String subVersion = String.format("%02d", cmd.applicationSubVersion)
 	String fullVersion = "${cmd.applicationVersion}.${subVersion}"
 
-	sendEventIfNew("firmwareVersion", fullVersion)
+	sendEventIfNew("firmwareVersion", fullVersion.toBigDecimal())
 }
 
 
@@ -759,3 +738,6 @@ void logDebug(String msg) {
 void logTrace(String msg) {
 	// log.trace "$msg"
 }
+
+
+
