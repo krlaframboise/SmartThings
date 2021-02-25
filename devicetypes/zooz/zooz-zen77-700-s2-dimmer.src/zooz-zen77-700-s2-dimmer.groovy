@@ -1,7 +1,10 @@
 /*
- *  Zooz ZEN77 700 S2 Dimmer VER. 1.0.1
+ *  Zooz ZEN77 700 S2 Dimmer VER. 1.0.2
  *
  *  Changelog:
+ *
+ *    1.0.2 (02/20/2021)
+ *      - Added fix for firmware 1.2
  *
  *    1.0.1 (02/07/2021)
  *      - Added patch workaround to presentation for supportedButtonValues support in Automations.
@@ -289,17 +292,17 @@ def ping() {
 
 def ledIndicatorOn() {
 	logDebug "ledIndicatorOn()..."
-	return delayBetween([ 
-		indicatorSetCmd(0xFF), 
-		indicatorGetCmd() 
+	return delayBetween([
+		indicatorSetCmd(0xFF),
+		indicatorGetCmd()
 	], 300)
 }
 
 def ledIndicatorOff() {
 	logDebug "ledIndicatorOff()..."
-	return delayBetween([ 
-		indicatorSetCmd(0x00), 
-		indicatorGetCmd() 
+	return delayBetween([
+		indicatorSetCmd(0x00),
+		indicatorGetCmd()
 	], 300)
 }
 
@@ -335,7 +338,20 @@ List<String> getSetLevelCmds(level, duration=null) {
 	Integer levelVal = validateRange(level, 99, 0, 99)
 	Integer durationVal = validateRange(duration, rampRateParam.value, 0, 99)
 
-	return [ switchMultilevelSetCmd(levelVal, durationVal) ]
+	List<String> cmds = []
+	if (device.currentValue("firmwareVersion") >= 1.3) {
+		cmds << switchMultilevelSetCmd(levelVal, durationVal)
+	}
+	else {
+		cmds += [
+			switchMultilevelSetCmd(levelVal, 0),
+			"delay 2000",
+			switchMultilevelGetCmd(),
+			"delay 5000",
+			switchMultilevelGetCmd()
+		]
+	}
+	return cmds
 }
 
 
@@ -536,13 +552,13 @@ void sendSwitchEvents(rawVal) {
 	sendEventIfNew("switch", (rawVal ? "on" : "off"))
 
 	if (rawVal) {
-		sendEventIfNew("level", rawVal, true, "%")
+		sendEventIfNew("level", (rawVal == 99 ? 100 : rawVal), true, "%")
 	}
 }
 
 
 void zwaveEvent(physicalgraph.zwave.commands.indicatorv1.IndicatorReport cmd) {
-	logTrace "${cmd}"
+	// logTrace "${cmd}"
 }
 
 

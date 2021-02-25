@@ -1,7 +1,10 @@
 /*
- *  Zooz Universal Relay - ZEN17 v1.0
+ *  Zooz Universal Relay - ZEN17 v1.0.1
  *
  *  Changelog:
+ *
+ *    1.0.1 (02/24/2021)
+ *      - Added workaround for changing endpoints
  *
  *    1.0 (02/20/2021)
  *      - Initial Release
@@ -28,6 +31,7 @@ import groovy.transform.Field
 @Field static Map commandClassVersions = [
 	0x20: 1,	// Basic
 	0x25: 1,	// Switch Binary
+	0x30: 2,	// SensorBinary
 	0x55: 1,	// Transport Service
 	0x59: 1,	// AssociationGrpInfo
 	0x5A: 1,	// DeviceResetLocally
@@ -562,6 +566,10 @@ void zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport c
 
 void zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd, endpoint=0) {
 	logTrace "${cmd} (Endpoint ${endpoint})"
+	
+	if (safeToInt(state.highestEndpoint) < endpoint) {
+		state.highestEndpoint = endpoint
+	}
 
 	handleChildInputEvent(cmd.sensorValue, endpoint)
 }
@@ -574,7 +582,7 @@ void zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd, endpoint=0
 }
 
 void handleChildInputEvent(rawValue, endpoint) {
-	int relay = (endpoint == 1 ? 1 : 2)
+	int relay = ((endpoint == 1) || ((endpoint == 2) && (state.highestEndpoint == 4))) ? 1 : 2
 	
 	childDevices?.each { child ->
 		if (child.deviceNetworkId.contains(getInputSuffix(relay))) {
