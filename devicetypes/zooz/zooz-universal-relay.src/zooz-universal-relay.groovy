@@ -1,7 +1,12 @@
 /*
- *  Zooz Universal Relay - ZEN17 v1.0.1
+ *  Zooz Universal Relay - ZEN17 v1.0.2
  *
  *  Changelog:
+ *
+ *    1.0.2 (03/04/2021)
+ *      - Delete child device for input when input type setting is changed.
+ *      - Create input child devices during inclusion (if applicable)
+ *      - Added more workarounds for the messed up endpoints
  *
  *    1.0.1 (02/24/2021)
  *      - Added workaround for changing endpoints
@@ -133,6 +138,8 @@ metadata {
 
 
 def installed () {
+	createChildRelays()
+
 	initialize()
 }
 
@@ -141,9 +148,6 @@ def updated() {
 		state.lastUpdated = new Date().time
 
 		initialize()
-
-		createChildRelays()
-		createChildInputs()
 
 		executeConfigureCmds()
 	}
@@ -273,7 +277,22 @@ def off() {
 def configure() {
 	logDebug "configure()..."
 
-	runIn(4, refresh)
+	if (!isDuplicateCommand(state.lastConfig, 5000)) {
+		state.lastConfig = new Date().time
+
+		createChildRelays()
+
+		runIn(4, refresh)
+
+		return delayBetween([
+			configGetCmd(relay1TypeParam),
+			configGetCmd(relay2TypeParam),
+			basicGetCmd(3),
+			sensorBinaryGetCmd(3),
+			basicGetCmd(4),
+			sensorBinaryGetCmd(4)
+		], 500)
+	}
 }
 
 
@@ -281,28 +300,27 @@ def refresh() {
 	logDebug "refresh()..."
 
 	refreshSyncStatus()
-	
+
 	createChildRelays()
-	createChildInputs()
 
 	def cmds = [
-		versionGetCmd(),
-		switchBinaryGetCmd()
+		versionGetCmd()
 	]
-	
-	(1..4).each {
+
+	(0..4).each {
 		cmds << switchBinaryGetCmd(it)
-		cmds << sensorBinaryGetCmd(it)
 	}
 
-	configParams.each {
-		cmds << configGetCmd(it)
+	if (!isDuplicateCommand(state.lastConfig, 7500)) {
+		configParams.each {
+			cmds << configGetCmd(it)
+		}
 	}
 
-	sendCommands(cmds, 250)
+	sendCommands(cmds)
 }
 
-void sendCommands(List<String> cmds, Integer delay=100) {
+void sendCommands(List<String> cmds, Integer delay=500) {
 	if (cmds) {
 		def actions = []
 		cmds.each {
@@ -335,6 +353,10 @@ String associationRemoveCmd(int group, nodes) {
 
 String sensorBinaryGetCmd(int endpoint) {
 	return multiChannelCmdEncapCmd(zwave.sensorBinaryV1.sensorBinaryGet(), endpoint)
+}
+
+String basicGetCmd(Integer endpoint=null) {
+	return multiChannelCmdEncapCmd(zwave.basicV1.basicGet(), endpoint)
 }
 
 String switchBinaryGetCmd(Integer endpoint=null) {
@@ -500,7 +522,7 @@ void zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport
 		setParamStoredValue(param.num, cmd.scaledConfigurationValue)
 
 		if (param in relayTypeParams) {
-			createChildInputs()
+			createChildInput(param)
 		}
 	}
 	else {
@@ -539,7 +561,7 @@ void zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport c
 	String value = (cmd.value == 0xFF) ? "on" : "off"
 
 	if (endpoint) {
-		def child = findChildByDNI(getRelayDNI(endpoint == 1 ? 1 : 2))		
+		def child = findChildByDNI(getRelayDNI(endpoint == 1 ? 1 : 2))
 		if (child) {
 			String desc = "${child.displayName}: switch is ${value}"
 			if (child.currentValue("switch") != value) {
@@ -566,37 +588,39 @@ void zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport c
 
 void zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd, endpoint=0) {
 	logTrace "${cmd} (Endpoint ${endpoint})"
-	
-	if (safeToInt(state.highestEndpoint) < endpoint) {
-		state.highestEndpoint = endpoint
+
+	if (safeToInt(state.highestSensorEndpoint) < endpoint) {
+		state.highestSensorEndpoint = endpoint
 	}
 
-	handleChildInputEvent(cmd.sensorValue, endpoint)
+	int relay = 1
+	if ((endpoint > 2) || ((endpoint == 2) && (state.highestSensorEndpoint == 2))) {
+		relay = 2
+	}
+
+	handleChildInputEvent(cmd.sensorValue, relay)
 }
 
 
 void zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd, endpoint=0) {
 	logTrace "${cmd} (Endpoint ${endpoint})"
 
-	handleChildInputEvent(cmd.value, endpoint)
+	handleChildInputEvent(cmd.value, (endpoint == 2 ? 1 : 2))
 }
 
-void handleChildInputEvent(rawValue, endpoint) {
-	int relay = ((endpoint == 1) || ((endpoint == 2) && (state.highestEndpoint == 4))) ? 1 : 2
-	
-	childDevices?.each { child ->
-		if (child.deviceNetworkId.contains(getInputSuffix(relay))) {
-			
-			Map inputType = childInputTypes.find { child.deviceNetworkId == getInputDNI(it, relay) }
-			if (inputType) {
-				
-				def value = (rawValue ? inputType.active : inputType.inactive)
-				logDebug "${child.displayName} ${inputType.attribute} ${value}"
-				
-				child.sendEvent(name: inputType.attribute, value: value)
-			}
-		}		
-	}	
+void handleChildInputEvent(rawValue, relay) {
+	def child = findChildInput(relay)
+	if (child) {
+
+		Map inputType = childInputTypes.find { child.deviceNetworkId == getInputDNI(it, relay) }
+		if (inputType) {
+
+			def value = (rawValue ? inputType.active : inputType.inactive)
+			logDebug "${child.displayName} ${inputType.attribute} ${value}"
+
+			child.sendEvent(name: inputType.attribute, value: value)
+		}
+	}
 }
 
 
@@ -753,49 +777,57 @@ void createChildRelays() {
 					isComponent: false,
 					data: [relay: relay]
 				]
-			)			
+			)
+
+			sendCommands([ switchBinaryGetCmd(relay) ])
 		}
 	}
 }
 
 
-void createChildInputs() {
-	logTrace "createChildInputs()..."
-	
-	boolean added = false
+void createChildInput(Map param) {
+	logTrace "createChildInput(Input ${param.relay})..."
 
-	relayTypeParams.each { param ->
+	Map inputType = childInputTypes.find { it.configVal == getParamStoredValue(param.num) }
+	if (inputType) {
 
-		Map inputType = childInputTypes.find { it.configVal == getParamStoredValue(param.num) }
-		if (inputType) {
+		String dni = getInputDNI(inputType, param.relay)
 
-			String dni = getInputDNI(inputType, param.relay)
+		if (!findChildByDNI(dni)) {
+			removeChildInput(param.relay)
 
-			if (!findChildByDNI(dni)) {
-				String name = "Relay ${param.relay}"
-				logDebug "Creating Child ${inputType.attribute} for ${name}"
+			String name = "Input ${param.relay}"
+			logDebug "Creating Child ${inputType.attribute} for ${name}"
 
-				addChildDevice(inputType.namespace, inputType.name, dni, device.hubId,
-					[
-						completedSetup: true,
-						label: "${device.displayName}-${name} ${inputType.attribute.capitalize()}",
-						isComponent: false,
-						data: [ relay: param.relay ]
-					]
-				)
-				
-				added = true
+			def child = addChildDevice(inputType.namespace, inputType.name, dni, device.hubId,
+				[
+					completedSetup: true,
+					label: "${device.displayName}-${name} ${inputType.attribute.capitalize()}",
+					isComponent: false,
+					data: [ relayInput: param.relay ]
+				]
+			)
+
+			if (child) {
+				child.sendEvent(name: inputType.attribute, value: inputType.inactive)
 			}
 		}
 	}
-	
-	if (added) {
-		sendCommands([
-			sensorBinaryGetCmd(1),
-			sensorBinaryGetCmd(2),
-			sensorBinaryGetCmd(3),
-			sensorBinaryGetCmd(4)
-		], 300)
+	else {
+		removeChildInput(param.relay)
+	}
+}
+
+void removeChildInput(int relay) {
+	def child = findChildInput(relay)
+	if (child) {
+		try {
+			log.warn "Removing ${child.displayName} "
+			deleteChildDevice(child.deviceNetworkId)
+		}
+		catch (e) {
+			log.warn "Unable to remove ${child?.displayName}"
+		}
 	}
 }
 
@@ -806,6 +838,11 @@ String getRelayDNI(int relay) {
 
 String getRelaySuffix(int relay) {
 	return ":R" + relay.toString()
+}
+
+
+def findChildInput(int relay) {
+	return childDevices?.find { it.deviceNetworkId.contains(getInputSuffix(relay)) }
 }
 
 String getInputDNI(Map inputType, int relay) {
