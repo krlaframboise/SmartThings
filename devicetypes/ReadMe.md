@@ -7,86 +7,99 @@
 <p>If you like my Device Type Handlers and would like to make a donation, please go to https://www.paypal.me/krlaframboise</p>
 
 <hr />
-
 <ul>
-		<li><a href="#aeotec-doorbell">Aeotec Doorbell GEN5</a></li>
-		<li><a href="#aeotec-doorbell-6">Aeotec Doorbell 6</a></li>
-		<li><a href="#aeotec-led-bulb-6-multi-white">Aeotec LED Bulb 6 Multi-White</a></li>
-		<li><a href="#aeotec-nanomote">Aeotec NanoMote One</a></li>
-		<li><a href="#aeotec-nanomote">Aeotec NanoMote Quad</a></li>
-		<li><a href="#aeon-labs-multifunction-siren">Aeotec Siren GEN5</a></li>
-		<li><a href="#aeotec-siren-6">Aeotec Siren 6</a></li>
-		<li><a href="#aeotec-trisensor">Aeotec TriSensor</a></li>
-		<li><a href="#besense-motion-sensor-zwave-plus">BeSense 360 Ceiling Sensor</a></li>
-		<li><a href="#besense-doorwindow-sensor-zwave-plus">BeSense Door/Window Sensor</a></li>
-		<li><a href="#besense-motion-sensor-zwave-plus">BeSense PIR Wall Sensor</a></li>
-		<li><a href="#dome-door-sensor">Dome Door Sensor</a></li>
-		<li><a href="#dome-doorwindow-sensor-pro">Dome Door/Window Sensor Pro</a></li>
-		<li><a href="#dome-leak-sensor">Dome Leak Sensor</a></li>
-		<li><a href="#dome-motion-sensor">Dome Motion Sensor</a></li>
-		<li><a href="#dome-mouser">Dome Mouser</a></li>
-		<li><a href="#dome-on-off-plug">Dome On Off Plug</a></li>
-		<li><a href="#dome-siren">Dome Siren</a></li>
-		<li><a href="#dome-water-shut-off">Dome Water Shut-Off</a></li>
-		<li><a href="#ecolink-motion-sensor">Ecolink Motion Sensor</a></li>
-		<li><a href="#ecolink-wireless-switch">Ecolink Motorized Double Rocker Switch</a></li>
-		<li><a href="#ecolink-wireless-switch">Ecolink Motorized Double Toggle Switch</a></li>
-		<li><a href="#ecolink-wireless-switch">Ecolink Motorized Rocker Switch</a></li>
-		<li><a href="#ecolink-wireless-switch">Ecolink Motorized Toggle Switch</a></li>
-		<li><a href="#ecolink-siren">Ecolink Siren</a></li>
-		<li><a href="#eva-logik-in-wall-smart-dimmer">EVA LOGIK In-Wall Smart Dimmer</a></li>
-		<li><a href="#eva-logik-in-wall-smart-switch">EVA LOGIK In-Wall Smart Switch</a></li>			
-		<li><a href="#everspring-motion-detector">Everspring Motion Detector</a></li>
-		<li><a href="#everspring-temperaturehumidity-detector">Everspring Temperature/Humidity Detector</a></li>
-		<li><a href="#fibaro-doorwindow-sensor-2">Fibaro Door/Window Sensor 2</a></li>
-		<li><a href="#fibaro-motion-sensor-zw5">Fibaro Motion Sensor ZW5</a></li>
-		<li><a href="#fibaro-swipe">Fibaro Swipe</a></li>
-		<li><a href="#gocontrollinear-doorwindow-sensor">GoControl/Linear Door/Window Sensor</a></li>
-		<li><a href="#gocontrollinear-multifunction-contact-sensor">GoControl/Linear Multifunction Contact Sensor</a></li>
-		<li><a href="#gocontrollinear-motion-sensor">GoControl/Linear Motion Sensor</a></li>
-		<li><a href="#gocontrollinear-multifunction-siren">GoControl/Linear/Vision Multifunction Siren</a></li>
-		<li><a href="#aeotec-nanomote">Hank Scene Controller</a></li>
-		<li><a href="#aeotec-nanomote">Hank Four-Key Scene Controller</a></li>
-		<li><a href="#hank-rgbw-led-bulb">Hank RGBW LED Bulb</a></li>
-		<li><a href="#leaksmart-water-valve">LeakSmart Water Valve</a></li>
-		<li><a href="#eva-logik-in-wall-smart-dimmer">MINOSTON In-Wall Smart Dimmer</a></li>
-		<li><a href="#eva-logik-in-wall-smart-switch">MINOSTON In-Wall Smart Switch</a></li>			
-		<li><a href="#visionmonoprice-shock-sensor">Monoprice Shock Sensor</a></li>
-		<li><a href="#monoprice-z-wave-plus-doorwindow-sensor">Monoprice Z-Wave Plus Door/Window Sensor</a></li>
-		<li><a href="#neo-coolcam-door-sensor">Neo Coolcam Door Sensor</a></li>
-		<li><a href="#neo-coolcam-light-switch-2ch">Neo Coolcam Light Switch 2CH</a></li>
-		<li><a href="#neo-coolcam-motion-sensor">Neo Coolcam Motion Sensor</a></li>
-		<li><a href="#neo-coolcam-power-plug">Neo Coolcam Power Plug</a></li>
-		<li><a href="#neo-coolcam-siren">Neo Coolcam Siren</a></li>
-		<li><a href="#qubino-roller-shade-controller">Qubino Shutter Module</a></li>
-		<li><a href="#remotec-zxt-310-ir-extender">Remotec ZXT-310 IR Extender</a></li>
-		<li><a href="#strips-multi-sensor">Strips Comfort by Sensative</a></li>
-		<li><a href="#strips-multi-sensor">Strips Drip by Sensative</a></li>
-		<li><a href="#vision-recessed-door-sensor">Vision Recessed Door Sensor</a></li>
-		<li><a href="#visionmonoprice-shock-sensor">Vision Shock Sensor</a></li>
-		<li><a href="#wireless-smoke-detector-sensor">Wireless Smoke Detector Sensor</a></li>
-		<li><a href="#zipato-multisound-siren">Zipato Multisound Siren</a></li>
-		<li><a href="#zooz-4-in-1-sensor">Zooz 4-in-1 Sensor</a></li>
-		<li><a href="#zooz-double-plug">Zooz Double Plug</a></li>			
-		<li><a href="#zooz-double-switch">Zooz Double Switch</a></li>			
-		<li><a href="#zooz-motion-sensor-zse18">Zooz Motion Sensor ZSE18</a></li>
-		<li><a href="#zooz-multirelay">Zooz MultiRelay</a></li>
-		<li><a href="#zooz-multisiren">Zooz Multisiren</a></li>
-		<li><a href="#zooz-outdoor-motion-sensor">Zooz Outdoor Motion Sensor</a></li>
-		<li><a href="#zooz-outdoor-motion-sensor-ver-20">Zooz Outdoor Motion Sensor VER 2.0</a></li>
-		<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Smart Plug</a></li>
-		<li><a href="#zooz-power-strip-ver-20">Zooz Power Strip VER 2.0</a></li>
-		<li><a href="#zooz-power-strip">Zooz Power Strip</a></li>
-		<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Power Switch</a></li>
-		<li><a href="#zooz-rgbw-dimmer">Zooz RGBW Dimmer</a></li>
-		<li><a href="#zooz-smart-chime">Zooz Smart Chime</a></li>
-		<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Smart Plug</a></li>
-		<li><a href="#zooz-smart-plug-ver-20">Zooz Smart Plug VER 2.0</a></li>
-		<li><a href="#zooz-water-sensor">Zooz Water Sensor</a></li>
-		<li><a href="#zooz-zen21-onoff-switch-ver-40">Zooz ZEN21 On/Off Switch VER. 4.0</a></li>
-		<li><a href="#zooz-zen22-dimmer-ver-40">Zooz ZEN22 Dimmer VER. 4.0</a></li>
-		<li><a href="#zooz-zen26-s2-onoff-switch-ver-30">Zooz ZEN26 S2 On/Off Switch VER. 3.0</a></li>
-		<li><a href="#zooz-zen27-s2-dimmer-ver-30">Zooz ZEN27 S2 Dimmer VER. 3.0</a></li>
+	<li><a href="#aeotec-doorbell">Aeotec Doorbell GEN5</a></li>
+	<li><a href="#aeotec-doorbell-6">Aeotec Doorbell 6</a></li>
+	<li><a href="#aeotec-led-bulb-6-multi-white">Aeotec LED Bulb 6 Multi-White</a></li>
+	<li><a href="#aeotec-nanomote">Aeotec NanoMote One</a></li>
+	<li><a href="#aeotec-nanomote">Aeotec NanoMote Quad</a></li>
+	<li><a href="#aeon-labs-multifunction-siren">Aeotec Siren GEN5</a></li>
+	<li><a href="#aeotec-siren-6">Aeotec Siren 6</a></li>
+	<li><a href="#aeotec-trisensor">Aeotec TriSensor</a></li>
+	<li><a href="#besense-motion-sensor-zwave-plus">BeSense 360 Ceiling Sensor</a></li>
+	<li><a href="#besense-doorwindow-sensor-zwave-plus">BeSense Door/Window Sensor</a></li>
+	<li><a href="#besense-motion-sensor-zwave-plus">BeSense PIR Wall Sensor</a></li>
+	<li><a href="#dome-door-sensor">Dome Door Sensor</a></li>
+	<li><a href="#dome-doorwindow-sensor-pro">Dome Door/Window Sensor Pro</a></li>
+	<li><a href="#dome-leak-sensor">Dome Leak Sensor</a></li>
+	<li><a href="#dome-motion-sensor">Dome Motion Sensor</a></li>
+	<li><a href="#dome-mouser">Dome Mouser</a></li>
+	<li><a href="#dome-on-off-plug">Dome On Off Plug</a></li>
+	<li><a href="#dome-siren">Dome Siren</a></li>
+	<li><a href="#dome-water-shut-off">Dome Water Shut-Off</a></li>			
+	<li><a href="#ecolink-motion-sensor">Ecolink Motion Sensor</a></li>
+	<li><a href="#ecolink-wireless-switch">Ecolink Motorized Double Rocker Switch</a></li>
+	<li><a href="#ecolink-wireless-switch">Ecolink Motorized Double Toggle Switch</a></li>
+	<li><a href="#ecolink-wireless-switch">Ecolink Motorized Rocker Switch</a></li>
+	<li><a href="#ecolink-wireless-switch">Ecolink Motorized Toggle Switch</a></li>
+	<li><a href="#ecolink-siren">Ecolink Siren</a></li>
+	<li><a href="#eva-logik-in-wall-smart-dimmer">EVA LOGIK In-Wall Smart Dimmer</a></li>
+	<li><a href="#eva-logik-in-wall-smart-switch">EVA LOGIK In-Wall Smart Switch</a></li>			
+	<li><a href="#everspring-motion-detector">Everspring Motion Detector</a></li>
+	<li><a href="#everspring-temperaturehumidity-detector">Everspring Temperature/Humidity Detector</a></li>
+	<li><a href="#fibaro-doorwindow-sensor-2">Fibaro Door/Window Sensor 2</a></li>
+	<li><a href="#fibaro-motion-sensor-zw5">Fibaro Motion Sensor ZW5</a></li>
+	<li><a href="#fibaro-swipe">Fibaro Swipe</a></li>
+	<li><a href="#gocontrollinear-doorwindow-sensor">GoControl/Linear Door/Window Sensor</a></li>
+	<li><a href="#gocontrollinear-multifunction-contact-sensor">GoControl/Linear Multifunction Contact Sensor</a></li>
+	<li><a href="#gocontrollinear-motion-sensor">GoControl/Linear Motion Sensor</a></li>
+	<li><a href="#gocontrollinear-multifunction-siren">GoControl/Linear/Vision Multifunction Siren</a></li>
+	<li><a href="#aeotec-nanomote">Hank Scene Controller</a></li>
+	<li><a href="#aeotec-nanomote">Hank Four-Key Scene Controller</a></li>
+	<li><a href="#hank-rgbw-led-bulb">Hank RGBW LED Bulb</a></li>
+	<li><a href="#homeseer-fan-controller-hs-fc200">HomeSeer Fan Controller (HS-FC200+)</a></li>
+	<li><a href="#homeseer-floodlight-sensor-gen2-hs-fls100-g2">HomeSeer Floodlight Sensor GEN2 (HS-FLS100-G2)</a></li>
+	<li><a href="#homeseer-indicator-light-sensor-hs-fs100-l">HomeSeer Indicator Light Sensor (HS-FS100-L)</a></li>
+	<li><a href="#homeseer-motion-sensor-hs-ms100">HomeSeer Motion Sensor (HS-MS100+)</a></li>
+	<li><a href="#homeseer-multi-sensor-hsm200">HomeSeer Multi-Sensor (HSM200)</a></li>
+	<li><a href="#homeseer-perimeter-water-sensor-hs-fs100-w">HomeSeer Perimeter Water Sensor (HS-FS100-W)</a></li>
+	<li><a href="#homeseer-wall-dimmer-hs-wd200">HomeSeer Wall Dimmer (HS-WD200+)</a></li>
+	<li><a href="#homeseer-wall-switch-hs-ws200">HomeSeer Wall Switch (HS-WS200+)</a></li>
+	<li><a href="#leaksmart-water-valve">LeakSmart Water Valve</a></li>
+	<li><a href="#eva-logik-in-wall-smart-dimmer">MINOSTON In-Wall Smart Dimmer</a></li>
+	<li><a href="#eva-logik-in-wall-smart-switch">MINOSTON In-Wall Smart Switch</a></li>			
+	<li><a href="#visionmonoprice-shock-sensor">Monoprice Shock Sensor</a></li>
+	<li><a href="#monoprice-z-wave-plus-doorwindow-sensor">Monoprice Z-Wave Plus Door/Window Sensor</a></li>
+	<li><a href="#neo-coolcam-door-sensor">Neo Coolcam Door Sensor</a></li>
+	<li><a href="#neo-coolcam-light-switch-2ch">Neo Coolcam Light Switch 2CH</a></li>
+	<li><a href="#neo-coolcam-motion-sensor">Neo Coolcam Motion Sensor</a></li>
+	<li><a href="#neo-coolcam-power-plug">Neo Coolcam Power Plug</a></li>
+	<li><a href="#neo-coolcam-siren">Neo Coolcam Siren</a></li>
+	<li><a href="#qubino-roller-shade-controller">Qubino Shutter Module</a></li>
+	<li><a href="#remotec-zxt-310-ir-extender">Remotec ZXT-310 IR Extender</a></li>
+	<li><a href="#sensative-strips-comfort">Sensative Strips Comfort</a></li>			
+	<li><a href="#sensative-strips-drip">Sensative Strips Drip</a></li>			
+	<li><a href="#vision-recessed-door-sensor">Vision Recessed Door Sensor</a></li>
+	<li><a href="#visionmonoprice-shock-sensor">Vision Shock Sensor</a></li>
+	<li><a href="#wireless-smoke-detector-sensor">Wireless Smoke Detector Sensor</a></li>
+	<li><a href="#zipato-multisound-siren">Zipato Multisound Siren</a></li>
+	<li><a href="#zooz-4-in-1-sensor">Zooz 4-in-1 Sensor</a></li>
+	<li><a href="#zooz-double-plug">Zooz Double Plug</a></li>			
+	<li><a href="#zooz-double-switch">Zooz Double Switch</a></li>			
+	<li><a href="#zooz-motion-sensor-zse18">Zooz Motion Sensor ZSE18</a></li>
+	<li><a href="#zooz-multirelay">Zooz MultiRelay</a></li>
+	<li><a href="#zooz-multisiren">Zooz Multisiren</a></li>
+	<li><a href="#zooz-outdoor-motion-sensor">Zooz Outdoor Motion Sensor</a></li>
+	<li><a href="#zooz-outdoor-motion-sensor-ver-20">Zooz Outdoor Motion Sensor VER 2.0</a></li>
+	<li><a href="#zooz-power-strip">Zooz Power Strip</a></li>			
+	<li><a href="#zooz-power-strip-ver-20">Zooz Power Strip VER 2.0</a></li>			
+	<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Power Switch</a></li>
+	<li><a href="#zooz-power-switchzooz-remote-switch-zen34">Zooz Remote Switch ZEN34</a></li>
+	<li><a href="#zooz-rgbw-dimmer">Zooz RGBW Dimmer</a></li>
+	<li><a href="#zooz-scene-controller">Zooz Scene Controller</a></li>
+	<li><a href="#zooz-smart-chime">Zooz Smart Chime</a></li>			
+	<li><a href="#zooz-power-switchzooz-smart-plug">Zooz Smart Plug</a></li>
+	<li><a href="#zooz-smart-plug-ver-20">Zooz Smart Plug VER 2.0</a></li>
+	<li><a href="#zooz-universal-relay">Zooz Universal Relay</a></li>
+	<li><a href="#zooz-water-sensor">Zooz Water Sensor</a></li>
+	<li><a href="#zooz-zen21-onoff-switch-ver-40">Zooz ZEN21 On/Off Switch VER. 4.0</a></li>
+	<li><a href="#zooz-zen22-dimmer-ver-40">Zooz ZEN22 Dimmer VER. 4.0</a></li>
+	<li><a href="#zooz-zen26-s2-onoff-switch-ver-30">Zooz ZEN26 S2 On/Off Switch VER. 3.0</a></li>
+	<li><a href="#zooz-zen27-s2-dimmer-ver-30">Zooz ZEN27 S2 Dimmer VER. 3.0</a></li>
+	<li><a href="#zooz-zen71-700-switch">Zooz ZEN71 700 Switch</a></li>
+	<li><a href="#zooz-zen72-700-dimmer">Zooz ZEN72 700 Dimmer</a></li>
+	<li><a href="#zooz-zen76-700-s2-switch">Zooz ZEN76 700 S2 Switch</a></li>
+	<li><a href="#zooz-zen77-700-s2-dimmer">Zooz ZEN77 700 S2 Dimmer</a></li>			
 </ul>
 
 <hr />
@@ -454,6 +467,131 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
+<hr />
+
+<h3>HomeSeer Fan Controller (HS-FC200+)</h3>
+
+<ul>
+<li>This is a device handler for the HomeSeer Fan Controller (HS-FC200+)</li>
+<li>Dimmer, Switch, Fan Controller</li>
+<li>Button Actions: down, down_hold, down_2x, down_3x, down_4x, down_5x, up, up_hold, up_2x, up_3x, up_4x, up_5x</li>
+<li>LED Mode</li>
+<li>Normal LED Mode(load) / Status LED Mode (custom)</li>
+<li>Normal LED Color</li>
+<li>Status LED Blink Frequency</li>
+<li>Status LED Color (All LEDs)</li>
+<li>Individual Status LED Color for Each LED (1-4)</li>
+<li><a href="https://community.smartthings.com/t/release-homeseer-fan-controller-hs-fc200/210245">View Documentation in SmartThings Forum</a><br /></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-fan-controller-hs-fc200.src/homeseer-fan-controller-hs-fc200.groovy">View HomeSeer Fan Controller (HS-FC200+) - Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-normal-mode-child.src/homeseer-normal-mode-child.groovy">OPTIONAL: HomeSeer Normal Mode Child - Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-status-led-blink-frequency-child.src/homeseer-status-led-blink-frequency-child.groovy">OPTIONAL: HomeSeer Status LED Blink Frequency Child</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-status-led-blinking-color-child.src/homeseer-status-led-blinking-color-child.groovy">OPTIONAL: HomeSeer Status LED Blinking Color Child</a></li>
+</ul>
+
+<hr />
+
+<h3>HomeSeer Floodlight Sensor GEN2 (HS-FLS100-G2)</h3>
+
+<ul>
+<li>This is a device handler for the HomeSeer Floodlight Sensor GEN2 (HS-FLS100-G2)</li>
+<li>Switch, Motion Sensor, Temperature Sensor, Illuminance Sensor</li>
+<li>Supports all of the device’s configuration parameters</li>
+<li><a href="https://community.smartthings.com/t/release-homeseer-floodlight-sensor-hs-fls100-g2/220104">View Documentation in SmartThings Forum</a><br /></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-floodlight-sensor-hs-fls100-g2.src/homeseer-floodlight-sensor-hs-fls100-g2.groovy">View HomeSeer Floodlight Sensor GEN2 (HS-FLS100-G2) - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>HomeSeer Indicator Light Sensor (HS-FS100-L)</h3>
+
+<ul>
+<li>This is a device handler for the HomeSeer Indicator Light Sensor (HS-FS100-L)</li>
+<li>Supports all the settings that are meant to be used with this model.</li>
+<li>Indicator Light Sensor, Temperature, Power Source, Battery, Alarm</li>
+<li>Shows if it was joined as a DC powered repeater or sleeping battery device</li>
+<li><a href="https://community.smartthings.com/t/release-homeseer-indicator-light-sensor-hs-fs100-l/210181">View Documentation in SmartThings Forum</a><br /></li>
+https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-indicator-light-sensor-hs-fs100-l.src/homeseer-indicator-light-sensor-hs-fs100-l.groovy">View HomeSeer Indicator Light Sensor (HS-FS100-L) - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>HomeSeer Motion Sensor (HS-MS100+)</h3>
+
+<ul>
+<li>This is a device handler for the HomeSeer Motion Sensor (HS-MS100+)</li>
+<li>Motion Sensor, Acceleration Sensor, Power Source, Battery</li>
+<li>Supports all of the device’s configuration parameters</li>
+<li><a href="https://community.smartthings.com/t/release-homeseer-motion-sensor-hs-ms100/217956">View Documentation in SmartThings Forum</a><br /></li>
+https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-motion-sensor-hs-ms100.src/homeseer-motion-sensor-hs-ms100.groovy">View HomeSeer Motion Sensor (HS-MS100+) - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>HomeSeer Multi-Sensor (HSM200)</h3>
+
+<ul>
+<li>This is a device handler for the HomeSeer Multi-Sensor (HSM200)</li>
+<li>Motion Sensor, Temperature Sensor, Illuminance Sensor</li>
+<li>Switch: Turns LED on/off</li>
+<li>Status LED Color: Changes LED (off, red, green, blue, magenta, yellow, cyan, and white)</li>
+<li>Supports the Color Control capability which allows you to change the LED color in Automations.</li>
+<li><a href="https://community.smartthings.com/t/release-homeseer-multi-sensor-hsm200/212644">View Documentation in SmartThings Forum</a><br /></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-multi-sensor-hsm200.src/homeseer-multi-sensor-hsm200.groovy">View HomeSeer Multi-Sensor (HSM200) - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>HomeSeer Perimeter Water Sensor (HS-FS100-W)</h3>
+
+<ul>
+<li>This is a device handler for the HomeSeer Perimeter Water Sensor (HS-FS100-W)</li>
+<li>Supports all the settings that are meant to be used with this model.
+Water Sensor, Temperature, Power Source, Alarm, and Battery</li>
+<li><a href="https://community.smartthings.com/t/release-homeseer-perimeter-water-sensor-hs-fs100-w/210182">View Documentation in SmartThings Forum</a><br /></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-perimeter-water-sensor-hs-fs100-w.src/homeseer-perimeter-water-sensor-hs-fs100-w.groovy">View HomeSeer Perimeter Water Sensor (HS-FS100-W) - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>HomeSeer Wall Dimmer (HS-WD200+)</h3>
+
+<ul>
+<li>This is a device handler for the HomeSeer Wall Dimmer (HS-WD200+)</li>
+<li>Dimmer, Switch</li>
+<li>Button Actions: down, down_hold, down_2x, down_3x, down_4x, down_5x, up, up_hold, up_2x, up_3x, up_4x, up_5x</li>
+<li>LED Mode</li>
+<li>Normal LED Mode(load) / Status LED Mode (custom)</li>
+<li>Normal LED Color</li>
+<li>Status LED Blink Frequency</li>
+<li>Status LED Color (All LEDs)</li>
+<li>Individual Status LED Color for Each LED (1-7)</li>
+<li><a href="https://community.smartthings.com/t/release-homeseer-wall-dimmer-hs-wd200/210185">View Documentation in SmartThings Forum</a><br /></li>
+https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-wall-dimmer-hs-wd200.src/homeseer-wall-dimmer-hs-wd200.groovy">View HomeSeer Wall Dimmer (HS-WD200+) - Device Handler Code</a></li>
+ <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-normal-mode-child.src/homeseer-normal-mode-child.groovy">OPTIONAL: HomeSeer Normal Mode Child - Device Handler Code</a></li>
+ <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-status-led-blink-frequency-child.src/homeseer-status-led-blink-frequency-child.groovy">OPTIONAL: HomeSeer Status LED Blink Frequency Child</a></li>
+ <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-status-led-blinking-color-child.src/homeseer-status-led-blinking-color-child.groovy">OPTIONAL: HomeSeer Status LED Blinking Color Child</a></li>
+</ul>
+
+<hr />
+
+<h3>HomeSeer Wall Switch (HS-WS200+)</h3>
+
+<ul>
+<li>This is a device handler for the HomeSeer Wall Switch (HS-WS200+)</li>
+<li>Switch</li>
+<li>Button Actions: down, down_hold, down_2x, down_3x, down_4x, down_5x, up, up_hold, up_2x, up_3x, up_4x, up_5x</li>
+<li>LED Mode</li>
+<li>Normal LED Mode(load) / Status LED Mode (custom)</li>
+<li>Normal LED Color</li>
+<li>Status LED Color</li>
+<li>Status LED Blink Frequency</li>
+<li><a href="https://community.smartthings.com/t/release-homeseer-wall-switch-hs-ws200/210186">View Documentation in SmartThings Forum</a><br /></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-wall-switch-hs-ws200.src/homeseer-wall-switch-hs-ws200.groovy">View HomeSeer Wall Switch (HS-WS200+) - Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-normal-mode-child.src/homeseer-normal-mode-child.groovy">OPTIONAL: HomeSeer Normal Mode Child - Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-status-led-blink-frequency-child.src/homeseer-status-led-blink-frequency-child.groovy">OPTIONAL: HomeSeer Status LED Blink Frequency Child</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/homeseer/homeseer-status-led-color-child.src/homeseer-status-led-color-child.groovy">OPTIONAL: HomeSeer Status LED Color Child</a></li>
+</ul>
+
 <h3>LeakSmart Water Valve</h3>
 
 <ul>
@@ -556,15 +694,26 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
-<h3>Strips Multi-Sensor</h3>
+<h3>Sensative Strips Comfort</h3>
 
 <ul>
-<li>This is a device handler for the Strips Comfort by Sensative and Strips Drip by Sensative<br /></li>
-<li>Allows you to change the primary and secondary tiles</li>
+<li>This is a device handler for the Strips Comfort by Sensative<br /></li>
 <li>Supports configuration parameters</li>
-<li>Reports Light, Temperature, and Water for both devices</li>
+<li>Reports Light, Temperature, and Battery</li>
 <li><a href="https://community.smartthings.com/t/release-strips-drip-strips-comfort/135276?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/strips-multi-sensor.src/strips-multi-sensor.groovy">View Strips Multi-Sensor - Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/sensative-strips-comfort.src/sensative-strips-comfort.groovy">View Strips Comfort - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Sensative Strips Drip</h3>
+
+<ul>
+<li>This is a device handler for the Strips Drip by Sensative<br /></li>
+<li>Supports configuration parameters</li>
+<li>Reports Water, Light, Temperature, and Battery</li>
+<li><a href="https://community.smartthings.com/t/release-strips-drip-strips-comfort/135276?u=krlaframboise">View Documentation in SmartThings Forum</a><br /></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/sensative-strips-drip.src/sensative-strips-drip.groovy">View Strips Drip - Device Handler Code</a></li>
 </ul>
 
 <hr />
@@ -764,6 +913,21 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
+<h3>Zooz Remote Switch ZEN34</h3>
+
+<ul>
+<li>This is a device handler for the Zooz Remote Switch (ZEN34).<br /></li>
+<li>Reports Battery</li>
+<li>Supported Button Actions: down, down_hold, down_2x, down_3x, down_4x, down_5x, up, up_hold, up_2x, up_3x, up_4x, up_5x</li>
+<li>Settings: LED Indicator Mode, Lower Paddled LED Indicator Color, Upper Paddled LED Indicator Color</li>
+<li>Association Group 2 for direct On/Off control of other devices</li>
+<li>Association Group 3 for direct Dimming control of other devices</li>
+<li><a href="https://community.smartthings.com/t/release-zooz-remote-switch-zen34/211163">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-remote-switch-zen34.src/zooz-remote-switch-zen34.groovy">View Zooz Remote Switch ZEN34 - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
 <h3>Zooz RGBW Dimmer</h3>
 
 <ul>
@@ -790,11 +954,46 @@ Supports the Tamper Alert Capability.<br /></li>
 
 <hr />
 
+<h3>Zooz Scene Controller</h3>
+
+<ul>
+<li>This is a device handler for the Zooz Scene Controller (ZEN32).<br /></li>
+The main device is a switch for the large button, it has all the non-button related settings, and it creates child button devices for the 4 small buttons.
+<li>All 5 buttons support the button and LED features listed below which can all be used in Automations.  The child devices have their own association settings.</li>
+<li> Button Actions: Pressed, Held, Pressed 2 times, Pressed 3 times, Pressed 4 times, Pressed 5 times</li>
+<li>LED Colors: White, Blue, Green, Red</li>
+<li>LED Brightness:Bright (100%), Medium (60%), Low (30%)</li>
+<li>LED Mode: LED On When Off, LED On When On, LED Always Off, LED Always On</li>
+<li>Basic Set Association Group</li>
+<li>Switch Multilevel Start/Stop Level Change Association Group</li>
+<li><strong>Both handlers are required</strong></li>
+<li><a href="">View Documentation in SmartThings Forum (COMING SOON)</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-scene-controller.src/zooz-scene-controller.groovy">View Zooz Scene Controller - Device Handler Code</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-scene-controller-button.src/zooz-scene-controller-button.groovy">View Zooz Scene Controller Button - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
 <h3>Zooz Smart Plug VER 2.0</h3>
 
 <ul>
 <li>This is a device handler for the Zooz Smart Plug VER 2.0 (ZEN06)</li>
 <li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/krlaframboise/zooz-smart-plug.src/zooz-smart-plug.groovy">View Zooz Smart Plug VER 2.0 - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Zooz Universal Relay</h3>
+
+<ul>
+<li>This is a device handler for the Zooz Universal Relay (ZEN17).<br /></li>
+<li>Supports all of the device's configuration parameters</li>
+<li>Main device is a switch that controls the relays together.</li>
+<li>Creates a child switch for each relay</li>
+<li>When the "Input Trigger" is disabled for a Relay the input and relay act as separate devices.</li>
+<li>Creates a child device for the relay's input when its "Input Type" setting is set to Water Sensor, Motion Sensor, Contact Sensor, Smoke Detector, or On/Off Report.  <em>The device ignores the "Input Trigger" setting for Momentary, Toggle, and Garage Door so those input types will not create a child device.</em></li>
+<li><a href="">View Documentation in SmartThings Forum (COMING SOON)</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-universal-relay.src/zooz-universal-relay.groovy">View Zooz Universal Relay - Device Handler Code</a></li>
 </ul>
 
 <hr />
@@ -818,8 +1017,8 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>Minimum supported firmware is 3.04</li>
 <li>Supports all configuration parameters</li>
 <li>Supports creating device associations</li>
-<li>Supports button events down, down_hold, down_released, down_2x, down_4x, down_5x, up, up_hold, up_released, up_2x, up_4x, up_5x</li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen21-on-off-switch-ver-4-0.src/zooz-zen21-on-off-switch-ver-4-0.groovy">View  - Device Handler Code</a></li>
+<li>Supports button events down, down_hold, down_released, down_2x, down_3x, down_4x, down_5x, up, up_hold, up_released, up_2x, up_3x, up_4x, up_5x</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen21-on-off-switch-ver-4-0.src/zooz-zen21-on-off-switch-ver-4-0.groovy">View Zooz ZEN21 On/Off Switch VER. 4.0 - Device Handler Code</a></li>
 </ul>
 
 <hr />
@@ -831,8 +1030,8 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>Minimum supported firmware is 3.07</li>
 <li>Supports all configuration parameters</li>
 <li>Supports creating device associations</li>
-<li>Supports button events down, down_hold, down_released, down_2x, down_4x, down_5x, up, up_hold, up_released, up_2x, up_4x, up_5x</li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen22-dimmer-ver-4-0.src/zooz-zen22-dimmer-ver-4-0.groovy">View  - Device Handler Code</a></li>
+<li>Supports button events down, down_hold, down_released, down_2x, down_3x, down_4x, down_5x, up, up_hold, up_released, up_2x, up_3x, up_4x, up_5x</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen22-dimmer-ver-4-0.src/zooz-zen22-dimmer-ver-4-0.groovy">View Zooz ZEN22 Dimmer VER. 4.0 - Device Handler Code</a></li>
 </ul>
 
 <hr />
@@ -844,8 +1043,8 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>Minimum supported firmware is 2.03</li>
 <li>Supports all configuration parameters</li>
 <li>Supports creating device associations</li>
-<li>Supports button events down, down_hold, down_released, down_2x, down_4x, down_5x, up, up_hold, up_released, up_2x, up_4x, up_5x</li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen26-s2-on-off-switch-ver-3-0.src/zooz-zen26-s2-on-off-switch-ver-3-0.groovy">View  - Device Handler Code</a></li>
+<li>Supports button events down, down_hold, down_released, down_2x, down_3x, down_4x, down_5x, up, up_hold, up_released, up_2x, up_3x, up_4x, up_5x</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen26-s2-on-off-switch-ver-3-0.src/zooz-zen26-s2-on-off-switch-ver-3-0.groovy">View Zooz ZEN26 S2 On/Off Switch VER. 3.0 - Device Handler Code</a></li>
 </ul>
 
 <hr />
@@ -857,6 +1056,60 @@ Supports the Tamper Alert Capability.<br /></li>
 <li>Minimum supported firmware is 2.08</li>
 <li>Supports all configuration parameters</li>
 <li>Supports creating device associations</li>
-<li>Supports button events down, down_hold, down_released, down_2x, down_4x, down_5x, up, up_hold, up_released, up_2x, up_4x, up_5x</li>
-<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen27-s2-dimmer-ver-3-0.src/zooz-zen27-s2-dimmer-ver-3-0.groovy">View  - Device Handler Code</a></li>
+<li>Supports button events down, down_hold, down_released, down_2x, down_3x, down_4x, down_5x, up, up_hold, up_released, up_2x, up_3x, up_4x, up_5x</li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen27-s2-dimmer-ver-3-0.src/zooz-zen27-s2-dimmer-ver-3-0.groovy">View Zooz ZEN27 S2 Dimmer VER. 3.0 - Device Handler Code</a></li>
 </ul>
+
+<hr />
+
+<h3>Zooz ZEN71 700 Switch</h3>
+
+<ul>
+<li>This is a device handler for the Zooz ZEN71 700 Switch<br /></li>
+<li>Supported Button Actions: down, down_hold, down_2x, down_3x, down_4x, down_5x, up, up_hold, up_2x, up_3x, up_4x, up_5x</li>
+<li>Supports all Configuration Parameters</li>
+<li>Association Group 2 for controlling other switches (minimum firmware 1.03)</li>
+<li><a href="https://community.smartthings.com/t/release-zooz-zen71-700-switch/216217">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen71-700-switch.src/zooz-zen71-700-switch.groovy">View Zooz ZEN71 700 Switch - Device Handler Code</a></li>
+</ul>
+
+<h3>Zooz ZEN72 700 Dimmer</h3>
+
+<ul>
+<li>This is a device handler for the Zooz ZEN72 700 Dimmer<br /></li>
+<li>Switch / Dimmer</li>
+<li>Supported Button Actions: down, down_hold, down_2x, down_3x, down_4x, down_5x, up, up_hold, up_2x, up_3x, up_4x, up_5x</li>
+<li>Supports all Configuration Parameters</li>
+<li>Association Group 2 for controlling other dimmers (minimum firmware 1.03)</li>
+<li><a href="https://community.smartthings.com/t/release-zooz-zen72-700-dimmer/216216">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen72-700-dimmer.src/zooz-zen72-700-dimmer.groovy">View Zooz ZEN72 700 Dimmer - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Zooz ZEN76 700 S2 Switch</h3>
+
+<ul>
+<li>This is a device handler for the Zooz ZEN76 700 S2 Switch<br /></li>
+<li>Supported Button Actions: down, down_hold, down_2x, down_3x, down_4x, down_5x, up, up_hold, up_2x, up_3x, up_4x, up_5x</li>
+<li>Supports all Configuration Parameters</li>
+<li>Association Group 2 for controlling other switches</li>
+<li><a href="https://community.smartthings.com/t/release-zooz-zen76-700-s2-switch/216215">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen76-700-s2-switch.src/zooz-zen76-700-s2-switch.groovy">View Zooz ZEN76 700 S2 Switch - Device Handler Code</a></li>
+</ul>
+
+<hr />
+
+<h3>Zooz ZEN77 700 S2 Dimmer</h3>
+
+<ul>
+<li>This is a device handler for the Zooz ZEN77 700 S2 Dimmer<br /></li>
+<li>Switch / Dimmer</li>
+<li>Supported Button Actions: down, down_hold, down_2x, down_3x, down_4x, down_5x, up, up_hold, up_2x, up_3x, up_4x, up_5x</li>
+<li>Supports all Configuration Parameters</li>
+<li>Association Group 2 for controlling other dimmers (minimum firmware 1.03)</li>
+<li><a href="https://community.smartthings.com/t/release-zooz-zen77-700-s2-dimmer/216214">View Documentation in SmartThings Forum</a></li>
+<li><a href="https://github.com/krlaframboise/SmartThings/blob/master/devicetypes/zooz/zooz-zen77-700-s2-dimmer.src/zooz-zen77-700-s2-dimmer.groovy">View Zooz ZEN77 700 S2 Dimmer - Device Handler Code</a></li>
+</ul>
+
+
