@@ -1,17 +1,9 @@
 /*
- *  Zooz Universal Relay - ZEN17 v1.0.2
+ *  Zooz Universal Relay - ZEN17 v1.0
  *
  *  Changelog:
  *
- *    1.0.2 (03/04/2021)
- *      - Delete child device for input when input type setting is changed.
- *      - Create input child devices during inclusion (if applicable)
- *      - Added more workarounds for the messed up endpoints
- *
- *    1.0.1 (02/24/2021)
- *      - Added workaround for changing endpoints
- *
- *    1.0 (02/20/2021)
+ *    1.0 (03/06/2021)
  *      - Initial Release
  *
  *
