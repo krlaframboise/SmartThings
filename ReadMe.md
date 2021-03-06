@@ -64,8 +64,8 @@ If you like the SmartApps and Device Handlers I've created and you would like to
 			<li><a href="#hank-rgbw-led-bulb">Hank RGBW LED Bulb</a></li>
 			<li><a href="#homeseer-fan-controller-hs-fc200">HomeSeer Fan Controller (HS-FC200+)</a></li>
 			<li><a href="#homeseer-floodlight-sensor-gen2-hs-fls100-g2">HomeSeer Floodlight Sensor GEN2 (HS-FLS100-G2)</a></li>
-			<li><a href="#homeseer-indicator-light-sensor">HomeSeer Indicator Light Sensor (HS-FS100-L)</a></li>
-			<li><a href="#homeseer-motion-sensor-ms-ms100">HomeSeer Motion Sensor (HS-MS100+)</a></li>
+			<li><a href="#homeseer-indicator-light-sensor-hs-fs100-l">HomeSeer Indicator Light Sensor (HS-FS100-L)</a></li>
+			<li><a href="#homeseer-motion-sensor-hs-ms100">HomeSeer Motion Sensor (HS-MS100+)</a></li>
 			<li><a href="#homeseer-multi-sensor-hsm200">HomeSeer Multi-Sensor (HSM200)</a></li>
 			<li><a href="#homeseer-perimeter-water-sensor-hs-fs100-w">HomeSeer Perimeter Water Sensor (HS-FS100-W)</a></li>
 			<li><a href="#homeseer-wall-dimmer-hs-wd200">HomeSeer Wall Dimmer (HS-WD200+)</a></li>
