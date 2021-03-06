@@ -5,7 +5,7 @@
  *
  *  Changelog:
  *
- *    1.0 (03/05/2021)
+ *    1.0 (03/06/2021)
  *      - Initial Release
  *
  *
@@ -167,7 +167,7 @@ void initialize() {
 
 		state.debugLoggingEnabled = (safeToInt(settings?.debugOutput, 1) != 0)
 
-		sendEvent(name:"supportedButtonValues", value: ["pushed","held","up","pushed_2x","pushed_3x","pushed_4x","pushed_5x"].encodeAsJSON())
+		sendEvent(name:"supportedButtonValues", value: ["pushed","held","pushed_2x","pushed_3x","pushed_4x","pushed_5x"].encodeAsJSON())
 		sendEvent(name:"numberOfButtons", value:1)
 		sendButtonEvent(findButtonByNum(relayBtnNum), "pushed")
 		sendEvent(name: "basicSetAssociationGroup", value: "")
@@ -678,8 +678,8 @@ void zwaveEvent(physicalgraph.zwave.commands.centralscenev1.CentralSceneNotifica
 					value = "pushed"
 					break
 				case 1:
-					//logDebug "released is not supported by SmartThings"
-					value = "up"
+					logDebug "released is not supported by SmartThings, but the event is being created so you can use it in other apps like WebCoRE."
+					value = "released"
 					break
 				case 2:
 					value = "held"

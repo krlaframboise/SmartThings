@@ -7,7 +7,7 @@
  *
  *  Changelog:
  *
- *    1.0 (03/05/2021)
+ *    1.0 (03/06/2021)
  *      - Initial Release
  *
  *
@@ -111,7 +111,7 @@ void initialize() {
 	state.debugLoggingEnabled = (settings?.debugOutput != 0)
 
 	if (!state.initialized) {
-		sendEvent(name: "supportedButtonValues", value: ["pushed", "held", "up", "pushed_2x", "pushed_3x", "pushed_4x", "pushed_5x"].encodeAsJSON())
+		sendEvent(name: "supportedButtonValues", value: ["pushed", "held", "pushed_2x", "pushed_3x", "pushed_4x", "pushed_5x"].encodeAsJSON())
 		sendEvent(name: "numberOfButtons", value: 1)
 		sendEvent(name: "button", value: "pushed", data: [buttonNumber: 1])
 		sendEvent(name: "ledMode", value: "onWhenOff")
