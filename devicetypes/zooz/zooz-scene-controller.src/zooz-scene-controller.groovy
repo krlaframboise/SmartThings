@@ -1,9 +1,12 @@
 /*
- *  Zooz Scene Controller - ZEN32 v1.0
+ *  Zooz Scene Controller - ZEN32 v1.0.1
  *
  *		YOU MUST ALSO INSTALL: Zooz Scene Controller Button
  *
  *  Changelog:
+ *
+ *    1.0.1 (04/18/2021)
+ *      - Create child devices after delay during inclusion which will hopefully make them appear with the parent when inclusion finishes.
  *
  *    1.0 (03/06/2021)
  *      - Initial Release
@@ -140,7 +143,7 @@ void createEnumInput(String name, String title, Integer defaultVal, Map options)
 def installed() {
 	logDebug "installed()..."
 
-	initialize()
+	runIn(2, initialize)
 
 	return []
 }
@@ -192,6 +195,7 @@ def configure() {
 	
 	state.resyncAll = true
 
+	runIn(5, initialize)
 	runIn(20, executeConfigureCmds)
 
 	return []
@@ -880,7 +884,7 @@ void addChildButton(Map btn) {
 		)
 	}
 	catch (e) {
-		log.warn "Unable to create child device for ${btn.name} because the 'Zooz Scene Controller Button' DTH is not installed."
+		log.warn "Unable to create child device for ${btn.name}.  You will get this error if you don't have the 'Zooz Scene Controller Button' DTH installed, but it can also happen during inclusion."
 	}
 }
 
