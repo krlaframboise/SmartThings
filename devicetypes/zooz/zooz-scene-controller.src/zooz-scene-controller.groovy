@@ -1,12 +1,13 @@
 /*
- *  Zooz Scene Controller - ZEN32 v1.0.1
+ *  Zooz Scene Controller - ZEN32 v1.1
  *
  *		YOU MUST ALSO INSTALL: Zooz Scene Controller Button
  *
  *  Changelog:
  *
- *    1.0.1 (04/18/2021)
+ *    1.1 (04/18/2021)
  *      - Create child devices after delay during inclusion which will hopefully make them appear with the parent when inclusion finishes.
+ *      - Fixed issue with associations when S2 fails
  *
  *    1.0 (03/06/2021)
  *      - Initial Release
@@ -247,7 +248,7 @@ List<String> getConfigureRelayBtnAssocsCmds(boolean countOnly=false) {
 
 List<String> getConfigureAssocsCmds(Map btn, Map dniSettings, boolean countOnly=false) {
 	List<String> cmds = []
-	boolean failedS2 = failedS2Inclusion
+	boolean failedS2 = (device?.getDataValue("networkSecurityLevel") == "ZWAVE_S2_FAILED")
 
 	getButtonAssociationGroups(btn).each { group, name ->
 		boolean changes = false
@@ -453,6 +454,10 @@ String associationGetCmd(int group) {
 
 String versionGetCmd() {
 	return secureCmd(zwave.versionV1.versionGet())
+}
+
+String manufacturerSpecificGetCmd() {
+	return secureCmd(zwave.manufacturerSpecificV2.manufacturerSpecificGet())
 }
 
 String switchBinaryGetCmd() {
