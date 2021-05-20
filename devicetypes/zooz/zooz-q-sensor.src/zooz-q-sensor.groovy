@@ -1,7 +1,10 @@
 /*
- *  Zooz Q Sensor - ZSE11 v1.0
+ *  Zooz Q Sensor - ZSE11 v1.1
  *
  *  Changelog:
+ *
+ *    1.1 (05/19/2021)
+ *      - Added offset settings for lux, humidity, and temperature.
  *
  *    1.0 (04/12/2021)
  *      - Initial Release
@@ -103,7 +106,25 @@ metadata {
 					range: param.range
 			}
 		}
-
+			
+		input "tempOffset", "decimal",
+			title: "Temperature Offset:",
+			required: false,
+			defaultValue: 0,
+			range: "-50..50"
+			
+		input "humidityOffset", "number",
+			title: "Humidity Offset:",
+			required: false,
+			defaultValue: 0,
+			range: "-50..50"
+		
+		input "lightOffset", "number",
+			title: "Light Offset:",
+			required: false,
+			defaultValue: 0,
+			range: "-20000..20000"
+				
 		input "debugOutput", "enum",
 			title: "Enable Debug Logging?",
 			required: false,
@@ -166,6 +187,22 @@ void initialize() {
 			sendEvent(name: "battery", value: 100, unit: "%")
 		}		
 	}
+	
+	if (state.reportedTemp == null) {
+		state.reportedTemp = device.currentValue("temperature")		
+	}
+	
+	if (state.reportedLight == null) {
+		state.reportedLight = device.currentValue("illuminance")		
+	}
+	
+	if (state.reportedHumidity == null) {
+		state.reportedHumidity = device.currentValue("humidity")		
+	}
+	
+	sendTempEvent(state.reportedTemp, true)
+	sendLightEvent(state.reportedLight, true)
+	sendHumidityEvent(state.reportedHumidity, true)
 }
 
 
@@ -348,19 +385,53 @@ void zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevel
 	switch (cmd.sensorType) {
 		case tempSensorType:
 			def temp = convertTemperatureIfNeeded(cmd.scaledSensorValue, (cmd.scale ? "F" : "C"), cmd.precision)
-			sendEvent(getEventMap("temperature", temp, true, "${temperatureScale}"))
+			sendTempEvent(temp)
 			break
 
 		case lightSensorType:
-			sendEvent(getEventMap("illuminance", cmd.scaledSensorValue, true, "lux"))
+			sendLightEvent(cmd.scaledSensorValue)
 			break
 
 		case humiditySensorType:
-			sendEvent(getEventMap("humidity", cmd.scaledSensorValue, true, "%"))
+			sendHumidityEvent(cmd.scaledSensorValue)
 			break
 
 		default:
 			logDebug "Unhandled: ${cmd}"
+	}
+}
+
+void sendTempEvent(reportedVal, boolean onlyIfNew=false) {
+	reportedVal = safeToDec(reportedVal)
+	state.reportedTemp = reportedVal
+	
+	def adjVal = (safeToDec(settings?.tempOffset) + reportedVal)
+	if (!onlyIfNew || (adjVal != device.currentValue("temperature"))) {
+		sendEvent(getEventMap("temperature", adjVal, true, "${temperatureScale}"))
+	}
+}
+
+void sendLightEvent(reportedVal, boolean onlyIfNew=false) {
+	reportedVal = safeToInt(reportedVal)
+	state.reportedLight = reportedVal
+	
+	def adjVal = (safeToInt(settings?.lightOffset) + reportedVal)
+	if (adjVal < 0) adjVal = 0
+	if (!onlyIfNew || (adjVal != device.currentValue("illuminance"))) {
+		sendEvent(getEventMap("illuminance", adjVal, true, "lux"))
+	}
+}
+
+void sendHumidityEvent(reportedVal, boolean onlyIfNew=false) {
+	reportedVal = safeToInt(reportedVal)
+	state.reportedHumidity = reportedVal
+	
+	def adjVal = (safeToInt(settings?.humidityOffset) + reportedVal)
+	if (adjVal < 0) adjVal = 0
+	if (adjVal > 100) adjVal = 100
+	
+	if (!onlyIfNew || (adjVal != device.currentValue("humidity"))) {
+		sendEvent(getEventMap("humidity", adjVal, true, "%"))
 	}
 }
 
@@ -560,6 +631,10 @@ Integer safeToInt(val, Integer defaultVal=0) {
 	else {
 		return  defaultVal
 	}
+}
+
+BigDecimal safeToDec(val, BigDecimal defaultVal=0) {
+	return "${val}"?.isBigDecimal() ? "${val}".toBigDecimal() : defaultVal
 }
 
 
