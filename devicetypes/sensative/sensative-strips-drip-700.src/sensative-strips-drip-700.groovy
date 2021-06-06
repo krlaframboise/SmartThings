@@ -1,8 +1,11 @@
 /*
- *  Sensative Strips Drip 700 v1.0
+ *  Sensative Strips Drip 700 v1.1
  *
  *
  *  Changelog:
+ *
+ *    1.1 (06/06/2021)
+ *      - Requested Changes
  *
  *    1.0 (05/12/2021)
  *      - Initial Release
@@ -49,9 +52,15 @@ import groovy.transform.Field
 ]
 
 @Field static int wakeUpIntervalSeconds = 43200
-@Field static int tempSensorType = 1 
-@Field static int waterSensorType = 31 
+@Field static int tempSensorType = 1
 @Field static int leakageCalibrationParamNum = 23
+@Field static int heatAlarm = 4
+@Field static int heatAlarmHigh = 2
+@Field static int heatAlarmLow = 6
+@Field static int waterAlarm = 5
+@Field static int waterAlarmWet = 2
+@Field static int homeSecurity = 7
+@Field static int homeSecurityTamper = 11
 
 metadata {
 	definition (
@@ -88,8 +97,7 @@ metadata {
 					required: false,
 					displayDuringSetup: false,
 					options: param.options
-			}
-			else if (param.range) {
+			} else if (param.range) {
 				input "configParam${param.num}", "number",
 					title: "${param.name}:",
 					required: false,
@@ -119,13 +127,12 @@ def updated() {
 		state.lastUpdated = new Date().time
 
 		logDebug "updated()..."
-		
 		initialize()
-		
+
 		if (!getSettingValue(leakageCalibrationParamNum) && (state.leakageCalibrated != null)) {
 			// reset flag so that it performs calibration the next time it's set to true.
 			logDebug "Resetting leakage/moisture sensor calibration setting..."
-			state.leakageCalibrated = null  
+			state.leakageCalibrated = null
 		}
 
 		if (pendingChanges) {
@@ -136,19 +143,19 @@ def updated() {
 
 void initialize() {
 	state.debugLoggingEnabled = (safeToInt(settings?.debugOutput, 1) != 0)
-	
+
 	if (!device.currentValue("tamper")) {
 		sendEventIfNew("tamper", "clear")
 	}
-	
+
 	if (!device.currentValue("water")) {
 		sendEventIfNew("water", "dry")
 	}
-	
+
 	if (!device.currentValue("temperatureAlarm")) {
 		sendEventIfNew("temperatureAlarm", "normal")
 	}
-	
+
 	if (!device.currentValue("checkInterval")) {
 		sendEvent(name: "checkInterval", value: ((wakeUpIntervalSeconds * 2) + 300), displayed: falsle, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 	}
@@ -157,7 +164,6 @@ void initialize() {
 
 def configure() {
 	logDebug "configure()..."
-
 	state.pendingRefresh = true
 	sendCommands(getConfigureCmds())
 }
@@ -172,34 +178,32 @@ List<String> getConfigureCmds() {
 
 	List<String> cmds = [ ]
 
-	if (state.pendingRefresh) {		
+	if (state.pendingRefresh) {
 		cmds << batteryGetCmd()
-		cmds << versionGetCmd()
-		cmds << sensorMultilevelGetCmd(tempSensorType)
+		cmds << secureCmd(zwave.versionV1.versionGet())
+		cmds << secureCmd(zwave.sensorMultilevelV5.sensorMultilevelGet(sensorType: tempSensorType))
 	}
-	
+
 	if (state.pendingRefresh || (state.wakeUpInterval != wakeUpIntervalSeconds)) {
 		logDebug "Changing wake up interval to ${wakeUpIntervalSeconds} seconds"
-		cmds << wakeUpIntervalSetCmd(wakeUpIntervalSeconds)
-		cmds << wakeUpIntervalGetCmd()
+		cmds << secureCmd(zwave.wakeUpV2.wakeUpIntervalSet(seconds:wakeUpIntervalSeconds, nodeid:zwaveHubNodeId))
+		cmds << secureCmd(zwave.wakeUpV2.wakeUpIntervalGet())
 	}
-	
+
 	configParams.each {
 		Integer storedVal = getParamStoredValue(it.num)
 		Integer settingVal = getSettingValue(it.num)
-		
+
 		if (it.num != leakageCalibrationParamNum) {
 			if ((settingVal != null) && (settingVal != storedVal)) {
 				logDebug "CHANGING ${it.name}(#${it.num}) from ${storedVal} to ${settingVal}"
 				cmds << configSetCmd(it, settingVal)
 				cmds << configGetCmd(it)
-			}
-			else if (state.pendingRefresh) {
+			} else if (state.pendingRefresh) {
 				cmds << configGetCmd(it)
 			}
-		}
-		else {
-			if (settingVal && !state.leakageCalibrated) {	
+		} else {
+			if (settingVal && !state.leakageCalibrated) {
 				logDebug "Performing leakage/moisture sensor calibration..."
 				state.leakageCalibrated = false // Indicate that calibration has been started
 				cmds << configSetCmd(it, settingVal)
@@ -221,9 +225,8 @@ def ping() {
 
 def refresh() {
 	logDebug "refresh()..."
-
 	state.pendingRefresh = true
-	logForceWakeupMessage("The device will be refreshed the next time it wakes up.")	
+	logForceWakeupMessage("The device will be refreshed the next time it wakes up.")
 }
 
 void logForceWakeupMessage(String msg) {
@@ -231,28 +234,8 @@ void logForceWakeupMessage(String msg) {
 }
 
 
-String wakeUpIntervalGetCmd() {
-	return secureCmd(zwave.wakeUpV2.wakeUpIntervalGet())
-}
-
-String wakeUpIntervalSetCmd(seconds) {
-	return secureCmd(zwave.wakeUpV2.wakeUpIntervalSet(seconds:seconds, nodeid:zwaveHubNodeId))
-}
-
-String wakeUpNoMoreInfoCmd() {
-	return secureCmd(zwave.wakeUpV2.wakeUpNoMoreInformation())
-}
-
 String batteryGetCmd() {
 	return secureCmd(zwave.batteryV1.batteryGet())
-}
-
-String versionGetCmd() {
-	return secureCmd(zwave.versionV1.versionGet())
-}
-
-String sensorMultilevelGetCmd(int sensorType) {
-	return secureCmd(zwave.sensorMultilevelV5.sensorMultilevelGet(sensorType: sensorType))
 }
 
 String configSetCmd(Map param, int value) {
@@ -265,14 +248,12 @@ String configGetCmd(Map param) {
 
 String secureCmd(cmd) {
 	try {
-		if (zwaveInfo?.zw?.contains("s") || ("0x98" in device?.rawDescription?.split(" "))) {
+		if (zwaveInfo?.zw?.contains("s")) {
 			return zwave.securityV1.securityMessageEncapsulation().encapsulate(cmd).format()
-		}
-		else {
+		} else {
 			return cmd.format()
 		}
-	}
-	catch (ex) {
+	} catch (ex) {
 		return cmd.format()
 	}
 }
@@ -292,8 +273,7 @@ def parse(String description) {
 	def cmd = zwave.parse(description, commandClassVersions)
 	if (cmd) {
 		zwaveEvent(cmd)
-	}
-	else {
+	} else {
 		log.warn "Unable to parse: $description"
 	}
 
@@ -314,12 +294,10 @@ String convertToLocalTimeString(dt) {
 		def timeZoneId = location?.timeZone?.ID
 		if (timeZoneId) {
 			return dt.format("MM/dd/yyyy hh:mm:ss a", TimeZone.getTimeZone(timeZoneId))
-		}
-		else {
+		} else {
 			return "$dt"
 		}
-	}
-	catch (ex) {
+	} catch (ex) {
 		return "$dt"
 	}
 }
@@ -329,8 +307,7 @@ void zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsula
 	def encapsulatedCmd = cmd.encapsulatedCommand(commandClassVersions)
 	if (encapsulatedCmd) {
 		zwaveEvent(encapsulatedCmd)
-	}
-	else {
+	} else {
 		log.warn "Unable to extract encapsulated cmd from $cmd"
 	}
 }
@@ -338,19 +315,17 @@ void zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsula
 
 void zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
 	logDebug "Device Woke Up..."
-
 	List<String> cmds = []
 
 	cmds += getConfigureCmds()
 
 	if (cmds) {
 		cmds << "delay 1000"
-	}
-	else {
+	} else {
 		cmds << batteryGetCmd()
 	}
 
-	cmds << wakeUpNoMoreInfoCmd()
+	cmds << secureCmd(zwave.wakeUpV2.wakeUpNoMoreInformation())
 	sendCommands(cmds)
 }
 
@@ -362,8 +337,7 @@ void zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd) 
 
 
 void zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
-	logTrace "${cmd}"
-	
+	logDebug "${cmd}"
 	sendEventIfNew("firmwareVersion", (cmd.applicationVersion + (cmd.applicationSubVersion / 100)))
 }
 
@@ -381,63 +355,49 @@ void zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 
 
 void zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport cmd) {
-	logTrace "${cmd}"
-
 	runIn(4, refreshSyncStatus)
 
 	Map param = configParams.find { it.num == cmd.parameterNumber }
 	if (param) {
 		logDebug "${param.name}(#${param.num}) = ${cmd.scaledConfigurationValue}"
 		setParamStoredValue(param.num, cmd.scaledConfigurationValue)
-		
+
 		if ((param.num == leakageCalibrationParamNum) && (state.leakageCalibrated == false) && !cmd.scaledConfigurationValue) {
 			state.leakageCalibrated = true // calibration was started so indicate it completed to prevent it from being run again.
 			logDebug "Leakage/moisture sensor calibration finished..."
 		}
-	}
-	else {
+	} else {
 		logDebug "Unknown Parameter #${cmd.parameterNumber} = ${cmd.scaledConfigurationValue}"
 	}
 }
 
 
 void zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelReport cmd) {
-	logTrace "${cmd}"
-
-	switch (cmd.sensorType) {
-		case tempSensorType:
-			def unit = cmd.scale == 1 ? "F" : "C"
-			def temp = convertTemperatureIfNeeded(cmd.scaledSensorValue, unit, cmd.precision)
-			sendEventIfNew("temperature", temp, true, temperatureScale)
-			break
-
-		case waterSensorType:
-			// not sure what this value is, but it's not the wet/dry status
-			break
+	logDebug "${cmd}"
+	if (cmd.sensorType == tempSensorType) {
+		def unit = cmd.scale == 1 ? "F" : "C"
+		def temp = convertTemperatureIfNeeded(cmd.scaledSensorValue, unit, cmd.precision)
+		sendEventIfNew("temperature", temp, true, temperatureScale)
 	}
 }
 
 
 void zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
-	logTrace "${cmd}"
-
-	switch (cmd.notificationType) {		
-		case 4:
-			if ((cmd.event == 2) || (cmd.eventParameter[0] == 2)) {
-				sendEventIfNew("temperatureAlarm", (cmd.event ? "high" : "normal"))
+	logDebug "${cmd}"
+	switch (cmd.notificationType) {
+		case heatAlarm:
+			if ((cmd.event == heatAlarmHigh) || (cmd.eventParameter[0] == heatAlarmHigh)) {
+				sendEventIfNew("temperatureAlarm", ((cmd.event == heatAlarmHigh) ? "high" : "normal"))
+			} else if ((cmd.event == heatAlarmLow) || (cmd.eventParameter[0] == heatAlarmLow)) {
+				sendEventIfNew("temperatureAlarm", ((cmd.event == heatAlarmLow) ? "low" : "normal"))
 			}
-			else if ((cmd.event == 6) || (cmd.eventParameter[0] == 6)) {
-				sendEventIfNew("temperatureAlarm", (cmd.event ? "low" : "normal"))
-			}			
 			break
-			
-		case 5:
-			sendEventIfNew("water", (cmd.event ? "wet" : "dry"))
+		case waterAlarm:
+			sendEventIfNew("water", ((cmd.event == waterAlarmWet) ? "wet" : "dry"))
 			break
-			
-		case 7:
-			if ((cmd.event == 11) || (cmd.eventParameter[0] == 11)) {
-				sendEventIfNew("tamper", (cmd.event ? "detected" : "clear"))
+		case homeSecurity:
+			if ((cmd.event == homeSecurityTamper) || (cmd.eventParameter[0] == homeSecurityTamper)) {
+				sendEventIfNew("tamper", ((cmd.event == homeSecurityTamper) ? "detected" : "clear"))
 			}
 			break
 	}
@@ -455,13 +415,13 @@ void refreshSyncStatus() {
 }
 
 int getPendingChanges() {
-	int configChanges = safeToInt(configParams.count {	
-		((it.num != leakageCalibrationParam.num) && (getSettingValue(it.num) != null) && (getSettingValue(it.num) != getParamStoredValue(it.num))) 
+	int configChanges = safeToInt(configParams.count {
+		((it.num != leakageCalibrationParam.num) && (getSettingValue(it.num) != null) && (getSettingValue(it.num) != getParamStoredValue(it.num)))
 	}, 0)
-	return configChanges + (state.wakeUpInterval != wakeUpIntervalSeconds ? 1 : 0)
+	return (configChanges + ((state.wakeUpInterval != wakeUpIntervalSeconds) ? 1 : 0))
 }
 
-Integer getSettingValue(int paramNum) {	
+Integer getSettingValue(int paramNum) {
 	return safeToInt((settings ? settings["configParam${paramNum}"] : null), null)
 }
 
@@ -480,21 +440,18 @@ void sendEventIfNew(String name, value, boolean displayed=true, String unit="") 
 		if (name != "syncStatus") {
 			logDebug(desc)
 		}
-		
+
 		Map evt = [
-			name: name, 
-			value: value, 
-			descriptionText: desc, 
+			name: name,
+			value: value,
+			descriptionText: desc,
 			displayed: displayed
 		]
-		
+
 		if (unit) {
 			evt.unit = unit
 		}
 		sendEvent(evt)
-	}
-	else {
-		logTrace(desc)
 	}
 }
 
@@ -524,14 +481,12 @@ Map getLedAlarmParam() {
 
 Map getTempReportingTypeParam() {
 	return [num:4, name:"Temperature reporting type", size:1, options:[
-		0:"Off [DEFAULT]", 
-		1:"Actual value on Temperature Delta change", 
-		2:"Actual value at Temperature Reporting Interval", 
+		0:"Off [DEFAULT]",
+		1:"Actual value on Temperature Delta change",
+		2:"Actual value at Temperature Reporting Interval",
 		3:"Average value every 12 hours"
 	]]
 }
-
-//5: temp reporting unit
 
 Map getTempAlarmsParam() {
 	return [num:6, name:"Temperature alarms", size:1, options:[0:"Off [DEFAULT]", 1:"On"]]
@@ -551,19 +506,15 @@ Map getLeakageAlarmParam() {
 
 Map getLeakageAlarmLevelParam() {
 	return [num:13, name:"Leakage/moisture alarm level (1:almost dry ~ 100:wet)", size:1, defaultVal: 10, range:"1..100"]
-	// options:[1:"1: Almost Dry", 10:"10 [DEFAULT]", 100:"100: Wet"]
 }
 
 Map getLeakageAlarmIntervalParam() {
 	return [num:14, name:"Leakage/moisture reporting period (hours)", size:1, defaultVal:0, range:"0..120"]
-	//options:[0:"Off [DEFAULT]", 1:"1 Hour", 2:"2 Hours", 3:"3 Hours", 4:"4 Hours", 5:"5 Hours", 6:"6 Hours", 7:"7 Hours", 8:"8 Hours", 9:"9 Hours", 10:"10 Hours", 11:"11 Hours", 12:"12 Hours", 18:"18 Hours", 24:"1 Day", 36:"36 Hours", 48:"48 Hours", 60:"60 Hourso", 72:"72 Hours", 84:"84 Hours", 96:"96 Hours", 108:"108 Hours", 120:"120 Hours"]
 }
 
 Map getActivateSupervisionParam() {
 	return [num:15, name:"Activate Supervision", size:1, options:[0:"Off", 1:"Alarm Report [DEFAULT]", 2:"All Reports"]]
 }
-
-//20: wake up moisture polling
 
 Map getLeakageCalibrationParam() {
 	return [num:23, name:"Leakage/moisture sensor calibration", size:1, options:[0:"Off [DEFAULT]", 1:"Perform calibration"]]
@@ -571,7 +522,6 @@ Map getLeakageCalibrationParam() {
 
 Map getTempOffsetParam() {
 	return [num:24, name:"Temperature offset (-10.0°C ~ +10.0°C)", size:1, defaultVal:0, range:"-100..100"]
-	// options:[0:"0° [DEFAULT]"] //-100 to 100 [=-10.0 to +10.0 (Degree C)]
 }
 
 Map getTempReportingIntervalParam() {
@@ -580,23 +530,19 @@ Map getTempReportingIntervalParam() {
 
 Map getTempDeltaParam() {
 	return [num:26, name:"Temperature delta (0.5°C ~ 10°C)", size:1, defaultVal: 20, range:"5..100"]
-	// options:[default:20]] //5 to 100 [=0.5 to 10.0 (Degree C)]
 }
 
 Map getTempHysteresisParam() {
 	return [num:27, name:"Temperature hysteresis for temperature alarms (0.5°C ~ 10°C)", size:1, defaultVal: 20, range:"5..100"]
-	// options:[default:20]] //5 to 100 [=0.5 to 10.0 (Degree C)]
 }
 
 
 Integer safeToInt(val, Integer defaultVal=0) {
 	if ("${val}"?.isInteger()) {
 		return "${val}".toInteger()
-	}
-	else if ("${val}".isDouble()) {
+	} else if ("${val}".isDouble()) {
 		return "${val}".toDouble()?.round()
-	}
-	else {
+	} else {
 		return  defaultVal
 	}
 }
@@ -610,8 +556,4 @@ void logDebug(String msg) {
 	if (state.debugLoggingEnabled != false) {
 		log.debug "$msg"
 	}
-}
-
-void logTrace(String msg) {
-	// log.trace "$msg"
 }
