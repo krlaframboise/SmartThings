@@ -1,11 +1,24 @@
 /**
- *  Dome Siren v1.3.1
+ * 
+ *  Dome Siren [OBSOLETE]
  *  (Model: DMS01)
+ *  
+ * THIS DEVICE HANDLER IS OBSOLETE
+ *  
+ * A new handler was written for this device, but if you decide to use it with an existing device then you MUST remove the device, delete this handler, install/publish the new handler, and add the device again.
+ *
+ * If you have more than one of these devices and you only want to use the new handler with one of them then you can keep this handler and the other devices installed, but you'll need to put // in front of lines 114 and 115 below to ensure the new handler gets assigned to the device when it's joined.
+ *
+ * Forum Topic for New Handler:
+ * https://community.smartthings.com/t/release-dome-siren-official-2-0/230204
+ *
+ *
+ * -----------------------------------------------------
  *
  *  Author: 
  *    Kevin LaFramboise (krlaframboise)
  *
- *  URL to documentation:  https://community.smartthings.com/t/release-dome-siren-official/75499?u=krlaframboise
+ *  OBSOLETE: URL to documentation:  https://community.smartthings.com/t/release-dome-siren-official/75499?u=krlaframboise
  *    
  *
  *  Changelog:
@@ -98,8 +111,7 @@ metadata {
 		command "siren1"
 		command "siren2"
 		
-		fingerprint deviceId: "0x1005", inClusters: "0x25, 0x59, 0x5A, 0x5E, 0x70, 0x71, 0x72, 0x73, 0x80, 0x85, 0x86, 0x87"
-		
+		fingerprint deviceId: "0x1005", inClusters: "0x25, 0x59, 0x5A, 0x5E, 0x70, 0x71, 0x72, 0x73, 0x80, 0x85, 0x86, 0x87"		
 		fingerprint mfr:"021F", prod:"0003", model:"0088"
 	}
 	
