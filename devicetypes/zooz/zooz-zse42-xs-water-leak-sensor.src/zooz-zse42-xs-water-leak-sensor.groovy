@@ -1,10 +1,10 @@
 /*
- *  Zooz ZSE41 XS Open | Close Sensor v1.0
+ *  Zooz ZSE42 XS Water Leak Sensor v1.0
  *
  *
  *  Changelog:
  *
- *    1.0 (08/14/2021)
+ *    1.0 (08/16/2021)
  *      - Initial Release
  *
  *
@@ -48,21 +48,20 @@ import groovy.transform.Field
 ]
 
 @Field static Map associationGroups = [2:"associationGroupTwo"]
-@Field static int accessControl = 6
-@Field static int accessControlOpen = 22
+@Field static int waterAlarm = 5
 @Field static int wakeUpIntervalSeconds = 43200
 
 metadata {
 	definition (
-		name: "Zooz ZSE41 XS Open Close Sensor",
+		name: "Zooz ZSE42 XS Water Leak Sensor",
 		namespace: "Zooz",
 		author: "Kevin LaFramboise (@krlaframboise)",
-		ocfDeviceType:"x.com.st.d.sensor.contact",
-		vid: "aad2a60f-0daf-3218-833d-4216533ae5b2",
+		ocfDeviceType:"x.com.st.d.sensor.moisture",
+		vid: "a15f6dd7-982f-3cf0-aa9b-4e04114f3f8e",
 		mnmn: "SmartThingsCommunity"
 	) {
 		capability "Sensor"
-		capability "Contact Sensor"
+		capability "Water Sensor"
 		capability "Battery"
 		capability "Refresh"
 		capability "Health Check"
@@ -70,8 +69,8 @@ metadata {
 		capability "platemusic11009.firmware"
 		capability "platemusic11009.associationGroupTwo"
 		capability "platemusic11009.syncStatus"
-		
-		fingerprint mfr:"027A", prod:"7000", model:"E001", deviceJoinName: "Zooz ZSE41 XS Open Close Sensor" // zw:Ss2a type:0701 mfr:027A prod:7000 model:E001 ver:1.05 zwv:7.13 lib:03 cc:5E,55,9F,6C sec:86,85,8E,59,72,5A,87,73,80,71,30,70,84,7A
+
+		fingerprint mfr:"027A", prod:"7000", model:"E002", deviceJoinName: "Zooz ZSE42 XS Water Leak Sensor" // zw:Ss2a type:0701 mfr:027A prod:7000 model:E002 ver:1.05 zwv:7.13 lib:03 cc:5E,55,9F,6C sec:86,85,8E,59,72,5A,87,73,80,71,30,70,84,7A
 	}
 
 	preferences {
@@ -125,7 +124,7 @@ def updated() {
 	if (!isDuplicateCommand(state.lastUpdated, 1000)) {
 		state.lastUpdated = new Date().time
 		runIn(2, refreshSyncStatus)
-		
+
 		logDebug "updated()..."
 		initialize()
 
@@ -138,10 +137,10 @@ def updated() {
 void initialize() {
 	state.debugLoggingEnabled = (safeToInt(settings?.debugLogging, 1) != 0)
 
-	if (!device.currentValue("contact")) {
-		sendEvent(name: "contact", value: "open")
+	if (!device.currentValue("water")) {
+		sendEvent(name: "water", value: "dry")
 	}
-	
+
 	if (!device.currentValue("checkInterval")) {
 		sendEvent(name: "checkInterval", value: ((wakeUpIntervalSeconds * 2) + 300), displayed: falsle, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 	}
@@ -162,16 +161,16 @@ List<String> getConfigureCmds() {
 	if (changes) {
 		log.warn "Syncing ${changes} Change(s)"
 	}
-	
+
 	if (state.pendingRefresh || !device.currentValue("firmwareVersion")) {
-		cmds << batteryGetCmd()		
+		cmds << batteryGetCmd()
 		cmds << sensorBinaryGetCmd()
 	}
-	
+
 	if (state.pendingRefresh || !device.currentValue("firmwareVersion")) {
 		cmds << versionGetCmd()
 	}
-	
+
 	if (state.pendingRefresh || (state.wakeUpInterval != wakeUpIntervalSeconds)) {
 		logDebug "Changing wake up interval to ${wakeUpIntervalSeconds} seconds"
 		cmds << wakeUpIntervalSetCmd(wakeUpIntervalSeconds)
@@ -191,7 +190,7 @@ List<String> getConfigureCmds() {
 	cmds += getConfigureAssocsCmds()
 
 	state.pendingRefresh = false
-	
+
 	return cmds
 }
 
@@ -281,7 +280,7 @@ String wakeUpIntervalSetCmd(int seconds) {
 String wakeUpIntervalGetCmd() {
 	return secureCmd(zwave.wakeUpV2.wakeUpIntervalGet())
 }
-		
+
 String manufacturerSpecificGetCmd() {
 	return secureCmd(zwave.manufacturerSpecificV2.manufacturerSpecificGet())
 }
@@ -382,18 +381,18 @@ void zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 
 void zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv1.SensorBinaryReport cmd) {
 	logDebug "${cmd}"
-	sendContactEvent(cmd.sensorValue)
+	sendWaterEvent(cmd.sensorValue)
 }
 
 void zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
 	logDebug "${cmd}"
-	if (cmd.notificationType == accessControl) {
-		sendContactEvent(cmd.event == accessControlOpen)		
+	if (cmd.notificationType == waterAlarm) {
+		sendWaterEvent(cmd.event)
 	}
 }
 
-void sendContactEvent(rawVal) {
-	sendEventIfNew("contact", (rawVal ? "open" : "closed"))
+void sendWaterEvent(rawVal) {
+	sendEventIfNew("water", (rawVal ? "wet" : "dry"))
 }
 
 void zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
@@ -453,11 +452,11 @@ void refreshSyncStatus() {
 }
 
 int getPendingChanges() {
-	int configChanges = safeToInt(configParams.count { 	
+	int configChanges = safeToInt(configParams.count {
 	((getSettingValue(it.num) != null) && (getSettingValue(it.num) != getParamStoredValue(it.num))) })
 	int pendingAssocs = (getConfigureAssocsCmds(true)?.size() ? 1 : 0)
 
-	return (configChanges + pendingAssocs)	
+	return (configChanges + pendingAssocs)
 }
 
 Integer getSettingValue(int paramNum) {
@@ -482,14 +481,12 @@ void sendEventIfNew(String name, value, boolean displayed=true) {
 	}
 }
 
-
 List<Map> getConfigParams() {
 	return [
 		ledParam,
+		leakClearDelayParam,
 		lowBatteryParam,
-		contactBehaviorParam,
-		contactOpenDelayParam,
-		contactClosedDelayParam
+		leakCommandGroup2Param
 	]
 }
 
@@ -497,20 +494,16 @@ Map getLedParam() {
 	return [num: 1, name: "LED Indicator", size: 1, defaultVal: 1, options: [1:"Enabled [DEFAULT]", 0:"Disabled"]]
 }
 
+Map getLeakClearDelayParam() {
+	return [num: 2, name: "Leak Alert Clear Delay", size: 4, defaultVal: 0, range:"0..3600"]
+}
+
 Map getLowBatteryParam() {
 	return [num: 4, name: "Low Battery Alert", size: 1, defaultVal: 20, options: [10:"10%", 20:"20% [DEFAULT]", 30:"30%", 40:"40%", 50:"50%"]]
 }
 
-Map getContactBehaviorParam() {
-	return [num: 5, name: "Reported State with Magnet Close", size: 1, defaultVal: 0, options: [0:"Closed [DEFAULT]", 1:"Open"]]
-}
-
-Map getContactOpenDelayParam() {
-	return [num: 6, name: "Contact Open Delay", size: 4, defaultVal: 0, range:"0..3600"]
-}
-
-Map getContactClosedDelayParam() {
-	return [num: 7, name: "Contact Closed Delay", size: 4, defaultVal: 0, range:"0..3600"]
+Map getLeakCommandGroup2Param() {
+	return [num: 5, name: "Leak Alert Command for Group 2", size: 1, defaultVal: 0, options: [0:"None [DEFAULT]", 1:"On", 2:"Off"]]
 }
 
 List<String> convertIntListToHexList(List<Integer> intList) {
@@ -528,7 +521,7 @@ List<Integer> convertHexListToIntList(String[] hexList) {
 		try {
 			it = it.trim()
 			intList.add(Integer.parseInt(it, 16))
-		} catch (e) { 
+		} catch (e) {
 		}
 	}
 	return intList
