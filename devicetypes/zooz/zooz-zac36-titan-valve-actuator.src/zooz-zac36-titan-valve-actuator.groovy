@@ -53,6 +53,7 @@ import groovy.transform.Field
 @Field static int heatAlarm = 4
 @Field static int heatAlarmHigh = 2
 @Field static int heatAlarmLow = 6
+@Field static int heatAlarmNormal = 0
 @Field static int powerDisconnected = 2
 @Field static int powerManagement = 8
 @Field static int waterAlarm = 5
@@ -61,11 +62,11 @@ import groovy.transform.Field
 
 @Field static Map configParams = [
 	inverseWaterValveReport: [num:17, label:"Inverse Water Valve Report", size:1], 
-	tempUnit: [num:33, label:"Temperature Reporting Unit", size:1, defaultVal:2, options:[0:"Disabled", 1:"C", 2:"F [DEFAULT]"], hidden:true], 
+	// tempUnit: [num:33, label:"Temperature Reporting Unit", size:1, defaultVal:2, options:[0:"Disabled", 1:"C", 2:"F [DEFAULT]"], hidden:true], 
 	tempThreshold: [num:34, label:"Temperature Reporting Threshold (°F)", size:2, defaultVal:4, range:"0..255", isTempVal:true], 
-	tempOffset: [num:35, label:"Temperature Sensor Offset (°F)", size:2, defaultVal:0, range:"-65536..65536", isTempVal:true],
-	// overheatAlarmTrigger: [num:36, label:"Overheat Alarm Trigger (°F)", size:2, defaultVal:104, range:"0..255", isTempVal:true],
-	// overheatCancelTrigger: [num:37, label:"Overheat Cancellation Trigger (°F)", size:2, defaultVal:86, range:"0..255", isTempVal:true],
+	tempOffset: [num:35, label:"Temperature Sensor Offset (°F)", size:2, defaultVal:0, range:"-255..255", isTempVal:true],
+	overheatAlarmTrigger: [num:36, label:"Overheat Alarm Trigger (°F)", size:2, defaultVal:104, range:"0..255", isTempVal:true],
+	overheatCancelTrigger: [num:37, label:"Overheat Cancellation Trigger (°F)", size:2, defaultVal:86, range:"0..255", isTempVal:true],
 	freezeAlarmTrigger: [num:40, label:"Freeze Alarm Trigger (°F)", size:2, defaultVal:32, range:"0..255", isTempVal:true],
 	freezeCancelTrigger: [num:41, label:"Freeze Cancellation Trigger (°F)", size:2, defaultVal:36, range:"0..255", isTempVal:true],
 	freezeAlarmValveControl: [num:42, label:"Valve Control with Freeze Alarm", size:1, defaultVal:1, options:[1:"Enabled [DEFAULT]", 0:"Disabled"]],
@@ -187,17 +188,12 @@ void executeConfigureCmds() {
 	runIn(6, refreshSyncStatus)
 
 	List<String> cmds = []
-	
-	if (getParamStoredValue(configParams.inverseWaterValveReport.num) == null) {
-		cmds << configGetCmd(configParams.inverseWaterValveReport)
-	}
-
+		
 	configParams.each { name, param ->
 		Integer storedVal = getParamStoredValue(param.num)
 		Integer settingVal = getSettingValue(param.num)
 		if ((settingVal != null) && (settingVal != storedVal)) {
-			logDebug "CHANGING ${param.label}(#${param.num}) from ${storedVal} to ${settingVal}"
-			
+			logDebug "CHANGING ${param.label}(#${param.num}) from ${storedVal} to ${settingVal}"			
 			if ((param == configParams.tempOffset) && (settingVal < 0)) {
 				// Adjust high byte for negative farenheit value
 				settingVal = ((settingVal * -1) + negativeParamValOffset)
@@ -207,9 +203,10 @@ void executeConfigureCmds() {
 			}			
 			cmds << configSetCmd(param, settingVal)
 			cmds << configGetCmd(param)
+		} else if (getParamStoredValue(param.num) == null) {
+			cmds << configGetCmd(param)
 		}
 	}
-
 	if (cmds) {
 		sendCommands(cmds)
 	}
@@ -227,6 +224,14 @@ def setKeylockProtection(value) {
 		configSetCmd(configParams.keylockProtection, (value == "enabled" ? 1 : 0)),
 		configGetCmd(configParams.keylockProtection)
 	]
+}
+
+def on() {
+	open()
+}
+
+def off() {
+	close()
 }
 
 def close() {
@@ -255,8 +260,7 @@ def refresh() {
 		switchBinaryGetCmd(),
 		versionGetCmd(),
 		sensorBinaryGetCmd(),
-		sensorMultilevelGetCmd(tempSensorType),
-		configGetCmd(configParams.tempUnit),
+		sensorMultilevelGetCmd(tempSensorType),		
 		configGetCmd(configParams.keylockProtection)
 	])
 	
@@ -395,6 +399,15 @@ void zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevel
 		case tempSensorType:
 			def temp = convertTemperatureIfNeeded(cmd.scaledSensorValue, (cmd.scale ? "F" : "C"), cmd.precision)			
 			sendEventIfNew("temperature", temp, true, temperatureScale)
+			
+			// Manually implemented because the firmware has some bugs.
+			if (safeToInt(temp) >= safeToInt(getParamStoredValue(configParams.overheatAlarmTrigger.num), 999)) {
+				sendHeatAlarmEvent(heatAlarmHigh)
+			} else if (safeToInt(temp) <= getParamStoredValue(configParams.freezeAlarmTrigger.num)) {
+				sendHeatAlarmEvent(heatAlarmLow)
+			} else {
+				sendHeatAlarmEvent(heatAlarmNormal)
+			}
 			break
 		default:
 			logDebug "Unhandled: ${cmd}"
