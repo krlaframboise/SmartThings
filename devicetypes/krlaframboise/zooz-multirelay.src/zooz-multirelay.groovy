@@ -1,5 +1,5 @@
 /**
- *  Zooz MultiRelay v1.3.1
+ *  Zooz MultiRelay v1.4
  *  (Models: ZEN16)
  *
  *  Author:
@@ -8,6 +8,9 @@
  *	Documentation: https://community.smartthings.com/t/release-zooz-multirelay-zen16/181057
  *
  *  Changelog:
+ *
+ *    1.4 (10/06/2021)
+ *      - Removed the workaround that was added in 1.2.1 because Zooz is convinced that version 1.2 is the highest version that doesn't have inclusion problems.
  *
  *    1.3.1 (09/16/2020)
  *      - Added option 2 for config params 12, 13, and 14. (FIRMWARE >= 1.02)
@@ -475,14 +478,14 @@ def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulat
 
 def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiChannelCmdEncap cmd) {
 	// Workaround that was added to all SmartThings Multichannel DTHs.
-	if (cmd.commandClass == 0x6C && cmd.parameter.size >= 4) { // Supervision encapsulated Message
-		// Supervision header is 4 bytes long, two bytes dropped here are the latter two bytes of the supervision header
-		cmd.parameter = cmd.parameter.drop(2)
-		// Updated Command Class/Command now with the remaining bytes
-		cmd.commandClass = cmd.parameter[0]
-		cmd.command = cmd.parameter[1]
-		cmd.parameter = cmd.parameter.drop(2)
-	}
+	// if (cmd.commandClass == 0x6C && cmd.parameter.size >= 4) { // Supervision encapsulated Message
+		// // Supervision header is 4 bytes long, two bytes dropped here are the latter two bytes of the supervision header
+		// cmd.parameter = cmd.parameter.drop(2)
+		// // Updated Command Class/Command now with the remaining bytes
+		// cmd.commandClass = cmd.parameter[0]
+		// cmd.command = cmd.parameter[1]
+		// cmd.parameter = cmd.parameter.drop(2)
+	// }
 	
 	def encapsulatedCommand = cmd.encapsulatedCommand(commandClassVersions)
 
