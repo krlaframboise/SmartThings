@@ -1,9 +1,12 @@
 /*
- *  Zooz Scene Controller - ZEN32 v1.1
+ *  Zooz Scene Controller - ZEN32 v1.2
  *
  *		YOU MUST ALSO INSTALL: Zooz Scene Controller Button
  *
  *  Changelog:
+ *
+ *    1.2 (10/06/2021)
+ *      - Removed the delays for the initialize methods that were added in v1.1 because they're now causing the problem that they originally fixed.
  *
  *    1.1 (04/18/2021)
  *      - Create child devices after delay during inclusion which will hopefully make them appear with the parent when inclusion finishes.
@@ -144,7 +147,7 @@ void createEnumInput(String name, String title, Integer defaultVal, Map options)
 def installed() {
 	logDebug "installed()..."
 
-	runIn(2, initialize)
+	initialize()
 
 	return []
 }
@@ -196,7 +199,6 @@ def configure() {
 	
 	state.resyncAll = true
 
-	runIn(5, initialize)
 	runIn(20, executeConfigureCmds)
 
 	return []
