@@ -1,7 +1,10 @@
 /*
- *  HomeSeer Wall Dimmer HS-WD200+ (v1.0)
+ *  HomeSeer Wall Dimmer HS-WD200+ & HS-WX300 (v1.1)
  *
  *  Changelog:
+ *
+ *    1.1 (10/06/2021)
+ *      - Added support for model HS-WX300
  *
  *    1.0 (10/31/2020)
  *      - Initial Release
@@ -84,6 +87,8 @@ import groovy.transform.Field
 
 @Field static Map statusBlinkFrequencyOptions = [0:"Blinking Disabled", 1:"100ms", 2:"200ms", 3:"300ms", 4:"400ms", 5:"500ms", 6:"600ms", 7:"700ms", 8:"800ms", 9:"900ms", 10:"1s", 11:"1.1s", 12:"1.2s", 13:"1.3s", 14:"1.4s", 15:"1.5s", 20:"2s", 25:"2.5s", 30:"3s", 35:"3.5s", 40:"4s", 45:"4.5s", 50:"5s", 60:"6s", 70:"7s", 80:"8s", 90:"9s", 100:"10s", 110:"11s", 120:"12s", 130:"13s", 140:"14s", 150:"15s", 160:"16s", 170:"17s", 180:"18s", 190:"19s", 200:"20s", 210:"21s", 220:"22s", 230:"23s", 240:"24s", 250:"25s"]
 
+@Field static Map wireModeOptions = [0: "3 Wire Mode", 1: "2 Wire Mode (Line & Load)"]
+
 @Field static Map createChildOptions = [0:"No [DEFAULT]", 1:"Yes"]
 
 @Field static Map debugLoggingOptions = [0:"Disabled", 1:"Enabled [DEFAULT]"]
@@ -127,7 +132,8 @@ metadata {
 		// colorName or color #, led #(optional), blink frequency #(optional)
 		command "setStatusLedColorBlinkFrequency", ["string", "number", "number"]
 
-		fingerprint mfr: "000C", prod: "4447", model: "3036", deviceJoinName: "HomeSeer Wall Dimmer"
+		fingerprint mfr: "000C", prod: "4447", model: "3036", deviceJoinName: "HomeSeer Wall Dimmer" //WD200
+		fingerprint mfr: "000C", prod: "4447", model: "4036", deviceJoinName: "HomeSeer Wall Dimmer" //WX300
 	}
 
 	simulator { }
@@ -143,11 +149,18 @@ metadata {
 }
 
 void createEnumInput(String name, String title, Integer defaultVal, Map options) {
-	input name, "enum",
-		title: title,
-		required: false,
-		defaultValue: defaultVal.toString(),
-		options: options
+	if (defaultVal != null) {
+		input name, "enum",
+			title: title,
+			required: false,
+			defaultValue: defaultVal.toString(),
+			options: options
+	} else {
+		input name, "enum",
+			title: title,
+			required: false,
+			options: options
+	}
 }
 
 
@@ -266,7 +279,7 @@ void executeConfigureCmds() {
 	else {
 		settingsConfigParams.each { param ->
 			Integer storedVal = getParamStoredValue(param.num)
-			if (storedVal != param.value) {
+			if ((storedVal != param.value) && (param.value != null)) {
 
 				logDebug "Changing ${param.name}(#${param.num}) from ${storedVal} to ${param.value}"
 				cmds << configSetCmd(param, param.value)
@@ -842,7 +855,8 @@ List<Map> getSettingsConfigParams() {
 		centralSceneEnabledParam,
 		remoteDimmerRampRateParam,
 		localDimmerRampRateParam,
-		statusLedBlinkFrequencyParam
+		statusLedBlinkFrequencyParam,
+		wireModeParam
 	]
 }
 
@@ -897,6 +911,10 @@ Map getStatusLedBlinkFrequencyParam() {
 
 Map getStatusLedBlinkBitmaskParam() {
 	return getParam(31, "Status LED Blink Bitmask", 1, 0, [:])
+}
+
+Map getWireModeParam() {
+	return getParam(32, "Wire Mode (WX300 Only)", 1, null, wireModeOptions)
 }
 
 Map getParam(Integer num, String name, Integer size, Integer defaultVal, Map options) {
