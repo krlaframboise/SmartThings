@@ -1,5 +1,5 @@
 /*
- *  Zooz Tilt | Shock XS Sensor ZSE43 v1.0
+ *  Zooz Temperature | Humidity XS Sensor ZSE44 v1.0
  *
  *  Changelog:
  *
@@ -25,7 +25,7 @@
 import groovy.transform.Field
 
 @Field static Map commandClassVersions = [
-	0x30: 2,	// SensorBinary
+	0x31: 5,	// SensorMultilevel
 	0x55: 1,	// Transport Service v2
 	0x59: 1,	// AssociationGrpInfo v3
 	0x5A: 1,	// DeviceResetLocally
@@ -46,43 +46,49 @@ import groovy.transform.Field
 ]
 
 @Field static Map configParams = [
-	ledIndicator: [num:1, title:"LED Indicator", size:1, defaultVal:3, options:[0:"LED off", 1:"Blinks on vibration only", 2:"Blinks for open/close only", 3:"Blinks for any status change [DEFAULT]"]],
-	lowBatteryReports: [num:3, title:"Low Battery Reports", size:1, defaultVal:20, options:[10:"10%", 20:"20% [DEFAULT]", 30:"30%", 40:"40%", 50:"50%"]],
-	vibrationSensitivity: [num:4, title:"Vibration Sensitivity", size:1, defaultVal:0, options:[0:"High [DEFAULT]", 1:"Medium", 2:"Low"]],
-	disableEnableSensors: [num:7, title:"Disable / Enable Sensors", size:1, defaultVal:2, options:[0:"Only tilt sensor enabled", 1:"Only vibration sensor enabled", 2:"Both sensors enabled [DEFAULT]"]]
+	lowBatteryReports: [num:2, title:"Low Battery Reports", size:1, defaultVal:10, options:[10:"10% [DEFAULT]", 20:"20%", 30:"30%", 40:"40%", 50:"50%"]],
+	tempReportingThreshold: [num:3, title:"Temperature Reporting Threshold", size:1, defaultVal:10, range:"10..100", desc:"10..100 (10 = 1°)"],
+	tempReportingInterval: [num:16, title:"Temperature Reporting Interval", size:2, defaultVal:240, range:"0..480", desc:"0(disabled), 1..480(minutes)"],
+	tempUnit: [num:13, title:"Temperature Unit", size:1, defaultVal:1, options:[0:"Celsius", 1:"Fahrenheit [DEFAULT]"]],
+	tempOffset: [num:14, title:"Temperature Offset", size:1, defaultVal:0, range:"-100..100", desc:"-100..100 (10 = 1°)"],
+	highTempThreshold: [num:5, title:"Heat Alert Temperature", size:1, defaultVal:120, range:"50..120", desc:"50..120(°)"],
+	lowTempThreshold: [num:7, title:"Freeze Alert Temperature", size:1, defaultVal:10, range:"10..100", desc:"10..100(°)"],
+	humidityReportingThreshold: [num:4, title:"Humidity Reporting Threshold", size:1, defaultVal:5, range:"5..50", desc:"5..50(%)"],
+	humidityReportingInterval: [num:17, title:"Humidity Reporting Interval", size:2, defaultVal:240, range:"0..480", desc:"0(disabled), 1..480(minutes)"],
+	humidityOffset: [num:15, title:"Humidity Offset", size:1, defaultVal:0, range:"-20..20", desc:"-20..20(%)"],
+	highHumidityThreshold: [num:9, title:"High Humidity Alert Level", size:1, defaultVal:0, range:"0..100", desc:"0(disabled), 1..100(%)"],
+	lowHumidityThreshold: [num:11, title:"Low Humidity Alert Level", size:1, defaultVal:0, range:"0..100", desc:"0(disabled), 1..100(%)"]
 ]
 
-@Field static int accessControl = 6
-@Field static int accessControlOpen = 22
-@Field static int accessControlClosed = 23
-@Field static int homeSecurity = 7
-@Field static int homeSecurityVibration = 3
-@Field static int sensorTypeContact = 10
+@Field static Map temperatureSensor = [sensorType:1, scale:1]
+@Field static Map humiditySensor = [sensorType: 5, scale:0]
+@Field static Map temperatureAlarm = [name:"temperatureAlarm", notificationType:4, normalEvent:0, highEvent:2, lowEvent:6]
+@Field static Map humidityAlarm = [name:"humidityAlarm", notificationType:16, normalEvent:0, highEvent:2, lowEvent:6]
 @Field static int wakeUpInterval = 43200
 
 metadata {
 	definition (
-		name: "Zooz Tilt | Shock XS Sensor ZSE43",
+		name: "Zooz Temperature | Humidity XS Sensor ZSE44",
 		namespace: "Zooz",
 		author: "Kevin LaFramboise (@krlaframboise)",
-		ocfDeviceType:"x.com.st.d.sensor.multifunction",
-		vid: "b06908ce-07d6-398d-9a40-c971ed76f7bf",
+		ocfDeviceType:"oic.d.thermostat",
+		vid: "feb1a07f-d442-3ee4-9f44-14faf86b3a98",
 		mnmn: "SmartThingsCommunity"
 	) {
 		capability "Sensor"
-		capability "Acceleration Sensor"
-		capability "Contact Sensor"
+		capability "Temperature Measurement"
+		capability "Relative Humidity Measurement"
 		capability "Battery"
 		capability "Refresh"
 		capability "Health Check"
 		capability "Configuration"
+		capability "platemusic11009.temperatureAlarm"
+		capability "platemusic11009.humidityAlarm"
 		capability "platemusic11009.firmware"
 		capability "platemusic11009.syncStatus"
 
-		// zw:Ss2a type:0701 mfr:027A prod:7000 model:E003 ver:1.03 zwv:7.13 lib:03 cc:5E,55,9F,6C sec:86,85,8E,59,72,5A,87,73,80,71,30,70,84,7A
-		fingerprint mfr:"027A", prod:"7000", model:"E003", deviceJoinName: "Zooz Tilt | Shock XS Sensor ZSE43"
-		// zw:Ss2a type:0701 mfr:027A prod:0004 model:E003 ver:1.10 zwv:7.13 lib:03 cc:5E,55,9F,6C sec:86,85,8E,59,72,5A,87,73,80,71,30,70,84,7A
-		fingerprint mfr:"027A", prod:"0004", model:"E003", deviceJoinName: "Zooz Tilt | Shock XS Sensor ZSE43"
+		// zw:Ss2a type:0701 mfr:027A prod:0004 model:E004 ver:1.10 zwv:7.13 lib:03 cc:5E,55,9F,6C sec:86,85,8E,59,31,72,5A,87,73,80,71,70,84,7A
+		fingerprint mfr:"027A", prod:"0004", model:"E004", deviceJoinName: "Zooz Temperature | Humidity XS Sensor ZSE44"
 	}
 
 	preferences {
@@ -90,18 +96,28 @@ metadata {
 			if (param.options) {
 				input name, "enum",
 					title: param.title,
+					description: "Default: ${param.options[param.defaultVal]}",
 					required: false,
 					displayDuringSetup: false,
 					defaultValue: param.defaultVal,
 					options: param.options
+			} else if (param.range) {
+				input name, "number",
+					title: param.title,
+					description: "${param.desc} - Default: ${param.defaultVal}",
+					required: false,
+					displayDuringSetup: false,
+					defaultValue: param.defaultVal,
+					range: param.range
 			}
 		}
 
 		input "debugLogging", "enum",
 			title: "Logging:",
+			description: "Default: Enabled",
 			required: false,
 			defaultValue: "1",
-			options: ["0":"Disabled", "1":"Enabled [DEFAULT]"]
+			options: ["0":"Disabled", "1":"Enabled"]
 	}
 }
 
@@ -129,18 +145,17 @@ void initialize() {
 		sendEvent([name: "checkInterval", value: ((wakeUpInterval * 2) + (5 * 60)), displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID]])
 	}
 
-	if (!device.currentValue("acceleration")) {
-		sendAccelerationEvent("inactive")
+	if (!device.currentValue("temperatureAlarm")) {
+		sendEvent(name:"temperatureAlarm", value:"normal")
+	}
+
+	if (!device.currentValue("humidityAlarm")) {
+		sendEvent(name:"humidityAlarm", value:"normal")
 	}
 }
 
 def refresh() {
 	logDebug "refresh()..."
-
-	if (state.pendingRefresh) {
-		sendAccelerationEvent("inactive")
-	}
-
 	refreshSyncStatus()
 	state.pendingRefresh = true
 	logForceWakeupMessage("The device will be refreshed the next time it wakes up.")
@@ -158,20 +173,24 @@ def configure() {
 List<String> getRefreshCmds() {
 	List<String> cmds = []
 
+	if (state.wakeUpInterval == null) {
+		cmds << secureCmd(zwave.wakeUpV2.wakeUpIntervalGet())
+	}
+
 	if (state.pendingRefresh || !device.currentValue("battery")) {
 		cmds << secureCmd(zwave.batteryV1.batteryGet())
 	}
 
+	if (state.pendingRefresh || (device.currentValue("temperature") == null)) {
+		cmds << secureCmd(zwave.sensorMultilevelV5.sensorMultilevelGet(scale: temperatureSensor.scale, sensorType: temperatureSensor.sensorType))
+	}
+
+	if (state.pendingRefresh || (device.currentValue("humidity") == null)) {
+		cmds << secureCmd(zwave.sensorMultilevelV5.sensorMultilevelGet(scale: humiditySensor.scale, sensorType: humiditySensor.sensorType))
+	}
+
 	if (state.pendingRefresh || !device.currentValue("firmwareVersion")) {
 		cmds << secureCmd(zwave.versionV1.versionGet())
-	}
-
-	if (state.pendingRefresh || !device.currentValue("contact")) {
-		cmds << secureCmd(zwave.sensorBinaryV2.sensorBinaryGet(sensorType: sensorTypeContact))
-	}
-
-	if (state.wakeUpInterval == null) {
-		cmds << secureCmd(zwave.wakeUpV2.wakeUpIntervalGet())
 	}
 
 	state.pendingRefresh = false
@@ -245,7 +264,7 @@ void zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
 	}
 
 	cmds << secureCmd(zwave.wakeUpV2.wakeUpNoMoreInformation())
-	sendHubCommand(cmds, 150)
+	sendHubCommand(cmds, 250)
 }
 
 void zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpIntervalReport cmd) {
@@ -263,37 +282,48 @@ void zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	sendEvent(name:"battery", value:val, unit:"%", isStateChange: true)
 }
 
-void zwaveEvent(physicalgraph.zwave.commands.sensorbinaryv2.SensorBinaryReport cmd) {
-	logDebug "${cmd}"
-	if (cmd.sensorType == sensorTypeContact) {
-		sendContactEvent(cmd.sensorValue ? "open" : "closed")
-	}
-}
-
 void zwaveEvent(physicalgraph.zwave.commands.notificationv3.NotificationReport cmd) {
-	if (cmd.notificationType == accessControl) {
-		if (cmd.event == accessControlOpen) {
-			sendContactEvent("open")
-		} else if (cmd.event == accessControlClosed) {
-			sendContactEvent("closed")
-		} else {
+	logDebug "${cmd}"
+	switch (cmd.notificationType) {
+		case temperatureAlarm.notificationType:
+			sendAlarmEvent(temperatureAlarm, cmd)
+			break
+		case humidityAlarm.notificationType:
+			sendAlarmEvent(humidityAlarm, cmd)
+			break
+		default:
 			logDebug "${cmd}"
-		}
-	} else if (cmd.notificationType == homeSecurity) {
-		sendAccelerationEvent((cmd.event == homeSecurityVibration) ? "active" : "inactive")
-	} else {
-		logDebug "${cmd}"
 	}
 }
 
-void sendContactEvent(String value) {
-	logDebug "Contact is ${value}"
-	sendEvent(name: "contact", value: value)
+void sendAlarmEvent(Map alarm, cmd) {
+	String value
+	if ((cmd.event == alarm.highEvent) || (cmd.event == alarm.lowEvent)) {
+		value = (cmd.event == alarm.highEvent) ? "high" : "low"
+	} else if (cmd.event == alarm.normalEvent) {
+		value = "normal"
+	}
+
+	if (value) {
+		logDebug "${alarm.name} is ${value}"
+		sendEvent(name: alarm.name, value: value)
+	}
 }
 
-void sendAccelerationEvent(String value) {
-	logDebug "Acceleration is ${value}"
-	sendEvent(name: "acceleration", value: value)
+void zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelReport cmd) {
+	switch (cmd.sensorType) {
+		case temperatureSensor.sensorType:
+			def temp = convertTemperatureIfNeeded(cmd.scaledSensorValue, (cmd.scale ? "F" : "C"), cmd.precision)
+			logDebug "temperature is ${temp}°${temperatureScale}"
+			sendEvent(name: "temperature", value: temp, unit: temperatureScale)
+			break
+		case humiditySensor.sensorType:
+			logDebug "humidity is ${cmd.scaledSensorValue}%"
+			sendEvent(name: "humidity", value: cmd.scaledSensorValue, unit: "%")
+			break
+		default:
+			logDebug "Unhandled: ${cmd}"
+	}
 }
 
 void zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
