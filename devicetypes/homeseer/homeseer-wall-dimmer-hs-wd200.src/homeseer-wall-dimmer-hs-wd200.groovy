@@ -1,7 +1,10 @@
 /*
- *  HomeSeer Wall Dimmer HS-WD200+ & HS-WX300 (v1.1)
+ *  HomeSeer Wall Dimmer HS-WD200+ & HS-WX300 (v1.2)
  *
  *  Changelog:
+ *
+ *    1.2 (11/23/2021)
+ *      - Added support for model HS-WX300 in Switch Mode
  *
  *    1.1 (10/06/2021)
  *      - Added support for model HS-WX300
@@ -32,8 +35,9 @@ import groovy.transform.Field
 
 @Field static Map commandClassVersions = [
 	0x20: 1,	// Basic
-	0x27: 1,	// Switch All
+	0x25: 1,	// Switch Binary
 	0x26: 3,	// Switch Multilevel (4)
+	0x27: 1,	// Switch All
 	0x2B: 1,	// Scene Activation
 	0x2C: 1,	// Scene Actuator Conf
 	0x55: 1,	// Transport Service (2)
@@ -132,8 +136,13 @@ metadata {
 		// colorName or color #, led #(optional), blink frequency #(optional)
 		command "setStatusLedColorBlinkFrequency", ["string", "number", "number"]
 
-		fingerprint mfr: "000C", prod: "4447", model: "3036", deviceJoinName: "HomeSeer Wall Dimmer" //WD200
-		fingerprint mfr: "000C", prod: "4447", model: "4036", deviceJoinName: "HomeSeer Wall Dimmer" //WX300
+		fingerprint mfr: "000C", prod: "4447", model: "3036", deviceJoinName: "HomeSeer Wall Dimmer WD200" //WD200
+
+		// zw:Ls2a type:1100 mfr:000C prod:4447 model:4036 ver:1.11 zwv:7.15 lib:03 cc:5E,55,9F,6C sec:26,70,5B,85,59,5A,7A,87,72,8E,73,86
+		fingerprint mfr: "000C", prod: "4447", model: "4036", deviceJoinName: "HomeSeer Wall Dimmer WX300" //WX300 in Dimmer Mode
+		
+		// zw:Ls2a type:1000 mfr:000C prod:4447 model:4037 ver:1.11 zwv:7.15 lib:03 cc:5E,55,9F,6C sec:25,70,5B,85,59,5A,7A,87,72,8E,73,86
+		fingerprint mfr: "000C", prod: "4447", model: "4037", deviceJoinName: "HomeSeer Wall Switch WX300" //WX300 in Switch Mode
 	}
 
 	simulator { }
@@ -441,27 +450,42 @@ List<String> getChangeLedColorCmds(Map param, Map options, color) {
 
 def on() {
 	logDebug "on()..."
-
-	sendCommands(getSetLevelCmds(device.currentValue("level")))
+	if (isWX300InSwitchMode()) {
+		sendCommands(getSwitchCmds(0xFF))
+	} else {
+		sendCommands(getSetLevelCmds(device.currentValue("level")))
+	}
 }
 
 
 def off() {
 	logDebug "off()..."
-
-	sendCommands(getSetLevelCmds(0x00))
+	if (isWX300InSwitchMode()) {
+		sendCommands(getSwitchCmds(0x00))
+	} else {	
+		sendCommands(getSetLevelCmds(0x00))
+	}
 }
 
 
 def setLevel(level, rate=null) {
 	logDebug "setLevel($level, $rate)..."
-
-	sendCommands(getSetLevelCmds(level, rate))
+	
+	if (isWX300InSwitchMode()) {
+		sendCommands(getSwitchCmds(level ? 0xFF : 0x00))
+	} else {	
+		sendCommands(getSetLevelCmds(level, rate))
+	}
 }
 
-List<String> getSetLevelCmds(level, rate=null) {
-	int durationVal = safeToIntRange(rate, remoteDimmerRampRateParam.value, 0, 30)
+List<String> getSwitchCmds(int value) {
+	return [
+		switchBinarySetCmd(value)
+	]
+}
 
+List<String> getSetLevelCmds(level, rate=null) {	
+	int durationVal = safeToIntRange(rate, remoteDimmerRampRateParam.value, 0, 30)
 	return [
 		switchMultilevelSetCmd(safeToPercentInt(level, 99), durationVal),
 		switchMultilevelGetCmd()
@@ -510,6 +534,12 @@ String lifelineAssociationSetCmd() {
 
 String versionGetCmd() {
 	return secureCmd(zwave.versionV1.versionGet())
+}
+
+String switchBinarySetCmd(Integer value) {
+	// the WX300 doesn't support this switch binary set even though it sends those reports when the device turns on/off.  
+	// return secureCmd(zwave.switchBinaryV1.switchBinarySet(switchValue: value))
+	return secureCmd(zwave.basicV1.basicSet(value: value))
 }
 
 String switchMultilevelSetCmd(Integer value, Integer duration) {
@@ -701,6 +731,10 @@ void zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd) {
 	}
 }
 
+void zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd) {
+	logTrace "${cmd}"
+	sendEventIfNew("switch", (cmd.value ? "on" : "off"))
+}
 
 void handleSwitchMultilevelReport(physicalgraph.zwave.commands.switchmultilevelv3.SwitchMultilevelReport cmd, String description) {
 	logTrace "${cmd}: ${description}"
@@ -977,18 +1011,20 @@ Integer safeToInt(val, Integer defaultVal=0) {
 	}
 }
 
+boolean isWX300InSwitchMode() {
+	def zwMap = getZwaveInfo()
+	return (zwMap && (zwMap.model == "4037"))
+}
 
 boolean isDuplicateCommand(lastExecuted, allowedMil) {
 	!lastExecuted ? false : (lastExecuted + allowedMil > new Date().time)
 }
-
 
 void logDebug(String msg) {
 	if (state.debugLoggingEnabled) {
 		log.debug(msg)
 	}
 }
-
 
 
 
@@ -1109,5 +1145,5 @@ private findChild(String dni) {
 
 
 void logTrace(String msg) {
-	// log.trace(msg)
+	 // log.trace(msg)
 }
