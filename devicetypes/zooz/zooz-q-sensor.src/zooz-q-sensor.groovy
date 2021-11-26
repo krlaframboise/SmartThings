@@ -1,7 +1,10 @@
 /*
- *  Zooz Q Sensor - ZSE11 v1.1
+ *  Zooz Q Sensor - ZSE11 v1.2
  *
  *  Changelog:
+ *
+ *    1.2 (11/25/2021)
+ *      - Added workaround for lux reporting bug in original firmware.
  *
  *    1.1 (05/19/2021)
  *      - Added offset settings for lux, humidity, and temperature.
@@ -412,6 +415,10 @@ void sendTempEvent(reportedVal, boolean onlyIfNew=false) {
 }
 
 void sendLightEvent(reportedVal, boolean onlyIfNew=false) {
+	if (reportedVal < 0) {
+		reportedVal = (reportedVal + 65536)
+	}
+	
 	reportedVal = safeToInt(reportedVal)
 	state.reportedLight = reportedVal
 	
