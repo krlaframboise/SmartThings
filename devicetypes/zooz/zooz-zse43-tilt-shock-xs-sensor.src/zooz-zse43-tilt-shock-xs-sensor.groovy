@@ -3,7 +3,7 @@
  *
  *  Changelog:
  *
- *    1.0 (11/25/2021)
+ *    1.0 (11/30/2021)
  *      - Initial Release
  *
  *  Copyright 2021 Zooz
@@ -82,10 +82,8 @@ metadata {
 		capability "platemusic11009.firmware"
 		capability "platemusic11009.syncStatus"
 
-		// zw:Ss2a type:0701 mfr:027A prod:7000 model:E003 ver:1.03 zwv:7.13 lib:03 cc:5E,55,9F,6C sec:86,85,8E,59,72,5A,87,73,80,71,30,70,84,7A
+		// zw:Ss2a type:0701 mfr:027A prod:7000 model:E003 ver:1.10 zwv:7.13 lib:03 cc:5E,55,9F,6C sec:86,85,8E,59,72,5A,87,73,80,71,30,70,84,7A
 		fingerprint mfr:"027A", prod:"7000", model:"E003", deviceJoinName: "Zooz ZSE43 Tilt | Shock XS Sensor"
-		// zw:Ss2a type:0701 mfr:027A prod:0004 model:E003 ver:1.10 zwv:7.13 lib:03 cc:5E,55,9F,6C sec:86,85,8E,59,72,5A,87,73,80,71,30,70,84,7A
-		fingerprint mfr:"027A", prod:"0004", model:"E003", deviceJoinName: "Zooz ZSE43 Tilt | Shock XS Sensor"
 	}
 
 	preferences {

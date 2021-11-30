@@ -3,7 +3,7 @@
  *
  *  Changelog:
  *
- *    1.0 (11/25/2021)
+ *    1.0 (11/30/2021)
  *      - Initial Release
  *
  *  Copyright 2021 Zooz
@@ -53,7 +53,7 @@ import groovy.transform.Field
 	tempOffset: [num:14, title:"Temperature Offset", size:1, defaultVal:0, range:"-100..100", desc:"-100..100 (10 = 1°)"],
 	highTempThreshold: [num:5, title:"Heat Alert Temperature", size:1, defaultVal:120, range:"50..120", desc:"50..120(°)"],
 	lowTempThreshold: [num:7, title:"Freeze Alert Temperature", size:1, defaultVal:10, range:"10..100", desc:"10..100(°)"],
-	humidityReportingThreshold: [num:4, title:"Humidity Reporting Threshold", size:1, defaultVal:5, range:"5..50", desc:"5..50(%)"],
+	humidityReportingThreshold: [num:4, title:"Humidity Reporting Threshold", size:1, defaultVal:5, range:"1..50", desc:"1..50(%)"],
 	humidityReportingInterval: [num:17, title:"Humidity Reporting Interval", size:2, defaultVal:240, range:"0..480", desc:"0(disabled), 1..480(minutes)"],
 	humidityOffset: [num:15, title:"Humidity Offset", size:1, defaultVal:0, range:"-20..20", desc:"-20..20(%)"],
 	highHumidityThreshold: [num:9, title:"High Humidity Alert Level", size:1, defaultVal:0, range:"0..100", desc:"0(disabled), 1..100(%)"],
@@ -87,8 +87,8 @@ metadata {
 		capability "platemusic11009.firmware"
 		capability "platemusic11009.syncStatus"
 
-		// zw:Ss2a type:0701 mfr:027A prod:0004 model:E004 ver:1.10 zwv:7.13 lib:03 cc:5E,55,9F,6C sec:86,85,8E,59,31,72,5A,87,73,80,71,70,84,7A
-		fingerprint mfr:"027A", prod:"0004", model:"E004", deviceJoinName: "Zooz ZSE44 Temperature | Humidity XS Sensor"
+		// zw:Ss2a type:0701 mfr:027A prod:7000 model:E004 ver:1.10 zwv:7.13 lib:03 cc:5E,55,9F,6C sec:86,85,8E,59,31,72,5A,87,73,80,71,70,84,7A
+		fingerprint mfr:"027A", prod:"7000", model:"E004", deviceJoinName: "Zooz ZSE44 Temperature | Humidity XS Sensor"
 	}
 
 	preferences {
