@@ -72,7 +72,7 @@ metadata {
 		namespace: "Zooz",
 		author: "Kevin LaFramboise (@krlaframboise)",
 		ocfDeviceType:"oic.d.thermostat",
-		vid: "feb1a07f-d442-3ee4-9f44-14faf86b3a98",
+		vid: "064b47e2-afde-3228-89a4-480f0f55b3fd",
 		mnmn: "SmartThingsCommunity"
 	) {
 		capability "Sensor"
@@ -82,6 +82,7 @@ metadata {
 		capability "Refresh"
 		capability "Health Check"
 		capability "Configuration"
+		capability "platemusic11009.temperatureHumiditySensor"
 		capability "platemusic11009.temperatureAlarm"
 		capability "platemusic11009.humidityAlarm"
 		capability "platemusic11009.firmware"
@@ -141,8 +142,10 @@ void initialize() {
 
 	refreshSyncStatus()
 
-	if (!device.currentValue("checkInterval")) {
-		sendEvent([name: "checkInterval", value: ((wakeUpInterval * 2) + (5 * 60)), displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID]])
+	if (device.currentValue("temperatureHumidity") == null) {
+		state.displayHumidity = " "
+		state.displayTemperature = " "
+		sendEvent(name:"temperatureHumidity", value:" ")
 	}
 
 	if (!device.currentValue("temperatureAlarm")) {
@@ -151,6 +154,10 @@ void initialize() {
 
 	if (!device.currentValue("humidityAlarm")) {
 		sendEvent(name:"humidityAlarm", value:"normal")
+	}
+
+	if (!device.currentValue("checkInterval")) {
+		sendEvent([name: "checkInterval", value: ((wakeUpInterval * 2) + (5 * 60)), displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID]])
 	}
 }
 
@@ -313,17 +320,33 @@ void sendAlarmEvent(Map alarm, cmd) {
 void zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv5.SensorMultilevelReport cmd) {
 	switch (cmd.sensorType) {
 		case temperatureSensor.sensorType:
-			def temp = convertTemperatureIfNeeded(cmd.scaledSensorValue, (cmd.scale ? "F" : "C"), cmd.precision)
-			logDebug "temperature is ${temp}°${temperatureScale}"
-			sendEvent(name: "temperature", value: temp, unit: temperatureScale)
+			def temperature = convertTemperatureIfNeeded(cmd.scaledSensorValue, (cmd.scale ? "F" : "C"), cmd.precision)
+			sendTemperatureEvent(temperature)
 			break
 		case humiditySensor.sensorType:
-			logDebug "humidity is ${cmd.scaledSensorValue}%"
-			sendEvent(name: "humidity", value: cmd.scaledSensorValue, unit: "%")
+			sendHumidityEvent(cmd.scaledSensorValue)
 			break
 		default:
 			logDebug "Unhandled: ${cmd}"
 	}
+}
+
+void sendTemperatureEvent(value) {
+	state.displayTemperature = "${value}°${temperatureScale}"
+	logDebug "temperature is ${value}°${temperatureScale}"
+	sendEvent(name: "temperature", value: value, unit: temperatureScale)
+	sendTemperatureHumidityEvent()
+}
+
+void sendHumidityEvent(value) {
+	state.displayHumidity = "${safeToInt(value)}%"
+	logDebug "humidity is ${value}%"
+	sendEvent(name: "humidity", value: value, unit: "%")
+	sendTemperatureHumidityEvent()
+}
+
+void sendTemperatureHumidityEvent() {
+	sendEvent(name: "temperatureHumidity", value: "${state.displayTemperature} | ${state.displayHumidity}", displayed: false)
 }
 
 void zwaveEvent(physicalgraph.zwave.commands.versionv1.VersionReport cmd) {
