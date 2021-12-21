@@ -3,7 +3,7 @@
  *
  *  Changelog:
  *
- *    1.0 (12/01/2021)
+ *    1.0 (12/20/2021)
  *      - Initial Release
  *
  *  Copyright 2021 Zooz
@@ -50,12 +50,12 @@ import groovy.transform.Field
 	tempReportingThreshold: [num:3, title:"Temperature Reporting Threshold", size:1, defaultVal:10, range:"10..100", desc:"10..100 (10 = 1°)"],
 	tempReportingInterval: [num:16, title:"Temperature Reporting Interval", size:2, defaultVal:240, range:"0..480", desc:"0(disabled), 1..480(minutes)"],
 	tempUnit: [num:13, title:"Temperature Unit", size:1, defaultVal:1, options:[0:"Celsius", 1:"Fahrenheit [DEFAULT]"]],
-	tempOffset: [num:14, title:"Temperature Offset", size:1, defaultVal:0, range:"-100..100", desc:"-100..100 (10 = 1°)"],
+	tempOffset: [num:14, title:"Temperature Offset", size:1, defaultVal:100, range:"0..200", desc:"0..200 (0: -10°, 100: 0°, 200: +10°)"],
 	highTempThreshold: [num:5, title:"Heat Alert Temperature", size:1, defaultVal:120, range:"50..120", desc:"50..120(°)"],
 	lowTempThreshold: [num:7, title:"Freeze Alert Temperature", size:1, defaultVal:10, range:"10..100", desc:"10..100(°)"],
 	humidityReportingThreshold: [num:4, title:"Humidity Reporting Threshold", size:1, defaultVal:5, range:"1..50", desc:"1..50(%)"],
 	humidityReportingInterval: [num:17, title:"Humidity Reporting Interval", size:2, defaultVal:240, range:"0..480", desc:"0(disabled), 1..480(minutes)"],
-	humidityOffset: [num:15, title:"Humidity Offset", size:1, defaultVal:0, range:"-20..20", desc:"-20..20(%)"],
+	humidityOffset: [num:15, title:"Humidity Offset", size:1, defaultVal:100, range:"0..200", desc:"0..200 (0: -10%, 100: 0%, 200: +10%)"],
 	highHumidityThreshold: [num:9, title:"High Humidity Alert Level", size:1, defaultVal:0, range:"0..100", desc:"0(disabled), 1..100(%)"],
 	lowHumidityThreshold: [num:11, title:"Low Humidity Alert Level", size:1, defaultVal:0, range:"0..100", desc:"0(disabled), 1..100(%)"]
 ]
@@ -359,6 +359,11 @@ void zwaveEvent(physicalgraph.zwave.commands.configurationv2.ConfigurationReport
 	String name = configParams.find { name, param -> param.num == cmd.parameterNumber }?.key
 	if (name) {
 		int val = cmd.scaledConfigurationValue
+		
+		if ((val < 0) && ((name == "humidityOffset") || (name == "tempOffset"))) {
+			val = (val + 256)
+		}
+		
 		state[name] = val
 		logDebug "${configParams[name]?.title}(#${configParams[name]?.num}) = ${val}"
 	} else {
