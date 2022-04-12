@@ -75,6 +75,7 @@ import groovy.transform.Field
 	// autoTestModeFrequency: [num:62, label:"Auto Test Mode Frequency (Days)", size:1, defaultVal:14, range:"1..30"],
 	soundAlarm: [num:65, label:"Sound Alarm and Notifications", size:1, defaultVal:1, options:[1:"Enabled [DEFAULT]", 0:"Disabled"]],
 	ledBrightness: [num:66, label:"LED Indicator Brightness", size:1, defaultVal:66, range:"0..99"],
+	calibration: [num:99, label: "Calibration", size: 1, defaultVal:9, range:"1..10"],
 	keylockProtection: [num:67, label:"Keylock Protection", size:1, defaultVal:0, options:[0:"Disabled [DEFAULT]", 1:"Enabled"], hidden:true]
 ]
 
