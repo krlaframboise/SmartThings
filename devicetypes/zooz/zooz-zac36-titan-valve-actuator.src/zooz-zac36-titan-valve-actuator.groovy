@@ -1,7 +1,10 @@
 /*
- *  Zooz ZAC36 Titan Valve Actuator v1.0
+ *  Zooz ZAC36 Titan Valve Actuator v1.1
  *
  *  Changelog:
+ *
+ *    1.1 (04/14/2022)
+ *      - Added new param for 1.15 firmware
  *
  *    1.0 (08/23/2021)
  *      - Initial Release
@@ -70,12 +73,13 @@ import groovy.transform.Field
 	freezeAlarmTrigger: [num:40, label:"Freeze Alarm Trigger (°F)", size:2, defaultVal:32, range:"0..255", isTempVal:true],
 	freezeCancelTrigger: [num:41, label:"Freeze Cancellation Trigger (°F)", size:2, defaultVal:36, range:"0..255", isTempVal:true],
 	freezeAlarmValveControl: [num:42, label:"Valve Control with Freeze Alarm", size:1, defaultVal:1, options:[1:"Enabled [DEFAULT]", 0:"Disabled"]],
-	leakAlarmValveControl: [num:51, label:"Valve Control with Leak Alarm", size:1, defaultVal:1, options:[1:"Enabled [DEFAULT]", 0:"Disabled"]],
+	leakAlarmValveControl: [num:51, label:"Valve Control with Leak Alarm", size:1, defaultVal:1, options:[1:"Enabled [DEFAULT]", 0:"Disabled"]],	
 	// autoTestMode: [num:61, label:"Auto Test Mode", size:1, defaultVal:3, options:[3: "Enabled when included and excluded [DEFAULT]", 1:"Enabled when excluded", 2:"Enabled when included"]],
 	// autoTestModeFrequency: [num:62, label:"Auto Test Mode Frequency (Days)", size:1, defaultVal:14, range:"1..30"],
 	soundAlarm: [num:65, label:"Sound Alarm and Notifications", size:1, defaultVal:1, options:[1:"Enabled [DEFAULT]", 0:"Disabled"]],
 	ledBrightness: [num:66, label:"LED Indicator Brightness", size:1, defaultVal:66, range:"0..99"],
-	keylockProtection: [num:67, label:"Keylock Protection", size:1, defaultVal:0, options:[0:"Disabled [DEFAULT]", 1:"Enabled"], hidden:true]
+	keylockProtection: [num:67, label:"Keylock Protection", size:1, defaultVal:0, options:[0:"Disabled [DEFAULT]", 1:"Enabled"], hidden:true],
+	calibration: [num:99, label: "Calibration Seconds (FIRMWARE >= 1.15)", size: 1, defaultVal:9, range:"1..10", minFirmware:1.15]
 ]
 
 metadata {
@@ -155,7 +159,7 @@ def updated() {
 
 void initialize() {
 	if (!device.currentValue("checkInterval")) {
-		sendEvent(name: "checkInterval", value: ((60 * 60 * 3) + 300), displayed: falsle, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+		sendEvent(name: "checkInterval", value: ((60 * 60 * 3) + 300), displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 	}
 	
 	if (device.currentValue("temperatureAlarm") == null) {
@@ -190,21 +194,23 @@ void executeConfigureCmds() {
 	List<String> cmds = []
 		
 	configParams.each { name, param ->
-		Integer storedVal = getParamStoredValue(param.num)
-		Integer settingVal = getSettingValue(param.num)
-		if ((settingVal != null) && (settingVal != storedVal)) {
-			logDebug "CHANGING ${param.label}(#${param.num}) from ${storedVal} to ${settingVal}"			
-			if ((param == configParams.tempOffset) && (settingVal < 0)) {
-				// Adjust high byte for negative farenheit value
-				settingVal = ((settingVal * -1) + negativeParamValOffset)
-			} else if (param.isTempVal) {
-				// Adjust high byte for farenheit value
-				settingVal = (settingVal + fahrenheitParamValOffset)
-			}			
-			cmds << configSetCmd(param, settingVal)
-			cmds << configGetCmd(param)
-		} else if (getParamStoredValue(param.num) == null) {
-			cmds << configGetCmd(param)
+		if (firmwareSupportsParam(param)) {
+			Integer storedVal = getParamStoredValue(param.num)
+			Integer settingVal = getSettingValue(param.num)
+			if ((settingVal != null) && (settingVal != storedVal)) {
+				logDebug "CHANGING ${param.label}(#${param.num}) from ${storedVal} to ${settingVal}"			
+				if ((param == configParams.tempOffset) && (settingVal < 0)) {
+					// Adjust high byte for negative farenheit value
+					settingVal = ((settingVal * -1) + negativeParamValOffset)
+				} else if (param.isTempVal) {
+					// Adjust high byte for farenheit value
+					settingVal = (settingVal + fahrenheitParamValOffset)
+				}			
+				cmds << configSetCmd(param, settingVal)
+				cmds << configGetCmd(param)
+			} else if (getParamStoredValue(param.num) == null) {
+				cmds << configGetCmd(param)
+			}
 		}
 	}
 	if (cmds) {
@@ -474,7 +480,14 @@ void refreshSyncStatus() {
 
 int getPendingChanges() {
 	return safeToInt(configParams.count { name, param ->
-	((getSettingValue(param.num) != null) && (getSettingValue(param.num) != getParamStoredValue(param.num))) })
+		if (firmwareSupportsParam(param)) {
+			((getSettingValue(param.num) != null) && (getSettingValue(param.num) != getParamStoredValue(param.num)))
+		}
+	})
+}
+
+boolean firmwareSupportsParam(Map param) {
+	return (!param.minFirmware || (device.currentValue("firmwareVersion") >= param.minFirmware))
 }
 
 Integer getSettingValue(int paramNum) {
