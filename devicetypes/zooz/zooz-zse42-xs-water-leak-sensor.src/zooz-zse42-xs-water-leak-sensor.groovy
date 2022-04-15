@@ -1,8 +1,11 @@
 /*
- *  Zooz ZSE42 XS Water Leak Sensor v1.0
+ *  Zooz ZSE42 XS Water Leak Sensor v1.0.1
  *
  *
  *  Changelog:
+ *
+ *    1.0.1 (04/14/2022)
+ *      - fixed typo
  *
  *    1.0 (08/16/2021)
  *      - Initial Release
@@ -142,7 +145,7 @@ void initialize() {
 	}
 
 	if (!device.currentValue("checkInterval")) {
-		sendEvent(name: "checkInterval", value: ((wakeUpIntervalSeconds * 2) + 300), displayed: falsle, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
+		sendEvent(name: "checkInterval", value: ((wakeUpIntervalSeconds * 2) + 300), displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
 	}
 }
 
