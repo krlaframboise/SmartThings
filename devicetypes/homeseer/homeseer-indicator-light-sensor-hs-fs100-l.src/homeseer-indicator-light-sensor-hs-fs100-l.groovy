@@ -1,15 +1,18 @@
 /*
- *  HomeSeer Indicator Light Sensor v1.0
+ *  HomeSeer Indicator Light Sensor v1.1
  *  	(Model: HS-FS100-L)
  *
  *
  *  Changelog:
  *
+ *    1.1 (05/23/2022)
+ *      - manually set group 1 associations because ST doesn't always do it automatically.
+ *
  *    1.0 (10/31/2020)
  *      - Initial Release
  *
  *
- *  Copyright 2020 HomeSeer
+ *  Copyright 2022 HomeSeer
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -176,6 +179,7 @@ def configure() {
 
 	if (!device.currentValue("firmwareVersion") || state.refreshStatus) {
 		cmds << versionGetCmd()
+		cmds << lifelineAssociationSetCmd()
 	}
 
 	if (state.refreshStatus) {
@@ -460,6 +464,10 @@ private batteryGetCmd() {
 
 private versionGetCmd() {
 	return zwave.versionV1.versionGet().format()
+}
+
+private lifelineAssociationSetCmd() {
+	return zwave.associationV2.associationSet(groupingIdentifier: 1, nodeId: [zwaveHubNodeId]).format()
 }
 
 private sensorMultilevelGetCmd(sensorType) {
