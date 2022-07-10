@@ -1,5 +1,5 @@
 /**
- *  Zooz RGBW Dimmer v1.1.2
+ *  Zooz RGBW Dimmer v1.1.3
  *  (Model: ZEN31)
  *
  *  Author:
@@ -9,6 +9,9 @@
  *
  *
  *  Changelog:
+ *
+ *    1.1.3 (07/07/2022)
+ *      - Made setColor command support the data argument only having hue or saturation because the mobile app no longer includes both.
  *
  *    1.1.2 (08/10/2020)
  *      - Added ST workaround for S2 Supervision bug with MultiChannel Devices.
@@ -786,6 +789,12 @@ def setColor(data) {
 		rgb = colorUtil.hexToRgb(data.hex)
 	}
 	else {
+		if (data.hue == null) {
+			data.hue = device.currentValue("hue")
+		}
+		if (data.saturation == null) {
+			data.saturation = device.currentValue("saturation")
+		}		
 		rgb = huesatToRGB(data.hue, data.saturation)
 	}
 
