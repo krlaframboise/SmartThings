@@ -1,7 +1,10 @@
 /*
- *  Zooz ZSE44 Temperature | Humidity XS Sensor v1.0
+ *  Zooz ZSE44 Temperature | Humidity XS Sensor v1.0.1
  *
  *  Changelog:
+ *
+ *    1.0.1 (08/18/2022)
+ *      - Changed default value of Temperature Reporting Threshold to 20 (2°)
  *
  *    1.0 (12/20/2021)
  *      - Initial Release
@@ -47,7 +50,7 @@ import groovy.transform.Field
 
 @Field static Map configParams = [
 	lowBatteryReports: [num:2, title:"Low Battery Reports", size:1, defaultVal:10, options:[10:"10% [DEFAULT]", 20:"20%", 30:"30%", 40:"40%", 50:"50%"]],
-	tempReportingThreshold: [num:3, title:"Temperature Reporting Threshold", size:1, defaultVal:10, range:"10..100", desc:"10..100 (10 = 1°)"],
+	tempReportingThreshold: [num:3, title:"Temperature Reporting Threshold", size:1, defaultVal:20, range:"10..100", desc:"10..100 (10 = 1°)"],
 	tempReportingInterval: [num:16, title:"Temperature Reporting Interval", size:2, defaultVal:240, range:"0..480", desc:"0(disabled), 1..480(minutes)"],
 	tempUnit: [num:13, title:"Temperature Unit", size:1, defaultVal:1, options:[0:"Celsius", 1:"Fahrenheit [DEFAULT]"]],
 	tempOffset: [num:14, title:"Temperature Offset", size:1, defaultVal:100, range:"0..200", desc:"0..200 (0: -10°, 100: 0°, 200: +10°)"],
